@@ -7,7 +7,7 @@
 import { state, replaceDeck, subscribe, docEpoch, docVersion, onBeforeReplace } from '../../core/store.js';
 import { signedIn, apiFor, cloudReady } from './othercloud.js';
 import { approxSize } from '../../core/model.js';
-import { jsonBlob } from '../../core/jsonblob.js';
+import { packDeck, deckFile } from '../../core/deckfile.js';
 
 const GRAPH = 'https://graph.microsoft.com/v1.0/me/drive';
 const LS = 'revela.onedrive.file';
@@ -88,10 +88,9 @@ async function put({ id = null, folder = null, name = '', body, type, ifMatch = 
   return last;
 }
 const cleanName = n => String(n || '').replace(/[\\/:*?"<>|#%]/g, '').replace(/\.revela\.json$|\.json$|\.pptx$|\.pdf$/i, '').trim().slice(0, 120);
-// The presentation as the file's content: in pieces when big (core/jsonblob.js — one huge text ran the tab out of
+// The file's content: core/deckfile.js (repeated pictures once; in pieces when big — one huge text ran the tab out of
 // memory). Past AUTO_MAX it isn't sent by itself after each change (the whole file goes up each time): the status
 // says so, and a click saves it.
-const deckBody = deck => (approxSize(deck) > 5e6 ? jsonBlob(deck) : JSON.stringify(deck));
 const AUTO_MAX = 200e6;
 export const suggestedName = () => cleanName(state.deck.name) || 'Presentación';
 
@@ -110,7 +109,7 @@ export async function saveAsOneDrive({ folder = null, name, format = 'revela' })
   }
   setStatus('saving');
   try {
-    const version = docVersion(), f = await put({ folder, name: base + '.revela.json', body: deckBody(state.deck), type: 'application/json' });
+    const version = docVersion(), f = await put({ folder, name: base + '.revela.json', body: deckFile(packDeck(state.deck)), type: 'application/json' });
     link({ id: f.id, name: f.name, eTag: f.eTag, folder: f.parentReference?.id || folder }); lastSaved = version; setStatus('saved');
     return { id: f.id, name: f.name, link: f.webUrl || '' };
   } catch (e) { setStatus(e.message === 'NO_TOKEN' ? 'offline' : 'error'); throw e; }
@@ -122,10 +121,11 @@ export function saveOneDriveNow({ force = false, auto = false } = {}) {
   const run = saving.catch(() => {}).then(async () => {
     const f = linkedOneDrive(); if (!f) return false;
     if (!onedriveSignedIn()) { setStatus('offline'); return false; }
-    if (auto && approxSize(state.deck) > AUTO_MAX) { setStatus('big'); return false; }
+    const packed = packDeck(state.deck);
+    if (auto && approxSize(packed) > AUTO_MAX) { setStatus('big'); return false; }
     const version = docVersion(); setStatus('saving');
     try {
-      const r = await put({ id: f.id, body: deckBody(state.deck), type: 'application/json', ifMatch: force ? null : f.eTag });
+      const r = await put({ id: f.id, body: deckFile(packed), type: 'application/json', ifMatch: force ? null : f.eTag });
       link({ ...f, eTag: r?.eTag || f.eTag, dirty: false }); lastSaved = version;
       setStatus(docVersion() === version ? 'saved' : 'pending');
       return true;

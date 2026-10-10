@@ -7,8 +7,7 @@
 import { state, replaceDeck } from '../../core/store.js';
 import { CLOUD_KEYS } from '../../core/config.js';
 import { pkceLogin } from './oauth.js';
-import { approxSize } from '../../core/model.js';
-import { jsonBlob } from '../../core/jsonblob.js';
+import { packDeck, deckFile } from '../../core/deckfile.js';
 
 const LS = 'revela.cloudKeys';
 const read = () => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch { return {}; } };
@@ -109,8 +108,8 @@ export function apiFor(id) {
 
 const fileName = () => ((state.deck.name || 'presentacion').replace(/[^\p{L}\p{N} _-]/gu, '').trim() || 'presentacion') + '.revela.json';
 export const listCloud = id => PROVIDERS[id].list(apiFor(id));
-// (Big: in pieces, core/jsonblob.js — as one text it ran the tab out of memory.)
-export const saveToCloud = (id, name = fileName()) => PROVIDERS[id].save(apiFor(id), name, approxSize(state.deck) > 5e6 ? jsonBlob(state.deck) : JSON.stringify(state.deck));
+// (core/deckfile.js: repeated pictures once; in pieces when big — as one text it ran the tab out of memory.)
+export const saveToCloud = (id, name = fileName()) => PROVIDERS[id].save(apiFor(id), name, deckFile(packDeck(state.deck)));
 export async function openFromCloud(id, fileId) {
   let deck; try { deck = JSON.parse(await PROVIDERS[id].open(apiFor(id), fileId)); } catch (e) { if (e.message === 'NO_TOKEN' || e.status) throw e; deck = null; }
   if (!deck || !Array.isArray(deck.slides)) throw new Error('NOT_REVELA');

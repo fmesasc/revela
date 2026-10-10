@@ -8,6 +8,7 @@
 //   chooses to edit it anyway (advisory, like the office suites).
 
 import { state, commit } from '../../core/store.js';
+import { packDeck } from '../../core/deckfile.js';
 
 const ROUNDS = 250000;
 const b64 = buf => { let s = ''; for (const x of new Uint8Array(buf)) s += String.fromCharCode(x); return btoa(s); };
@@ -20,7 +21,7 @@ async function keyFrom(password, salt) {
 }
 export async function encryptDeck(deck, password) {
   const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
-  const data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await keyFrom(password, salt), new TextEncoder().encode(JSON.stringify(deck)));
+  const data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await keyFrom(password, salt), new TextEncoder().encode(JSON.stringify(packDeck(deck))));   // (repeated pictures once: core/deckfile.js)
   return { revelaEncrypted: 1, kdf: 'PBKDF2-SHA256', rounds: ROUNDS, cipher: 'AES-GCM-256', salt: b64(salt), iv: b64(iv), data: b64(data) };
 }
 export const isEncrypted = obj => !!(obj && obj.revelaEncrypted === 1 && obj.data);

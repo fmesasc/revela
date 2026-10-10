@@ -23,7 +23,7 @@ import { loadScript } from '../../core/vendor.js';
 import { plainText } from '../../core/text.js';
 import { account as revelaAccount } from './account.js';
 import { approxSize } from '../../core/model.js';
-import { jsonBlob } from '../../core/jsonblob.js';
+import { packDeck, deckFile } from '../../core/deckfile.js';
 
 const GIS = 'https://accounts.google.com/gsi/client';
 const GAPI = 'https://apis.google.com/js/api.js';
@@ -185,10 +185,7 @@ async function uploadResumable({ id, meta, mimeType, body }) {
   if (!r.ok) throw new Error(t('No se pudo guardar.'));
   return r.json();
 }
-// The presentation as the file's content: a text when small; in pieces (core/jsonblob.js) when big, so a
-// presentation with hundreds of MB of media never becomes one huge text (it made the tab run out of memory).
-const BIG_BODY = 5e6;
-const deckBody = (deck, size = approxSize(deck)) => (size > BIG_BODY ? jsonBlob(deck, PROJECT_MIME) : JSON.stringify(deck));
+// (The file's content: core/deckfile.js — repeated pictures once, and in pieces when big.)
 // Past this, changes aren't sent by themselves after each edit (each time the whole file goes up again):
 // the status says so, and a click saves it then. Meanwhile they're kept in this browser.
 const AUTO_MAX = 200e6;
@@ -274,9 +271,9 @@ export function savePresentation(opts = {}) {
 // which isn't anyone's change. (Linked before there was a fingerprint: the version, once.)
 const changedThere = (cur, m) => (cur.md5 && m.md5Checksum ? cur.md5 !== m.md5Checksum : !!(cur.version && m.version && +m.version > +cur.version));
 async function saveNow({ interactive = true, force = false, asNew = false, name, folder } = {}) {
-  const size = approxSize(state.deck);
-  if (!interactive && size > AUTO_MAX) { setStatus('big'); return false; }
-  const body = deckBody(state.deck, size), text = deckIndexText();
+  const packed = packDeck(state.deck);
+  if (!interactive && approxSize(packed) > AUTO_MAX) { setStatus('big'); return false; }
+  const body = deckFile(packed, PROJECT_MIME), text = deckIndexText();
   const savedVersion = docVersion();                     // (what this upload contains)
   let thumbnail = null; try { thumbnail = await makeThumbnail(); } catch {}
   setStatus('saving');
@@ -326,9 +323,10 @@ export function startAutosave() {
 // asking (then they stay in this browser's copies: features/collab/versions.js).
 onBeforeReplace(old => {
   const f = linkedFile();
-  if (!f || !account() || !hasToken() || docVersion() === lastSaved || status === 'conflict' || approxSize(old) > AUTO_MAX) return;
+  if (!f || !account() || !hasToken() || docVersion() === lastSaved || status === 'conflict') return;
+  const packed = packDeck(old); if (approxSize(packed) > AUTO_MAX) return;
   clearTimeout(timer);
-  const body = deckBody(old), text = deckIndexText(old);
+  const body = deckFile(packed, PROJECT_MIME), text = deckIndexText(old);
   saving = saving.catch(() => {}).then(async () => {
     try {
       // (A plain look, not fileState: by now another document is open, and the link must not follow this file.)

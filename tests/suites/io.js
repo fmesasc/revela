@@ -21,6 +21,30 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(await jsonBlob('a"b').text(), '"a\\"b"', 'un valor suelto');
   });
 
+  await test('archivo .revela.json: una foto repetida va una sola vez, y al abrirlo vuelve a cada sitio', async () => {
+    reset(); const W = frame.contentWindow;
+    const P = await W.eval("import('/src/io/formats/project.js')"), O = await W.eval("import('/src/ui/shell/openfile.js')");
+    const logo = 'data:image/png;base64,' + 'L'.repeat(200e3), photo = 'data:image/jpeg;base64,' + 'F'.repeat(150e3);
+    R.store.commit(() => {
+      R.state.deck.slides[0].blocks.push({ id: 'p1', type: 'image', x: 0, y: 0, w: 10, h: 10, src: logo }, { id: 'p2', type: 'image', x: 0, y: 0, w: 10, h: 10, src: photo });
+      R.state.deck.slides.push({ ...R.state.deck.slides[0], id: 's2', blocks: [{ id: 'p3', type: 'image', x: 0, y: 0, w: 10, h: 10, src: logo }] });
+      R.state.deck.slides[1].bg = { image: logo };
+    });
+    const text = await P.projectBlob(R.state.deck).text(), file = JSON.parse(text);
+    eq(Object.keys(file.sharedFiles || {}).length, 1, 'la repetida, en sharedFiles'); eq(file.sharedFiles['1'], logo);
+    eq(file.slides[0].blocks.find(b => b.id === 'p1').src, 'rvfile:1', 'en su sitio, una referencia'); eq(file.slides[1].bg.image, 'rvfile:1');
+    eq(file.slides[0].blocks.find(b => b.id === 'p2').src, photo, 'la que sale una vez, como siempre');
+    assert(text.length < logo.length * 1.2 + photo.length * 1.2, 'el archivo no la lleva tres veces: ' + text.length);
+    assert(R.state.deck.slides[0].blocks.find(b => b.id === 'p1').src === logo, 'la presentación abierta no cambia');
+    R.store.replaceDeck(R.model.emptyDeck());
+    assert(await O.openProject(text), 'se abre');
+    const s = R.state.deck.slides;
+    eq(s[0].blocks.find(b => b.id === 'p1').src, logo, 'cada sitio con su foto'); eq(s[1].blocks[0].src, logo); eq(s[1].bg.image, logo);
+    eq(s[0].blocks.find(b => b.id === 'p2').src, photo); eq(R.state.deck.sharedFiles, undefined, 'sin la tabla');
+    // Without repeats: the same file as before.
+    R.store.replaceDeck(R.model.emptyDeck()); eq(JSON.parse(await P.projectBlob(R.state.deck).text()).sharedFiles, undefined, 'sin repetidas, sin tabla');
+  });
+
   await test('PNG: el HTML de la diapositiva incluye sus bloques con estilo en línea', async () => {
     reset(); const b = newText(); b.html = 'Hola'; b.fontSize = 50; R.render();
     const html = R.io.slideInnerHTML(slide());

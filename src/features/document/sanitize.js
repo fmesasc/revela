@@ -4,6 +4,8 @@
 // only safe addresses; style values can't break out of their attribute.
 // Cheap when there is nothing to clean (the usual case).
 
+import { unpackDeck } from '../../core/deckfile.js';
+
 const RISKY_HTML = /<\s*\/?\s*(script|iframe|frame|object|embed|link|meta|style|base|form|input|textarea|button|select|svg|math|noscript|template|portal)\b|\son[a-z]+\s*=|javascript:|vbscript:|srcdoc|expression\s*\(/i;
 const DROP = new Set(['SCRIPT', 'IFRAME', 'FRAME', 'FRAMESET', 'OBJECT', 'EMBED', 'LINK', 'META', 'STYLE', 'BASE', 'FORM', 'INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'SVG', 'MATH', 'NOSCRIPT', 'TEMPLATE', 'PORTAL']);
 const URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'action', 'formaction', 'poster', 'background', 'srcset', 'data', 'ping']);
@@ -68,7 +70,8 @@ export function cleanValue(v, key = '') {
   return v;
 }
 const cleanRow = r => (Array.isArray(r) ? r.map(c => (typeof c === 'string' ? cleanHTML(c) : cleanValue(c))) : cleanValue(r));
-export const sanitizeDeck = deck => (deck && typeof deck === 'object' ? cleanValue(deck) : deck);
+// (A file's shared pictures, videos and sounds go back to their places first: core/deckfile.js.)
+export const sanitizeDeck = deck => (deck && typeof deck === 'object' ? cleanValue(unpackDeck(deck)) : deck);
 
 // Sandbox of an embedded page: a web page from elsewhere keeps its own origin
 // (players need it); anything else — this site, data:, javascript: — gets none,
