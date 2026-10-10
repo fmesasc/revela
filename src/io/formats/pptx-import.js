@@ -807,6 +807,8 @@ export async function importPPTX(file, { progress = null, notes: said = [], medi
           const made = blocks.slice(before), cnv = all(el, 'p:cNvPr')[0], spid = cnv?.getAttribute('id');
           if (cnv?.getAttribute('hidden') === '1' || cnv?.getAttribute('hidden') === 'true') made.forEach(b => { b.hidden = true; });   // (hidden in its selection pane)
           if (spid && made.length && !decorMode) spidOf.set(spid, (made.find(b => b.type === 'text') || made[made.length - 1]).id);
+          // (Its name, as PowerPoint's Morph pairs objects by name: features/animation/morph.js.)
+          const nm = cnv?.getAttribute('name'); if (nm && !decorMode) made.forEach(b => { b.morphName = nm.slice(0, 120); });
           if (spid && made.length > 1 && !decorMode) partsOf.set(spid, [...made.filter(b => b.type === 'text'), ...made.filter(b => b.type !== 'text')].map(b => b.id));   // (its text keeps the start; the rest go with it)
         }
       }

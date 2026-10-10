@@ -486,6 +486,33 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(r.fired === 1 && r.targets.includes('Mi título'), 'al presentar se transforma: ' + JSON.stringify(r));
   });
 
+  await test('transformar como PowerPoint: empareja por nombre, y un objeto girado gira (también al volver atrás)', async () => {
+    reset(); R.slides.addSlide('blank'); const a = slide();
+    const arrow = (id, name, x, rot) => ({ id, type: 'shape', shape: 'rightarrow', x, y: 300, w: 200, h: 60, rotation: rot, animation: null, fill: '#70ad47', morphName: name });
+    a.blocks.push(arrow('a8', 'Flecha 8', 100, 0), arrow('a26', 'Flecha 26', 600, 270));
+    R.slides.addSlide('blank'); const b = slide(); b.autoAnimate = true; b.aaDuration = 0.3;
+    b.blocks.push(arrow('b18', 'Flecha 18', 900, 0), arrow('b26', 'Flecha 26', 300, 270), arrow('b8', 'Flecha 8', 100, 0));
+    const plan = R.io.morphPlan(R.state.deck);
+    eq(plan.key(b, b.blocks.find(x => x.id === 'b26')), plan.key(a, a.blocks.find(x => x.id === 'a26')), 'la flecha hacia arriba con la de su mismo nombre (no con la primera igual)');
+    eq(plan.key(b, b.blocks.find(x => x.id === 'b8')), plan.key(a, a.blocks.find(x => x.id === 'a8')), 'y la recta con la suya');
+    assert(![plan.key(a, a.blocks[0]), plan.key(a, a.blocks[1])].includes(plan.key(b, b.blocks.find(x => x.id === 'b18'))), 'la nueva aparece (sin pareja)');
+    // Turned on one, straight on the next: it turns there — and back.
+    b.blocks.find(x => x.id === 'b26').rotation = 0;
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    try {
+      f.srcdoc = R.io.buildHTML(R.state.deck, { inApp: true });
+      for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
+      const RV = f.contentWindow.Reveal, last = RV.getTotalSlides() - 1, key = plan.key(a, a.blocks.find(x => x.id === 'a26'));
+      const el = () => f.contentDocument.querySelector(`section.present [data-id="${key}"]`);
+      const turn = () => { const cs = f.contentWindow.getComputedStyle(el()), m = new f.contentWindow.DOMMatrix(cs.transform === 'none' ? undefined : cs.transform), r = parseFloat(cs.rotate) || 0;
+        return Math.round((((Math.atan2(m.b, m.a) * 180 / Math.PI) + r) % 360 + 360) % 360); };
+      RV.slide(last - 1); await sleep(200); eq(turn(), 270, 'antes: hacia arriba');
+      RV.slide(last); await sleep(600); eq(turn(), 0, 'después: recta');
+      RV.slide(last - 1); await sleep(1400); eq(turn(), 270, 'al volver atrás: hacia arriba otra vez (antes se quedaba recta)');
+      const r = el().getBoundingClientRect(); assert(r.height > r.width, 'y en su sitio, de pie: ' + JSON.stringify([r.width, r.height]));
+    } finally { f.remove(); }
+  });
+
   await test('transformar por palabras y por caracteres', async () => {
     reset(); R.slides.addSlide('blank'); const a = slide(); a.blocks.push({ id: 'ta', type: 'text', x: 100, y: 100, w: 1000, h: 100, rotation: 0, animation: null, fontSize: 40, html: 'Revela hace presentaciones <b>bonitas</b>' });
     R.slides.addSlide('blank'); const b = slide(); b.blocks.push({ id: 'tb', type: 'text', x: 100, y: 400, w: 1000, h: 100, rotation: 0, animation: null, fontSize: 60, html: 'presentaciones bonitas hace Revela' });

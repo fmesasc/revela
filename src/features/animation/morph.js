@@ -42,7 +42,9 @@ export function morphPlan(deck) {
     };
     const pending = [];
     for (const b of s.blocks) { const p = prev.blocks.find(x => x.id === b.id); if (p) take(b, p); else pending.push(b); }
-    const rules = [(b, p) => morphSig(b) === morphSig(p), (b, p) => b.type === p.type && b.ph && b.ph === p.ph,
+    // (First by name, as PowerPoint's Morph does: its file says which arrow is which — two alike, in another order, were
+    // paired the other way round, and the one pointing up turned to point right.)
+    const rules = [(b, p) => b.type === p.type && b.morphName && b.morphName === p.morphName && (b.shape || '') === (p.shape || ''), (b, p) => morphSig(b) === morphSig(p), (b, p) => b.type === p.type && b.ph && b.ph === p.ph,
       (b, p) => b.type === p.type && s.blocks.filter(x => x.type === b.type).length === 1 && prev.blocks.filter(x => x.type === b.type).length === 1];
     for (const rule of rules) for (const b of [...pending]) {
       const p = [...free].find(x => rule(b, x)); if (p) { take(b, p); pending.splice(pending.indexOf(b), 1); }

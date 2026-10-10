@@ -663,12 +663,33 @@ export const rv = deck => deck.reveal || {};
 export const REVEAL_DEFAULTS = { controls: true, controlsLayout: 'bottom-right', progress: true, navigationMode: 'default', view: 'slides',
   mouseWheel: false, shuffle: false, hideInactiveCursor: true, jumpToSlide: true, previewLinks: false, rtl: false, center: true,
   autoAnimateDuration: 1.0, autoAnimateEasing: 'ease', autoSlideStoppable: true, fragmentInURL: true, zoom: true, search: true, parallax: '', fit: 'fill' };
+// Morph (reveal.js auto-animate) with objects turned or flipped. reveal measures each pair by its bounding box (turned:
+// the box of the turned shape) and ends with «transform: none» on the arriving object, which stays until the next
+// slide — so a turned object arrived straight (going back from a slide where an arrow points right to one where it
+// points up: still pointing right), and in the wrong place. For those pairs Revela gives the animation itself: from the
+// other object's centre, turn and size to its own (the shortest way round, as PowerPoint), with the individual
+// translate / rotate / scale properties — and the object's own transform off meanwhile (its rotation is in «rotate»).
+// The rest, reveal's own way. ES5: it runs in the exported presentation.
+const AA_MATCHER = `function(fromSlide,toSlide){var pairs=this.getAutoAnimatePairs(fromSlide,toSlide),styles=Reveal.getConfig().autoAnimateStyles||[];
+ function at(e){var x=0,y=0;while(e&&e.tagName!=='SECTION'){x+=e.offsetLeft;y+=e.offsetTop;e=e.offsetParent;}return {x:x,y:y};}
+ function look(e){var t=(e.style.transform||'').trim(),m=/^(?:rotate\\((-?[\\d.]+)deg\\))?\\s*(scaleX\\(-1\\))?\\s*(scaleY\\(-1\\))?$/.exec(t);if(!m)return null;
+  var own=!!t,r=own?+(m[1]||0):parseFloat(e.style.rotate)||0,sc=String(e.style.scale||'').split(/\\s+/),fx=own?(m[2]?-1:1):(+sc[0]||1),fy=own?(m[3]?-1:1):(+(sc[1]||sc[0])||1);
+  return {own:own,r:r,fx:fx,fy:fy};}
+ pairs.forEach(function(p){var a=p.from,b=p.to;if(p.options||!a||!b||!a.style||!b.style)return;var A=look(a),B=look(b);if(!A||!B)return;
+  if(!A.r&&!B.r&&A.fx>0&&A.fy>0&&B.fx>0&&B.fy>0)return;
+  var pa=at(a),pb=at(b),w=b.offsetWidth||1,h=b.offsetHeight||1,dx=(pa.x+a.offsetWidth/2)-(pb.x+w/2),dy=(pa.y+a.offsetHeight/2)-(pb.y+h/2),r1=B.r+((((A.r-B.r)%360)+540)%360-180);
+  var st=styles.concat([{property:'translate',from:dx+'px '+dy+'px',to:'0px 0px'},{property:'rotate',from:r1+'deg',to:B.r+'deg'},
+   {property:'scale',from:(a.offsetWidth/w*A.fx)+' '+(a.offsetHeight/h*A.fy),to:B.fx+' '+B.fy}]);
+  if(B.own)st.push({property:'transform',from:'none',to:'none'});
+  p.options={translate:false,scale:false,styles:st};});
+ return pairs;}`;
 function revealOptions(deck, inApp) {
   const o = { ...REVEAL_DEFAULTS, ...rv(deck) }, J = jsData;
   return `controls:${!!o.controls}, controlsLayout:${J(o.controlsLayout)}, progress:${!!o.progress}, navigationMode:${J(o.navigationMode)},
    mouseWheel:${!!o.mouseWheel}, shuffle:${!!o.shuffle}, hideInactiveCursor:${!!o.hideInactiveCursor}, jumpToSlide:${!!o.jumpToSlide},
    previewLinks:${!!o.previewLinks}, rtl:${!!o.rtl}, autoAnimateDuration:${+o.autoAnimateDuration || 1}, autoAnimateEasing:${J(o.autoAnimateEasing)},
    autoAnimateStyles:['opacity','color','background-color','padding','border-width','border-color','border-radius','outline','outline-offset'],
+   autoAnimateMatcher:${AA_MATCHER},
    autoSlideStoppable:${!!o.autoSlideStoppable}, fragmentInURL:${!inApp && !!o.fragmentInURL},${o.view === 'scroll' ? " view:'scroll', scrollProgress:true," : ''}
    ${o.parallax ? `parallaxBackgroundImage:${J(o.parallax)}, parallaxBackgroundSize:${J(o.parallaxSize || '')},` : ''}`;
 }
