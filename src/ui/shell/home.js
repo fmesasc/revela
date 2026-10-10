@@ -65,6 +65,7 @@ const STATUS = {
   saved: ['cloud_done', 'Drive · Guardado', 'Guardado en Drive'],
   offline: ['cloud_off', 'Drive · Volver a conectar', 'Google pide confirmar el acceso a Drive de nuevo: haz clic. Mientras, los cambios se guardan en este navegador.'],
   error: ['error', 'Drive · No se pudo guardar', 'No se pudo guardar en Drive: haz clic para reintentar'], conflict: ['sync_problem', 'Drive · Cambió en otro sitio', 'Ha cambiado en otro dispositivo'],
+  big: ['cloud_upload', 'Drive · Guardar ahora', 'Es demasiado grande para subirla sola tras cada cambio: haz clic para guardarla ahora. Mientras, los cambios se guardan en este navegador.'],
 };
 function paintBar() {
   const btn = document.getElementById('account-btn'), st = document.getElementById('drive-status');
@@ -182,6 +183,7 @@ export function initHome() {
   document.getElementById('drive-status')?.addEventListener('click', async () => {
     const s = gd.driveStatus();
     if (s === 'offline' || s === 'error' || s === 'pending') { try { await gd.reconnect(); } catch (e) { friendly(e); } paintBar(); }
+    else if (s === 'big') { try { await gd.savePresentation(); } catch (e) { friendly(e); } paintBar(); }
     else if (s === 'saved') savedDialog(gd.linkedFile());           // (where it is, and a link to it)
   });
   document.getElementById('drive-conflict')?.addEventListener('click', async e => {

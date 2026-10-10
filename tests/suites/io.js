@@ -10,6 +10,17 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(R.gdrive.gdriveReady(), 'credenciales guardadas en el navegador');
   });
 
+  await test('presentaciones grandes: el archivo se escribe a trozos (nunca un texto entero) y sale igual que JSON.stringify', async () => {
+    const W = frame.contentWindow, { jsonBlob } = await W.eval("import('/src/core/jsonblob.js')");
+    const big = 'data:image/png;base64,' + 'A'.repeat(5e6);            // (more than one piece)
+    const v = { name: 'Café «ñ» "x"\n', n: [1, 2.5, -0, NaN, Infinity, null, true], skip: undefined, f() {}, when: new W.Date(0),
+      slides: [{ blocks: [{ src: big, alt: undefined }, { src: big }] }], list: [undefined, () => 1, { a: {} }], empty: {}, none: [] };
+    const blob = jsonBlob(v), text = await blob.text();
+    eq(text.length, JSON.stringify(v).length, 'mismo tamaño'); assert(text === JSON.stringify(v), 'mismo texto');
+    eq(JSON.parse(text).slides[0].blocks[1].src.length, big.length, 'se vuelve a leer');
+    eq(await jsonBlob('a"b').text(), '"a\\"b"', 'un valor suelto');
+  });
+
   await test('PNG: el HTML de la diapositiva incluye sus bloques con estilo en línea', async () => {
     reset(); const b = newText(); b.html = 'Hola'; b.fontSize = 50; R.render();
     const html = R.io.slideInnerHTML(slide());

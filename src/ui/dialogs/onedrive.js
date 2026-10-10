@@ -95,6 +95,7 @@ const STATUS = {
   offline: ['cloud_off', 'OneDrive · Volver a conectar', 'Hay que volver a conectar con OneDrive: haz clic. Mientras, los cambios se guardan en este navegador.'],
   error: ['error', 'OneDrive · No se pudo guardar', 'No se pudo guardar en OneDrive: haz clic para reintentar'],
   conflict: ['sync_problem', 'OneDrive · Cambió en otro sitio', 'Ha cambiado en OneDrive desde otro dispositivo: haz clic para elegir'],
+  big: ['cloud_upload', 'OneDrive · Guardar ahora', 'Es demasiado grande para subirla sola tras cada cambio: haz clic para guardarla ahora. Mientras, los cambios se guardan en este navegador.'],
 };
 function paint() {
   const el = document.getElementById('onedrive-status'); if (!el) return;
@@ -113,7 +114,7 @@ export function initOneDrive() {
       try { if (keep) await od.saveOneDriveNow({ force: true }); else await od.loadTheirsOneDrive(); } catch (e) { alertDialog(message(e)); }
       return;
     }
-    if (s === 'error' || s === 'pending') { od.saveOneDriveNow(); return; }
+    if (s === 'error' || s === 'pending' || s === 'big') { od.saveOneDriveNow(); return; }
     openOneDrive({ mode: 'open' });
   });
   od.onOneDriveStatus(paint);

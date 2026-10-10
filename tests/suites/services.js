@@ -2594,7 +2594,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); const W = frame.contentWindow;
     const GD = await W.eval("import('/src/io/cloud/gdrive.js')");
     // A fake Google: accounts (token) and Drive (files with versions).
-    const drive = new Map(); let n = 0, requests = [];
+    const drive = new Map(), sessions = new Map(), bigUploads = []; let n = 0, requests = [];
     const md5 = c => { let h = 7; for (const ch of String(c)) h = (h * 31 + ch.charCodeAt(0)) | 0; return 'h' + (h >>> 0).toString(16); };   // (a fingerprint of the content, like Drive's)
     const realGoogle = W.google, realFetch = W.fetch;
     W.google = { accounts: { oauth2: { initTokenClient: o => ({ requestAccessToken() { this.callback({ access_token: 'tok', expires_in: 3600 }); } }), revoke: (_, cb) => cb?.() } } };
@@ -2608,6 +2608,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       if (!url.startsWith('https://www.googleapis.com')) return realFetch(url, o);
       if (url.includes('/oauth2/v3/userinfo')) return ok({ name: 'Ana Pérez', email: 'ana@example.org' });
       const m = url.match(/\/files\/([^/?]+)/), id = m && decodeURIComponent(m[1]);
+      // (Big files in two steps: the description gives an address, the bytes go there.)
+      if (url.includes('uploadType=resumable')) { const sid = 's' + (++n); sessions.set(sid, { id, meta: JSON.parse(o.body), size: +o.headers['X-Upload-Content-Length'] }); return new W.Response('', { status: 200, headers: { Location: 'https://www.googleapis.com/upload/session/' + sid } }); }
+      if (url.includes('/upload/session/')) {
+        const { id: sid, meta, size } = sessions.get(url.split('/').pop()), content = await o.body.text(); bigUploads.push({ size, got: o.body.size, typeOf: typeof o.body });
+        if (sid) { const f = drive.get(sid); f.content = content; f.version = String(+f.version + 1); f.thumb = !!meta.contentHints; return ok(f); }
+        const nid = 'new' + (++n); file(nid, meta.name, content, { modifiedTime: new Date().toISOString() }); return ok(drive.get(nid));
+      }
       if (url.includes('/upload/drive/v3/files')) {
         const parts = o.body.split(/--revela\w+/).filter(x => x.includes('\r\n\r\n')).map(x => x.split('\r\n\r\n').slice(1).join('\r\n\r\n').replace(/\r\n$/, ''));
         const meta = JSON.parse(parts[0]), content = parts[1];
@@ -2651,6 +2658,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       // Two saves at once (a slow one and the autosave): one after the other, no conflict with itself.
       await Promise.all([GD.savePresentation({ interactive: false }), GD.savePresentation({ interactive: false })]);
       assert(D.getElementById('drive-conflict').hidden, 'dos guardados seguidos no se pisan');
+      // A big one (pictures of several MB): written in pieces and sent in two steps — never one huge text.
+      const pic = 'data:image/png;base64,' + 'A'.repeat(6e6);
+      R.store.commit(() => { R.state.deck.slides[0].blocks.push({ id: 'bigpic', type: 'image', x: 0, y: 0, w: 100, h: 100, src: pic }); }); await sleep(400);
+      eq(bigUploads.length, 1, 'subida en dos pasos'); eq(bigUploads[0].typeOf, 'object', 'el contenido, a trozos (no un texto)'); eq(bigUploads[0].got, bigUploads[0].size, 'del tamaño anunciado');
+      eq(JSON.parse(drive.get('old2').content).slides[0].blocks.find(b => b.id === 'bigpic')?.src.length, pic.length, 'y en Drive está entera');
+      R.store.commit(() => { R.state.deck.slides[0].blocks = R.state.deck.slides[0].blocks.filter(b => b.id !== 'bigpic'); }); await sleep(250);
       // Moved to another folder and renamed in Drive: the same file, so it keeps saving there; it learns where, and says so.
       Object.assign(drive.get('old2'), { parents: ['fproy'], name: 'Clase 2 bis.revela.json' });
       R.store.commit(() => { R.state.deck.slides[0].notes = 'nota 1c'; }); await sleep(250);

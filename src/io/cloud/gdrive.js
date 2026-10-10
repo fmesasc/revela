@@ -22,6 +22,8 @@ import { buildHTML } from '../formats/html.js';
 import { loadScript } from '../../core/vendor.js';
 import { plainText } from '../../core/text.js';
 import { account as revelaAccount } from './account.js';
+import { approxSize } from '../../core/model.js';
+import { jsonBlob } from '../../core/jsonblob.js';
 
 const GIS = 'https://accounts.google.com/gsi/client';
 const GAPI = 'https://apis.google.com/js/api.js';
@@ -51,7 +53,7 @@ export const gdriveReady = () => !!(gdriveConfig().clientId && gdriveConfig().ap
 export const account = () => readLS(LS_ACCOUNT);
 const listeners = new Set();
 export const onDrive = fn => { listeners.add(fn); return () => listeners.delete(fn); };
-let status = 'idle';                                        // idle | saving | saved | offline | conflict | error
+let status = 'idle';                                        // idle | pending | saving | saved | offline | conflict | error | big
 export const driveStatus = () => status;
 const setStatus = s => { status = s; listeners.forEach(f => { try { f(s); } catch {} }); };
 
@@ -97,7 +99,7 @@ export function renewOnGesture(target = window) {
   const go = () => {
     if (!account() || !linkedFile() || hasToken(5 * 60000) || Date.now() - lastRenew < 120000) return;
     lastRenew = Date.now();
-    ensureToken(true, { silent: true }).then(() => { if (status === 'offline' || status === 'error') reconnect().catch(() => {}); }).catch(() => {});
+    ensureToken(true, { silent: true }).then(() => { if (status === 'offline' || status === 'error') reconnect({ auto: true }).catch(() => {}); }).catch(() => {});
   };
   target.addEventListener('pointerdown', go, true); target.addEventListener('keydown', go, true);
 }
@@ -157,17 +159,39 @@ export function deckIndexText(deck = state.deck) {
 }
 
 // parent: a folder id ('root' = My Drive); by default Drive's "New" folder, if any.
+const UPLOAD_FIELDS = 'id,name,version,md5Checksum,parents,modifiedTime,webViewLink';
 async function upload({ id, name, mimeType, body, thumbnail, text, parent = newFolder }) {
   const boundary = 'revela' + Math.random().toString(36).slice(2);
   const meta = id ? {} : { name, mimeType, ...(mimeType === PROJECT_MIME && { appProperties: { revela: '1' } }), ...(parent && parent !== 'root' && { parents: [parent] }) };
   if (thumbnail || text) meta.contentHints = { ...(thumbnail && { thumbnail: { image: b64url(thumbnail), mimeType: 'image/jpeg' } }), ...(text && { indexableText: text }) };
   const head = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`, tail = `\r\n--${boundary}--`;
+  if (typeof body !== 'string' && body.size > SMALL_UPLOAD) return uploadResumable({ id, meta, mimeType, body });
   const multipart = typeof body === 'string' ? head + body + tail : new Blob([head, body, tail]);   // (a .pptx is binary)
-  const r = await api(`/upload/drive/v3/files${id ? '/' + encodeURIComponent(id) : ''}?uploadType=multipart&fields=id,name,version,md5Checksum,parents,modifiedTime,webViewLink`,
+  const r = await api(`/upload/drive/v3/files${id ? '/' + encodeURIComponent(id) : ''}?uploadType=multipart&fields=${UPLOAD_FIELDS}`,
     { method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: multipart }, !id);
   if (!r.ok) throw new Error(t('No se pudo guardar.'));
   return r.json();
 }
+
+// Bigger files go in two steps (Drive takes "multipart" uploads up to 5 MB): the description, which gives an
+// address, then the bytes to that address.
+const SMALL_UPLOAD = 5e6;
+async function uploadResumable({ id, meta, mimeType, body }) {
+  const start = await api(`/upload/drive/v3/files${id ? '/' + encodeURIComponent(id) : ''}?uploadType=resumable&fields=${UPLOAD_FIELDS}`,
+    { method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': mimeType, 'X-Upload-Content-Length': String(body.size) }, body: JSON.stringify(meta) }, !id);
+  const at = start.ok && start.headers.get('Location');
+  if (!at) throw new Error(t('No se pudo guardar.'));
+  const r = await api(at, { method: 'PUT', headers: { 'Content-Type': mimeType }, body }, false);
+  if (!r.ok) throw new Error(t('No se pudo guardar.'));
+  return r.json();
+}
+// The presentation as the file's content: a text when small; in pieces (core/jsonblob.js) when big, so a
+// presentation with hundreds of MB of media never becomes one huge text (it made the tab run out of memory).
+const BIG_BODY = 5e6;
+const deckBody = (deck, size = approxSize(deck)) => (size > BIG_BODY ? jsonBlob(deck, PROJECT_MIME) : JSON.stringify(deck));
+// Past this, changes aren't sent by themselves after each edit (each time the whole file goes up again):
+// the status says so, and a click saves it then. Meanwhile they're kept in this browser.
+const AUTO_MAX = 200e6;
 
 // Revela projects in Drive, most recent first.
 export async function listPresentations() {
@@ -250,7 +274,9 @@ export function savePresentation(opts = {}) {
 // which isn't anyone's change. (Linked before there was a fingerprint: the version, once.)
 const changedThere = (cur, m) => (cur.md5 && m.md5Checksum ? cur.md5 !== m.md5Checksum : !!(cur.version && m.version && +m.version > +cur.version));
 async function saveNow({ interactive = true, force = false, asNew = false, name, folder } = {}) {
-  const body = JSON.stringify(state.deck), text = deckIndexText();
+  const size = approxSize(state.deck);
+  if (!interactive && size > AUTO_MAX) { setStatus('big'); return false; }
+  const body = deckBody(state.deck, size), text = deckIndexText();
   const savedVersion = docVersion();                     // (what this upload contains)
   let thumbnail = null; try { thumbnail = await makeThumbnail(); } catch {}
   setStatus('saving');
@@ -300,9 +326,9 @@ export function startAutosave() {
 // asking (then they stay in this browser's copies: features/collab/versions.js).
 onBeforeReplace(old => {
   const f = linkedFile();
-  if (!f || !account() || !hasToken() || docVersion() === lastSaved || status === 'conflict') return;
+  if (!f || !account() || !hasToken() || docVersion() === lastSaved || status === 'conflict' || approxSize(old) > AUTO_MAX) return;
   clearTimeout(timer);
-  const body = JSON.stringify(old), text = deckIndexText(old);
+  const body = deckBody(old), text = deckIndexText(old);
   saving = saving.catch(() => {}).then(async () => {
     try {
       // (A plain look, not fileState: by now another document is open, and the link must not follow this file.)
@@ -316,7 +342,7 @@ onBeforeReplace(old => {
 
 // Back after a reload or another device: newer in Drive and nothing changed
 // here → load it; changed in both → ask (conflict); only here → save.
-export async function reconnect() {
+export async function reconnect({ auto = false } = {}) {
   const cur = linkedFile(); if (!cur) return null;
   await ensureToken(true);
   const m = await fileState(cur, true);
@@ -325,7 +351,7 @@ export async function reconnect() {
   const newer = changedThere(cur, m);
   if (newer && !cur.dirty) { await openPresentation(cur.id); return 'loaded'; }
   if (newer) { setStatus('conflict'); return 'conflict'; }
-  if (cur.dirty) return savePresentation();
+  if (cur.dirty) return savePresentation({ interactive: !auto });
   lastSaved = docVersion(); setStatus('saved'); return 'saved';
 }
 export const markOffline = () => setStatus('offline');

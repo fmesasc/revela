@@ -6,6 +6,7 @@
 import { esc } from '../../core/text.js';
 import { EDITION, APP_VERSION } from '../../core/config.js';
 import { state } from '../../core/store.js';
+import { approxSize } from '../../core/model.js';
 import * as acc from '../../io/cloud/account.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog } from './dialog.js';
@@ -46,8 +47,8 @@ export function openReport() {
       if (!me && !EMAIL.test(email)) return alertDialog(t('Escribe un correo válido para poder responderte.'));
       let attach;
       if (f.querySelector('.rp-attach').checked) {
-        attach = JSON.stringify(state.deck);
-        if (attach.length > MAX_ATTACH) return alertDialog(t('La presentación es demasiado grande para adjuntarla: envíalo sin ella.'));
+        attach = approxSize(state.deck) > MAX_ATTACH * 2 ? '' : JSON.stringify(state.deck);   // (a big one isn't even written out)
+        if (!attach || attach.length > MAX_ATTACH) return alertDialog(t('La presentación es demasiado grande para adjuntarla: envíalo sin ella.'));
       }
       send.disabled = true;
       try {

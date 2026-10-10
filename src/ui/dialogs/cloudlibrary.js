@@ -13,6 +13,7 @@ import * as cd from '../../io/cloud/clouddocs.js';
 import { account, api } from '../../io/cloud/account.js';
 import { nowInCloud } from '../shell/where.js';
 import { download, slug } from '../../io/files.js';
+import { projectBlob } from '../../io/formats/project.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { errorText, signedIn, openCloudShare } from './cloud.js';
@@ -395,7 +396,7 @@ async function download2(d, kind) {
   try {
     const deck = cd.cloudDoc()?.id === d.id ? state.deck : await cd.fetchDeck(d.id);
     if (kind === 'pptx') { const { buildPptxBlob } = await import('../../io/formats/pptx-export.js'); download(await buildPptxBlob(deck), slug(deck.name) + '.pptx'); }
-    else download(new Blob([JSON.stringify(deck, null, 2)], { type: 'application/json' }), slug(deck.name) + '.revela.json');
+    else download(projectBlob(deck), slug(deck.name) + '.revela.json');
   } catch (e) { alertDialog(errorText(e)); }
 }
 async function newFolder() {
