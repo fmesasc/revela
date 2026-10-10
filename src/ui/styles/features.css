@@ -384,6 +384,9 @@ body.master-view #navigator{display:flex}
 .ts2-preview{flex:0 0 320px}.ts2-slide{border-radius:6px;border:1px solid var(--line2);padding:12px 14px;min-height:150px;overflow:hidden;line-height:1.25}
 .ts2-slide ul{margin:2px 0 0;padding-inline-start:1.2em}.ts2-slide>div:first-child{margin-bottom:6px}
 .ts2 .mini2.on{background:var(--accent-bg);border-color:var(--accent)}
+/* The AI's questions before a deck: the options picked, plainly marked (they were picked but looked the same). */
+.ad-opt.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.ad-opt.on::before{content:"✓ "}
 /* Share dialog */
 .modal.share fieldset{border:1px solid var(--line);border-radius:8px;margin:10px 0;padding:6px 12px 10px}
 .modal.share legend{font-size:12px;color:var(--txt2);padding:0 4px}

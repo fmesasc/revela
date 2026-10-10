@@ -69,6 +69,14 @@ export function initModalKeys() {
     if (e.key === 'Escape') closeTop(e);
     else if (e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey) trapTab(e);
   });
+  // A click outside a dialog doesn't close it: only its ✕ (or Esc, or its own buttons) does. Closing on a click outside
+  // lost what was half done in it — a stray click, or selecting text to copy and letting go outside (that click lands
+  // on the backdrop) —, and many can't be opened again as they were. (Before the dialogs' own «click on the backdrop»
+  // listeners: the click stops here. Not the command palette or the start screen, whose outside is part of them.)
+  document.addEventListener('click', e => {
+    const b = e.target;
+    if (b?.nodeType === 1 && b.classList.contains('modal-backdrop') && !b.matches('.home-screen, .cmdp-back') && b.querySelector('.modal-close')) e.stopImmediatePropagation();
+  }, true);
   const isBack = x => x.nodeType === 1 && x.classList.contains('modal-backdrop');
   new MutationObserver(muts => {
     for (const m of muts) {

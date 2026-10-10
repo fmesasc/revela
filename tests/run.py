@@ -159,9 +159,11 @@ def math_keyboard_check(send, recv, port):
             check(f['n'] > 10 and f['out'] == 0, f'teclado «{t["t"]}» entero en pantalla a {w}×{h} ({f["out"]} teclas fuera)')
             check(f['over'] <= 0 and f['w'] <= 0, f'el diálogo se ve encima del teclado «{t["t"]}» a {w}×{h} y nada se sale por los lados')
         check(len(seen) == 4, f'las pestañas cambian de teclado ({len(seen)} distintos a {w}×{h})')
-    # A click on the backdrop (between the dialog and the keyboard) still closes it.
+    # A click on the backdrop (between the dialog and the keyboard) doesn't close it (it lost what was written): its ✕ does.
     click(195, 420); time.sleep(0.4)
-    check(not ev("!!document.getElementById('math-modal')"), 'un clic en el fondo cierra el editor')
+    check(ev("!!document.getElementById('math-modal')"), 'un clic en el fondo no cierra el editor')
+    ev("document.querySelector('#math-modal .modal-close').click(),1"); time.sleep(0.3)
+    check(not ev("!!document.getElementById('math-modal')"), 'la ✕ cierra el editor')
     ev("document.querySelector('#math-modal .modal-close')?.click();1"); time.sleep(0.4)
     check(not ev("window.mathVirtualKeyboard?.visible"), 'al cerrar el editor se oculta el teclado')
     recv(send('Target.closeTarget', targetId=tid))

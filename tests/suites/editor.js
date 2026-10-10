@@ -543,6 +543,21 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     if (g !== !!R.state.ui.showGuides) R.store.commit(() => (R.state.ui.showGuides = g), { history: false });
   });
 
+  await test('ventanas: un clic fuera (o soltar fuera al seleccionar texto) no las cierra; la ✕ sí', async () => {
+    reset();
+    D.querySelector('[data-action="deck-settings"]').click(); await sleep(150);
+    const bg = D.querySelector('.modal-backdrop:last-of-type'); assert(bg?.querySelector('.modal-close'), 'abre la configuración');
+    bg.dispatchEvent(new MouseEvent('click', { bubbles: true })); await sleep(20);
+    assert(bg.isConnected, 'sigue abierta tras un clic fuera');
+    bg.querySelector('.modal-close').click(); await sleep(20);
+    assert(!bg.isConnected, 'la ✕ la cierra');
+    // (The AI's questions: an option picked is seen picked.)
+    const a = D.createElement('button'), b = D.createElement('button'); a.className = 'mini2 ad-opt'; b.className = 'mini2 ad-opt on'; D.body.append(a, b);
+    assert(frame.contentWindow.getComputedStyle(a).backgroundColor !== frame.contentWindow.getComputedStyle(b).backgroundColor, 'opción de la IA marcada: se ve distinta');
+    a.remove(); b.remove();
+    D.querySelectorAll('.modal-backdrop').forEach(m => m.remove());
+  });
+
   await test('cinta: todas las galerías se abren con su contenido', async () => {
     reset();
     const launchers = { symbols: '[data-symbols]', icons: '[data-icons]', wordart: '[data-wordart]', palettes: '[data-palettes-open]',

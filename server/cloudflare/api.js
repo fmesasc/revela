@@ -128,7 +128,10 @@ export function settings(env) {
     imageCredits: num(env.IMAGE_CREDITS, 15),
     perMinute: num(env.AI_PER_MINUTE, 20),
     monthlyBudget: num(env.MONTHLY_BUDGET_USD, 50),      // all AI together, per calendar month
-    maxTokens: num(env.AI_MAX_TOKENS, 4000),
+    // (The longest answer allowed: a whole deck — every slide with its speaker notes — is ~6–12k tokens. With 4000 it
+    // came cut in the middle of its JSON and failed with «La IA no devolvió contenido». The hold is for what may be spent;
+    // only what was spent is charged.)
+    maxTokens: num(env.AI_MAX_TOKENS, 16000),
     models: String(env.AI_MODELS || 'openai/gpt-4o-mini,anthropic/claude-haiku-4.5,google/gemini-2.5-flash,google/gemini-2.5-flash-lite').split(/[\s,]+/).filter(Boolean),
     imageModel: env.AI_IMAGE_MODEL || 'bytedance-seed/seedream-4.5',
     ttsModel: env.AI_TTS_MODEL || 'openai/gpt-4o-mini-tts-2025-12-15',
