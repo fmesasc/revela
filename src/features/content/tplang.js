@@ -72,7 +72,7 @@ export function translateDeck(deck, dict, { rtl = false } = {}) {
   }
   return deck;
 }
-const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/, LATIN = /[A-Za-zÀ-ɏ]/;
+const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/, LATIN = /[A-Za-zÀ-ɏ0-9]/;   // (and digits: «5,6–6,4 %», «2:55–3:00» came reordered right to left)
 // A translated text object's Spanish text (to compare how much room each takes: ui/canvas/fittext.js).
 const ORIGINAL = new WeakMap();
 export const originalText = b => ORIGINAL.get(b);
