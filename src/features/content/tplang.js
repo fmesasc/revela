@@ -62,6 +62,8 @@ export function translateDeck(deck, dict, { rtl = false } = {}) {
         b.dir = 'rtl';
         // (And inside an Arabic text, each piece left in its language — «Olá!» over its gloss — on its own, read left
         // to right: an element with dir isolates it, and its «!» stays at its end.)
+        // (Arabic letters are joined: spaced out, the browser draws them apart — «ب ل ا غ». No spacing between them.)
+        if (ARABIC.test(b.html.replace(/<[^>]*>/g, ''))) { if (+b.letterSpacing) b.letterSpacing = 0; b.html = b.html.replace(/letter-spacing:\s*[^;"]+;?/g, ''); }
         b.html = ('>' + b.html + '<').replace(/>([^<]+)</g, (m, x) => (LATIN.test(x) && !ARABIC.test(x) ? `><span dir="ltr">${x}</span><` : m)).slice(1, -1);
       }
       if ((styled(b, slide, deck).textAlign || 'left') === 'left') b.textAlign = 'right';

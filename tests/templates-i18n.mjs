@@ -35,5 +35,8 @@ ok(!kept.slides[0].blocks[0].dir && kept.slides[0].blocks[0].textAlign === 'righ
 const mixed = { layouts: [], slides: [{ id: 's', blocks: [{ id: 'm', type: 'text', html: '<b>Olá!</b><br>Hola', w: 400, h: 60 }] }] };
 translateDeck(mixed, { '<b>Olá!</b><br>Hola': '<b>Olá!</b><br>مرحبا' }, { rtl: true });
 ok(mixed.slides[0].blocks[0].dir === 'rtl' && mixed.slides[0].blocks[0].html === '<b><span dir="ltr">Olá!</span></b><br>مرحبا', 'plantillas: en árabe, lo que se queda en su idioma dentro de un texto árabe, aislado: ' + mixed.slides[0].blocks[0].html);
+const spaced = { layouts: [], slides: [{ id: 's', blocks: [{ id: 'p', type: 'text', html: 'AVISO', letterSpacing: 8, w: 400, h: 60 }] }] };
+translateDeck(spaced, { 'AVISO': 'بلاغ' }, { rtl: true });
+ok(spaced.slides[0].blocks[0].letterSpacing === 0, 'plantillas: en árabe, sin espacio entre letras (van unidas)');
 console.log(fails ? `PLANTILLAS-IDIOMA FAIL ${n - fails}/${n}` : `PLANTILLAS-IDIOMA OK ${n}/${n}`);
 process.exit(fails ? 1 : 0);
