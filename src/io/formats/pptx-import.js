@@ -28,6 +28,7 @@ import { JSZIP_ESM } from '../../core/vendor.js';
 import { TRANSITION_DIRS, pathFromSVG, pushAnim, normalizeAnim } from '../../features/animation/transitions.js';
 import { colorMods, modsOf } from '../../features/design/colormods.js';
 import { officeStack } from '../../features/design/fonts.js';
+import { hasAdjust } from '../../render/svg.js';
 
 const CANVAS_W = 1280;            // slide width maps to this many px
 const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml',
@@ -282,6 +283,13 @@ const PRESET = { rect: 'rect', roundRect: 'rounded', ellipse: 'ellipse', triangl
   flowChartMerge: 'merge', flowChartDelay: 'delay', flowChartInputOutput: 'parallelogram', mathPlus: 'plus', mathMinus: 'minus',
   mathMultiply: 'multiply', mathDivide: 'divide', mathEqual: 'equal', snip1Rect: 'snip',
   actionButtonForwardNext: 'actnext', actionButtonBackPrevious: 'actprev', actionButtonBeginning: 'actfirst', actionButtonEnd: 'actlast', actionButtonHome: 'acthome' };
+
+// A preset shape's adjustments (a:avLst), in PowerPoint's units; null where the file leaves PowerPoint's default
+// (render/svg.js draws block arrows, pentagons and chevrons with them, as PowerPoint does).
+const adjustOf = (spPr, names) => {
+  const gd = all(kid(spPr, 'a:prstGeom'), 'a:gd');
+  return names.map(n => { const f = gd.find(g => g.getAttribute('name') === n)?.getAttribute('fmla'), v = f ? +f.replace(/^val /, '') : NaN; return Number.isFinite(v) ? v : null; });
+};
 
 // ---- Text ------------------------------------------------------------------
 // PowerPoint text formatting is inherited, level by level (lvl1pPr…lvl9pPr):
@@ -859,7 +867,8 @@ export async function importPPTX(file, { progress = null, notes: said = [], medi
         blocks.push({ id: uid(), ...objLink(sp), type: 'shape', shape: PRESET[prst] || 'rect', fill: fill || 'none',
           stroke: stroke && stroke !== 'none' ? stroke : (fill || 'none'), strokeWidth: stroke && stroke !== 'none' ? sw : 0, ...bx,
           ...(dash && stroke && stroke !== 'none' && { dash }), ...(shadow && { shadow }),
-          ...(prst === 'roundRect' && { radius: Math.round(Math.min(bx.w, bx.h) * Math.min(50000, adj) / 100000) }) });
+          ...(prst === 'roundRect' && { radius: Math.round(Math.min(bx.w, bx.h) * Math.min(50000, adj) / 100000) }),
+          ...(hasAdjust(PRESET[prst]) && { adj: adjustOf(spPr, PRESET[prst] === 'homeplate' || PRESET[prst] === 'chevron' ? ['adj'] : ['adj1', 'adj2']) }) });
       }
       if (!hasText) return;
       const anchor = body.anchor || (ph?.type === 'ctrTitle' ? 'b' : null);

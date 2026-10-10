@@ -663,6 +663,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
         + `<a:tr h="381000">${tc('Cap', '<a:solidFill><a:srgbClr val="8E7CC3"/></a:solidFill>')}${tc('B')}</a:tr><a:tr h="381000">${tc('1')}${tc('2')}</a:tr></a:tbl></a:graphicData></a:graphic></p:graphicFrame>`
       + `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="20" name="c"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr>${xf(1000000, 1000000, 1000000, 1000000)}<a:prstGeom prst="straightConnector1"/><a:ln w="28575"><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill><a:tailEnd type="triangle"/></a:ln></p:spPr></p:cxnSp>`
       + `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="21" name="d"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr><a:xfrm flipH="1" rot="10800000"><a:off x="1000000" y="3000000"/><a:ext cx="1000000" cy="0"/></a:xfrm><a:prstGeom prst="straightConnector1"/><a:ln w="12700"><a:solidFill><a:srgbClr val="0000FF"/></a:solidFill><a:headEnd type="stealth"/></a:ln></p:spPr></p:cxnSp>`
+      // Block arrows with PowerPoint's adjustments (a long, low one, as in a diagram) and one without (its defaults).
+      + `<p:sp><p:nvSpPr><p:cNvPr id="30" name="Flecha: a la derecha"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${xf(3039265, 2462984, 2299353, 300813)}<a:prstGeom prst="rightArrow"><a:avLst><a:gd name="adj1" fmla="val 37000"/><a:gd name="adj2" fmla="val 63180"/></a:avLst></a:prstGeom><a:solidFill><a:srgbClr val="A9D18E"/></a:solidFill></p:spPr></p:sp>`
+      + `<p:sp><p:nvSpPr><p:cNvPr id="31" name="Flecha: hacia abajo"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${xf(6000000, 2000000, 484632, 489204)}<a:prstGeom prst="downArrow"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="70AD47"/></a:solidFill></p:spPr></p:sp>`
       + `</p:spTree></p:cSld></p:sld>`);
     zip.file('ppt/slides/_rels/slide1.xml.rels', rels(rel('rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml'), rel('rId3', 'hyperlink', 'https://example.org/', ' TargetMode="External"')));
     const deck = await R.pptxImport.importPPTX(new W.File([await zip.generateAsync({ type: 'blob' })], 'plantilla.pptx'));
@@ -695,6 +698,16 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(title.fit, 0.9, 'la reducción automática se guarda como factor, así el título sigue al patrón');
     assert(title.fontSize == null, 'sin tamaño fijo');
     const [c1, c2] = s1.blocks.filter(b => b.type === 'shape');
+    // Block arrows drawn as PowerPoint does: the head measured on the short side, with the file's adjustments.
+    const ra = s1.blocks.find(b => b.shape === 'rightarrow'), da = s1.blocks.find(b => b.shape === 'downarrow');
+    eq(JSON.stringify(ra?.adj), '[37000,63180]', 'flecha: sus ajustes'); eq(JSON.stringify(da?.adj), '[null,null]', 'sin ajustes: los de PowerPoint');
+    const SVG = await W.eval("import('/src/render/svg.js')");
+    const poly = b => SVG.shapeSVG(b).match(/<polygon points="([^"]+)"/)[1].split(' ').map(p => p.split(',').map(Number));
+    const rp = poly(ra);
+    assert(Math.abs(rp[1][0] - (100 - 63.18 * Math.min(ra.w, ra.h) / ra.w)) < 0.6, 'la punta mide el 63 % del alto, no el 40 % del largo: ' + rp[1][0]);
+    assert(Math.abs((rp[6][1] - rp[0][1]) - 37) < 0.6, 'el cuerpo, el 37 % del alto');
+    const dp = poly(da); assert(Math.abs(dp[2][1] - (100 - 50 * Math.min(da.w, da.h) / da.h)) < 0.6 && Math.abs(dp[1][0] - dp[0][0] - 50) < 0.6, 'hacia abajo con los valores por defecto');
+    eq(Math.round(poly({ id: 'x', shape: 'rightarrow', w: 300, h: 40, fill: '#000' })[1][0]), 60, 'las de Revela, como siempre');
     assert(c1 && c1.shape === 'arrow' && c1.rotation === 45, 'flecha diagonal: ' + JSON.stringify(c1 && [c1.shape, c1.rotation]));
     eq(c1.strokeWidth, Math.round(28575 * 1280 / 9144000), 'grosor de línea en px (2,25 pt no es 1 px)');
     eq(c1.stroke, '#ff0000', 'color de la línea');

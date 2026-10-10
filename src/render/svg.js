@@ -695,7 +695,7 @@ export const iconSig = b => (b.icon || '') + '|' + (b.color || '');
 // none); a non‑scaling stroke keeps the outline an even width at any size.
 
 export function shapeSig(b) {
-  return `${b.shape}|${b.fill}|${b.stroke}|${b.strokeWidth}|${b.dash || ''}|${b.radius ?? ''}|${b.shape === 'rounded' ? b.w + 'x' + b.h : ''}|${b.path ? b.path.length + b.path.slice(0, 40) : ''}`
+  return `${b.shape}|${b.fill}|${b.stroke}|${b.strokeWidth}|${b.dash || ''}|${b.radius ?? ''}|${b.shape === 'rounded' || b.adj ? b.w + 'x' + b.h + (b.adj ? ':' + b.adj : '') : ''}|${b.path ? b.path.length + b.path.slice(0, 40) : ''}`
     + `|${b.fill2 || ''}|${b.gradType || ''}|${b.gradAngle ?? ''}|${b.sketch ? 1 : ''}`;
 }
 
@@ -736,6 +736,38 @@ for (const [k, v] of Object.entries(SHAPE_POINTS)) {
   const pts = v.trim().split(/\s+/).map(p => p.split(',').map(Number)), [fx, fy] = fills(pts);
   SHAPE_POINTS[k] = pts.map(([x, y]) => `${+fx(x).toFixed(2)},${+fy(y).toFixed(2)}`).join(' ');
 }
+// PowerPoint's block arrows, pentagon ("home plate") and chevron at their real size, as PowerPoint works them out
+// (its presetShapeDefinitions): the head's length is measured on the shape's short side, and the shape's
+// adjustments (b.adj, from the PowerPoint file, in 1/100000: [shaft thickness, head length], or [point]) set both.
+// In the 100×100 box stretched to the shape a long, low arrow got a head 40 % of its length — deformed. Only for the
+// shapes that bring b.adj (imported): Revela's own keep their look.
+const ADJ = {
+  rightarrow: [50000, 50000], leftarrow: [50000, 50000], uparrow: [50000, 50000], downarrow: [50000, 50000],
+  leftrightarrow: [50000, 50000], updownarrow: [50000, 50000], notchedarrow: [50000, 50000], homeplate: [50000], chevron: [50000],
+};
+export const hasAdjust = shape => !!ADJ[shape];
+function adjustedPoints(b) {
+  const w = +b.w, h = +b.h, d = ADJ[b.shape];
+  if (!d || !(w > 0 && h > 0) || !Array.isArray(b.adj)) return null;
+  const ss = Math.min(w, h), num = (i, max) => Math.max(0, Math.min(max, b.adj[i] != null && Number.isFinite(+b.adj[i]) ? +b.adj[i] : d[i]));
+  const a1 = num(0, 100000), along = /^(up|down|updown)arrow$/.test(b.shape) ? h : w;
+  const a2 = num(1, (/^(leftright|updown)arrow$/.test(b.shape) ? 50000 : 100000) * along / ss);
+  const head = ss * a2 / 100000, hy = h * a1 / 200000, hx = w * a1 / 200000, cy = h / 2, cx = w / 2;
+  const tip = ss * num(0, 100000 * w / ss) / 100000;                            // (pentagon, chevron: their one adjustment)
+  const pts = {
+    rightarrow: () => [[0, cy - hy], [w - head, cy - hy], [w - head, 0], [w, cy], [w - head, h], [w - head, cy + hy], [0, cy + hy]],
+    leftarrow: () => [[0, cy], [head, 0], [head, cy - hy], [w, cy - hy], [w, cy + hy], [head, cy + hy], [head, h]],
+    downarrow: () => [[cx - hx, 0], [cx + hx, 0], [cx + hx, h - head], [w, h - head], [cx, h], [0, h - head], [cx - hx, h - head]],
+    uparrow: () => [[cx, 0], [w, head], [cx + hx, head], [cx + hx, h], [cx - hx, h], [cx - hx, head], [0, head]],
+    leftrightarrow: () => [[0, cy], [head, 0], [head, cy - hy], [w - head, cy - hy], [w - head, 0], [w, cy], [w - head, h], [w - head, cy + hy], [head, cy + hy], [head, h]],
+    updownarrow: () => [[cx, 0], [w, head], [cx + hx, head], [cx + hx, h - head], [w, h - head], [cx, h], [0, h - head], [cx - hx, h - head], [cx - hx, head], [0, head]],
+    notchedarrow: () => [[0, cy - hy], [w - head, cy - hy], [w - head, 0], [w, cy], [w - head, h], [w - head, cy + hy], [0, cy + hy], [hy * head / cy, cy]],
+    homeplate: () => [[0, 0], [w - tip, 0], [w, cy], [w - tip, h], [0, h]],
+    chevron: () => [[0, 0], [w - tip, 0], [w, cy], [w - tip, h], [0, h], [tip, cy]],
+  }[b.shape]();
+  return pts.map(([x, y]) => `${+(x * 100 / w).toFixed(2)},${+(y * 100 / h).toFixed(2)}`).join(' ');
+}
+const pointsOf = b => (b.adj && adjustedPoints(b)) || SHAPE_POINTS[b.shape];
 const BTN = 'M12 4H88A8 8 0 0 1 96 12V88A8 8 0 0 1 88 96H12A8 8 0 0 1 4 88V12A8 8 0 0 1 12 4Z';
 // Curved shapes (SVG paths in the 100×100 box; even-odd, so rings have their hole).
 const SHAPE_PATHS = {
@@ -847,7 +879,7 @@ export function shapeDefs(b) {
 // Always the same for the same shape (seeded by its id).
 function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t ^= t + Math.imul(t ^ (t >>> 7), 61 | t); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function outlineOf(b) {
-  if (SHAPE_POINTS[b.shape]) return SHAPE_POINTS[b.shape].trim().split(/\s+/).map(p => p.split(',').map(Number));
+  if (SHAPE_POINTS[b.shape]) return pointsOf(b).trim().split(/\s+/).map(p => p.split(',').map(Number));
   if (b.shape === 'ellipse') return Array.from({ length: 28 }, (_, i) => [50 + 50 * Math.cos(i * Math.PI / 14), 50 + 50 * Math.sin(i * Math.PI / 14)]);
   if (['line', 'arrow', 'doublearrow', 'curve', 'custom'].includes(b.shape) || SHAPE_PATHS[b.shape]) return null;       // (curves: drawn as they are)
   return [[0, 0], [100, 0], [100, 100], [0, 100]];
@@ -899,7 +931,7 @@ export function shapeSVG(b) {
       + head(w, 1) + (two ? head(0, -1) : '') + `</svg>`;
   }
   let inner;
-  if (SHAPE_POINTS[b.shape]) inner = `<polygon points="${SHAPE_POINTS[b.shape]}" ${paint}/>`;
+  if (SHAPE_POINTS[b.shape]) inner = `<polygon points="${pointsOf(b)}" ${paint}/>`;
   else if (isOpenShape(b.shape)) inner = `<path d="${SHAPE_PATHS[b.shape]}" stroke-linejoin="round" ${strokeOnly}/>`;
   else if (SHAPE_PATHS[b.shape]) inner = `<path d="${SHAPE_PATHS[b.shape]}" fill-rule="evenodd" ${paint}/>`
     + (SHAPE_SHADES[b.shape] || []).map(([dd, c, o]) => `<path d="${dd}" fill="${c}" fill-opacity="${o}" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke"/>`).join('');
