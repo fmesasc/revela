@@ -1007,6 +1007,96 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   };
   const ALL = { delete: true, design: true, objects: true, animation: true };
 
+  await test('IA: una presentación de Swift legible y variada (código a 20 px, `código`, mayúsculas, diagrama, solución con un clic)', async () => {
+    reset(); const W = frame.contentWindow, A = R.aiDeck;
+    const SP = await W.eval("import('/src/features/ai/specs.js')"), FS = await W.eval("import('/src/features/ai/fromspec.js')"), RT = await W.eval("import('/src/features/ai/richtext.js')"), Q = await W.eval("import('/src/features/ai/quality.js')");
+    const look = { fg: '#222222', accent: '#2e7d32', accents: ['#2e7d32'], bodySize: 30, title: '#111111', body: '' }, area = { x: 100, y: 184, w: 1080, h: 480 };
+    // 1. Long code (23 lines, as the model wrote it): in two slides, each read at 20 px or more, its points beside or under it.
+    const retain = ['class Persona {', '    let nom: String', '    var apartament: Apartament?', '    init(nom: String) { self.nom = nom }', '    deinit { print("\\(nom) desassignada") }', '}', '',
+      'class Apartament {', '    let numero: Int', '    weak var inquili: Persona?', '    init(numero: Int) { self.numero = numero }', '    deinit { print("Apartament \\(numero) desassignat") }', '}', '',
+      'var joan: Persona? = Persona(nom: "Joan")', 'var pis: Apartament? = Apartament(numero: 101)', '', 'joan?.apartament = pis', "pis?.inquili = joan // Aquí 'weak' evita el cicle", '', 'joan = nil', 'pis = nil', "// Amb 'weak', ambdós objectes es desassignen correctament"].join('\n');
+    const spec = SP.prepareSpec({ kind: 'code', title: 'Retain cycle i weak', code: { language: 'swift', code: retain }, bullets: ['Classes `Persona` i `Apartament`', 'La referència `inquili` és `weak`', 'Demostració: `joan = nil`', 'Sense `weak`, no es veu el `deinit`'], notes: 'Tenim dues classes, `Persona` i `Apartament`. La referència `inquili` és weak. Quan fem `joan = nil` i `pis = nil`, els dos es desassignen.' });
+    const parts = SP.splitSpec(spec);
+    eq(parts.length, 2, 'en dos diapositivas'); eq(parts[1].title, 'Retain cycle i weak (2)', 'la segunda, con su número');
+    assert(parts[0].code.code.startsWith('class Persona') && parts[1].code.code.startsWith('var joan'), 'partido entre declaraciones, no a mitad de una clase: ' + parts[1].code.code.split('\n')[0]);
+    assert(parts[1].bullets?.some(b => /joan = nil/.test(b)) && parts[0].bullets?.some(b => /Persona/.test(b)), 'cada punto con su parte del código');
+    assert(parts.every(p => p.notes) && parts[1].notes !== parts[0].notes, 'y cada parte con sus notas: el presentador nunca sin guion');
+    const short = SP.prepareSpec({ kind: 'code', title: 'Genèrica', code: { language: 'swift', code: 'func intercanviar<T>(_ a: inout T, _ b: inout T) {\n    let temporal = a\n    a = b\n    b = temporal\n}' },
+      bullets: ['Funció `intercanviar` genèrica amb marcador `T`', 'El tipus `T` es dedueix en compilar', 'Paràmetres `inout`: modifica els originals'] });
+    const dg0 = FS.codeCard(short, area, look).find(b => b.type === 'code');
+    assert(dg0.fontSize >= 26, 'poco código, letra grande: ' + dg0.fontSize);
+    for (const p of [...parts, short]) {
+      const bl = FS.codeCard(p, area, look), code = bl.find(b => b.type === 'code');
+      assert(code.fontSize >= 20, `código a ${code.fontSize} px (antes 12): se lee desde el fondo`);
+      assert(bl.filter(b => b.type === 'text').every(b => b.fontSize >= 18), 'y su explicación, a 18 px o más');
+      // (Beside the code, a column of 360 px or more — never a strip of single words.)
+      assert(bl.filter(b => b.type === 'text' && b.x >= code.x + code.w).every(b => b.w >= 360), 'columna de puntos de 360 px o más: ' + bl.filter(b => b.type === 'text').map(b => b.w).join());
+      // Drawn in the editor: the code fills its box (no box with more than 40 % of it empty) and nothing is cut.
+      const sl = A.slideFromSpec(p, '#fff', R.state.deck); R.store.commit(() => { R.state.deck.slides.push(sl); R.state.ui.slideIndex = R.state.deck.slides.length - 1; }); R.render(); await sleep(150);
+      const cb = sl.blocks.find(b => b.type === 'code'), el = D.querySelector(`.block[data-id="${cb.id}"]`), pre = el?.querySelector('.code'), cd = pre?.querySelector('code');
+      const rg = D.createRange(); rg.selectNodeContents(cd); const used = rg.getBoundingClientRect().height, box = el.getBoundingClientRect().height;
+      assert(used >= box * 0.6, `la caja de código, llena (${Math.round(used / box * 100)} % de su alto)`);
+      assert(pre.scrollHeight <= pre.clientHeight + 2 && pre.scrollWidth <= pre.clientWidth + 2, 'y sin cortar el código');
+    }
+    // (Code that no layout can show with its points at 20 px: the code alone, the points said in the notes.)
+    const wide = Array.from({ length: 12 }, (_, i) => `print("Una línia molt llarga de codi que ocupa gairebé tot l'ample número ${i}")`).join('\n');
+    const cw = A.slideFromSpec({ kind: 'code', title: 'Llarg', code: { language: 'swift', code: wide }, bullets: ['Primer punt amb una explicació llarga', 'Segon punt', 'Tercer punt'], notes: 'Hola' }, '#fff', R.state.deck);
+    assert(cw.blocks.find(b => b.type === 'code').fontSize >= 20 && /• Primer punt/.test(cw.notes), 'código entero a 20 px; los puntos, a las notas: ' + cw.notes);
+    assert(/4-12 short lines/.test(A.RICH) && /4-12 lines/.test(A.SPEC_DOC), 'se piden 4-12 líneas');
+    // 2. `var` in a list, a title or a heading: inline code, not backticks.
+    assert(/<code>var<\/code>/.test(RT.richHTML(['Variables (`var`) i constants (`let`)'])) && !/`/.test(RT.richHTML(['`a*b*`'])) && /<code>a\*b\*<\/code>/.test(RT.richHTML(['`a*b*`'])), 'viñetas: <code>');
+    const errs = A.slideFromSpec({ kind: 'bullets', title: "Maneig d'errors amb `do-catch`", bullets: ['Es llencen amb `throw`', '**Clau:** `try`'], notes: 'Amb `throw` i **try**' }, '#fff', R.state.deck);
+    assert(errs.blocks.some(b => /<code>do-catch<\/code>/.test(b.html || '')) && errs.blocks.some(b => /<code>throw<\/code>/.test(b.html || '')) && !errs.blocks.some(b => /`/.test(b.html || '')), 'ni un acento grave en la diapositiva');
+    eq(errs.notes, 'Amb throw i try', 'las notas, sin marcas');
+    // 3. Title Case the English way, in Catalan: sentence case — names, acronyms and code stay.
+    const cased = SP.sentenceCase([{ kind: 'title', title: 'Benvinguts a Swift: Un Nou Horitzó en la Programació', notes: 'Avui explorarem Swift, un llenguatge de programació' },
+      { kind: 'key_idea', title: 'Gestió de Memòria: ARC en Acció', statement: 'ARC gestiona la memòria' }, { kind: 'agenda', title: 'Agenda', items: ['Sintaxi Bàsica i Tipus de Dades', "Maneig d'Errors i Opcionals"] },
+      { kind: 'code', title: 'Exemple amb la Classe Persona', code: { language: 'swift', code: 'class Persona {}' }, bullets: ['els opcionals'] },
+      { kind: 'bullets', title: 'Genèrics: codi Flexible', bullets: ['x'] }], 'català');
+    eq(cased.map(s => s.title).join(' | '), 'Benvinguts a Swift: un nou horitzó en la programació | Gestió de memòria: ARC en acció | Agenda | Exemple amb la classe Persona | Genèrics: codi Flexible', 'en minúscula salvo nombres propios, siglas y lo que no era Title Case');
+    eq(cased[2].items.join(' | '), "Sintaxi bàsica i tipus de dades | Maneig d'errors i opcionals", 'también la agenda');
+    eq(SP.sentenceCase([{ kind: 'title', title: 'Welcome To The New Horizon' }, { kind: 'bullets', title: 'Memory Management With ARC' }], 'English')[0].title, 'Welcome To The New Horizon', 'en inglés, como está');
+    assert(/never "Un Nou Horitzó en la Programació"/.test(A.SPEC_DOC), 'y se pide así');
+    // 4. A cycle: a diagram, not three bullets.
+    const cyc = SP.prepareSpec({ kind: 'bullets', title: 'Il·lustració de Retain Cycles', bullets: ['Objecte A referencia a B', 'Objecte B referencia a A', 'Ambdós objectes mai es desassignen'] });
+    eq(cyc.kind + ':' + cyc.diagram.type, 'diagram:cycle', 'una lista que es un ciclo, un ciclo');
+    const dg = A.slideFromSpec({ kind: 'diagram', title: 'Retain cycle', diagram: { type: 'cycle', items: [{ text: 'Persona', sub: 'strong → Apartament' }, { text: 'Apartament', sub: 'strong → Persona' }] } }, '#fff', R.state.deck);
+    const d = dg.blocks.find(b => b.type === 'diagram');
+    assert(d && d.layout === 'cycle' && d.text === 'Persona\n  strong → Apartament\nApartament\n  strong → Persona' && d.w >= 900, 'diagrama de ciclo de verdad: ' + JSON.stringify(d));
+    assert(/"diagram": title, diagram \{type: "cycle"/.test(A.SPEC_DOC), 'y la IA sabe pedirlo');
+    // 5. An exercise and its solution: the solution comes with a click.
+    const ex = SP.prepareSpec({ kind: 'two_columns', title: 'Exercici interactiu', left: { heading: 'El problema', bullets: ['Dues classes: `Equip` i `Jugador`'] }, right: { heading: 'La solució (pas a pas)', bullets: ['`weak var equip: Equip?`'] } });
+    eq(ex.kind, 'exercise', 'dos columnas problema | solución: un ejercicio');
+    for (const deck of [R.state.deck, { ...R.state.deck, layouts: [] }]) {
+      const es = A.slideFromSpec(ex, '#fff', deck), sol = es.blocks.filter(b => /weak var/.test(b.html || '') || /La solució/.test(b.html || ''));
+      assert(sol.length && sol.every(b => b.animation), 'la solución, con animación de entrada');
+      assert(sol.some(b => b.animation.start === 'click') && !es.blocks.some(b => /Equip/.test(b.html || '') && !/weak/.test(b.html || '') && b.animation), 'al hacer clic; el problema, desde el principio');
+    }
+    const exc = A.slideFromSpec({ kind: 'exercise', title: 'Practica', problem: { heading: 'Problema', bullets: ['Suma dos enters'] }, solution: { heading: 'Solució', code: { language: 'swift', code: 'func suma(_ a: Int, _ b: Int) -> Int {\n    a + b\n}' } } }, '#fff', R.state.deck);
+    assert(exc.blocks.find(b => b.type === 'code')?.animation?.start === 'click', 'la solución en código, también con un clic');
+    // 6. Variety: every other short list as cards; a long deck with an agenda gets its parts' section slides; a
+    // list before each code, measured.
+    const lists = A.varyLists([1, 2, 3].map(i => ({ kind: 'bullets', title: 'L' + i, bullets: ['Primer: un', 'Segon: dos', 'Tercer: tres'] })));
+    eq(lists.map(s => s.kind).join(), 'features,bullets,features', 'listas alternadas con tarjetas'); eq(lists[0].items[0].title, 'Primer', 'la etiqueta, título de la tarjeta');
+    const long = [{ kind: 'title', title: 'T' }, { kind: 'agenda', title: 'Agenda', items: ['Memòria amb ARC', 'Protocols i extensions'] },
+      ...['Memòria automàtica', 'Memòria: cicles', 'Memòria: weak', 'Memòria: exemple', 'Protocols: contracte', 'Protocols: exemple', 'Protocols: més', 'Extensions', 'Extensions (2)', 'Resum', 'Recursos', 'Més'].map(t => ({ kind: 'bullets', title: t, bullets: ['a b c', 'd e f', 'g h i'] })), { kind: 'closing', title: 'Gràcies' }];
+    A.partSections(long);
+    eq(long.filter(s => s.kind === 'section').map(s => s.title + '@' + long.indexOf(s)).join(), 'Memòria amb ARC@2,Protocols i extensions@7', 'una portadilla al empezar cada parte larga');
+    const dup = [long[0], { kind: 'agenda', title: 'Agenda', items: ['Gestió de memòria amb ARC', 'Protocols i extensions'] }, { kind: 'key_idea', title: 'Gestió de memòria: ARC en acció', statement: 'x' },
+      ...long.slice(3).filter(s => s.kind !== 'section')];
+    A.partSections(dup);
+    assert(!dup.some(s => s.kind === 'section' && /memòria/.test(s.title)), 'sin portadilla que repita la diapositiva que la sigue');
+    const pairs = [{ kind: 'title', title: 'S' }, ...[1, 2, 3].flatMap(i => [{ kind: 'bullets', title: 'Concepte ' + i, bullets: ['un dos tres', 'quatre cinc sis', 'set vuit nou'], notes: 'Concepte ' + i }, { kind: 'code', title: 'Exemple ' + i, code: { language: 'swift', code: 'let a = ' + i + '\nprint(a)' }, notes: 'Exemple ' + i }])];
+    eq(Q.deckQuality(pairs, { topic: 'Swift' }).problems.find(p => p.code === 'list-then-code')?.slides.join(), '1,3,5', 'lista → código, una y otra vez: se rehacen las listas');
+    // On a design whose slides share one plain background: sections on the accent, key ideas on a tint of it.
+    const gd = R.gallery.buildFromGallery('education'); R.master.ensureLayouts(gd); R.store.replaceDeck(gd);
+    const sec = A.slideFromSpec({ kind: 'section', title: 'Part 2' }, undefined, R.state.deck, { at: 1 }), key = A.slideFromSpec({ kind: 'key_idea', title: 'Clau', statement: 'Una idea' }, undefined, R.state.deck, { at: 1 });
+    const bg = R.palettes.currentPalette(R.state.deck).bg;
+    assert(sec.background !== bg && sec.blocks.filter(b => b.ph && b.type === 'text').every(b => b.color === '#ffffff'), 'portadilla sobre el color de acento, letra blanca: ' + sec.background);
+    assert(key.background !== bg && key.background !== sec.background, 'idea clave sobre un tinte: ' + key.background);
+    R.store.commit(() => { R.state.deck.slides.splice(1, 0, key); });
+    eq(A.slideFromSpec({ kind: 'bullets', title: 'Després', bullets: ['a'] }, undefined, R.state.deck, { at: 2 }).background, bg, 'y lo que viene después, en el fondo de siempre');
+  });
   await test('asistente: alcance, permisos y operaciones nuevas validadas', async () => {
     reset(); R.slides.addSlide(); R.slides.goToSlide(0);
     const AG = R.aiAgent, [s1, s2] = R.state.deck.slides, t1 = s1.blocks[0].id, t2 = s2.blocks[0]?.id || 'x';

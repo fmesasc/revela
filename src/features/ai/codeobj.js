@@ -51,11 +51,13 @@ export function formulaOf(text) {
 // A type size for code in a box: every line fits its width (monospace ≈ 0.6 em) and all of them its height.
 export function codeFontSize(code, w, h, { max = 28, min = 12 } = {}) {
   const ls = String(code || '').split('\n'), longest = Math.max(8, ...ls.map(l => l.length));
-  // (The block's padding is 10 px a side, the highlighting's 1 em.)
-  return Math.round(Math.max(min, Math.min(max, (w - 24) / (longest * 0.64 + 2), (h - 24) / (ls.length * 1.5 + 2))));
+  // (The block's padding is 10 px a side, the highlighting's 1 em. A line is 1.35 em — Fira Code's own line height,
+  // with a little to spare —: counted as 1.5, a code block was a quarter empty and its letters smaller than they could be.)
+  return Math.round(Math.max(min, Math.min(max, (w - 24) / (longest * 0.64 + 2), (h - 24) / (ls.length * LINE + 1.2))));
 }
+const LINE = 1.35;
 // The height the code needs at that size.
-export const codeHeight = (code, fs) => Math.round((String(code || '').split('\n').length * 1.5 + 2) * fs + 24);
+export const codeHeight = (code, fs) => Math.round((String(code || '').split('\n').length * LINE + 1.2) * fs + 24);
 export const codeBlockAt = (code, lang, r, extra = {}) => {
   const fontSize = codeFontSize(code, r.w, r.h);
   return { id: uid(), type: 'code', x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.w), h: Math.round(Math.min(r.h, Math.max(80, codeHeight(code, fontSize)))),

@@ -21,7 +21,7 @@ const keyWords = sp => new Set([sp.title, sp.statement, sp.subtitle].map(str).jo
 // All the words of a slide (title, points, cards, columns), to compare slides; and how much two sets share (of the smaller).
 const listOf = v => (Array.isArray(v) ? v : []);
 const contentWords = sp => new Set([sp.title, sp.statement, ...bulletsOf(sp), ...listOf(sp.steps).flatMap(s => [s?.title, s?.text, s?.label]), ...listOf(sp.items).flatMap(s => (s && typeof s === 'object' ? [s.title, s.text] : [s])),
-  ...listOf(sp.columns).flatMap(c => [c?.heading, ...listOf(c?.bullets)])].map(str).join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 5));
+  ...listOf(sp.columns).flatMap(c => [c?.heading, ...listOf(c?.bullets)]), sp.diagram?.text, ...[sp.problem, sp.solution].flatMap(c => listOf(c?.bullets))].map(str).join(' ').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 5));
 const overlap = (a, b) => { let n = 0; for (const w of a) if (b.has(w)) n++; return n / Math.max(1, Math.min(a.size, b.size)); };
 
 // Forecasts, projections, estimates: figures about what hasn't happened.
@@ -41,7 +41,7 @@ export function amounts(text) {
   return out;
 }
 // → { score (0-100), problems: [{ code, slides?: [i], detail }], stats }
-// problems' codes: all-lists, thin-lists, no-code, few-kinds, notes-missing, notes-off, empty.
+// problems' codes: all-lists, thin-lists, no-code, few-kinds, notes-missing, notes-off, empty, list-then-code…
 // sourced: the person gave data (a document, the research) — figures may come from it; images: pictures were asked for.
 // given: that data, as text — a forecast's figures are checked against it.
 export function deckQuality(specs, { topic = '', sourced = false, images = false, given = '' } = {}) {
@@ -56,7 +56,8 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
     const note = str(sp.notes).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''), own = [...keyWords(sp)], next = [...keyWords(specs[i + 1])].filter(w => !own.includes(w));
     return own.length && next.length && !own.some(w => note.includes(w)) && next.some(w => note.includes(w)) ? i : -1;
   }).filter(i => i >= 0);
-  const empty = body.filter(x => { const sp = x.sp; return sp.kind === 'bullets' ? !bulletsOf(sp).length : sp.kind === 'code' ? !str(sp.code?.code || sp.code) : sp.kind === 'steps' || sp.kind === 'timeline' ? !(sp.steps || []).length : sp.kind === 'features' ? !(sp.items || []).length : false; });
+  const empty = body.filter(x => { const sp = x.sp; return sp.kind === 'bullets' ? !bulletsOf(sp).length : sp.kind === 'code' ? !str(sp.code?.code || sp.code) : sp.kind === 'steps' || sp.kind === 'timeline' ? !(sp.steps || []).length : sp.kind === 'features' ? !(sp.items || []).length
+    : sp.kind === 'diagram' ? !str(sp.diagram?.text) : sp.kind === 'exercise' ? !sp.problem || !sp.solution : false; });
   // Figures with no data behind them (none given) and no source said: invented. A placeholder for the person's own
   // («[ventas]») is fine, and so are figures that say where they come from (or that they are an example).
   const hasFigure = v => /\d/.test(str(v)) && !/\[[^\]]+\]/.test(str(v));
@@ -88,6 +89,9 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
   const said = body.map(x => ({ i: x.i, w: contentWords(x.sp) }));
   const repeated = said.filter((a, k) => a.w.size >= 6 && said.slice(0, k).some(b => b.w.size >= 6 && overlap(a.w, b.w) >= 0.6))
     .map(a => ({ i: a.i, of: said.find(b => b.i < a.i && b.w.size >= 6 && overlap(a.w, b.w) >= 0.6).i }));
+  // The same pattern again and again — a list, then its code; a list, then its code… (seven times in a Swift deck) —:
+  // the lists, to be made something else.
+  const listCode = body.filter(x => x.sp.kind === 'bullets' && specs[x.i + 1]?.kind === 'code');
   const noPicture = images ? [] : body.filter(x => x.sp.kind === 'image' && !x.sp.figure);
   const offCode = tech ? [] : code;
   const problems = [];
@@ -103,8 +107,9 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
   if (invented.length) problems.push({ code: 'invented-figures', slides: invented.map(x => x.i), detail: `${invented.length} con cifras sin datos que las respalden (inventadas)` });
   if (noPicture.length) problems.push({ code: 'no-picture', slides: noPicture.map(x => x.i), detail: `${noPicture.length} de imagen sin imagen` });
   if (offCode.length) problems.push({ code: 'off-code', slides: offCode.map(x => x.i), detail: `${offCode.length} con código en un tema que no es de programación` });
+  if (listCode.length >= 3) problems.push({ code: 'list-then-code', slides: listCode.map(x => x.i), detail: `${listCode.length} veces una lista y luego su código: decir el concepto en la propia diapositiva de código, o con otra composición` });
   if (repeated.length) problems.push({ code: 'repeated', slides: repeated.map(x => x.i), detail: `${repeated.length} que repiten otra (${repeated.map(x => `${x.i + 1} ≈ ${x.of + 1}`).join(', ')}): decir algo nuevo` });
-  const W = { repeated: 15, 'all-lists': 25, 'thin-lists': 15, 'no-code': 25, 'few-kinds': 10, 'notes-missing': 10, 'notes-off': 10, empty: 15, 'invented-figures': 20, 'no-picture': 10, 'off-code': 10 };
+  const W = { repeated: 15, 'all-lists': 25, 'thin-lists': 15, 'no-code': 25, 'few-kinds': 10, 'notes-missing': 10, 'notes-off': 10, empty: 15, 'invented-figures': 20, 'no-picture': 10, 'off-code': 10, 'list-then-code': 10 };
   const score = Math.max(0, 100 - problems.reduce((s, p) => s + W[p.code], 0));
   return { score, problems, stats: { slides: n, kinds: [...kinds], lists: lists.length, code: code.length, technical: tech } };
 }
@@ -112,7 +117,7 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
 // the lists, up to half of the deck.
 export function weakSlides(q, specs) {
   const set = new Set();
-  for (const p of q.problems) if (['thin-lists', 'empty', 'invented-figures', 'no-picture', 'off-code', 'repeated'].includes(p.code)) p.slides.forEach(i => set.add(i));
+  for (const p of q.problems) if (['thin-lists', 'empty', 'invented-figures', 'no-picture', 'off-code', 'repeated', 'list-then-code'].includes(p.code)) p.slides.forEach(i => set.add(i));
   if (q.problems.some(p => p.code === 'all-lists' || p.code === 'no-code' || p.code === 'few-kinds')) specs.forEach((sp, i) => { if (sp.kind === 'bullets') set.add(i); });
   return [...set].sort((a, b) => a - b).slice(0, Math.max(3, Math.ceil(specs.length / 2)));
 }

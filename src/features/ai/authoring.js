@@ -12,12 +12,12 @@ import { chat, lang, parseJSON, esc, plain, generateImage } from './openrouter.j
 import { currentPalette } from '../design/palettes.js';
 import { withAttachments } from './attach.js';
 import { PDFJS } from '../../core/vendor.js';
-import { styledSlide, hasLayouts, pictureBox, compose, contrast, codeCard, fitBody } from './fromspec.js';
-import { KINDS, prepareSpec, splitSpec } from './specs.js';
+import { styledSlide, hasLayouts, pictureBox, compose, contrast, codeCard, diagramCard, fitBody } from './fromspec.js';
+import { KINDS, prepareSpec, splitSpec, sentenceCase, DIAGRAM_TYPES } from './specs.js';
 import { amounts, deckQuality, weakSlides, isTechnical } from './quality.js';
 export { findMedia } from './media.js';
 import { codeFontSize, codeHeight, mathFontSize, AI_LANGS } from './codeobj.js';
-import { richHTML } from './richtext.js';
+import { richHTML, inlineHTML, inline, splitLabel } from './richtext.js';
 import { quizSlide } from '../live/quizslides.js';
 import { ICON_NAMES } from '../../render/svg.js';
 
@@ -29,6 +29,8 @@ export const SPEC_DOC = `Slide kinds and their fields — choose the kind that f
 - "bullets": title, bullets (3-6 short phrases, max ~12 words each; no numbers, "•" or "-" inside the strings; a sub-point is a nested array right after its point)
 - "steps": title, steps [{title (2-4 words), text (one sentence)}] (2-6, a process or numbered points — the numbers are drawn, do not write them)
 - "features": title, items [{icon, title (2-4 words), text (one sentence)}] (2-6, benefits, reasons, key points, each with an icon)
+- "diagram": title, diagram {type: ${DIAGRAM_TYPES.map(t => `"${t}"`).join('|')}, items [{text (1-4 words), sub (optional, a few words), children (only in a hierarchy)}]} (2-6 items), bullets (0-3, at its side). A real diagram — for a cycle or loop (A refers to B and B to A, a feedback, the water cycle), a flow, a hierarchy, parts around a centre, overlapping sets; never those as a list
+- "exercise": title, problem {heading, bullets (the task, 2-4)}, solution {heading, bullets (the steps) — or code {language, code} for a programming exercise}. The solution appears with a click, after the audience has tried it: never the answer in the problem
 - "comparison": title, columns [{heading, bullets}] (2-3: options, before/after, pros/cons)
 - "two_columns": title, left {heading, bullets}, right {heading, bullets}
 - "key_idea": title (short), statement (the one sentence to remember), text (optional, one supporting sentence)
@@ -39,11 +41,12 @@ export const SPEC_DOC = `Slide kinds and their fields — choose the kind that f
 - "chart": title, chart {type: "bar"|"line"|"pie"|"doughnut"|"area", labels [..], values [numbers], series_name}, bullets (0-2)
 - "table": title, header [..], rows [[..]] (max 6 rows, max 5 columns)
 - "image": title, bullets (2-4), image_prompt (a detailed description for an image generator) — or, when real pictures are searched, image_search / video_search (see below)
-- "code": title, code {language: ${AI_LANGS.map(l => `"${l}"`).join('|')}, code (VERBATIM, with its line breaks and indentation) — or from_image: the id of a picture whose code was read}, caption (optional), bullets (0-4, what it does: shown in a column at its side). A real code block with highlighting — for code, queries, DAX measures, M steps, Excel formulas; never code in "bullets"
+- "code": title, code {language: ${AI_LANGS.map(l => `"${l}"`).join('|')}, code (VERBATIM, with its line breaks and indentation; 4-12 lines of at most ~60 characters: it must be read from the back of a room — longer code, two slides, or only the lines that matter) — or from_image: the id of a picture whose code was read}, caption (optional), bullets (0-3 short points, max ~8 words, what it does: shown in a column at its side). A real code block with highlighting — for code, queries, DAX measures, M steps, Excel formulas; never code in "bullets"
 - "math": title, latex (the formula in LaTeX, no $ signs; in JSON every backslash doubled: "\\\\frac{a}{b}"), caption (optional), bullets (0-4, what each term means). A real equation — for mathematical formulas; never a formula in "bullets"
 - "closing": title, subtitle
 "stats", "chart" and "table" with figures also have "source": where they come from — the research's [n] or the document, or a well-established reference you are sure of ("IPCC AR6, 2021", "INE 2023"); figures made up to illustrate say so ("Datos de ejemplo") — only a dataset in a technical tutorial; never claims about the world. It is shown under them as you write it, in the deck's language: "Fuente: IPCC AR6, 2021", "Source: …", "Datos de ejemplo".
-One idea per slide: when there is more, make two slides. Text is plain (no markdown, no HTML); "Label: text" items are shown with the label in bold.
+One idea per slide: when there is more, make two slides. Text is plain (no markdown, no HTML) — except names of code inside a text, between backticks (\`var\`, \`if let\`): shown as code; "Label: text" items are shown with the label in bold.
+Titles, headings and items in the capitalisation of the deck's language: in Spanish, Catalan, Galician, French, Italian, Portuguese, Basque, Dutch… only the first word and proper names capitalised ("Un nou horitzó en la programació", never "Un Nou Horitzó en la Programació"); Title Case only in English.
 Any slide may have "below": true — it then goes BELOW the previous slide, one level down (reveal.js vertical slides): an optional deeper look at that slide's idea — a worked example, the steps in detail, a diagram, a common mistake — that the presenter opens only if the audience needs it; the slides without it must tell the whole story by themselves.
 Any slide may have "icon": one icon name that fits it (${ICON_NAMES.filter((_, i) => i % 3 === 0).slice(0, 45).join(', ')}, …).
 Every slide also has "notes": 2-4 sentences the presenter would say. Only use real data you are given or well-known facts; never invent statistics — if unsure, use another kind instead of stats/chart.`;
@@ -57,18 +60,18 @@ export function layoutSlide(spec, W = 1280, H = 720, pal = currentPalette()) {
   spec = prepareSpec(spec);
   const k = KINDS.includes(spec.kind) ? spec.kind : 'bullets';
   const [a1, a2] = pal.accents;
-  const title = (y = 50, size = 44) => T(80, y, W - 160, 90, size, esc(str(spec.title)), { ph: 'title', fontWeight: '700' });
+  const title = (y = 50, size = 44) => T(80, y, W - 160, 90, size, inlineHTML(spec.title), { ph: 'title', fontWeight: '700' });
   const b = [];
   switch (k) {
     case 'title': case 'closing':
-      b.push(T(100, H * 0.33, W - 200, 130, k === 'title' ? 66 : 58, esc(str(spec.title)), { ph: 'title', fontWeight: '700', textAlign: k === 'closing' ? 'center' : 'left' }));
-      if (spec.subtitle) b.push(T(100, H * 0.33 + 145, W - 200, 70, 28, esc(str(spec.subtitle)), { ph: 'subtitle', textAlign: k === 'closing' ? 'center' : 'left' }));
+      b.push(T(100, H * 0.33, W - 200, 130, k === 'title' ? 66 : 58, inlineHTML(spec.title), { ph: 'title', fontWeight: '700', textAlign: k === 'closing' ? 'center' : 'left' }));
+      if (spec.subtitle) b.push(T(100, H * 0.33 + 145, W - 200, 70, 28, inlineHTML(spec.subtitle), { ph: 'subtitle', textAlign: k === 'closing' ? 'center' : 'left' }));
       b.push({ id: uid(), type: 'shape', shape: 'rect', fill: a1, stroke: a1, strokeWidth: 0, x: k === 'closing' ? W / 2 - 60 : 100, y: H * 0.33 - 24, w: 120, h: 8, rotation: 0, animation: null, decorative: true });
       break;
     case 'section':
       b.push({ id: uid(), type: 'shape', shape: 'rect', fill: a1, stroke: a1, strokeWidth: 0, x: 0, y: 0, w: 24, h: H, rotation: 0, animation: null, decorative: true });
-      b.push(T(120, H * 0.38, W - 240, 120, 56, esc(str(spec.title)), { ph: 'title', fontWeight: '700' }));
-      if (spec.subtitle) b.push(T(120, H * 0.38 + 125, W - 240, 60, 26, esc(str(spec.subtitle)), { ph: 'subtitle' }));
+      b.push(T(120, H * 0.38, W - 240, 120, 56, inlineHTML(spec.title), { ph: 'title', fontWeight: '700' }));
+      if (spec.subtitle) b.push(T(120, H * 0.38 + 125, W - 240, 60, 26, inlineHTML(spec.subtitle), { ph: 'subtitle' }));
       break;
     case 'two_columns': {
       b.push(title());
@@ -116,23 +119,45 @@ export function layoutSlide(spec, W = 1280, H = 720, pal = currentPalette()) {
       b.push(title());
       b.push(T(80, 170, W * 0.45, H - 230, 26, list(spec.bullets), { ph: 'body' }));
       break;
-    case 'code': case 'math':
+    case 'code': case 'math': {
       b.push(title());
-      b.push(...codeCard(spec, { x: 80, y: 170, w: W - 160, h: H - 220 }, { fg: pal.fg, accent: a1, bodySize: 30, body: '' }));
+      const cc = codeCard(spec, { x: 80, y: 170, w: W - 160, h: H - 220 }, { fg: pal.fg, accent: a1, bodySize: 30, body: '' });
+      b.push(...cc); if (cc.dropped) b.dropped = cc.dropped;
       break;
+    }
+    case 'diagram':
+      b.push(title());
+      b.push(...diagramCard(spec, { x: 80, y: 170, w: W - 160, h: H - 220 }, { fg: pal.fg, accent: a1, bodySize: 30, body: '' }));
+      break;
+    case 'exercise': {
+      // (As two columns; the solution comes in with a click.)
+      b.push(title());
+      const col = (c, x, sol) => {
+        const at = { ...(sol && { animation: { effect: 'fade-up', order: 1, seq: 900, start: 'click', duration: 500, delay: 0 } }) };
+        if (c.heading) b.push(T(x, 170, (W - 200) / 2, 60, 30, inline(str(c.heading)), { fontWeight: '700', color: a1, ...(sol && { animation: { ...at.animation, seq: 901, start: 'withPrev' } }) }));
+        b.push(c.code && sol ? { id: uid(), type: 'code', x, y: 235, w: (W - 200) / 2, h: H - 290, rotation: 0, lang: c.code.language, code: c.code.code, fontSize: codeFontSize(c.code.code, (W - 200) / 2, H - 290), animation: null, ...at }
+          : T(x, 235, (W - 200) / 2, H - 290, 24, list(c.bullets), { ph: 'body', ...at }));
+      };
+      col(spec.problem, 80, false); col(spec.solution, W / 2 + 20, true);
+      break;
+    }
     default:
       b.push(title());
       b.push(T(80, 170, W - 160, H - 220, 28, list(spec.bullets), { ph: 'body' }));
   }
-  return b.map(x => (x.color ? (({ color, ...r }) => ({ ...r, html: `<span style="color:${color}">${r.html}</span>` }))(x) : x));
+  const out = b.map(x => (x.color ? (({ color, ...r }) => ({ ...r, html: `<span style="color:${color}">${r.html}</span>` }))(x) : x));
+  if (b.dropped) out.dropped = b.dropped;
+  return out;
 }
 // A slide from a spec. In a deck with layouts it looks like the rest (features/ai/fromspec.js):
 // opts { at: the index it will have, style, seed }; otherwise the objects above on `bg`.
 // spec.below: under the previous slide (a «child»: reveal.js vertical slides, slides.js toggleVertical).
-export const slideFromSpec = (spec, bg = currentPalette().bg, deck = state.deck, opts = {}) => below(withSource(hasLayouts(deck) ? styledSlide(spec, deck, opts) : {
+export const slideFromSpec = (spec, bg = currentPalette().bg, deck = state.deck, opts = {}) => below(withSource(hasLayouts(deck) ? styledSlide(spec, deck, opts) : droppedToNotes({
   id: uid(), sectionId: null, background: bg, transition: null, hidden: false, autoSlide: 0,
-  notes: str(spec.notes), blocks: layoutSlide(spec, deck.size.w, deck.size.h),
-}, spec, deck), spec);
+  notes: str(prepareSpec(spec).notes), blocks: layoutSlide(spec, deck.size.w, deck.size.h),
+}), spec, deck), spec);
+// (Code's points that didn't fit beside it at a size that reads: in the notes — fromspec.js codeCard.)
+const droppedToNotes = s => { if (s.blocks.dropped) { s.notes = [str(s.notes).trim(), s.blocks.dropped.flat(3).map(p => '• ' + str(p).replace(/`([^`\n]+)`/g, '$1')).join('\n')].filter(Boolean).join('\n\n'); delete s.blocks.dropped; } return s; };
 const below = (slide, spec) => { if (spec.below) slide.vertical = true; return slide; };
 // Slides below others, as a deck can show them: never the first, a title, section or closing slide, nor under a
 // title or section slide; at most three under one slide.
@@ -191,18 +216,20 @@ function makeRoom(s, made, kept, deck) {
 // opts: { style, seed, remove (ids the user asked to remove) }
 export function rebuildSlide(s, spec, deck = state.deck, opts = {}) {
   const drop = new Set(opts.remove || []), keep = s.blocks.filter(b => isNative(b) && !drop.has(b.id));
-  let made;
+  let made, notes = null;
   if (hasLayouts(deck)) {
     const ns = styledSlide(spec, deck, { ...opts, at: deck.slides.indexOf(s), self: s });
     made = ns.blocks;
     Object.assign(s, { layoutId: ns.layoutId, background: ns.background });
     if (opts.style && opts.style !== 'same' && ns.transition) s.transition = ns.transition;
     if (ns.hideMaster) s.hideMaster = true; else delete s.hideMaster;
-  } else made = layoutSlide(spec, deck.size.w, deck.size.h, currentPalette(deck));
+    if (ns.accentBack) s.accentBack = ns.accentBack; else delete s.accentBack;
+    if (ns.notes !== str(spec.notes)) notes = ns.notes;            // (code's points said in the notes: codeCard)
+  } else { made = layoutSlide(spec, deck.size.w, deck.size.h, currentPalette(deck)); if (made.dropped) notes = droppedToNotes({ notes: str(spec.notes || s.notes), blocks: made }).notes; }
   s.blocks = [...made.filter(b => !b.aiSource), ...keep.filter(b => !b.aiSource)];
   makeRoom(s, made, keep, deck);
   withSource(s, spec, deck);
-  if (spec.notes) s.notes = str(spec.notes);
+  if (notes) s.notes = notes; else if (spec.notes) s.notes = str(spec.notes);
 }
 
 // ---- Whole decks -----------------------------------------------------------------
@@ -242,9 +269,11 @@ async function chatJSON(msgs, opts) {
 // doesn't make every slide a list. A deck made by gpt-4o-mini from an outline — title and two copied points on every
 // slide, on «Swift» without one line of code — is what this is against.
 export const RICH = `Use the richest kind that fits each slide — a list ("bullets") only when nothing else does, and then 3-5 real points with substance, never 2 vague ones:
-- A programming language, a library, a tool, a query language or any technical topic: show REAL CODE on "code" slides — correct, idiomatic, compilable, 4-15 lines, with a comment or two —, at least one slide in three; each concept with its code (declare, use, a common mistake and its fix…), "comparison" for "this vs that", "steps" for how to set it up.
+- A programming language, a library, a tool, a query language or any technical topic: show REAL CODE on "code" slides — correct, idiomatic, compilable, 4-12 short lines (read from the back of a room), with a comment or two —, at least one slide in three; each concept with its code (declare, use, a common mistake and its fix…), "comparison" for "this vs that", "steps" for how to set it up.
 - Maths or science: "math" for the formulas; data you are given: "chart", "table" or "stats".
-- History, evolution: "timeline". Processes: "steps". Parts, benefits, reasons: "features". One central claim: "key_idea". A famous phrase: "quote".
+- History, evolution: "timeline". Processes: "steps". Parts, benefits, reasons: "features". One central claim: "key_idea". A famous phrase: "quote". A cycle, a loop, mutual references, a hierarchy, parts around a centre: "diagram" — drawn, never as bullets.
+- An exercise, a practice or a challenge: "exercise" — the solution comes with a click.
+- Vary the composition: never the same pattern over and over (a list, then its code; a list, then its code…) — state a concept ON its code slide (the code and 2-3 short points), or with a "key_idea", "features", "diagram" or "comparison", and alternate.
 - Every slide teaches something concrete: facts, examples, names — never "Inclou millores" or "Fàcil d'usar" alone.
 - Numbers ("stats", "chart", figures in a table or a text) ONLY from the person's data, the document or the research given. Never invent a figure: use another kind; and when the deck needs the person's own figures (their sales, their results), put placeholders in brackets for them to fill in, like "[ventas del trimestre]".
 - The figures of the person's own organisation (its sales, budget, results, staff, targets) can only come from them: unless they were given, ALWAYS placeholders — never a figure with a "source" like "internal data", which you don't have.
@@ -288,7 +317,7 @@ export async function createOutline(opts = {}) {
   const count = Math.max(3, Math.min(30, +opts.count || 8)), src = withResearch(opts.source, opts.research);
   const source = src ? `\n\nBase it ONLY on this document:\n"""\n${String(src).slice(0, 60000)}\n"""` : '';
   const out = await chatJSON([
-    { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","kind":"…","points":["…"],"below":true (only on slides below another; otherwise leave it out)}]}: about ${count} slides, in order, the first a title slide ("title") and the last a closing one ("closing"). Each title states the slide's message (max ~9 words); "kind" is the kind of slide that will show it best — one of: ${KINDS.filter(k => pictures(opts) || k !== 'image').join(', ')}; 1-4 points with WHAT it will show, concretely (the facts, figures and examples; for a "code" slide, what the code does and in which language). Not a list of short phrases: a plan for rich slides.
+    { role: 'system', content: `Plan a presentation that someone will present out loud. Answer only JSON {"title":"…","slides":[{"title":"…","kind":"…","points":["…"],"below":true (only on slides below another; otherwise leave it out)}]}: about ${count} slides, in order, the first a title slide ("title") and the last a closing one ("closing"). Each title states the slide's message (max ~9 words), capitalised as the language does it (in Spanish, Catalan, French… only the first word and names: "Un nou horitzó en la programació", never "Un Nou Horitzó en la Programació"); "kind" is the kind of slide that will show it best — one of: ${KINDS.filter(k => pictures(opts) || k !== 'image').join(', ')}; 1-4 points with WHAT it will show, concretely (the facts, figures and examples; for a "code" slide, what the code does and in which language — code that fits 4-12 lines; for a "diagram", its type and nodes; for an "exercise", the task — its solution comes with a click). Not a list of short phrases: a plan for rich slides.
 - Slides below — REQUIRED with 7 slides or more: pick the 1-3 ideas hardest for THIS audience (a method, a formula, a mechanism, an abstract concept) and, right after the slide that states each one, plan 1-2 slides with "below": true. They go under it, one level down: an optional deeper look — its worked example, the steps one by one, a diagram, a common mistake — that the presenter opens only if the audience needs it. Put the worked examples and the detail THERE, below their idea, not as more main slides: the main slides state the ideas and tell the whole story without them. Never the first slide, the last, or easy ideas.
 ${RICH}
 ${opts.media === 'search' ? `- REQUIRED: 2-4 slides of kind "image", where SEEING the thing explains it — a labelled diagram, a map, the artwork, the place, the object, the experiment —, when something is better seen moving — a process, an experiment, a phenomenon, a demo of a tool — one of them a short video, and when it is understood by turning it around — an organ, a molecule, a monument, a machine, a planet — one an interactive 3D model; its points say what must be seen. (Only a topic with nothing to see — pure code, a company's own figures — may have none.)\n` : ''}Write in ${opts.language || lang()}.` },
@@ -315,7 +344,7 @@ export async function createDeck(opts = {}) {
 ${SPEC_DOC}
 How to make it good:
 - Titles say the slide's message, as a short statement (max ~9 words): "Monolithic simulators are hard to adapt", not "Limitations".
-- Start with a "title" slide (subtitle: who / where, if the document says), end with a "closing" slide. At most one "section" slide every 6 slides, and none in decks under 12 slides.
+- Start with a "title" slide (subtitle: who / where, if the document says), end with a "closing" slide. Decks of 12 slides or more: a "section" slide opening each main part (one every 4-7 slides, its title the part's name, as in the agenda); none in decks under 12 slides.
 - Vary the kinds; a "bullets" slide at most every third slide, with 3-5 points. Use "key_idea" for the central claims, "steps" for processes, "comparison" for before/after, "features" for components.
 ${RICH}
 - "stats" and "chart" ONLY with real, meaningful numbers from the source (never counts like "1 scenario"); otherwise another kind.
@@ -333,11 +362,13 @@ Write everything in ${opts.language || lang()}.` },
   if (!specs.length) throw new Error('EMPTY');
   // (The outline's slides below keep their place, whatever the model wrote; then only where a deck can show them.)
   if (plan && specs.length === plan.length) specs.forEach((sp, i) => { if (plan[i].below) sp.below = true; else delete sp.below; });
-  // (Section slides as the instructions say, whatever the model did: none in a short deck, at most one every six.)
+  // (Section slides as the instructions say, whatever the model did: none in a short deck, at most one every four.)
   for (let i = specs.length - 1, last = Infinity; i >= 0; i--) {
     if (specs[i].kind !== 'section') continue;
-    if (specs.length < 12 || last - i < 6) specs.splice(i, 1); else last = i;
+    if (specs.length < 12 || last - i < 4) specs.splice(i, 1); else last = i;
   }
+  // (A long deck the model gave no sections: one opening each long part of its agenda.)
+  partSections(specs);
   // (A figure only where there is one; a model that forgot the notes of many slides is asked for them once.)
   for (const sp of specs) { const n = +sp.figure; if (!(n >= 1 && n <= pics.length && pics[n - 1]?.figure)) delete sp.figure; else sp.figure = n; }
   // (A picture slide with no picture to come — none asked for, no figure of the document —: its points, as a list.)
@@ -349,7 +380,7 @@ Write everything in ${opts.language || lang()}.` },
   const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research || /\d/.test(str(opts.context))), images: pictures(opts), given: (opts.attachments || []).length ? '' : [opts.context, opts.source, opts.research?.brief].map(str).join('\n').trim() };   // (the data as text — not when it came in a file the measure can't read)
   const belowAt = specs.map(sp => !!sp.below);                // (the fixes below replace some specs: their place is kept)
   let q = deckQuality(specs, how); specs.qualityFirst = q;
-  if (q.score < 80 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture', 'repeated'].includes(p.code))) {
+  if (q.score < 80 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture', 'repeated', 'list-then-code'].includes(p.code))) {
     // (Made again, but kept only if better: a second pass sometimes turned good cards into lists.)
     const before = specs.slice(), was = q;
     await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how);
@@ -387,13 +418,54 @@ Write everything in ${opts.language || lang()}.` },
   // (A slide that came back with nothing — not even after making it again —: out; an empty slide is worse than none.)
   const blank = q.problems.find(p => p.code === 'empty');
   if (blank) { for (const i of [...blank.slides].sort((a, b) => b - a)) specs.splice(i, 1); q = deckQuality(specs, how); }
+  varyLists(specs);
+  sentenceCase(specs, opts.language || lang());
   tidyBelow(specs);
   specs.title = str(res.title); specs.design = DECK_DESIGNS[res.design] ? res.design : null; specs.quality = q;
   return specs;
 }
 // Whether a slide has something to show besides its title.
 const hasContent = sp => ['bullets', 'stats', 'steps', 'items', 'columns', 'rows'].some(k => Array.isArray(sp[k]) && sp[k].length)
-  || !!(sp.left || sp.statement || sp.quote || sp.latex || sp.chart || (sp.code && (sp.code.code || typeof sp.code === 'string')) || MID_KINDS.includes(sp.kind));
+  || !!(sp.left || sp.statement || sp.quote || sp.latex || sp.chart || sp.diagram?.text || sp.problem || (sp.code && (sp.code.code || typeof sp.code === 'string')) || MID_KINDS.includes(sp.kind));
+// Words to match an agenda's items with the slides: 5 letters or more, without accents.
+const keyWords = t => new Set(str(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^\p{L}\p{N}]+/u).filter(w => w.length >= 5));
+// A long deck (14 slides or more) without section slides, with an agenda: a section slide opening each of its parts
+// that is 3 slides long or more — the agenda's item as its title —, at most one every 4 slides. The rhythm a long talk
+// needs (and, on a plain design, the accent colour now and then: fromspec.js accentBack).
+export function partSections(specs) {
+  const ag = specs.findIndex(sp => sp.kind === 'agenda');
+  if (specs.length < 14 || ag < 0 || specs.some(sp => sp.kind === 'section')) return specs;
+  const items = specs[ag].items || [], starts = [];
+  let from = ag + 1;
+  for (const it of items) {
+    const w = keyWords(it); if (!w.size) continue;
+    const at = specs.findIndex((sp, i) => i >= from && !sp.below && !['closing', 'title'].includes(sp.kind) && [...keyWords(sp.title || sp.statement)].some(x => w.has(x)));
+    if (at < 0) continue;
+    from = at + 1;
+    // (The part's first slide already says it — «Gestió de memòria: ARC en acció» after «Gestió de memòria amb ARC»,
+    // most of the item's words in its title —: no section slide repeating it.)
+    const first = keyWords(specs[at].title || specs[at].statement);
+    if (w.size >= 2 && [...w].filter(x => first.has(x)).length >= w.size * 0.6) continue;
+    starts.push({ at, title: it });
+  }
+  const ends = starts.map((s, k) => (starts[k + 1]?.at ?? specs.length - 1));
+  let last = -Infinity;
+  const keep = starts.filter((s, k) => { const ok = ends[k] - s.at >= 3 && s.at - last >= 4; if (ok) last = s.at; return ok; });
+  for (const s of keep.reverse()) specs.splice(s.at, 0, { kind: 'section', title: s.title, notes: '' });
+  return specs;
+}
+// Lists one after another look alike: every other short list (3-5 points of a sentence, no sub-points) as cards with
+// an icon — the label in bold, if it had one, as the card's title.
+export function varyLists(specs) {
+  let n = 0;
+  for (let i = 0; i < specs.length; i++) {
+    const sp = specs[i], b = sp.bullets || [];
+    if (sp.kind !== 'bullets' || sp.plain || sp.columns || b.length < 3 || b.length > 5 || b.some(x => Array.isArray(x) || str(x).length > 110) || n++ % 2) continue;
+    specs[i] = { ...sp, kind: 'features', items: b.map(x => { const l = splitLabel(str(x)); return l ? { title: l[0], text: l[1] } : { title: '', text: str(x) }; }) };
+    delete specs[i].bullets;
+  }
+  return specs;
+}
 const MID_KINDS = ['title', 'section', 'closing'];
 // The weak slides made again (one request for all): the same message and place, a richer kind, real content.
 async function richer(specs, idx, opts = {}, q = null) {
@@ -402,7 +474,7 @@ async function richer(specs, idx, opts = {}, q = null) {
   const why = i => (q?.problems || []).filter(p => p.slides?.includes(i)).map(p => p.detail).join('; ');
   const want = idx.map(i => ({ i, ...(why(i) && { problem: why(i) }), ...specs[i] }));
   const out = await chat([
-    { role: 'system', content: `These slides of a presentation are weak (each one says why in "problem"): mostly lists, thin, without the code a technical topic needs, with invented figures, code where it doesn't belong, or saying again what another slide says (then it must say something new: the next step of the talk, an example worked out, a common mistake…). Make each one again — the same message (its title may be sharpened), in the richest kind that fits, with real, concrete content. Answer only JSON {"slides":[{"i":N,"kind":"…",…,"notes":"…"}]}, one per slide given, with its own i.
+    { role: 'system', content: `These slides of a presentation are weak (each one says why in "problem"): mostly lists, thin, without the code a technical topic needs, with invented figures, code where it doesn't belong, or saying again what another slide says (then it must say something new: the next step of the talk, an example worked out, a common mistake…), or one more list before its code, as the slides before (then another composition — a "key_idea", "features", "diagram" or "comparison" —, not code: its code follows). Make each one again — the same message (its title may be sharpened), in the richest kind that fits, with real, concrete content. Answer only JSON {"slides":[{"i":N,"kind":"…",…,"notes":"…"}]}, one per slide given, with its own i.
 ${SPEC_DOC}
 ${RICH}
 Do not use "image". Write in ${opts.language || lang()}.` },

@@ -16,9 +16,9 @@ import { ensureMaster, masterStyles, masterOf, newSlideBlocks, styleKind, styled
 import { designIdeas, applyIdeaTo } from '../design/designer.js';
 import { normalizeAnim } from '../animation/transitions.js';
 import { ICON_NAMES } from '../../render/svg.js';
-import { richHTML, inline } from './richtext.js';
+import { richHTML, inline, inlineHTML } from './richtext.js';
 import { prepareSpec, RICH } from './specs.js';
-import { codeBlockAt, mathBlockAt, codeFontSize } from './codeobj.js';
+import { codeBlockAt, mathBlockAt, codeFontSize, codeHeight } from './codeobj.js';
 
 export const STYLES = ['same', 'visual', 'minimal', 'animated', 'surprise'];
 export const hasLayouts = deck => Array.isArray(deck?.layouts) && deck.layouts.length > 0;
@@ -53,7 +53,7 @@ const areaOf = rects => rects.reduce((s, r) => s + r.w * r.h, 0) || 1;
 
 // ---- Which layout, which slide to follow --------------------------------------------
 const WANT = { title: 'title', closing: 'title', section: 'section', quote: 'section', bullets: 'titleContent', two_columns: 'twoContent', image: 'twoContent',
-  chart: 'titleOnly', table: 'titleOnly', code: 'titleOnly', math: 'titleOnly', ...Object.fromEntries(RICH.map(k => [k, 'titleOnly'])) };
+  chart: 'titleOnly', table: 'titleOnly', code: 'titleOnly', math: 'titleOnly', diagram: 'titleOnly', exercise: 'twoContent', ...Object.fromEntries(RICH.map(k => [k, 'titleOnly'])) };
 const FALLBACK = { title: ['section', 'titleOnly', 'titleContent'], section: ['title', 'titleOnly', 'titleContent'], titleContent: ['twoContent', 'titleOnly'],
   twoContent: ['titleContent', 'titleOnly'], titleOnly: ['titleContent', 'twoContent'] };
 const sig = l => { const k = l.blocks.filter(b => b.ph).map(b => styleKind(b) || b.ph); const n = x => k.filter(y => y === x).length;
@@ -99,6 +99,9 @@ export function referenceSlide(deck, lay, kind, at, self = null) {
     let score = dist + (s.layoutId === lay.id ? 0 : 100) + (readable(backColour(s, deck), tc) ? 0 : 1000) + (s.hidden ? 20 : 0);
     const cover = i === 0 || i === last || ['title', 'section'].includes(s.layoutId);
     if (!COVER.includes(kind) && cover) score += 60;
+    // (A slide on a colour given only for its kind — a key idea on a tint, a section on the accent: accentBack — is not
+    // the look of the rest.)
+    if (s.accentBack && s.accentBack !== kind) score += 50;
     if (kind === 'title' && i === 0) score -= 40;
     if (kind === 'closing' && i === last) score -= 40;
     if (score < bestScore) { bestScore = score; best = s; }
@@ -277,10 +280,12 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
   const master = near ? masterOf(near, deck) : ensureMaster(deck);
   const lay = layoutFor(kind, deck, master, kind === 'chart' && (spec.bullets || []).filter(Boolean).length > 0);
   const ref = referenceSlide(deck, lay, kind, at, self);
-  const slide = { id: uid(), sectionId: null, layoutId: lay.id, background: ref?.background || currentPalette(deck).bg, transition: ref ? ref.transition ?? null : null,
+  // (A reference on a colour only for its kind — accentBack —: the plain background; this slide's kind may give it its own.)
+  const plainRef = !ref || ref.accentBack;
+  const slide = { id: uid(), sectionId: null, layoutId: lay.id, background: (!plainRef && ref.background) || currentPalette(deck).bg, transition: ref ? ref.transition ?? null : null,
     hidden: false, autoSlide: 0, notes: str(spec.notes), blocks: [] };
   if (ref?.hideMaster) slide.hideMaster = true;
-  const bg = ref ? backColour(ref, deck) : currentPalette(deck).bg;
+  const bg = !plainRef ? backColour(ref, deck) : currentPalette(deck).bg;
   const look = lookOf(deck, slide, bg), minimal = style === 'minimal';
   // The layout's placeholders; minimal: more air around them.
   const ph = newSlideBlocks(lay);
@@ -305,14 +310,14 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
   const set = (b, html) => { if (b) b.html = html; };
   const extra = [], drop = new Set();
   const area = bodies[0] ? boxOf(bodies[0]) : { ...free };
-  set(title, esc(str(spec.title)));
+  set(title, inlineHTML(spec.title));
   switch (kind) {
     case 'title': case 'closing': case 'section':
-      if (spec.subtitle) set(subs[0], esc(str(spec.subtitle)));
+      if (spec.subtitle) set(subs[0], inlineHTML(spec.subtitle));
       break;
     case 'quote':
-      set(title, `<i>“${esc(str(spec.quote || spec.title))}”</i>`);
-      if (spec.author) set(subs[0], '— ' + esc(str(spec.author)));
+      set(title, `<i>“${inlineHTML(spec.quote || spec.title)}”</i>`);
+      if (spec.author) set(subs[0], '— ' + inlineHTML(spec.author));
       break;
     case 'bullets':
       set(bodies[0], list(spec.bullets, minimal ? '' : look.accent));
@@ -359,14 +364,35 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
         stroke: hex2(look.fg) + '40', fontSize: fs, x: area.x, y: R(area.y + (minimal ? (area.h - h) / 2 : 0)), w: area.w, h: R(h), rotation: 0, animation: null });
       break;
     }
-    case 'code': case 'math': extra.push(...codeCard(spec, area, look)); break;
+    case 'code': case 'math': { const cc = codeCard(spec, area, look); extra.push(...cc); if (cc.dropped) slide.notes = withPoints(slide.notes, cc.dropped); break; }
+    case 'diagram': extra.push(...diagramCard(spec, area, look)); break;
+    case 'exercise': {
+      // The problem on the left, its solution on the right — shown with a click (exerciseSolution), so the class can
+      // try it first. (Code as the solution: a code block in the right column, under its heading.)
+      const part = (c, accent) => (c.heading ? `<p><span style="color:${accent}"><b>${inline(str(c.heading))}</b></span></p>` : '') + list(c.bullets);
+      const L = bodies[0], Rb = bodies[1] || null;
+      const right = Rb ? boxOf(Rb) : { x: area.x + area.w / 2 + 20, y: area.y, w: area.w / 2 - 20, h: area.h };
+      if (L) { set(L, part(spec.problem, look.accent)); if (!Rb) L.w = R(area.w / 2 - 20); }
+      if (spec.solution.code) {
+        if (Rb) drop.add(Rb);
+        const head = spec.solution.heading ? X(right.x, right.y, right.w, 56, `<b>${inline(str(spec.solution.heading))}</b>`, { fontSize: Math.max(22, R((look.bodySize || 30) * 0.8)), fontFamily: look.head, color: look.accent, solution: true }) : null;
+        const top = head ? right.y + 64 : right.y, c = spec.solution.code;
+        const cb = codeBlockAt(c.code, c.language, { x: right.x, y: top, w: right.w, h: right.y + right.h - top }, { solution: true });
+        extra.push(...[head, cb].filter(Boolean));
+        if (spec.solution.bullets.length) slide.notes = withPoints(slide.notes, spec.solution.bullets);
+      } else if (Rb) { set(Rb, part(spec.solution, look.accent)); Rb.solution = true; }
+      else extra.push(X(right.x, right.y, right.w, right.h, part(spec.solution, look.accent), { fontSize: R((look.bodySize || 30) * 0.8), color: look.fg, fontFamily: look.body, solution: true }));
+      break;
+    }
     default: extra.push(...compose(kind, spec, area, look, { minimal, style }));
   }
   // Empty placeholders go (as in the templates).
   const phs = ph.filter(b => !drop.has(b) && plain(b.html || ''));
   // (A short list in a big box grows — three lines at the master's size left two thirds of the slide empty — to what fits.)
   // (Not in a narrow column, by a chart: there it only made more lines and broke long words.)
-  const grow = b => styleKind(b) !== 'body' ? 1 : b.w >= 640 && str(b.html).replace(/<[^>]*>/g, '').length < 260 ? 1.3 : minimal ? 1.12 : 1;
+  // (A very short one — four points of a few words — up to half as big again: at 1.3 it still filled a third of its box.)
+  const chars = b => str(b.html).replace(/<[^>]*>/g, '').length;
+  const grow = b => styleKind(b) !== 'body' ? 1 : b.w >= 640 && chars(b) < 200 && b.h >= 360 ? 1.5 : b.w >= 640 && chars(b) < 260 ? 1.3 : minimal ? 1.12 : 1;
   for (const b of phs) fitPlaceholder(b, slide, deck, grow(b));
   // Covers and sections without decoration of their own: a short accent rule.
   if (COVER.includes(kind) && !decor.length && !minimal && title && kind !== 'quote') {
@@ -381,38 +407,101 @@ export function styledSlide(spec, deck, { at = deck.slides.length, self = null, 
   // Over a background where the master's colours can't be read: the colours set here.
   if (!look.ok) for (const b of phs) b.color = styleKind(b) === 'title' ? look.title : look.fg;
   slide.blocks = [...decor, ...phs, ...extra];
+  if (!minimal && plainBack(ref, deck)) accentBack(slide, kind, look, deck);
   applyStyle(slide, spec, deck, { kind, style, seed: seed || slide.id, look, decor: new Set(decor.map(d => d.id)) });
+  if (kind === 'exercise') exerciseSolution(slide);
   return slide;
+}
+// The explanation of code that didn't fit beside it at a size that reads: said instead, in the notes.
+const withPoints = (notes, pts) => [str(notes).trim(), pts.flat(3).map(p => '• ' + str(p).replace(/`([^`\n]+)`/g, '$1')).join('\n')].filter(Boolean).join('\n\n');
+// An exercise's solution comes in with a click, after the problem has been read (and tried).
+function exerciseSolution(slide) {
+  const sol = slide.blocks.filter(b => b.solution);
+  sol.forEach((b, i) => { delete b.solution; b.animation = { effect: 'fade-up', order: 1, seq: 900 + i, start: i ? 'withPrev' : 'click', duration: 500, delay: 0 }; delete b.anims; });
+  if (sol.length) normalizeAnim(slide);
+}
+// Rhythm in a deck whose slides all share one plain background: a section slide on the accent colour (the words in
+// the colour that reads on it), a key idea on a soft tint of it. Not when the design gives these slides a look of
+// their own (a picture, a band, a background of their own): that is kept.
+const plainBack = (ref, deck) => !ref || !!ref.accentBack || (hex2(backColour(ref, deck)) === hex2(currentPalette(deck).bg) && !ref.blocks.some(b => !b.ph && (b.type === 'image' || (b.type === 'shape' && fullBox(b, deck.size.w, deck.size.h)))));
+const mixHex = (a, b, t) => { const x = rgbOf(a), y = rgbOf(b); return x && y ? '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('') : b; };
+function accentBack(slide, kind, look, deck) {
+  if (kind === 'section') {
+    const bg = look.accent, ink = inkOn(bg);
+    if (contrast(bg, ink) < 4) return;
+    slide.background = bg; slide.accentBack = 'section';
+    for (const b of slide.blocks) {
+      if (b.type === 'text') b.color = ink;
+      else if (b.type === 'shape' && b.decorative && b.fill && hex2(b.fill) === hex2(look.accent)) { b.fill = ink; b.stroke = ink; b.opacity = 70; }
+    }
+  } else if (kind === 'key_idea') {
+    const bg = mixHex(look.accent, look.bg, 0.86);
+    if (contrast(bg, look.fg) < 4.5 || contrast(bg, look.title) < 3) return;
+    slide.background = bg; slide.accentBack = 'key_idea';
+  }
 }
 
 // Code or a formula under the title: a native code block (highlighted) or equation, with its
 // explanation in a column at its side when there is one, and a caption under it.
 // area: the free box under the title; look: { fg, accent, bodySize, body } (lookOf, or the palette's).
+export const CODE_MIN = 20;                      // (code under 20 px can't be read from the back of a room)
 export function codeCard(spec, area, look) {
   const out = [], pts = (spec.bullets || []).filter(Boolean), gap = 36, code = spec.code?.code || '';
-  // (The explanation at its side only if the code still reads there, at 18 px or more; else the code takes the whole
-  // width and the explanation goes under it.)
-  const under = pts.length > 0 && spec.kind !== 'math' && codeFontSize(code, area.w * 0.6, area.h, { min: 1 }) < 18;
-  const side = pts.length > 0 && !under, ptsH = under ? Math.min(area.h * 0.34, 34 * Math.min(4, pts.length) + 30) : 0;
-  const cw = side ? Math.round(area.w * (spec.kind === 'math' ? 0.5 : 0.6)) : area.w, capH = spec.caption ? 50 : 0;
-  const box = { x: area.x, y: area.y, w: cw, h: area.h - capH - ptsH };
-  let main;
+  const capH = spec.caption ? 50 : 0, h = area.h - capH, bs = look.bodySize || 30, html = list(pts, look.accent);
   if (spec.kind === 'math') {
-    main = mathBlockAt(spec.latex, { ...box, h: Math.min(box.h, side ? 220 : 200), y: area.y + (side ? 0 : Math.max(0, (box.h - 200) / 3)) }, { color: look.fg, ...(side && { textAlign: 'left' }) });
-  } else {
-    const c = spec.code || {};
-    main = codeBlockAt(c.code || '', c.language, box);
+    const side = pts.length > 0, cw = side ? Math.round(area.w * 0.5) : area.w;
+    const main = mathBlockAt(spec.latex, { x: area.x, w: cw, h: Math.min(h, side ? 220 : 200), y: area.y + (side ? 0 : Math.max(0, (h - 200) / 3)) }, { color: look.fg, ...(side && { textAlign: 'left' }) });
+    out.push(main);
+    if (spec.caption) out.push(X(area.x, main.y + main.h + 10, cw, 40, `<i>${inlineHTML(spec.caption)}</i>`, { fontSize: Math.max(16, Math.round(bs * 0.6)), color: look.fg }));
+    if (side) out.push(X(area.x + cw + gap, area.y, area.w - cw - gap, area.h, html, { fontSize: fitSize(html, Math.round(bs * 0.8), area.w - cw - gap, area.h, 1.25, 18), color: look.fg, ...(look.body && { fontFamily: look.body }) }));
+    return out;
   }
+  // Where the explanation goes: beside the code — a column of 360 px or more, never a strip of single words — while
+  // the code still reads there (20 px or more); else under it, in one row of columns; else — code that needs the whole
+  // slide — said, in the notes. The code's box is as wide and tall as the code at its size (up to 30 px: a short
+  // snippet reads big), and the whole sits in the middle of the room, not at its top with half the slide empty.
+  const lines = code.split('\n'), longest = Math.max(8, ...lines.map(l => l.length));
+  const fs = (w, hh) => codeFontSize(code, w, hh, { min: 1, max: 30 });
+  const wideAt = f => Math.round((longest * 0.64 + 2) * f + 24);
+  const SIDE = 360, cols = pts.length > 3 ? 2 : Math.max(1, pts.length), colW = (area.w - 32 * (cols - 1)) / cols;
+  const ptsH = pts.length ? Math.min(area.h * 0.4, R(Math.max(...pts.map(p => textHeight(list([p]), 22, colW, 1.25))) * Math.ceil(pts.length / cols) + 8)) : 0;
+  let mode = 'alone', f = fs(area.w, h);
+  if (pts.length) {
+    const sideF = fs(area.w - SIDE - gap, h), sideW = Math.min(area.w - SIDE - gap, wideAt(sideF)), underF = fs(area.w, h - ptsH - 20);
+    const sideOK = sideF >= CODE_MIN && textHeight(html, 18, area.w - sideW - gap, 1.25) <= h;
+    mode = sideOK && (sideF >= underF - 2 || underF < CODE_MIN) ? 'side' : underF >= CODE_MIN ? 'under' : f >= CODE_MIN ? 'drop' : sideF >= underF ? 'side' : 'under';
+    f = mode === 'side' ? sideF : mode === 'under' ? underF : f;
+  }
+  const roomH = mode === 'under' ? h - ptsH - 20 : h, roomW = mode === 'side' ? area.w - SIDE - gap : area.w;
+  const cw = Math.min(roomW, wideAt(f)), ch = Math.min(roomH, codeHeight(code, f));
+  const stack = ch + (spec.caption ? 50 : 0) + (mode === 'under' ? 20 + ptsH : 0);
+  const y0 = area.y + Math.max(0, (area.h - stack) * 0.4), x0 = mode === 'alone' || mode === 'drop' ? area.x + Math.max(0, (area.w - cw) / 2) : area.x;
+  const c = spec.code || {}, main = codeBlockAt(c.code || '', c.language, { x: x0, y: y0, w: cw, h: ch }, { fontSize: f });
+  main.h = ch;
   out.push(main);
-  if (spec.caption) out.push(X(area.x, main.y + main.h + 10, cw, 40, `<i>${esc(str(spec.caption))}</i>`, { fontSize: Math.max(16, Math.round((look.bodySize || 30) * 0.6)), color: look.fg }));
-  if (under) {
-    const y = main.y + main.h + (spec.caption ? 60 : 20), h = area.y + area.h - y, html = list(pts, look.accent);
-    out.push(X(area.x, y, area.w, h, html, { fontSize: fitSize(html, Math.round((look.bodySize || 30) * 0.75), area.w, h, 1.25, 18), color: look.fg, ...(look.body && { fontFamily: look.body }), ...(pts.length > 2 && { columns: 2 }) }));
+  if (spec.caption) out.push(X(x0, main.y + main.h + 10, cw, 40, `<i>${inlineHTML(spec.caption)}</i>`, { fontSize: Math.max(16, Math.round(bs * 0.6)), color: look.fg }));
+  if (mode === 'under') {
+    // (One text per point, side by side — a list cut into CSS columns broke a point in two across them.)
+    const y = main.y + main.h + (spec.caption ? 60 : 20), hh = Math.max(ptsH, area.y + area.h - y), rows = Math.ceil(pts.length / cols), rh = hh / rows;
+    const size = Math.min(...pts.map(p => fitSize(list([p], look.accent), Math.round(bs * 0.8), colW, rh, 1.25, 18)));
+    pts.forEach((p, i) => out.push(X(area.x + (i % cols) * (colW + 32), y + Math.floor(i / cols) * rh, colW, rh, list([p], look.accent), { fontSize: size, color: look.fg, ...(look.body && { fontFamily: look.body }) })));
   }
-  if (side) {
-    const fs = fitSize(list(pts, look.accent), Math.round((look.bodySize || 30) * 0.8), area.w - cw - gap, area.h, 1.25, 18);
-    out.push(X(area.x + cw + gap, area.y, area.w - cw - gap, area.h, list(pts, look.accent), { fontSize: fs, color: look.fg, ...(look.body && { fontFamily: look.body }) }));
+  if (mode === 'side') {
+    const sx = area.x + cw + gap, sw = area.x + area.w - sx;
+    out.push(X(sx, area.y, sw, area.h, html, { fontSize: fitSize(html, Math.round(bs * 0.8), sw, area.h, 1.25, 18), color: look.fg, vAlign: 'middle', ...(look.body && { fontFamily: look.body }) }));
   }
+  if (mode === 'drop') out.dropped = pts;
+  return out;
+}
+
+// A diagram (render/diagrams.js: a cycle, a process, a hierarchy…) under the title: the whole area, or — with points —
+// most of it, the points at its side.
+export function diagramCard(spec, area, look) {
+  const pts = (spec.bullets || []).filter(Boolean), d = spec.diagram || {}, gap = 36;
+  const dw = pts.length ? Math.round(area.w * 0.64) : area.w;
+  const out = [{ id: uid(), type: 'diagram', layout: d.type || 'process', colors: 'colorful', text: str(d.text), x: R(area.x), y: R(area.y), w: dw, h: R(area.h), rotation: 0, animation: null, alt: str(spec.title) }];
+  if (pts.length) { const html = list(pts, look.accent), sw = area.w - dw - gap;
+    out.push(X(area.x + dw + gap, area.y, sw, area.h, html, { fontSize: fitSize(html, Math.round((look.bodySize || 30) * 0.8), sw, area.h, 1.25, 18), color: look.fg, vAlign: 'middle', ...(look.body && { fontFamily: look.body }) })); }
   return out;
 }
 
@@ -505,17 +594,35 @@ export function compose(kind, spec, area, look, { minimal = false, style = 'same
       for (let k = 0.95; lay.need > maxH && k >= 0.7; k -= 0.05) { ts = Math.max(18, R(ts0 * k)); xs = Math.max(18, R(xs0 * k)); lay = sized(lay.side); }
       // (And at 18 px, still not: the card itself tighter — less margin, a smaller number —, five steps of a sentence each.)
       if (lay.need > maxH) { pad = Math.min(pad, 16); d = Math.min(d, 40); dg = 10; lay = sized(lay.side); const alt = !lay.side && sized(true); if (alt && alt.need < lay.need) lay = alt; }
+      // (Cards that would fill half their room — four short points in two rows —: the letters, the number or icon bigger,
+      // up to half as big again, while they still fit; the cards then fill the area instead of floating in it.)
+      if (lay.need < maxH * 0.85) {
+        const t0 = ts, x0 = xs, d0 = d, dMax = rows > 1 ? 80 : 96;
+        // (No bigger than the body text's size — measured, a few words grown further ran out of their card — and with a
+        // margin for what the estimate misses.)
+        const cap = Math.min(1.5, (bs * 1.05) / Math.max(t0, 1), bs / Math.max(x0, 1));
+        for (let k = 1.05; k <= cap + 1e-6; k += 0.05) {
+          ts = R(t0 * k); xs = R(x0 * k); d = Math.min(dMax, R(d0 * k)); const nl = sized(lay.side);
+          if (nl.need > maxH * 0.85) { ts = R(t0 * (k - 0.05)); xs = R(x0 * (k - 0.05)); d = Math.min(dMax, R(d0 * (k - 0.05))); break; }
+          lay = nl;
+        }
+        lay = sized(lay.side);
+      }
       const { side, iw, tH } = lay, ch = Math.min(maxH, lay.need);
-      const y0 = area.y + Math.max(0, (area.h - rows * ch - (rows - 1) * gap) * 0.4), used = new Set();
+      // (Cards with an icon, in rows: as tall as their room allows — a quarter more than their words at most —, the
+      // words in their middle; short cards left a third of the slide empty under them.)
+      const cardH = kind === 'features' && !minimal ? Math.max(ch, Math.min(maxH, ch * 1.25)) : ch;
+      const y0 = area.y + Math.max(0, (area.h - rows * cardH - (rows - 1) * gap) * 0.4), used = new Set();
       it.forEach((s, i) => {
-        const { x, y } = cell(i, n, cols, cw, ch, gap, y0), c = acc(i);
-        push(card(x, y, cw, ch));
+        const { x, y: yc } = cell(i, n, cols, cw, cardH, gap, y0), c = acc(i), y = yc + (cardH - ch) / 2;
+        push(card(x, yc, cw, cardH));
         if (kind === 'steps') push(S('ellipse', x + pad, y + pad, d, d, c), T(x + pad, y + pad, d, d, `<b>${i + 1}</b>`, { fontSize: R(d * 0.46), fontFamily: look.head, color: inkOn(c), textAlign: 'center', vAlign: 'middle', lineHeight: 1, pad: [0, 0, 0, 0] }));
         else {
           let name = ICON_NAMES.includes(s.icon) ? s.icon : iconFor({ title: s.title, subtitle: s.text }, '');
           if (!ICON_NAMES.includes(name) || used.has(name)) name = ICONS.find(k => !used.has(k)) || 'sparkles';
           used.add(name);
-          push(S('ellipse', x + pad, y + pad, d, d, c, { opacity: 18 }), { id: uid(), type: 'icon', icon: name, color: c, x: R(x + pad + d * 0.22), y: R(y + pad + d * 0.22), w: R(d * 0.56), h: R(d * 0.56), rotation: 0, animation: null, alt: '' });
+          // (The icon big on its disc, in the accent: at half the disc on a faint one it read as a grey dot.)
+          push(S('ellipse', x + pad, y + pad, d, d, c, { opacity: 16 }), { id: uid(), type: 'icon', icon: name, color: c, x: R(x + pad + d * 0.18), y: R(y + pad + d * 0.18), w: R(d * 0.64), h: R(d * 0.64), rotation: 0, animation: null, alt: '' });
         }
         const tx = side ? x + pad + d + 22 : x + pad, room = y + ch - pad - (side ? y + pad : y + pad + d + dg), th = Math.min(tH, room * 0.55);
         let ty = side ? y + pad : y + pad + d + dg;

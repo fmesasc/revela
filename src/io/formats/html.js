@@ -796,6 +796,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${levelCSS('.reveal ')}
  .reveal .stage ul{list-style-type:var(--bullet,disc)}
  .reveal .stage ol{list-style-type:var(--num,decimal)}
+ .reveal .stage :not(pre)>code{font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;font-size:.9em;background:color-mix(in srgb,currentColor 11%,transparent);color:inherit;padding:.04em .28em;border-radius:.25em;text-transform:none}
  .reveal section{height:100%}
  .reveal .slide-number{${snPos}}
  ${tableCSS('.reveal ')}

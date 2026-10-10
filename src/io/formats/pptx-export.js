@@ -72,6 +72,7 @@ export function htmlToRuns(html, base = {}) {
     if (tag === 'i' || tag === 'em' || css.fontStyle === 'italic') s.italic = true;
     if (tag === 'u') s.underline = { style: 'sng' };
     if (tag === 's' || tag === 'strike') s.strike = 'sngStrike';
+    if (tag === 'code') s.fontFace = 'Consolas';                 // (inline code: in a monospace face, as on the slide)
     if (tag === 'sup') s.superscript = true; if (tag === 'sub') s.subscript = true;
     const col = cssHex(css.color || n.getAttribute('color')); if (col) s.color = col;
     if (css.fontSize && /px$/.test(css.fontSize)) s.fontSize = Math.round(parseFloat(css.fontSize) * 0.75);

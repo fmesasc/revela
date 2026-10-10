@@ -126,7 +126,12 @@ export function splitLabel(t) {
   if (!m || m[1].split(/\s+/).length > 6 || /https?$|^\d+$/i.test(m[1])) return null;
   return [m[1].trim(), m[2].trim()];
 }
-const md = s => esc(s).replace(/\*\*([^*]+?)\*\*/g, '<b>$1</b>').replace(/__([^_]+?)__/g, '<b>$1</b>').replace(/(^|[\s(])\*([^*\s][^*]*?)\*(?=$|[\s).,;:!?])/g, '$1<i>$2</i>').replace(/\*\*/g, '');
+const emph = s => esc(s).replace(/\*\*([^*]+?)\*\*/g, '<b>$1</b>').replace(/__([^_]+?)__/g, '<b>$1</b>').replace(/(^|[\s(])\*([^*\s][^*]*?)\*(?=$|[\s).,;:!?])/g, '$1<i>$2</i>').replace(/\*\*/g, '');
+// `code` as the model writes it in a chat: <code> (the slide's inline-code style, canvas.css), its insides as they
+// are — «`a*b*`» is no italics. (A lone backtick stays one.)
+const md = s => str(s).split(/(`[^`\n]+`)/).map((p, i) => (i % 2 ? `<code>${esc(p.slice(1, -1))}</code>` : emph(p))).join('');
+// A title, heading, label or cell of a spec as slide HTML: escaped, with its `code` and **bold**.
+export const inlineHTML = t => md(str(t));
 export function inline(t, { labels = false } = {}) {
   const lab = labels && splitLabel(t);
   return lab ? `<b>${md(lab[0].replace(/\*\*/g, ''))}:</b> ${md(lab[1])}` : md(str(t));
