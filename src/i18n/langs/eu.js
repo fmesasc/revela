@@ -3156,7 +3156,7 @@ export default {
   "Pagos y facturas": "Ordainketak eta fakturak",
   "Otra cosa": "Beste zerbait",
   "Qué ha pasado": "Zer gertatu den",
-  "Te responderemos a {email}.": "{email} helbidera erantzungo dizugu.",
+  "Te responderemos al correo de tu cuenta.": "Zure kontuko helbide elektronikora erantzungo dizugu.",
   "Tu correo (para responderte)": "Zure posta (erantzuteko)",
   "Adjuntar la presentación (nos ayuda a ver el problema)": "Erantsi aurkezpena (arazoa ikusten laguntzen digu)",
   "Se envían también la versión de Revela, el navegador y el nombre de la presentación; su contenido, solo si marcas la casilla.": "Revelaren bertsioa, nabigatzailea eta aurkezpenaren izena ere bidaltzen dira; edukia, laukia markatzen baduzu bakarrik.",

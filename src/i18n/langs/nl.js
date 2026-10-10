@@ -3156,7 +3156,7 @@ export default {
   "Pagos y facturas": "Betalingen en facturen",
   "Otra cosa": "Iets anders",
   "Qué ha pasado": "Wat er gebeurde",
-  "Te responderemos a {email}.": "We antwoorden naar {email}.",
+  "Te responderemos al correo de tu cuenta.": "We antwoorden naar het e-mailadres van je account.",
   "Tu correo (para responderte)": "Je e-mailadres (om je te antwoorden)",
   "Adjuntar la presentación (nos ayuda a ver el problema)": "De presentatie bijvoegen (helpt ons het probleem te zien)",
   "Se envían también la versión de Revela, el navegador y el nombre de la presentación; su contenido, solo si marcas la casilla.": "Ook de versie van Revela, de browser en de naam van de presentatie worden verstuurd; de inhoud alleen als je het vakje aanvinkt.",

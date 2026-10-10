@@ -3,7 +3,6 @@
 // app's version, the browser and the presentation's name; its content only if ticked.
 // The open edition has no server of Revela's: it points to GitHub instead.
 
-import { esc } from '../../core/text.js';
 import { EDITION, APP_VERSION } from '../../core/config.js';
 import { state } from '../../core/store.js';
 import { approxSize } from '../../core/model.js';
@@ -31,7 +30,7 @@ export function openReport() {
         <p class="host-help">${t('Cuéntanos qué hacías, qué esperabas y qué pasó. Te responderemos por correo.')}</p>
         <label class="fr-l">${t('Tipo de problema')}<select class="rp-cat">${Object.entries(REPORT_CATEGORIES).map(([k, v]) => `<option value="${k}">${t(v)}</option>`).join('')}</select></label>
         <label class="fr-l">${t('Qué ha pasado')}<textarea class="rp-msg" rows="6" maxlength="5000" required></textarea></label>
-        ${me ? `<p class="host-help">${t('Te responderemos a {email}.').replace('{email}', esc(me.email))}</p>`
+        ${me ? `<p class="host-help">${t('Te responderemos al correo de tu cuenta.')}</p>`
           : `<label class="fr-l">${t('Tu correo (para responderte)')}<input type="email" class="rp-email" maxlength="200" autocomplete="email" required></label>`}
         <label class="rp-trap" aria-hidden="true" inert style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">Web<input type="text" class="rp-web" tabindex="-1" autocomplete="off"></label>
         <label class="fr-chk"><input type="checkbox" class="rp-attach"> ${t('Adjuntar la presentación (nos ayuda a ver el problema)')}</label>

@@ -3156,7 +3156,7 @@ export default {
   "Pagos y facturas": "المدفوعات والفواتير",
   "Otra cosa": "شيء آخر",
   "Qué ha pasado": "ما الذي حدث",
-  "Te responderemos a {email}.": "سنرد عليك على {email}.",
+  "Te responderemos al correo de tu cuenta.": "سنرد عليك على البريد الإلكتروني لحسابك.",
   "Tu correo (para responderte)": "بريدك الإلكتروني (للرد عليك)",
   "Adjuntar la presentación (nos ayuda a ver el problema)": "إرفاق العرض التقديمي (يساعدنا على رؤية المشكلة)",
   "Se envían también la versión de Revela, el navegador y el nombre de la presentación; su contenido, solo si marcas la casilla.": "يُرسل أيضًا إصدار Revela والمتصفح واسم العرض التقديمي؛ أما محتواه فلا يُرسل إلا إذا حددت المربع.",

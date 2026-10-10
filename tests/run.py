@@ -457,7 +457,7 @@ def site_checks(send, recv):
         ev("document.querySelector('#account-modal .modal-close').click();1")
         # «Informar de un problema», signed in: answered at the account's address; the deck only if ticked.
         ev("document.querySelector('[data-action=\"report-problem\"]').click();1"); time.sleep(0.3)
-        check(ev("(m=>!!m&&!m.querySelector('.rp-email')&&/ana@example.com/.test(m.textContent))(document.getElementById('report-modal'))"), 'informar de un problema con sesión: se responde a su correo')
+        check(ev("(m=>!!m&&!m.querySelector('.rp-email')&&!/ana@example.com/.test(m.textContent)&&/correo de tu cuenta/.test(m.textContent))(document.getElementById('report-modal'))"), 'informar de un problema con sesión: se responde al correo de la cuenta, sin mostrarlo')
         ev("(()=>{const m=document.getElementById('report-modal');m.querySelector('.rp-cat').value='ai';m.querySelector('.rp-msg').value='La IA no contesta';m.querySelector('.rp-attach').checked=true;m.querySelector('.rp-send').click();return 1})()"); time.sleep(0.6)
         rep = (seen.get('support') or [{}])[-1]
         check(rep.get('category') == 'ai' and rep.get('message') == 'La IA no contesta' and '"slides"' in (rep.get('attach') or '') and rep.get('version', '').startswith('cloud ') and 'email' not in rep, 'el informe llega con la versión y la presentación adjunta: ' + str({k: v for k, v in rep.items() if k != 'attach'}))

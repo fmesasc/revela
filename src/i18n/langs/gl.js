@@ -3156,7 +3156,7 @@ export default {
   "Pagos y facturas": "Pagamentos e facturas",
   "Otra cosa": "Outra cousa",
   "Qué ha pasado": "Que pasou",
-  "Te responderemos a {email}.": "Responderémosche a {email}.",
+  "Te responderemos al correo de tu cuenta.": "Responderémosche ao correo da túa conta.",
   "Tu correo (para responderte)": "O teu correo (para responderche)",
   "Adjuntar la presentación (nos ayuda a ver el problema)": "Anexar a presentación (axúdanos a ver o problema)",
   "Se envían también la versión de Revela, el navegador y el nombre de la presentación; su contenido, solo si marcas la casilla.": "Envíanse tamén a versión de Revela, o navegador e o nome da presentación; o seu contido, só se marcas a caixa.",
