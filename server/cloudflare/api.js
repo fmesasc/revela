@@ -74,6 +74,7 @@ import { takeQuota } from './store.js';
 import { handleCommunity } from './community.js';
 import { handleLead, goLink, crmUnsub, crmClick, campaignSignup, eventsPublic, eventSignup, referralInfo } from './crm.js';
 import { handleAmbassadors } from './ambassadors.js';
+import { crmInbound } from './crm-reply.js';
 import { enc, b64url, random, sha256, DAY, HOUR } from './util.js';
 import { stockSearch, stockUsed, photoProviders } from './stock.js';
 import { storageConfig, MB } from './storage.js';
@@ -881,6 +882,8 @@ export async function handleApi(req, env, url) {
   if (go && req.method === 'GET') return goLink(env, go[1]);
   if (path === '/crm/unsub' && (req.method === 'GET' || req.method === 'POST')) return crmUnsub(req, env, url);
   if (path === '/crm/click' && req.method === 'GET') return crmClick(env, url);
+  // Answers to Captación's emails (crm-reply.js): Resend's webhook, signed (no session, no origin).
+  if (path === '/crm/inbound' && req.method === 'POST') return crmInbound(req, env, { sendMail, adminEmails: adminEmails(env) });
   // Relay servers (TURN) for the phone remote, voting and live collaboration: a phone on mobile data
   // often can't reach the computer directly. No session (the phone has none); only from Revela's pages.
   if (path === '/ice' && req.method === 'GET') {
@@ -911,6 +914,15 @@ export async function handleApi(req, env, url) {
     if (req.method !== 'POST') return json({ error: 'method' }, 405);
     if (!webOrigin) return json({ error: 'origin' }, 403);
     return handleVisit(req, env, body, json);
+  }
+  // «¿Para qué vas a usar Revela?» (the start screen; visits.js): one anonymous count — the answer, its language and
+  // whether it was the first answer or a change. No account, address or browser is kept.
+  if (path === '/audience') {
+    if (req.method !== 'POST') return json({ error: 'method' }, 405);
+    if (!webOrigin && !desktopOrigin) return json({ error: 'origin' }, 403);
+    if (!env.VISITS || !body || !['edu', 'biz', 'both'].includes(body.v)) return json({ ok: true });
+    await visitsCall(env, 'aud', { v: body.v, kind: ['first', 'change', 'skip'].includes(body.kind) ? body.kind : 'first', lang: /^[a-z]{2}$/.test(body.lang || '') ? body.lang : '' });
+    return json({ ok: true });
   }
   // The app's own errors (errors.js): from the app (the website's origin or the desktop app), small, capped per person.
   if (path === '/errors') {

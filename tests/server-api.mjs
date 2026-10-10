@@ -1878,6 +1878,64 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok(x.j.contact.status === 'contacted' && x.j.contact.nextWhat === 'Enviar la propuesta' && x.j.contact.nextAt > Date.now() + 6 * DAYms, 'captación: contacto anotado con su seguimiento');
     x = await C('POST', `/contacts/${olivos.id}/message`, { body: { tpl: 'tplcall1', me: 'Francisco' } });
     ok(/CEIP Los Olivos/.test(x.j.body) && /Francisco/.test(x.j.body) && x.j.channel === 'phone', 'captación: guion de llamada rellenado');
+    // Emails by hand (crm-reply.js): a template filled, edited, tried on oneself, sent only with consent; answers kept.
+    {
+      ok((await C('GET', '/templates')).j.tpls.some(t => t.id === 'tplmail1' && t.channel === 'email'), 'captación: plantillas de correo para centros y empresas');
+      const draft = { subject: 'Revela para {centro}', body: 'Hola{nombre_coma}:\n\nTe cuento lo que hablamos.\n\n{yo}' };
+      await C('POST', '/settings', { body: { settings: { signer: 'Francisco' } } });
+      ok((await C('POST', `/contacts/${ana.id}/send`, { body: draft })).status === 409, 'correo a mano: sin consentimiento no se envía');
+      ok((await C('POST', `/contacts/${ana.id}/send`, { body: { ...draft, test: 'no es correo' } })).status === 400, 'correo a mano: la prueba necesita una dirección válida');
+      // Answers received here: Resend's signed webhook.
+      const secret = 'whsec_' + btoa('clave-del-webhook-de-resend!!'), hookAt = Date.now();
+      env.RESEND_WEBHOOK_SECRET = secret;
+      sent = []; x = await C('POST', `/contacts/${ana.id}/send`, { body: { ...draft, test: 'yo@fmlab.example' } });
+      const t0 = sent[0];
+      ok(x.status === 200 && x.j.test && t0.to === 'yo@fmlab.example' && t0.subject === '[Prueba] Revela para Colegio Sol' && /Hola, Ana Ruiz/.test(t0.text) && /Francisco/.test(t0.text) && !t0.headers?.['List-Unsubscribe'], 'correo a mano: la prueba, a mi dirección, rellenada y editada: ' + JSON.stringify(t0 && [t0.subject, t0.to]));
+      ok(/^respuestas\+c\d+t-[0-9a-f]{16}@revelaslides\.com$/.test(t0.replyTo || ''), 'correo a mano: las respuestas a la prueba vuelven aquí: ' + t0.replyTo);
+      ok((await C('GET', `/contacts/${ana.id}`)).j.contact.status === 'contacted' && !(await C('GET', `/contacts/${ana.id}`)).j.contact.mailed, 'correo a mano: la prueba no cuenta como enviada');
+      const hook = async (data, { sig = secret, ts = Math.floor(hookAt / 1000) } = {}) => {
+        const b = JSON.stringify({ type: 'email.received', created_at: new Date().toISOString(), data }), id = 'msg_' + Math.random().toString(36).slice(2);
+        const k = await crypto.subtle.importKey('raw', Uint8Array.from(atob(sig.slice(6)), ch => ch.charCodeAt(0)), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+        const v = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(`${id}.${ts}.${b}`)))));
+        return worker.fetch(new Request(SITE + '/api/crm/inbound', { method: 'POST', body: b, headers: { 'svix-id': id, 'svix-timestamp': String(ts), 'svix-signature': 'v1,' + v } }), env);
+      };
+      const prevF5 = env.FETCH; env.RESEND_KEY = 're_prueba';
+      env.FETCH = async (u, init) => (String(u).startsWith('https://api.resend.com/emails/receiving/') ? Response.json({ from: 'Yo <yo@fmlab.example>', subject: 'Re: [Prueba] Revela para Colegio Sol', text: 'Funciona, me llega bien.', html: '<p>Funciona</p>' }) : prevF5(u, init));
+      ok((await hook({ email_id: 'e1', from: 'yo@fmlab.example', to: [t0.replyTo], subject: 'Re' }, { sig: 'whsec_' + btoa('otra clave') })).status === 403, 'respuestas: una llamada sin la firma de Resend → 403');
+      ok((await hook({ email_id: 'e1', from: 'yo@fmlab.example', to: [t0.replyTo], subject: 'Re' }, { ts: Math.floor(hookAt / 1000) - 3600 })).status === 403, 'respuestas: una llamada vieja (repetida) → 403');
+      sent = []; r = await hook({ email_id: 'e1', from: 'yo@fmlab.example', to: [t0.replyTo], subject: 'Re' });
+      let c = (await C('GET', `/contacts/${ana.id}`)).j.contact;
+      ok(r.status === 200 && c.history.some(h => h.what === 'reply' && h.test && /Funciona, me llega bien/.test(h.text)), 'respuestas: la respuesta a la prueba, en la ficha (como prueba)');
+      ok(!c.replied && c.status === 'contacted', 'respuestas: una prueba no cambia el estado');
+      ok(sent.length === 1 && sent[0].to === 'hola@fmlab.example' && /Funciona/.test(sent[0].text) && sent[0].replyTo === 'yo@fmlab.example' && /#captacion\/c\//.test(sent[0].text), 'respuestas: y me llega a mi buzón, para contestar desde ahí');
+      const forged = t0.replyTo.replace(/-[0-9a-f]{16}@/, '-0000000000000000@');
+      sent = []; await hook({ email_id: 'e2', from: 'x@y.example', to: [forged], subject: 'Hola' });
+      ok(!sent.length && (await C('GET', `/contacts/${ana.id}`)).j.contact.history.filter(h => h.what === 'reply').length === 1, 'respuestas: una dirección inventada no se apunta a nadie');
+      // With consent: the real email (its way out), and its answer moves the contact on.
+      await C('POST', `/contacts/${ana.id}/consent`, { body: { how: 'Me lo dijo por teléfono el 10/10' } });
+      sent = []; x = await C('POST', `/contacts/${ana.id}/send`, { body: draft });
+      const m1 = sent[0];
+      ok(x.status === 200 && m1.to === 'ana@sol.example' && /\/api\/crm\/unsub\?t=/.test(m1.headers?.['List-Unsubscribe'] || '') && /FM Lab/.test(m1.text) && /^respuestas\+c\d+-[0-9a-f]{16}@/.test(m1.replyTo), 'correo a mano: con permiso se envía, con la identidad, la baja y la dirección de respuesta');
+      ok((await A('GET', '/audit?target=crm:' + ana.id)).j.entries.some(e => e.action === 'crm-mail'), 'correo a mano: en la auditoría');
+      env.FETCH = async (u, init) => (String(u).startsWith('https://api.resend.com/emails/receiving/') ? Response.json({ from: 'Ana Ruiz <ana@sol.example>', subject: 'Re: Revela para Colegio Sol', text: null, html: '<p>¡Hola! Nos <b>interesa</b>. ¿Podemos vernos el jueves?</p>' }) : prevF5(u, init));
+      sent = []; await hook({ email_id: 'e3', from: 'ana@sol.example', to: [m1.replyTo], subject: 'Re: Revela para Colegio Sol' });
+      c = (await C('GET', `/contacts/${ana.id}`)).j.contact;
+      ok(c.replied && c.status === 'talking' && c.nextWhat === 'Contestar su respuesta' && c.history.some(h => h.what === 'reply' && !h.test && /Nos interesa\. ¿Podemos vernos el jueves\?/.test(h.text)), 'respuestas: ha respondido — en conversación, con su texto y un seguimiento para hoy');
+      ok((await C('GET', '/contacts?q=sol')).j.items[0].replied, 'respuestas: la lista lo sabe');
+      ok(sent[0]?.replyTo === 'ana@sol.example', 'respuestas: reenviada para contestarle directamente');
+      env.FETCH = prevF5; delete env.RESEND_KEY; delete env.RESEND_WEBHOOK_SECRET;
+      sent = []; await C('POST', `/contacts/${ana.id}/send`, { body: { ...draft, test: 'yo@fmlab.example' } });
+      ok(sent[0].replyTo === 'hola@fmlab.example', 'correo a mano: sin el webhook de Resend, las respuestas van a mi dirección');
+    }
+    // The map: the contacts' points (OpenStreetMap's, kept when imported) and placing those without one.
+    {
+      const all = (await C('GET', '/contacts?limit=500')).j.items, ol = all.find(c => c.name === 'CEIP Los Olivos'), sol = all.find(c => c.name === 'Colegio Sol');
+      ok(ol.lat === 41.6 && ol.lon === -0.9, 'mapa: los encontrados en OpenStreetMap traen su punto');
+      ok(sol.lat == null, 'mapa: los del formulario, aún sin punto');
+      x = await C('POST', '/locate', { body: {} });
+      const sol2 = (await C('GET', '/contacts?q=sol')).j.items[0];
+      ok(x.status === 200 && x.j.located >= 1 && sol2.lat === 41.6, 'mapa: «Situar» les da el de su ciudad: ' + JSON.stringify(x.j));
+    }
     x = await C('POST', `/contacts/${olivos.id}/status`, { body: { status: 'demo' } });
     ok(x.j.contact.status === 'demo' && !x.j.contact.seq, 'captación: al pasar a «demo», la secuencia se detiene');
     x = await C('POST', '/preview', { body: { seq: seqId, i: 1 } });
@@ -2251,6 +2309,16 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok(nf && nf.n === 2 && nf.refs['blog.example/post'] === 1 && nf.refs['internal:/guides'] === 1, 'visitas: la página que no existe, con desde dónde (otra web, o una página nuestra con el enlace roto)');
     const raw = JSON.stringify([...env.VISITS.inst.get('visits').ctx.storage.m.entries()]);
     ok(!raw.includes('10.9.0') && !raw.includes('Firefox'), 'visitas: ni la dirección IP ni el navegador se guardan');
+    // «¿Para qué vas a usar Revela?»: an anonymous count (the answer, its language, first or a change).
+    { const aud = (b, origin = SITE) => req('POST', '/api/audience', { origin, body: b, headers: { 'CF-Connecting-IP': '10.7.0.1', 'User-Agent': 'Mozilla/5.0 Safari' } });
+      ok((await aud({ v: 'biz', kind: 'first', lang: 'es' }, 'https://malo.example')).status === 403, 'público: solo desde la app');
+      await aud({ v: 'biz', kind: 'first', lang: 'es' }); await aud({ v: 'edu', kind: 'first', lang: 'ca' }); await aud({ v: 'edu', kind: 'first', lang: 'ca' });
+      await aud({ v: 'both', kind: 'skip', lang: 'es' }); await aud({ v: 'both', kind: 'change', lang: 'es' }); await aud({ v: 'otra', kind: 'first' });
+      const au = await A('GET', '/audience?days=7');
+      ok(au.status === 200 && au.j.total.biz === 1 && au.j.total.edu === 2 && au.j.total.skip === 1 && !au.j.total.both, 'público: docencia 2, empresa 1, saltada 1: ' + JSON.stringify(au.j.total));
+      ok(au.j.langs.ca?.edu === 2 && au.j.days.at(-1).change.both === 1, 'público: por idioma, y los cambios aparte');
+      const raw2 = JSON.stringify([...env.VISITS.inst.get('visits').ctx.storage.m.entries()].filter(([k]) => k.startsWith('a:')));
+      ok(!raw2.includes('10.7.0') && !raw2.includes('Safari'), 'público: anónimo (ni dirección ni navegador)'); }
     // A new day: a new salt; yesterday's visitors can't be told apart from new ones.
     const salt0 = env.VISITS.inst.get('visits').ctx.storage.m.get('salt').value;
     at(realNow() + 864e5); await hit({ path: '/pricing' }); Date.now = realNow;

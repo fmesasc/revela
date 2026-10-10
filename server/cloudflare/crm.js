@@ -27,6 +27,7 @@ import { DAY, b64url, EMAIL, hmac } from './util.js';
 import { crmToken, readCrmToken, eventMail, crmMail, unsubPageCrm, ackMail } from './crm-mail.js';
 import { ambassadorMail } from './ambassadors.js';
 import { crawlSite, crawlerCall, SCORE, CRAWL_DEFAULT } from './crawler.js';
+import { sendOne, answersOn } from './crm-reply.js';
 
 export const str = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ' ').trim().slice(0, n);
 export const text = (v, n) => String(v ?? '').replace(/\r/g, '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ' ').trim().slice(0, n);
@@ -48,7 +49,7 @@ export const SEARCH = {
   company: ['nwr["office"~"^(company|it|consulting|marketing|advertising_agency|financial|insurance|architect|coworking)$"]["name"]'],
   public: ['nwr["office"="government"]["name"]', 'nwr["amenity"="townhall"]["name"]'],
 };
-export const DEFAULT_SETTINGS = { identity: '', replyTo: '', dailyMax: 40, digest: true, digestTo: '', followDays: 5, referral: true, referralReward: '' };
+export const DEFAULT_SETTINGS = { identity: '', signer: '', replyTo: '', dailyMax: 40, digest: true, digestTo: '', followDays: 5, referral: true, referralReward: '' };
 
 // ---- Checking what the admin sends -------------------------------------------------------------
 export function cleanContact(b, old = {}) {
@@ -62,6 +63,12 @@ export function cleanContact(b, old = {}) {
   set('lang', LANGS.includes(b.lang) ? b.lang : 'es');
   set('tags', Array.isArray(b.tags) ? [...new Set(b.tags.map(t => str(t, 30).toLowerCase()).filter(Boolean))].slice(0, 12) : []);
   set('size', str(b.size, 40)); set('linkedin', webOf(b.linkedin));
+  // (Where it is, for the map: OpenStreetMap's point, or the town's.)
+  if (b.lat !== undefined && b.lon !== undefined) {
+    const la = +b.lat, lo = +b.lon;
+    if (b.lat === null || b.lon === null) { c.lat = null; c.lon = null; }
+    else if (Number.isFinite(la) && Number.isFinite(lo) && Math.abs(la) <= 90 && Math.abs(lo) <= 180 && (la || lo)) { c.lat = Math.round(la * 1e5) / 1e5; c.lon = Math.round(lo * 1e5) / 1e5; }
+  }
   if (!c.name) return { error: 'name' };
   if (b.email !== undefined && b.email && !c.email) return { error: 'email' };
   return { contact: c };
@@ -102,6 +109,7 @@ export function cleanEvent(e) {
 export function cleanSettings(b, old = DEFAULT_SETTINGS) {
   const s = { ...DEFAULT_SETTINGS, ...old };
   if (b.identity !== undefined) s.identity = text(b.identity, 400);
+  if (b.signer !== undefined) s.signer = str(b.signer, 80);                       // ({yo} in the messages)
   if (b.replyTo !== undefined) s.replyTo = mailOf(b.replyTo);
   if (b.dailyMax !== undefined) s.dailyMax = Math.min(500, Math.max(0, Math.round(+b.dailyMax || 0)));
   if (b.digest !== undefined) s.digest = !!b.digest;
@@ -114,13 +122,14 @@ export function cleanSettings(b, old = DEFAULT_SETTINGS) {
 const rid = () => b64url(crypto.getRandomValues(new Uint8Array(6))).toLowerCase().replace(/[^a-z0-9]/g, '').padEnd(8, '0').slice(0, 8);
 // The words to fill in a message: {nombre} the person (or «equipo de …»), {centro} the organisation, {ciudad}.
 export function fill(tpl, c, extra = {}) {
-  const v = { nombre: c.person || '', centro: c.name || '', ciudad: c.city || '', cargo: c.role || '', web: c.web || '', ...extra };
+  const v = { nombre: c.person || '', nombre_coma: c.person ? ', ' + c.person : '', centro: c.name || '', ciudad: c.city || '', cargo: c.role || '', web: c.web || '', ...extra };
   return String(tpl || '').replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m));
 }
 const summary = c => ({ id: c.id, name: c.name, kind: c.kind, city: c.city || '', region: c.region || '', country: c.country || '', status: c.status, email: !!c.email,
   consent: !!(c.consent && !c.unsub), unsub: c.unsub || null, nextAt: c.nextAt || null, nextWhat: c.nextWhat || '', updated: c.updated, created: c.created, source: c.source,
   tags: c.tags || [], campaign: c.campaign || null, referrer: c.referrer || null, seq: c.seq ? { id: c.seq.id, step: c.seq.step, nextAt: c.seq.nextAt } : null, person: c.person || '',
-  web: !!c.web, webAt: c.webFacts?.at || null, score: c.webFacts?.ok ? c.webFacts.score : null });
+  web: !!c.web, webAt: c.webFacts?.at || null, score: c.webFacts?.ok ? c.webFacts.score : null,
+  lat: c.lat ?? null, lon: c.lon ?? null, replied: c.replied || null, mailed: c.mailed || null });
 // May a sequence write to this contact now? (consent recorded, no way-out taken, an address, not stopped by its status)
 export const mailable = (c, seq) => !!(c && c.email && c.consent?.at && !c.unsub && (!seq || !(seq.stopOn || []).includes(c.status)));
 
@@ -214,6 +223,19 @@ export class Crm {
       if (a.facts?.ok && was !== a.facts.score) c.history.push({ at: now, by: 'rastreador', what: 'web', score: a.facts.score });
       await this.save(c); return Response.json({ ok: true });
     }
+    // The map: contacts not on it yet (to place them), and their places once found.
+    if (op === 'unlocated') {                             // { limit } → { items: [{ id, osm, city, region, country }], left }
+      const out = [];
+      for (const sm of (await st.list({ prefix: 's:' })).values()) if (sm.lat == null) out.push(sm.id);
+      const items = [];
+      for (const id of out.slice(0, Math.min(200, +a.limit || 50))) { const c = await this.getC(id); if (c) items.push({ id, osm: c.osm || null, city: c.city || '', region: c.region || '', country: c.country || '' }); }
+      return Response.json({ items, left: out.length });
+    }
+    if (op === 'located') {                               // { items: [{ id, lat, lon }] }
+      let n = 0;
+      for (const x of (a.items || []).slice(0, 500)) { const c = await this.getC(x.id); if (!c) continue; const { contact } = cleanContact({ lat: x.lat, lon: x.lon }, c); if (contact?.lat != null) { await this.save(contact); n++; } }
+      return Response.json({ located: n });
+    }
     if (op === 'known') {                                 // { osm: [ids] } → the ones already in (search results)
       const out = {}; for (const o of (a.osm || []).slice(0, 1000)) { const id = await st.get('k:o:' + o); if (id) out[o] = id; }
       return Response.json({ known: out });
@@ -251,7 +273,13 @@ export class Crm {
       for (const c of (await st.list({ prefix: 's:' })).values()) if (c.seq?.id === a.id) { const full = await this.getC(c.id); full.seq = null; await this.save(full); }
       return Response.json({ ok: true });
     }
-    if (op === 'tpls') return Response.json({ tpls: (await st.get('tpls')) || defaultTemplates() });
+    if (op === 'tpls') {
+      // (Default templates added later — the emails — appear once in a list already edited; deleted, they stay deleted.)
+      let list = await st.get('tpls');
+      if (list) { const offered = new Set((await st.get('tpls-offered')) || []), add = defaultTemplates().filter(t => !offered.has(t.id) && !list.some(x => x.id === t.id) && LATER_TPLS.includes(t.id));
+        if (add.length) { list = [...list, ...add]; await st.put({ tpls: list, 'tpls-offered': [...offered, ...add.map(t => t.id)] }); } }
+      return Response.json({ tpls: list || defaultTemplates() });
+    }
     if (op === 'tpl-put') {
       const { tpl, error } = cleanTemplate(a.tpl); if (error) return Response.json({ error }, { status: 400 });
       const list = (await st.get('tpls')) || defaultTemplates();
@@ -484,6 +512,23 @@ export class Crm {
       c.seq = { id: seq.id, step: 0, nextAt: now + (seq.steps[0].days || 0) * DAY, started: now };
       c.history.push({ at: now, by: a.by, what: 'seq-start', seq: seq.id }); await this.save(c); return Response.json({ contact: c });
     }
+    // An email written by hand (crm-reply.js): sent, or tried on another address.
+    if (op === 'mailed') {                                // { subject, test, to, by }
+      c.history.push({ at: now, by: a.by, what: 'mail', manual: true, subject: str(a.subject, 200), ...(a.test && { test: true, to: str(a.to, 200) }) });
+      if (!a.test) { c.mailed = now; if (c.status === 'new') { c.history.push({ at: now, by: a.by, what: 'status', from: 'new', to: 'contacted' }); c.status = 'contacted'; } }
+      await this.save(c); return Response.json({ ok: true });
+    }
+    // Its answer (Resend → /api/crm/inbound): kept; a real one moves it on — talking, its sequence stopped, a follow-up today.
+    if (op === 'reply') {                                 // { test, from, subject, text }
+      c.history.push({ at: now, by: 'contact', what: 'reply', from: str(a.from, 200), subject: str(a.subject, 200), text: text(a.text, 3000), ...(a.test && { test: true }) });
+      if (!a.test) {
+        c.replied = now;
+        if (['new', 'contacted'].includes(c.status)) { c.history.push({ at: now, by: 'system', what: 'status', from: c.status, to: 'talking' }); c.status = 'talking'; }
+        if (c.seq) { c.history.push({ at: now, by: 'system', what: 'seq-stop', why: 'reply' }); c.seq = null; }
+        c.nextAt = now; c.nextWhat = 'Contestar su respuesta';
+      }
+      await this.save(c); return Response.json({ ok: true, name: c.name });
+    }
     if (op === 'delete') {
       await st.delete(['c:' + pad(c.id), 's:' + pad(c.id), ...(c.email ? ['k:e:' + c.email] : []), ...(c.osm ? ['k:o:' + c.osm] : [])]);
       return Response.json({ ok: true });
@@ -493,8 +538,12 @@ export class Crm {
 }
 
 // The first message templates (for calls, LinkedIn and letters): the admin edits them.
+const LATER_TPLS = ['tplmail1', 'tplmail2'];
 export function defaultTemplates() {
   return [
+    // (Emails: only to contacts who agreed to receive them — the «Enviar» button checks it.)
+    { id: 'tplmail1', name: 'Correo a un centro educativo', channel: 'email', subject: 'Revela para {centro}', body: 'Hola{nombre_coma}:\n\nGracias por tu interés. Te escribo, como hablamos, para contarte en dos líneas qué es Revela: un editor de presentaciones para el aula con votaciones, cuestionarios y preguntas en directo, que abre y guarda PowerPoint y funciona en el navegador, sin instalar nada.\n\nSi te va bien, te enseño en 20 minutos cómo lo usaría el profesorado de {centro}, o te preparo una cuenta de prueba para el claustro.\n\nPuedes verlo aquí: https://revelaslides.com/schools\n\nUn saludo,\n{yo}' },
+    { id: 'tplmail2', name: 'Correo a una empresa', channel: 'email', subject: 'Presentaciones para el equipo de {centro}', body: 'Hola{nombre_coma}:\n\nTe escribo, como quedamos, con la información de Revela: un editor de presentaciones para reuniones, ventas, formación interna y eventos — con la marca de la empresa, votaciones y preguntas del público en directo, y compatible con PowerPoint.\n\nSi te parece, te hago una demostración de 20 minutos con una presentación vuestra, o te abro una prueba para el equipo.\n\nMás información: https://revelaslides.com/business\n\nUn saludo,\n{yo}' },
     { id: 'tplcall1', name: 'Llamada a un centro', channel: 'phone', subject: '', body: 'Hola, soy {yo}, de Revela. Llamo porque ayudamos a centros como {centro} a preparar clases con presentaciones interactivas: diapositivas, votaciones y cuestionarios en directo en una sola herramienta, compatible con PowerPoint y con Moodle.\n\n¿Con quién podría hablar sobre los recursos digitales del profesorado?\n\nSi le interesa, le envío información por correo (solo si me lo pide) o preparamos una demostración de 20 minutos.' },
     { id: 'tpllink1', name: 'LinkedIn: primer mensaje', channel: 'linkedin', subject: '', body: 'Hola, {nombre}: vi que trabajas en {centro}. Estoy detrás de Revela, un editor de presentaciones para el aula (votaciones y cuestionarios en directo, compatible con PowerPoint y Moodle). ¿Te parecería bien que te enseñara en 15 minutos cómo lo usan otros docentes?' },
     { id: 'tplcarta1', name: 'Carta a la dirección', channel: 'letter', subject: 'Revela para {centro}', body: 'A la atención de la dirección de {centro}\n{ciudad}\n\nEstimado equipo:\n\nLes escribo para presentarles Revela, una herramienta para crear presentaciones de clase con votaciones, cuestionarios y actividades en directo, compatible con PowerPoint y con Moodle, con los datos en Europa y en castellano, catalán, gallego y euskera.\n\nSi les interesa, pueden pedir una demostración o una prueba para su claustro en revelaslides.com/schools.\n\nUn saludo,\n{yo}' },
@@ -536,6 +585,32 @@ export async function resolveArea(env, area) {
   return { rel: place.osm_type === 'relation' ? +place.osm_id : null, way: place.osm_type === 'way' ? +place.osm_id : null, name: place.display_name, rank: +place.place_rank || 0,
     lat: +place.lat, lon: +place.lon, cc: String(place.address?.country_code || '').toUpperCase(), region: place.address?.state || place.address?.province || '',
     city: place.address?.city || place.address?.town || place.address?.village || '' };
+}
+// The map (admin «Captación ▸ Mapa»): the contacts not on it yet get a place — those from OpenStreetMap, their own point
+// (one Overpass query for up to 200); the rest, their town's (Nominatim, a few per call: its rules ask for one search a
+// second). Contacts found since this was added bring their point already. → { located, left }.
+export async function locateContacts(env, C, { towns = 5, sleep = ms => new Promise(r => setTimeout(r, ms)) } = {}) {
+  const { items, left } = await C('unlocated', { limit: 200 }), found = [];
+  const osm = items.filter(x => x.osm);
+  if (osm.length) {
+    const by = t => osm.filter(x => x.osm.startsWith(t + '/')).map(x => x.osm.split('/')[1]).join(',');
+    const parts = ['node', 'way', 'relation'].map(t => by(t) && `${t}(id:${by(t)});`).filter(Boolean).join('');
+    const r = await overpass(env, `[out:json][timeout:60];(${parts});out center;`);
+    if (!r.error) for (const e of r.elements) {
+      const x = osm.find(o => o.osm === `${e.type}/${e.id}`), lat = e.lat ?? e.center?.lat, lon = e.lon ?? e.center?.lon;
+      if (x && lat != null) found.push({ id: x.id, lat, lon });
+    }
+  }
+  const byTown = new Map();
+  for (const x of items.filter(x => !x.osm && x.city)) { const k = [x.city, x.region, x.country].filter(Boolean).join(', '); (byTown.get(k) || byTown.set(k, []).get(k)).push(x.id); }
+  let n = 0;
+  for (const [town, ids] of byTown) {
+    if (n++ >= towns) break; if (n > 1) await sleep(1100);
+    const p = await resolveArea(env, town); if (p.error || !Number.isFinite(p.lat)) continue;
+    for (const id of ids) found.push({ id, lat: p.lat, lon: p.lon });
+  }
+  const r = found.length ? await C('located', { items: found }) : { located: 0 };
+  return { located: r.located, left: Math.max(0, left - r.located) };
 }
 // The administrative areas inside one (a country's regions, a region's provinces) → [{ rel, name }] | { error }.
 export async function subAreas(env, rel, level) {
@@ -732,7 +807,7 @@ export async function crmApi(env, path, q, body, { GET, POST, by, json, audit })
   const C = (op, b) => crmCall(env, op, { ...b, by });
   const sub = path.replace(/^\/crm/, '') || '/';
   const send = r => json(r, r.error ? (r.error === 'not found' ? 404 : /taken|unsubscribed|no email|no consent|status/.test(r.error) ? 409 : 400) : 200);
-  if (GET && sub === '/stats') return json({ ...(await C('stats')), mail: !!(env.MAIL_SECRET && (env.EMAIL?.send || env.RESEND_KEY)) });
+  if (GET && sub === '/stats') return json({ ...(await C('stats')), mail: !!(env.MAIL_SECRET && (env.EMAIL?.send || env.RESEND_KEY)), answers: answersOn(env) });
   if (GET && sub === '/contacts') return json(await C('list', { q: q.get('q') || '', status: q.get('status') || '', kind: q.get('kind') || '', source: q.get('source') || '', tag: q.get('tag') || '',
     consent: q.get('consent') === '1', due: q.get('due') === '1', sort: q.get('sort') === 'score' ? 'score' : '', offset: +q.get('offset') || 0, limit: +q.get('limit') || 100 }));
   // The «Rastreador» (crawler.js): its state and settings, a step by hand, one contact's website now.
@@ -814,7 +889,9 @@ export async function crmApi(env, path, q, body, { GET, POST, by, json, audit })
     await audit({ action: 'ambassador-' + body.status, target: m[1], after: { proUntil: proUntil || null } });
     return json({ amb: r.amb, proUntil });
   }
-  m = sub.match(/^\/contacts\/(\d{1,9})(?:\/(status|note|log|next|consent|enroll|delete|message|crawl|use-email))?$/);
+  // The map: places the contacts not on it yet (OpenStreetMap's point for those found there; the town for the rest).
+  if (POST && sub === '/locate') return json(await locateContacts(env, C));
+  m = sub.match(/^\/contacts\/(\d{1,9})(?:\/(status|note|log|next|consent|enroll|delete|message|crawl|use-email|send))?$/);
   if (m) {
     const id = +m[1], op = m[2] || '';
     if (POST && op === 'crawl') {                         // its website, now (the same visit as the crawler's)
@@ -829,9 +906,15 @@ export async function crmApi(env, path, q, body, { GET, POST, by, json, audit })
     }
     if (GET && !op) return send(await C('get', { id }));
     if (POST && !op) { const r = await C('update', { id, contact: body.contact }); if (!r.error) await audit({ action: 'crm-update', target: 'crm:' + id }); return send(r); }
+    // An email by hand (crm-reply.js): to the contact (with consent), or a test to any address.
+    if (POST && op === 'send') {
+      const { sendMail, mailConfigured } = await import('./mail.js');
+      const r = await sendOne(env, id, body, { by, sendMail, mailConfigured, audit });
+      return json(r, r.status || 200);
+    }
     if (POST && op === 'message') {                       // a template filled for this contact (to copy: calls, LinkedIn, letters)
       const [{ tpls }, got] = await Promise.all([C('tpls'), C('get', { id })]); const t = tpls.find(x => x.id === body.tpl); if (!t || !got.contact) return json({ error: 'not found' }, 404);
-      const me = { yo: str(body.me, 80) || by };
+      const me = { yo: str(body.me, 80) || (await C('settings')).settings.signer || by };
       return json({ subject: fill(t.subject, got.contact, me), body: fill(t.body, got.contact, me), channel: t.channel });
     }
     if (POST && ['status', 'note', 'log', 'next', 'consent', 'enroll', 'delete'].includes(op)) {

@@ -23,6 +23,7 @@
 //   POST /api/admin/refund                 { sub, reason? , notify? }   (gives back the last AI charge not refunded yet)
 //   POST /api/admin/plan                   { sub, until (ms, 0 = remove), reason }   (Pro given by hand; Stripe's untouched)
 //   POST /api/admin/block                  { sub, blocked, reason }   (blocked: 403 on AI, cloud documents, calls…)
+//   GET  /api/admin/audience?days=         → «¿Para qué vas a usar Revela?»: anonymous counts (visits.js)
 //   GET  /api/admin/web?days=              → visits per day, pages, referrers, languages; 404s; the sitemap's extra
 //                                          addresses; visited pages the sitemap leaves out (visits.js)
 //   POST /api/admin/web/extra              { extra: [paths] } → { extra }   (added to /community/sitemap.xml)
@@ -624,6 +625,8 @@ export async function handleAdmin(req, env, url) {
     return json({ ok: true, ...r });
   }
   if (path === '/web' || path.startsWith('/web/')) return webApi(env, path, q, body, { GET, POST, by, json });
+  // «¿Para qué vas a usar Revela?»: the anonymous counts (visits.js), per day, in total and by language.
+  if (GET && path === '/audience') return json(env.VISITS ? await visitsCall(env, 'aud-stats', { days: +q.get('days') || 90 }) : { days: [], total: {}, langs: {} });
   // A person's cloud presentations (their account's list), and one of them back to how it was at a moment of the last
   // 30 days (docs.js 'pitr': Cloudflare's point-in-time recovery). With the bookmark from before, undone. Audited.
   { const m2 = path.match(/^\/users\/([\w.-]{1,100})\/docs$/);

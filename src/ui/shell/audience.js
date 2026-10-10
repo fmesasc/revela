@@ -4,6 +4,17 @@
 
 import { audience, audienceChoice, setAudience } from '../../core/audience.js';
 import { t } from '../../i18n/index.js';
+import { apiBase } from '../../io/cloud/account.js';
+
+// One anonymous count of the answer (the admin's «Negocio»: how many use it for teaching, a company, both): the answer,
+// the language and whether it was the first answer, a change or skipped. Nothing about who.
+function tell(v, kind) {
+  try {
+    const base = apiBase(); if (!base) return;
+    fetch(base + 'audience', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ v, kind, lang: document.documentElement.lang || '' }),
+      keepalive: true, credentials: 'omit' }).catch(() => {});
+  } catch {}
+}
 
 const apply = () => { document.documentElement.dataset.audience = audience(); };
 export function initAudience() {
@@ -25,7 +36,7 @@ export function audienceCard(onPick = () => {}) {
   // (Skipped: as always — both —, and not asked again; the settings keep the choice.)
   el.addEventListener('click', e => {
     const b = e.target.closest('[data-aud], .aud-skip'); if (!b) return;
-    const v = b.dataset.aud || 'both'; setAudience(v); el.remove(); onPick(v);
+    const v = b.dataset.aud || 'both'; setAudience(v); el.remove(); tell(v, b.dataset.aud ? 'first' : 'skip'); onPick(v);
   });
   return el;
 }
@@ -35,6 +46,6 @@ export function audienceField() {
   const now = audience();
   const l = document.createElement('label'); l.className = 'fr-l';
   l.innerHTML = `${t('Uso principal')}<select class="aud-sel">${OPTIONS.map(([v, , n]) => `<option value="${v}"${v === now ? ' selected' : ''}>${t(n)}</option>`).join('')}</select>`;
-  l.querySelector('select').addEventListener('change', e => setAudience(e.target.value));
+  l.querySelector('select').addEventListener('change', e => { setAudience(e.target.value); tell(e.target.value, 'change'); });
   return l;
 }

@@ -64,6 +64,25 @@ export class Visits {
       const top = (o, m = 30) => Object.entries(o).sort((x, y) => y[1] - x[1]).slice(0, m).map(([k, v]) => ({ k, n: v }));
       return Response.json({ days, pages: top(pages, 200), refs: top(refs), langs: top(langs, 20) });
     }
+    // «¿Para qué vas a usar Revela?»: 'a:<day>' { first: { edu, biz, both }, skip, change: { … }, langs: { es: { edu… } } }.
+    if (op === 'aud') {                                   // { v: edu | biz | both, kind: first | change | skip, lang }
+      const k = 'a:' + day, d = (await st.get(k)) || { first: {}, change: {}, skip: 0, langs: {} };
+      if (a.kind === 'skip') d.skip++;
+      else { bump(d[a.kind === 'change' ? 'change' : 'first'], a.v); if (a.kind !== 'change' && a.lang) { d.langs[a.lang] ||= {}; bump(d.langs[a.lang], a.v); } }
+      await st.put(k, d);
+      const old = [...(await st.list({ prefix: 'a:', end: 'a:' + dayOf(now - KEEP_DAYS * DAY) })).keys()]; if (old.length) await st.delete(old.slice(0, 128));
+      return Response.json({ ok: true });
+    }
+    if (op === 'aud-stats') {                             // { days } → { days: [{ day, first, change, skip }], total: { edu, biz, both, skip }, langs }
+      const n = Math.min(400, Math.max(1, +a.days || 90)), rows = await st.list({ prefix: 'a:', start: 'a:' + dayOf(now - (n - 1) * DAY) });
+      const total = { edu: 0, biz: 0, both: 0, skip: 0 }, langs = {}, days = [];
+      for (const [k, d] of rows) {
+        days.push({ day: k.slice(2), first: d.first, change: d.change, skip: d.skip });
+        for (const [v, x] of Object.entries(d.first)) total[v] = (total[v] || 0) + x; total.skip += d.skip || 0;
+        for (const [l, o] of Object.entries(d.langs || {})) { langs[l] ||= {}; for (const [v, x] of Object.entries(o)) langs[l][v] = (langs[l][v] || 0) + x; }
+      }
+      return Response.json({ days, total, langs });
+    }
     if (op === 'notfound') return Response.json({ items: [...(await st.list({ prefix: 'nf:' })).values()].filter(x => a.all || x.status === 'new').sort((x, y) => y.n - x.n).slice(0, 200) });
     if (op === 'nf-set') {                                // { path, status: ignored | redirect | new, to? }
       const k = 'nf:' + a.path, n = await st.get(k); if (!n) return Response.json({ error: 'not found' }, { status: 404 });

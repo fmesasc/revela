@@ -60,7 +60,10 @@ BLENDER_USD_PER_SECOND = "0.0001"
 # MAIL_FROM = "Revela <avisos@revelaslides.com>"
 # Secrets: MAIL_SECRET (signs the links to stop optional notices: `openssl rand -base64 32 |
 # npx wrangler secret put MAIL_SECRET`) and, only when not using Cloudflare Email Service,
-# RESEND_KEY (Resend's API key). Terms of service in force (their date; bump it to ask again):
+# RESEND_KEY (Resend's API key). Answers to Captación's emails (crm-reply.js): RESEND_WEBHOOK_SECRET, the signing
+# secret of a Resend webhook (event email.received → https://revelaslides.com/api/crm/inbound); RESEND_KEY reads their
+# text. Without it, answers go to the admin's address as before.
+# Terms of service in force (their date; bump it to ask again):
 # TERMS_VERSION = "2026-10-01"
 # Revela's Google client (public, as in src/core/config.js): people signed in to
 # Revela with Google can share and open collaboration rooms. To limit it to
