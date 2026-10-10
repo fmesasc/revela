@@ -18,6 +18,7 @@
 //   notes, hidden slides and transitions.
 // Effects without an equivalent (shadows, SmartArt…) are approximated or skipped.
 
+import { FX, fxOfPreset, dirOfSubtype } from '../../features/animation/fxcatalog.js';
 import { zipDataURL } from '../files.js';
 import { parseCommentText } from '../../features/collab/comments.js';
 import { esc } from '../../core/text.js';
@@ -648,7 +649,16 @@ const MEDIA_CALL = { 1: 'media-play', 2: 'media-pause', 3: 'media-stop' };
 // partsOf: a shape that became more than one block (its outline and its text) → all of them: an effect on the shape
 // plays on both, as in PowerPoint — before, only its text moved and the arrow or circle was there from the start.
 // (By paragraphs, p:txEl, only the text.)
-function readAnimations(doc, spidOf, blocks, size, groupOf = new Map(), partsOf = new Map()) {
+// A text's paragraphs (its top-level blocks, and the items of its lists) numbered from 0: data-p.
+function markParas(html) {
+  const box = document.createElement('div'); box.innerHTML = html; let n = 0;
+  for (const el of [...box.children]) {
+    if (/^(UL|OL)$/.test(el.tagName)) for (const li of el.children) li.setAttribute('data-p', n++);
+    else el.setAttribute('data-p', n++);
+  }
+  return box.innerHTML;
+}
+function readAnimations(doc, spidOf, blocks, size, groupOf = new Map(), partsOf = new Map(), theme = {}) {
   const main = all(doc, 'p:cTn').find(c => c.getAttribute('nodeType') === 'mainSeq');
   if (!main) return;
   let order = 0, carry = false;           // (carry: an effect left out started a click; the next one starts it)
@@ -668,7 +678,18 @@ function readAnimations(doc, spidOf, blocks, size, groupOf = new Map(), partsOf 
     let effect = 'fade-in', extra = {};
     const skip = () => { if (start === 'click') carry = true; };
     const has = tag => all(c, tag).length > 0;
+    // (PowerPoint's other effects, from its catalogue — fxcatalog.js: Wipe, Split, Blinds, Bold Reveal, Font Color…)
+    const fx = cls === 'emph' && [26, 32, 8, 6].includes(preset) ? null : fxOfPreset(cls, preset);
     if (cls === 'mediacall') { if (!MEDIA_CALL[preset] || !['video', 'audio'].includes(b.type)) { skip(); continue; } effect = MEDIA_CALL[preset]; }
+    else if (fx) {
+      effect = fx; const dir = dirOfSubtype(fx, sub); if (dir && dir !== FX[fx].dirs?.[0][0]) extra.dir = dir;   // (the first: its default)
+      // (A colour change: the colour it goes to — p:animClr's or a p:set's.)
+      const to = [...all(c, 'p:animClr'), ...all(c, 'p:set')].map(x => kid(x, 'p:to')).find(x => x && [...x.children].some(k => /Clr$/.test(k.localName)));
+      const col = to && colourOf(to, theme); if (FX[fx].colour && col && /^#[0-9a-f]{6}$/.test(col)) extra.color = col;
+      // (Only some paragraphs of the text — «by paragraph»: p:txEl/p:pRg —: those; an entrance or exit, the whole object.)
+      const rg = all(c, 'p:pRg')[0];
+      if (rg && FX[fx].kind === 'emphasis') { const st = +rg.getAttribute('st') || 0, en = +(rg.getAttribute('end') ?? st); extra.paras = Array.from({ length: Math.max(1, en - st + 1) }, (_, k) => st + k); }
+    }
     else if (cls === 'exit') effect = 'fade-out';
     else if (cls === 'emph' && preset === 26) effect = 'pulse';         // PowerPoint's Pulse
     else if (cls === 'emph' && preset === 32) effect = 'teeter';        // and Teeter
@@ -680,7 +701,7 @@ function readAnimations(doc, spidOf, blocks, size, groupOf = new Map(), partsOf 
     else if (cls === 'emph') effect = 'color-pulse';
     else if (cls === 'path') {
       effect = 'path'; extra = pathFromSVG(all(c, 'p:animMotion')[0]?.getAttribute('path') || '', size);
-    } else if (preset === 2) effect = FLY[sub] || 'fade-up';
+    } else if (preset === 2) effect = FLY[sub] || 'fade-up';      // (Fly In: the catalogue's, above; this, if it ever isn't)
     else if (preset === 42 || preset === 47) {                  // float in: its start offset gives the direction
       const v = all(c, 'p:strVal').map(x => x.getAttribute('val')).find(x => /#ppt_[xy][+-]/.test(x || '')) || '#ppt_y+';
       effect = /ppt_y\+/.test(v) ? 'fade-up' : /ppt_y-/.test(v) ? 'fade-down' : /ppt_x\+/.test(v) ? 'fade-left' : 'fade-right';
@@ -693,6 +714,9 @@ function readAnimations(doc, spidOf, blocks, size, groupOf = new Map(), partsOf 
     // (On a group: the first of its objects as PowerPoint says, the others with it.)
     targets.forEach((t, k) => pushAnim(t, { effect, order: ++order, seq: order, start: k ? 'withPrev' : start, duration: dur, delay, ...structuredClone(extra) }));
   }
+  // A text with an emphasis on some of its paragraphs: each paragraph numbered (data-p), as PowerPoint counts them, for
+  // the presentation's rule to find them (fxcatalog.js fxParagraphCSS).
+  for (const b of blocks) if (b.type === 'text' && [b.animation, ...(b.anims || [])].some(a => a?.paras)) b.html = markParas(b.html);
   // The clicks: «with previous» and «after previous» play within the click of the one before (PowerPoint's
   // timeline), not each on a click of its own — a slide whose 53 effects need 9 clicks needed 53.
   normalizeAnim({ blocks });
@@ -1246,7 +1270,7 @@ export async function importPPTX(file, { progress = null, notes: said = [], medi
       const m = [...all(tr, '*')].find(e => /:morph$/.test(e.tagName));
       if (m) { morph = { byWord: 'words', byChar: 'chars' }[m.getAttribute('option')] || 'objects'; transition = null; }
     }
-    readAnimations(doc, spidOf, blocks, size, groupOf, partsOf);
+    readAnimations(doc, spidOf, blocks, size, groupOf, partsOf, theme);
     // (No transition in PowerPoint is none — a cut —, not the deck's.)
     return { _path: slidePath, id: uid(), sectionId: null, background, transition: tr ? transition : 'none', ...(transitionDir && { transitionDir }), hidden, notes, autoSlide, blocks, _layout: layoutPath, ...(hideMaster && { hideMaster: true }),
       ...(dur && transition && { transitionDur: dur }), ...(morph && { autoAnimate: true }), ...(morph && dur && { aaDuration: dur / 1000 }),

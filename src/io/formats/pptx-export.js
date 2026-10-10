@@ -4,6 +4,7 @@
 // text, images, shapes, tables and charts. 3D models, video, web embeds, icons
 // and equations can't be represented natively and are skipped.
 
+import { FX, subtypeOfDir } from '../../features/animation/fxcatalog.js';
 import { diagramLayout } from '../../render/diagrams.js';
 import { commentText } from '../../features/collab/comments.js';
 import { state } from '../../core/store.js';
@@ -558,7 +559,7 @@ function effectXML(a, spid, ids, deck, delay, first) {
   const dur = a.duration ?? 500, id = () => ids.n++;
   const tgt = `<p:tgtEl><p:spTgt spid="${spid}"/></p:tgtEl>`;
   const node = first ? 'clickEffect' : a.start === 'afterPrev' ? 'afterEffect' : 'withEffect';
-  let cls, preset, body;
+  let cls, preset, body, sub = 0;
   if (a.effect === 'path') {
     // The whole shape (curves and drawn paths as lines through their points), relative to the slide size.
     const { w, h } = deck.size, pts = motionPoints(a).slice(1).map(([x, y]) => `${+(x / w).toFixed(4)} ${+(y / h).toFixed(4)}`);
@@ -587,6 +588,31 @@ function effectXML(a, spid, ids, deck, delay, first) {
     const up = +(40 / deck.size.h).toFixed(4), up2 = +(12 / deck.size.h).toFixed(4);
     cls = 'path'; preset = 0;
     body = `<p:animMotion origin="layout" path="M 0 0 L 0 -${up} L 0 0 L 0 -${up2} L 0 0 E" pathEditMode="relative"><p:cBhvr><p:cTn id="${id()}" dur="${dur}" fill="hold"/>${tgt}<p:attrNameLst><p:attrName>ppt_x</p:attrName><p:attrName>ppt_y</p:attrName></p:attrNameLst></p:cBhvr></p:animMotion>`;
+  } else if (FX[a.effect]) {
+    // PowerPoint's other effects (fxcatalog.js): its preset, its filter where PowerPoint draws it with one; an emphasis does
+    // what PowerPoint's does (bold, underline, a colour, half transparent) — on its paragraphs only when it has them.
+    const f = FX[a.effect], pr = Array.isArray(a.paras) && a.paras.length ? `<p:txEl><p:pRg st="${Math.min(...a.paras)}" end="${Math.max(...a.paras)}"/></p:txEl>` : '';
+    const tg = pr ? `<p:tgtEl><p:spTgt spid="${spid}">${pr}</p:spTgt></p:tgtEl>` : tgt, col = (/^#[0-9a-f]{6}$/i.test(a.color || '') ? a.color : '#e53935').slice(1).toUpperCase();
+    const setTo = (attr, val, extra = '') => `<p:set><p:cBhvr${extra}><p:cTn id="${id()}" dur="${dur}" fill="hold"/>${tg}<p:attrNameLst><p:attrName>${attr}</p:attrName></p:attrNameLst></p:cBhvr><p:to><p:strVal val="${val}"/></p:to></p:set>`;
+    const clr = attr => `<p:animClr clrSpc="rgb" dir="cw"><p:cBhvr override="childStyle"><p:cTn id="${id()}" dur="${dur}" fill="hold"/>${tg}<p:attrNameLst><p:attrName>${attr}</p:attrName></p:attrNameLst></p:cBhvr><p:to><a:srgbClr val="${col}"/></p:to></p:animClr>`;
+    preset = f.ppt || 10; sub = subtypeOfDir(a.dir || f.dirs?.[0][0]);
+    if (f.kind === 'emphasis') {
+      cls = 'emph';
+      body = a.effect === 'bold-reveal' || a.effect === 'bold-flash' ? setTo('style.fontWeight', 'bold', ' override="childStyle"')
+        : a.effect === 'underline' ? setTo('style.textDecorationUnderline', 'true', ' override="childStyle"')
+        : f.colour && a.effect === 'fill-color' ? clr('fillcolor') + setTo('fill.type', 'solid')
+        : f.colour && a.effect === 'line-color' ? clr('stroke.color')
+        : f.colour ? clr('style.color')
+        : a.effect === 'transparency' ? `<p:animEffect transition="out" filter="image" prLst="opacity: 0.5"><p:cBhvr rctx="IE"><p:cTn id="${id()}" dur="${dur}" fill="hold"/>${tg}</p:cBhvr></p:animEffect>`
+        : `<p:animScale><p:cBhvr><p:cTn id="${id()}" dur="${Math.max(1, Math.round(dur / 2))}" autoRev="1" fill="hold"/>${tg}</p:cBhvr><p:by x="105000" y="105000"/></p:animScale>`;
+    } else {
+      const inn = f.kind === 'entrance', filter = f.filter ? f.filter(a.dir || f.dirs?.[0][0]) : 'fade';
+      cls = inn ? 'entr' : 'exit';
+      const vis = (val, at) => `<p:set><p:cBhvr><p:cTn id="${id()}" dur="1" fill="hold"><p:stCondLst><p:cond delay="${at}"/></p:stCondLst></p:cTn>${tgt}`
+        + `<p:attrNameLst><p:attrName>style.visibility</p:attrName></p:attrNameLst></p:cBhvr><p:to><p:strVal val="${val}"/></p:to></p:set>`;
+      const eff = `<p:animEffect transition="${inn ? 'in' : 'out'}" filter="${filter}"><p:cBhvr><p:cTn id="${id()}" dur="${dur}"/>${tgt}</p:cBhvr></p:animEffect>`;
+      body = inn ? vis('visible', 0) + eff : eff + vis('hidden', dur - 1);
+    }
   } else if (!isEntrance(a.effect)) {
     cls = 'exit'; preset = 10;
     body = `<p:animEffect transition="out" filter="fade"><p:cBhvr><p:cTn id="${id()}" dur="${dur}"/>${tgt}</p:cBhvr></p:animEffect>`
@@ -604,7 +630,7 @@ function effectXML(a, spid, ids, deck, delay, first) {
       + `<p:attrNameLst><p:attrName>style.visibility</p:attrName></p:attrNameLst></p:cBhvr><p:to><p:strVal val="visible"/></p:to></p:set>`
       + `<p:animEffect transition="in" filter="fade"><p:cBhvr><p:cTn id="${id()}" dur="${dur}"/>${tgt}</p:cBhvr></p:animEffect>`;
   }
-  return `<p:par><p:cTn id="${id()}" presetID="${preset}" presetClass="${cls}" presetSubtype="0" fill="hold" nodeType="${node}">`
+  return `<p:par><p:cTn id="${id()}" presetID="${preset}" presetClass="${cls}" presetSubtype="${sub}" fill="hold" nodeType="${node}">`
     + `<p:stCondLst><p:cond delay="${delay}"/></p:stCondLst><p:childTnLst>${body}</p:childTnLst></p:cTn></p:par>`;
 }
 function timingXML(s, spids, deck) {

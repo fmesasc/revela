@@ -10,6 +10,7 @@ import { EFFECT_LABEL, objLabel } from '../panels/animation.js';
 import { ANIM_SOUNDS, soundRuntime } from '../../io/runtime/sounds.js';
 import { readFile } from '../shell/openfile.js';
 import { t, currentLang } from '../../i18n/index.js';
+import { FX, FX_COLOURS } from '../../features/animation/fxcatalog.js';
 
 const $ = s => document.querySelector('#ribbon [data-page="animations"] ' + s);
 const MIXED = Symbol('mixed');
@@ -22,6 +23,9 @@ function effectOptions(a) {
   if (DIRECTIONS.some(([k]) => k === e)) return DIRECTIONS.map(([k, l]) => [`effect:${k}`, l, k === e]);
   const hi = e.match(/^(highlight-(?:current-)?)(red|green|blue)$/);
   if (hi) return COLOURS.map(([c, l]) => [`effect:${hi[1]}${c}`, l, c === hi[2]]);
+  // (PowerPoint's other effects: a direction, or a colour — fxcatalog.js.)
+  if (FX[e]?.dirs) return FX[e].dirs.map(([k, l]) => [`dir:${k}`, l, (a.dir || FX[e].dirs[0][0]) === k]);
+  if (FX[e]?.colour) return FX_COLOURS.map(([c, l]) => [`color:${c}`, l, (a.color || '#e53935') === c]);
   if (e === 'path') return [['line', 'Recto'], ['arc', 'Arco'], ['wave', 'Onda'], ['loop', 'Bucle'], ...(a.points ? [['custom', 'Dibujado']] : [])]
     .map(([k, l]) => [`pathShape:${k}`, l, (a.pathShape || 'line') === k]);
   return [];

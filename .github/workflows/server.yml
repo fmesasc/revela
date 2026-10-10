@@ -44,6 +44,7 @@ on:
       - 'src/features/ai/specs.js'
       - 'src/features/ai/vision.js'
       - 'src/features/animation/transitions.js'
+      - 'src/features/animation/fxcatalog.js'
       - 'src/features/content/files.js'
       - 'src/features/content/gltf.js'
       - 'src/features/content/library3d.js'

@@ -45,6 +45,8 @@ import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } fr
 import { INK_CSS, inkJS } from '../runtime/ink.js';
 import { READING_CSS, readingJS } from '../runtime/reading.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
+import { fxVars, fxPresentationCSS, fxParagraphCSS, isFx, FX } from '../../features/animation/fxcatalog.js';
+const FX_REV = e => !!FX[e]?.reverse;
 import { animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CSS, EMPHASIS_FX, SIZE_FX, animScale, isEntrance, MEDIA_FX, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars, layoutOf } from '../../features/document/master.js';
 import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, magOrigin, underArea, viewOf, MAG_SKIP } from '../../features/document/magnify.js';
@@ -68,7 +70,7 @@ const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
 const cssKey = key => String(key).replace(/[^\w-]/g, '_');
 const animVars = (b, a = b.animation, key = b.id) => (a ? `transition-duration:${a.duration ?? 500}ms;transition-delay:${a.delay ?? 0}ms;`
     + `--anim-dur:${a.duration ?? 500}ms;--anim-del:${a.delay ?? 0}ms;` + (SIZE_FX.includes(a.effect) ? `--anim-scale:${animScale(a)};` : '')
-    + (a.effect === 'path' ? `--dx:${a.dx || 0}px;--dy:${a.dy || 0}px;--pk:rvP${cssKey(key)};` : '') : '');
+    + (a.effect === 'path' ? `--dx:${a.dx || 0}px;--dy:${a.dy || 0}px;--pk:rvP${cssKey(key)};` : '') + fxVars(a) : '');
 
 // Custom entrance effects that reveal.js doesn't provide (used only if present).
 const CUSTOM_KF = {
@@ -88,6 +90,15 @@ function emphasisCSS(deck) {
   if (!used.size) return '';
   const kf = EFFECT_KF_CSS.split('\n').filter(l => [...used].some(e => l.startsWith(`@keyframes ${EFFECT_KF[e]}{`)));
   return [...used].map(e => `.reveal .slides section .fragment.${e}{opacity:1;visibility:inherit} .reveal .slides section .fragment.${e}.visible{animation:${EFFECT_KF[e]} var(--anim-dur,600ms) ease-in-out var(--anim-del,0ms) both}`).join(' ') + ' ' + kf.join(' ');
+}
+// PowerPoint's other effects (fxcatalog.js): the ones used, and an emphasis on some paragraphs of a text only.
+function fxCSS(deck) {
+  const used = new Set(), paras = [];
+  deck.slides.forEach(s => s.blocks.forEach(b => animsOf(b).forEach((a, i) => {
+    if (!isFx(a.effect)) return; used.add(a.effect);
+    if (Array.isArray(a.paras) && a.paras.length) paras.push(fxParagraphCSS(a.effect, cssKey(animKey(b, i)), a.paras));
+  })));
+  return [fxPresentationCSS(used), ...paras].filter(Boolean).join('\n');
 }
 function customEffectCSS(deck) {
   const used = new Set();
@@ -183,10 +194,12 @@ function animAttrs(b, slide, a = b.animation, key = b.id) {
     + (MEDIA_FX.includes(effect) ? ` data-mfx="${effect}"` : '')
     + (a.sound ? ` data-sound="${esc(a.sound)}"${a.sound === 'custom' && a.soundSrc && /^(data:audio\/|blob:)/.test(a.soundSrc) ? ` data-sound-src="${esc(a.soundSrc)}"` : ''}` : '');
   if (trigger && slide?.blocks.some(x => x.id === trigger))       // played on click of another object
-    return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}" data-trig="${trigger}" data-kf="${effect === 'path' ? 'rvP' + cssKey(key) : effect === 'pdfview' || MEDIA_FX.includes(effect) ? 'none' : EFFECT_KF[effect] || 'rvIn'}"`
+    return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}${isFx(effect) ? ' ' + effect : ''}"${FX_REV(effect) ? ' data-rev' : ''} data-trig="${trigger}" data-kf="${effect === 'path' ? 'rvP' + cssKey(key) : effect === 'pdfview' || MEDIA_FX.includes(effect) ? 'none' : EFFECT_KF[effect] || 'rvIn'}"`
       + ` data-dur="${duration ?? 500}" data-del="${delay ?? 0}"` + clip;
   const cls = effect === 'path' ? ((a.pathShape && a.pathShape !== 'line') || (pathTurns(a) && b.type !== 'model') ? 'rv-pathc' : 'rv-path') : effect;
-  return src + ` class="fragment ${cls}" data-fragment-index="${order}"` + clip;
+  // (An emphasis on some paragraphs only: its rule finds them by this key — fxParagraphCSS.)
+  const fxp = isFx(effect) && Array.isArray(a.paras) && a.paras.length ? ` data-fxp="${cssKey(key)}"` : '';
+  return src + ` class="fragment ${cls}" data-fragment-index="${order}"` + fxp + clip;
 }
 // An object's next animations: each one a layer around it (the last one
 // outermost), so they add up — it goes somewhere, then from there somewhere
@@ -793,6 +806,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal .rv-code.no-scroll pre code{overflow:hidden}
  .deck-footer{position:fixed;left:12px;bottom:8px;z-index:30;font-size:14px;opacity:.7;color:#fff;mix-blend-mode:difference}
  ${customEffectCSS(deck)}
+ ${fxCSS(deck)}
  ${customTransitionCSS(usedTransitions(deck), deck.size)}
  ${backdropCSS(bd, w, h)}
  .reveal .slides section .fragment.rv-path{opacity:1;visibility:inherit}

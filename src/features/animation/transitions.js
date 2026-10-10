@@ -1,6 +1,7 @@
 // Per‑slide transitions and per‑object entrance animations.
 
 import { state, commit, currentSlide, selectedBlock, selectedBlocks, targetSlides } from '../../core/store.js';
+import { FX, FX_KF_CSS, FX_PROPS_CSS } from './fxcatalog.js';
 
 // Effect options (as in PowerPoint): where the new slide comes from, or how
 // it opens. The first one is the default.
@@ -106,6 +107,8 @@ export const EFFECT_KF = {
   'highlight-current-red': 'rvHi', 'highlight-current-green': 'rvHi', 'highlight-current-blue': 'rvHi', 'highlight-red': 'rvHi', 'highlight-green': 'rvHi', 'highlight-blue': 'rvHi',
   'strike': 'rvIn', 'path': 'rvPath', 'spin360': 'rvTurn', 'draw': 'rvIn',
   'pulse': 'rvPulse', 'teeter': 'rvTeeter', 'jump': 'rvJump', 'color-pulse': 'rvGlow',
+  // (PowerPoint's other effects: fxcatalog.js; an exit plays its entrance's keyframes backwards.)
+  ...Object.fromEntries(Object.values(FX).map(f => [f.id, f.kfName])),
 };
 // Emphasis on an object that stays where it is, seen before and after (PowerPoint's
 // Pulse, Teeter, a jump on the spot, Color pulse): they hide nothing.
@@ -136,7 +139,9 @@ export const EFFECT_KF_CSS = `@keyframes rvIn{from{opacity:0}to{opacity:1}}
 @keyframes rvPulse{0%,100%{transform:none}30%{transform:scale(1.15)}60%{transform:scale(.97)}}
 @keyframes rvTeeter{0%,100%{transform:none}20%{transform:rotate(7deg)}40%{transform:rotate(-6deg)}60%{transform:rotate(4deg)}80%{transform:rotate(-2deg)}}
 @keyframes rvJump{0%,55%,85%,100%{transform:none}30%{transform:translateY(-40px)}70%{transform:translateY(-12px)}}
-@keyframes rvGlow{0%,100%{filter:none}50%{filter:brightness(1.45) saturate(1.8) drop-shadow(0 0 14px rgba(255,214,90,.9))}}`;
+@keyframes rvGlow{0%,100%{filter:none}50%{filter:brightness(1.45) saturate(1.8) drop-shadow(0 0 14px rgba(255,214,90,.9))}}
+${FX_PROPS_CSS}
+${FX_KF_CSS}`;
 // Motion paths: points (offsets from the start) along the chosen shape, ending
 // at (dx, dy). 'line' is straight; 'arc' bulges to one side; 'wave' snakes;
 // 'loop' makes a full turn half way; 'custom' is drawn by hand (a.points, the
@@ -240,7 +245,7 @@ export function simplifyStroke(pts, tol = 6) {
 // A video's (or animated GIF's) own steps, as PowerPoint's media animations: play, pause, stop — in the order of the
 // animations, with the click, with or after the previous one, or on a click on another object.
 export const MEDIA_FX = ['media-play', 'media-pause', 'media-stop'];
-export const isEntrance = effect => !['media-play', 'media-pause', 'media-stop', 'fade-out', 'semi-fade-out', 'highlight-red', 'highlight-green', 'highlight-blue', 'highlight-current-red', 'highlight-current-green', 'highlight-current-blue', 'strike', 'path', 'grow', 'shrink', 'clip3d', 'spin360', 'pdfview', ...EMPHASIS_FX].includes(effect);
+export const isEntrance = effect => (FX[effect] ? FX[effect].kind === 'entrance' : !['media-play', 'media-pause', 'media-stop', 'fade-out', 'semi-fade-out', 'highlight-red', 'highlight-green', 'highlight-blue', 'highlight-current-red', 'highlight-current-green', 'highlight-current-blue', 'strike', 'path', 'grow', 'shrink', 'clip3d', 'spin360', 'pdfview', ...EMPHASIS_FX].includes(effect));
 
 // Per‑object animations: effect + order (fragment index, the click) + start + timing.
 // An object can have several, one after another (like PowerPoint's "Add
@@ -259,7 +264,7 @@ const fresh = (effect, props = {}) => ({ effect, order: animEntries().length + 1
   ...(effect === 'path' && { dx: 200, dy: 0 }), ...props });
 
 // Which kind of effect it is (PowerPoint's green, yellow and red stars, and paths).
-const EXIT_FX = ['fade-out', 'semi-fade-out'];
+const EXIT_FX = ['fade-out', 'semi-fade-out', ...Object.values(FX).filter(f => f.kind === 'exit').map(f => f.id)];
 export const effectKind = effect => (effect === 'path' ? 'path' : EXIT_FX.includes(effect) ? 'exit' : isEntrance(effect) ? 'entrance' : 'emphasis');
 // The animation of an object that the ribbon shows and edits: the one chosen
 // (in the Animation pane, the ribbon's picker, or the one just added), else its first.

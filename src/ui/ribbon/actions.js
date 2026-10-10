@@ -300,6 +300,7 @@ export const ACTIONS = {
   'anim-play': () => playAnimations(),
   'draw-path': () => startPathDraw(),
   'anim-add': () => openAddAnimation(document.querySelector('[data-action="anim-add"]')),
+  'anim-more': () => import('../dialogs/animfx.js').then(m => m.openMoreEffects()),
   'insert-date': () => blocks.addDate(),
   'insert-figindex': () => blocks.addFigIndex(),
   'insert-slideref': () => blocks.addSlideRef(),

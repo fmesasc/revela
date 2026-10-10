@@ -678,6 +678,68 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const blob = await R.pptx.buildPptxBlob(); assert(blob.size > 0, 'se exporta igual');
   });
 
+  await test('todos los efectos de PowerPoint: entradas, salidas y énfasis (con opciones), en el editor, la presentación, PowerPoint y ODP', async () => {
+    reset(); const W = frame.contentWindow, T = await W.eval("import('/src/features/animation/transitions.js')"), C = await W.eval("import('/src/features/animation/fxcatalog.js')");
+    const ids = Object.keys(C.FX);
+    assert(ids.length >= 90, 'el catálogo: ' + ids.length + ' efectos');
+    for (const id of ids) {
+      const f = C.FX[id];
+      assert(T.EFFECT_KF[id] && T.EFFECT_KF_CSS.includes(`@keyframes ${f.kfName}{`), id + ': con sus fotogramas');
+      eq(T.isEntrance(id), f.kind === 'entrance', id + ': ¿entrada?'); eq(T.effectKind(id), f.kind, id + ': su tipo');
+    }
+    assert(C.FX['bold-reveal'] && C.FX['wipe-out'] && C.FX['fill-color'].colour, 'revelación en negrita, salidas y colores');
+    // The dialog «Más efectos»: by kind and PowerPoint's groups; a click chooses.
+    const b = newText(); b.html = '<div>Uno</div><div>Dos</div><div>Tres</div>'; select(b); await sleep(10);
+    D.querySelector('[data-action="anim-more"]').click(); for (let i = 0; i < 20 && !D.getElementById('fx-modal'); i++) await sleep(20);
+    const m = D.getElementById('fx-modal');
+    assert(m && m.querySelectorAll('[data-kind]').length === 3 && /Llamativos/.test(m.textContent), 'diálogo con Entrada, Énfasis y Salida, por grupos');
+    m.querySelector('[data-fx="wipe"]').dispatchEvent(new W.PointerEvent('pointerover', { bubbles: true })); await sleep(20);
+    m.querySelector('[data-fx="wipe"]').click(); await sleep(10);
+    eq(b.animation.effect, 'wipe', 'elegido: Barrido'); assert(!D.getElementById('fx-modal'), 'y se cierra');
+    // Its options: the direction.
+    const opts = D.querySelector('#ribbon [data-anim-opts]'); R.render(); await sleep(30);
+    assert([...opts.options].some(o => o.value === 'dir:left' && /izquierda/i.test(o.textContent)), 'opciones de efecto: desde dónde');
+    opts.value = 'dir:left'; opts.dispatchEvent(new W.Event('change')); await sleep(10); eq(b.animation.dir, 'left', 'desde la izquierda');
+    // An exit, an emphasis on a paragraph and a colour.
+    R.store.commit(() => { b.anims = [{ effect: 'bold-reveal', order: 2, start: 'click', paras: [1] }, { effect: 'font-color', order: 3, start: 'click', color: '#1e88e5' }, { effect: 'blinds-out', order: 4, start: 'click' }];
+      b.html = '<div data-p="0">Uno</div><div data-p="1">Dos</div><div data-p="2">Tres</div>'; });
+    T.normalizeAnim();
+    const html = R.io.buildHTML();
+    assert(/class="fragment wipe"/.test(html) && /--fx-clip:inset\(0 100% 0 0\)/.test(html) && /@keyframes rvxWipe\{/.test(html), 'presentación: barrido desde la izquierda');
+    assert(/fragment\.blinds-out\{opacity:1;visibility:inherit\}/.test(html) && /rvxBlinds var\(--anim-dur,600ms\) ease var\(--anim-del,0ms\) reverse both/.test(html) && /@property --fxp/.test(html), 'una salida: visible antes y su animación al revés');
+    assert(/data-fxp="[^"]+"/.test(html) && /\[data-p="1"\]\)\{animation:rvxBoldReveal/.test(html), 'negrita solo en su párrafo');
+    assert(/--fx-color:#1e88e5/.test(html), 'con su color');
+    // Presented: the paragraph goes bold, the others don't; the exit hides it.
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    try {
+      f.srcdoc = R.io.buildHTML(R.state.deck, { inApp: true });
+      for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
+      const RV = f.contentWindow.Reveal, doc = f.contentDocument, w = (p) => f.contentWindow.getComputedStyle(doc.querySelector(`section.present [data-p="${p}"]`)).fontWeight;
+      RV.slide(0, 0, 1); await sleep(800);
+      eq(w(1), '700', 'presentando: «Dos» en negrita'); eq(w(0), '400', '«Uno», no');
+      RV.slide(0, 0, 3); await sleep(900);
+      const el = doc.querySelector('section.present .fragment.blinds-out');
+      assert(el && f.contentWindow.getComputedStyle(el).maskImage !== 'none', 'la salida, con sus persianas');
+    } finally { f.remove(); }
+    // The editor's preview plays them (no error).
+    R.blocks && (await W.eval("import('/src/ui/canvas/preview.js')")).playAnimations(); await sleep(50);
+    // PowerPoint: Wipe from the left with its filter; Bold Reveal on its paragraph; Blinds as an exit; and back.
+    await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
+    const blob = await R.pptx.buildPptxBlob(), xml = await (await W.JSZip.loadAsync(blob)).file('ppt/slides/slide1.xml').async('string');
+    assert(/presetID="22" presetClass="entr" presetSubtype="8"/.test(xml) && /filter="wipe\(right\)"/.test(xml), 'en PowerPoint: Barrido desde la izquierda');
+    assert(/presetID="15" presetClass="emph"/.test(xml) && /<p:pRg st="1" end="1"\/>/.test(xml) && /style\.fontWeight/.test(xml), 'Revelación en negrita de su párrafo');
+    assert(/presetID="3" presetClass="exit"/.test(xml) && /filter="blinds\(horizontal\)"/.test(xml), 'Persianas de salida');
+    assert(/presetID="3" presetClass="emph"/.test(xml) && /<a:srgbClr val="1E88E5"\/>/.test(xml), 'Color de fuente, con el suyo');
+    const back = (await R.pptxImport.importPPTX(new W.File([blob], 'fx.pptx'))).slides[0].blocks.find(x => x.type === 'text' && /Dos/.test(x.html));
+    const got = T.animsOf(back).map(a => a.effect + (a.dir ? ':' + a.dir : '') + (a.paras ? ':' + a.paras : '') + (a.color ? ':' + a.color : ''));
+    eq(got.join(' '), 'wipe:left bold-reveal:1 font-color:#1e88e5 blinds-out', 'y de vuelta, los mismos: ' + got.join(' '));
+    assert(/data-p="1"/.test(back.html), 'con sus párrafos numerados');
+    // OpenDocument: the same names Impress uses, and back.
+    const ODP = await W.eval("import('/src/io/formats/odp.js')"), odp = await ODP.buildODP();
+    const c = await (await W.JSZip.loadAsync(odp)).file('content.xml').async('string');
+    assert(/ooo-entrance-wipe/.test(c) && /smil:type="barWipe"/.test(c) && /ooo-exit-venetian-blinds/.test(c) && /ooo-emphasis-bold/.test(c), 'en ODP: los de Impress');
+  });
+
   await test('énfasis que no oculta: latido, balanceo, salto y destello (editor, presentación y PowerPoint)', async () => {
     reset(); const W = frame.contentWindow, T = await W.eval("import('/src/features/animation/transitions.js')");
     for (const e of ['pulse', 'teeter', 'jump', 'color-pulse']) { assert(!T.isEntrance(e) && T.EFFECT_KF[e], e + ': énfasis con su animación'); }

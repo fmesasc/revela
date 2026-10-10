@@ -423,7 +423,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // «With previous» and «after previous» share the click of the one before: three clicks, not six.
     eq(A.order, 1, 'clic 1'); eq(by('Dos').animation.order, 1, 'con la anterior: el mismo clic'); eq(by('Dos').animation.start, 'withPrev');
     eq(by('Tres').animation.order, 1, 'después de la anterior: el mismo clic'); eq(by('Tres').animation.effect, 'zoom-in', 'zoom');
-    const emph = by('Uno').anims?.[0]; eq(emph?.effect, 'color-pulse', 'Revelar en negrita: un brillo, no crecer al 130 %'); eq(emph.order, 2, 'clic 2');
+    const emph = by('Uno').anims?.[0]; eq(emph?.effect, 'bold-reveal', 'Revelación en negrita: la suya (antes, un brillo)'); eq(emph.order, 2, 'clic 2');
     eq(by('Cuatro').animation.order, 3, 'clic 3'); eq(by('Cuatro').animation.duration, 0, 'Aparecer es instantáneo');
     const v = bs.find(q => q.type === 'video'); eq(v?.animation?.effect, 'media-play', 'el vídeo se reproduce (mediacall)'); eq(v.animation.order, 3, 'con su clic');
     eq(deck.slides[0].transition, 'fade', 'fundido'); eq(deck.slides[0].transitionDur, 700, 'su duración exacta (p14:dur)');

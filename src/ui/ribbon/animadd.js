@@ -20,6 +20,7 @@ const PALETTE = [
     ['pulse', 'Latido', 'favorite'], ['teeter', 'Balanceo', 'vibration'], ['jump', 'Salto', 'keyboard_double_arrow_up'], ['color-pulse', 'Destello', 'flare']]],
   ['Salida', [['fade-out', 'Desaparecer', 'visibility_off'], ['semi-fade-out', 'Atenuar', 'opacity']]],
   ['Movimiento', [['path', 'Trayectoria recta', 'trending_flat'], ['draw', 'Dibujar un recorrido', 'gesture']]],
+  ['Más', [['more', 'Más efectos…', 'auto_awesome_motion']]],
 ];
 
 // A PDF's step after its last one: the next page, a page and part of it, or the whole page again.
@@ -42,6 +43,7 @@ export function openAddAnimation(anchor) {
       + sections.map(([title, items]) => `<div class="aa-sec"><b>${t(title)}</b><div class="aa-items">${items.map(([k, l, i]) => `<button type="button" data-add="${esc(k)}"><i class="ms">${i}</i>${esc(t(l))}</button>`).join('')}</div></div>`).join(''),
     onPick: k => {
       if (k.startsWith('pdf:')) return addPdfStep(b, k.slice(4));
+      if (k === 'more') return import('../dialogs/animfx.js').then(m => m.openMoreEffects({ add: true }));
       if (k === 'draw') startPathDraw({ append: true });
       else if (k.startsWith('media-')) addAnimation(k, { start: 'click' });   // (a step of its own: a click, not after the previous)
       else if (k.startsWith('clip:')) addAnimation('clip3d', { clip: k.slice(5), once: true, duration: 1500 });

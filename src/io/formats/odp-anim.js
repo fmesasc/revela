@@ -6,6 +6,7 @@
 // the previous one or after it (with their delay). Animations started by
 // clicking another object go in an "interactive sequence" of that object.
 
+import { FX, ODF_FX, fxOfODF } from '../../features/animation/fxcatalog.js';
 import { animTimeline, animEntries, isEntrance, motionPoints, pathFromSVG, pushAnim } from '../../features/animation/transitions.js';
 
 const sec = ms => `${+(Math.max(0, ms) / 1000).toFixed(3)}s`;
@@ -16,6 +17,21 @@ const HIGHLIGHT = { red: '#ff2c2d', green: '#17ff2e', blue: '#1b91ff' };
 function effectNodes(a, xid, deck) {
   const d = sec(a.duration ?? 500), T = `smil:targetElement="${xid}"`;
   const show = v => `<anim:set smil:begin="0s" smil:dur="0.001s" smil:fill="hold" ${T} smil:attributeName="visibility" smil:to="${v}"/>`;
+  if (FX[a.effect] && !(a.effect === 'transparency')) {
+    // PowerPoint's other effects (fxcatalog.js): Impress's preset, its filter where it has one; the rest fade.
+    const f = FX[a.effect], base = a.effect.replace(/-out$/, ''), [name, type, subtype] = ODF_FX[base] || [`rv-${base}`], cls = f.kind === 'emphasis' ? 'emphasis' : f.kind;
+    const col = /^#[0-9a-f]{6}$/i.test(a.color || '') ? a.color : '#e53935';
+    if (cls === 'emphasis') {
+      const node = base === 'bold-reveal' || base === 'bold-flash' ? `<anim:set smil:dur="${d}" smil:fill="hold" ${T} smil:attributeName="font-weight" smil:to="bold"/>`
+        : base === 'underline' ? `<anim:set smil:dur="${d}" smil:fill="hold" ${T} smil:attributeName="text-underline" smil:to="solid"/>`
+        : f.colour ? `<anim:animateColor smil:dur="${d}" smil:fill="hold" ${T} smil:attributeName="${base === 'fill-color' ? 'fill-color' : base === 'line-color' ? 'stroke-color' : 'color'}" smil:to="${col}" anim:color-interpolation="rgb" anim:color-interpolation-direction="clockwise"/>`
+        : `<anim:animateTransform smil:dur="${sec((a.duration ?? 500) / 2)}" smil:autoReverse="true" ${T} smil:by="0.05,0.05" svg:type="scale"/>`;
+      return ['emphasis', `ooo-emphasis-${name}`, node];
+    }
+    const filt = `<anim:transitionFilter smil:dur="${d}" ${T} smil:type="${type || 'fade'}" smil:subtype="${type ? subtype || 'default' : 'crossfade'}"${cls === 'exit' ? ' smil:mode="out"' : ''}/>`;
+    return cls === 'exit' ? ['exit', `ooo-exit-${name}`, filt + `<anim:set smil:begin="${d}" smil:dur="0.001s" smil:fill="hold" ${T} smil:attributeName="visibility" smil:to="hidden"/>`]
+      : ['entrance', `ooo-entrance-${name}`, show('visible') + filt];
+  }
   if (a.effect === 'path') {
     const { w, h } = deck.size;
     const pts = motionPoints(a).map(([x, y]) => `${+(x / w).toFixed(4)} ${+(y / h).toFixed(4)}`);
@@ -25,7 +41,7 @@ function effectNodes(a, xid, deck) {
     const k = a.effect === 'grow' ? '0.25,0.25' : '-0.2,-0.2';        // an increment, as Impress reads it
     return ['emphasis', 'ooo-emphasis-grow-and-shrink', `<anim:animateTransform smil:dur="${d}" smil:fill="hold" ${T} smil:by="${k}" svg:type="scale"/>`];
   }
-  if (a.effect === 'semi-fade-out')
+  if (a.effect === 'semi-fade-out' || a.effect === 'transparency')     // (half transparent: Impress's one, either way)
     return ['emphasis', 'ooo-emphasis-transparency', `<anim:set smil:dur="${d}" smil:fill="hold" ${T} smil:attributeName="opacity" smil:to="0.5"/>`];
   const hl = /^highlight-(?:current-)?(red|green|blue)$/.exec(a.effect);
   if (hl) return ['emphasis', 'ooo-emphasis-font-color', `<anim:animateColor smil:dur="${d}" smil:fill="hold" ${T} smil:attributeName="color" smil:to="${HIGHLIGHT[hl[1]]}" anim:color-interpolation="rgb" anim:color-interpolation-direction="clockwise"/>`];
@@ -85,6 +101,8 @@ function effectOf(par) {
   const nodes = [...par.children], durEl = nodes.find(n => n.getAttribute('smil:dur') && n.getAttribute('smil:dur') !== '0.001s');
   const duration = durEl ? secs(durEl.getAttribute('smil:dur')) : 500;
   let effect = null;
+  const fx = fxOfODF(cls, id);
+  if (fx) return { effect: fx, duration };
   if (cls === 'entrance') {
     const mv = nodes.find(n => n.localName === 'animate' && /^[xy]$/.test(n.getAttribute('smil:attributeName') || ''));
     if (/zoom/.test(id)) effect = 'zoom-in';

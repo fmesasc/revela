@@ -5,6 +5,22 @@ import { openPdf, pageImage, pdfTransform } from '../../features/content/files.j
 import { currentSlide } from '../../core/store.js';
 import { animTimeline, animEntries, EFFECT_KF, motionFrames, SIZE_FX, animScale, MEDIA_FX } from '../../features/animation/transitions.js';
 import { mediaStepInEditor } from './mediaview.js';
+import { FX, fxVars, fxMask, FX_KF_CSS, FX_PROPS_CSS } from '../../features/animation/fxcatalog.js';
+
+// PowerPoint's other effects (fxcatalog.js) in the editor: their keyframes, once.
+function fxStyles() {
+  if (typeof document === 'undefined' || document.getElementById('rv-fx-kf')) return;
+  const st = document.createElement('style'); st.id = 'rv-fx-kf'; st.textContent = FX_PROPS_CSS + '\n' + FX_KF_CSS; document.head.appendChild(st);
+}
+// Its options as CSS variables on the object (a direction, a colour), and its mask while it plays; undone after.
+function fxSetup(el, anim) {
+  const f = FX[anim.effect]; if (!f) return () => {};
+  fxStyles();
+  const vars = fxVars(anim).split(';').filter(Boolean).map(x => x.split(/:(.*)/s).slice(0, 2));
+  vars.forEach(([k, v]) => el.style.setProperty(k, v));
+  const m = fxMask(anim.effect); if (m) { el.style.maskImage = m; el.style.webkitMaskImage = m; }
+  return () => { vars.forEach(([k]) => el.style.removeProperty(k)); if (m) { el.style.maskImage = ''; el.style.webkitMaskImage = ''; } };
+}
 import { stage } from './canvas.js';
 import { model3dRuntime } from '../../io/runtime/model3d.js';
 import { soundRuntime } from '../../io/runtime/sounds.js';
@@ -58,18 +74,19 @@ export function animateEl(el, anim, dur, delay) {
     walkIn(el, dur, delay);
     return;
   }
-  const kf = KEYFRAME[effect] || 'rvIn';
+  const kf = KEYFRAME[effect] || 'rvIn', undo = fxSetup(el, anim);
   if (SIZE_FX.includes(effect)) el.style.setProperty('--anim-scale', animScale(anim));
   el.style.animation = 'none'; void el.offsetWidth;
-  el.style.animation = `${kf} ${dur}ms ease ${delay}ms both`;
+  el.style.animation = `${kf} ${dur}ms ease ${delay}ms ${FX[effect]?.reverse ? 'reverse ' : ''}both`;
   walkIn(el, dur, delay);
-  const done = () => { el.style.animation = ''; el.removeEventListener('animationend', done); };
+  const done = () => { el.style.animation = ''; undo(); el.removeEventListener('animationend', done); };
   el.addEventListener('animationend', done);
 }
 // A named CSS animation's keyframes (to play several on one object, added up).
 const kfCache = new Map();
 function keyframesOf(name) {
   if (kfCache.has(name)) return kfCache.get(name);
+  fxStyles();
   const d = document.createElement('div'); d.style.cssText = `position:absolute;visibility:hidden;animation:${name} 1s`; stage.appendChild(d);
   const kf = d.getAnimations()[0]?.effect?.getKeyframes().map(({ offset, computedOffset, easing, composite, ...k }) => ({ offset, ...k })) || [];
   d.remove(); kfCache.set(name, kf); return kf;
@@ -104,7 +121,8 @@ export function playAnimations() {
     const frames = a.effect === 'path' ? motionFrames(a).map(([x, y, r]) => ({ translate: `${x}px ${y}px`, rotate: model ? '0deg' : `${r}deg` }))
       : SIZE_FX.includes(a.effect) ? [{ transform: 'none' }, { transform: `scale(${animScale(a)})` }]
       : keyframesOf(KEYFRAME[a.effect] || 'rvIn');
-    played.push(el.animate(frames, opts));
+    const undo = fxSetup(el, a); restore.push(undo);
+    played.push(el.animate(FX[a.effect]?.reverse ? [...frames].reverse().map((k, n, all) => ({ ...k, offset: k.offset == null ? null : 1 - k.offset })) : frames, opts));
     walkIn(el, at.dur, when);
   }
   if (played.length || restore.length) setTimeout(() => { played.forEach(p => p.cancel()); restore.forEach(f => f()); }, acc + 1200);
