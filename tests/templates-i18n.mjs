@@ -28,5 +28,12 @@ const ar = { layouts: [], slides: [{ id: 's', blocks: [{ id: 'l', type: 'text', 
 translateDeck(ar, { '<span style="float:left">H</span>ola': '<span style="float:left">م</span>رحبا', 'Adiós': 'وداعا' }, { rtl: true });
 const [l, c, u, tb] = ar.slides[0].blocks;
 ok(l.dir === 'rtl' && l.textAlign === 'right' && /float:right/.test(l.html) && c.dir === 'rtl' && c.textAlign === 'center' && !u.dir && !u.textAlign && tb.dir === 'rtl', 'plantillas: árabe de derecha a izquierda');
+// A text left in Spanish (a verse in a language lesson): its own direction — its punctuation at the right end —, aligned to the right.
+const kept = { layouts: [], slides: [{ id: 's', blocks: [{ id: 'v', type: 'text', html: 'Tus ojos son dos luceros.', w: 400, h: 60 }] }] };
+translateDeck(kept, { 'Tus ojos son dos luceros.': 'Tus ojos son dos luceros.' }, { rtl: true });
+ok(!kept.slides[0].blocks[0].dir && kept.slides[0].blocks[0].textAlign === 'right', 'plantillas: en árabe, un texto que se queda en español conserva su dirección');
+const mixed = { layouts: [], slides: [{ id: 's', blocks: [{ id: 'm', type: 'text', html: '<b>Olá!</b><br>Hola', w: 400, h: 60 }] }] };
+translateDeck(mixed, { '<b>Olá!</b><br>Hola': '<b>Olá!</b><br>مرحبا' }, { rtl: true });
+ok(mixed.slides[0].blocks[0].dir === 'rtl' && mixed.slides[0].blocks[0].html === '<b><span dir="ltr">Olá!</span></b><br>مرحبا', 'plantillas: en árabe, lo que se queda en su idioma dentro de un texto árabe, aislado: ' + mixed.slides[0].blocks[0].html);
 console.log(fails ? `PLANTILLAS-IDIOMA FAIL ${n - fails}/${n}` : `PLANTILLAS-IDIOMA OK ${n}/${n}`);
 process.exit(fails ? 1 : 0);

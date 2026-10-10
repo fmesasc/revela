@@ -55,12 +55,22 @@ export function translateDeck(deck, dict, { rtl = false } = {}) {
   for (const slide of deck.slides || []) for (const b of slide.blocks || []) if (was.has(b)) {
     ORIGINAL.set(b, was.get(b)); keepLines(b, was.get(b), slide, deck);
     if (rtl && b.type === 'text' && !b.vertical) {
-      b.dir = 'rtl'; if ((styled(b, slide, deck).textAlign || 'left') === 'left') b.textAlign = 'right';
+      // (A text left in its own language — a verse, an example word, a quote in a language lesson — has no Arabic
+      // letters: read right to left, its punctuation went to the wrong end — «.luceros». It keeps its direction,
+      // aligned to the right like the rest.)
+      if (ARABIC.test(b.html.replace(/<[^>]*>/g, '')) || !LATIN.test(b.html.replace(/<[^>]*>/g, ''))) {
+        b.dir = 'rtl';
+        // (And inside an Arabic text, each piece left in its language — «Olá!» over its gloss — on its own, read left
+        // to right: an element with dir isolates it, and its «!» stays at its end.)
+        b.html = ('>' + b.html + '<').replace(/>([^<]+)</g, (m, x) => (LATIN.test(x) && !ARABIC.test(x) ? `><span dir="ltr">${x}</span><` : m)).slice(1, -1);
+      }
+      if ((styled(b, slide, deck).textAlign || 'left') === 'left') b.textAlign = 'right';
       b.html = b.html.replace(/float:\s*left/g, 'float:right');                  // (a drop cap: at the start of the line, its right)
     }
   }
   return deck;
 }
+const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/, LATIN = /[A-Za-zÀ-ɏ]/;
 // A translated text object's Spanish text (to compare how much room each takes: ui/canvas/fittext.js).
 const ORIGINAL = new WeakMap();
 export const originalText = b => ORIGINAL.get(b);
