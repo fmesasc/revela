@@ -740,6 +740,41 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/ooo-entrance-wipe/.test(c) && /smil:type="barWipe"/.test(c) && /ooo-exit-venetian-blinds/.test(c) && /ooo-emphasis-bold/.test(c), 'en ODP: los de Impress');
   });
 
+  await test('cada efecto con su ejemplo: tarjeta al pasar el ratón, se ve en el objeto al elegirlo o cambiar sus opciones, y la transición al cambiar la dirección', async () => {
+    reset(); const W = frame.contentWindow, over = el => el.dispatchEvent(new W.PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' }));
+    const out = el => el.dispatchEvent(new W.PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse' }));
+    // Nothing selected: the example card shows it anyway.
+    R.store.commit(() => { R.state.ui.selection = null; });
+    const btn = D.querySelector('#ribbon [data-animation="zoom-in"]'); over(btn); await sleep(450);
+    let card = D.getElementById('fx-demo');
+    assert(card && /Zoom/.test(card.textContent) && /Entrada/.test(card.textContent), 'tarjeta de ejemplo con su nombre y tipo: ' + card?.textContent);
+    assert(card.querySelector('.fxd-obj').getAnimations().length > 0, 'que lo reproduce');
+    out(btn); await sleep(30); assert(!D.getElementById('fx-demo'), 'al salir, se va');
+    // In «Más efectos…»: an unusual one, recognisable.
+    const b = newText(); select(b); await sleep(10);
+    D.querySelector('[data-action="anim-more"]').click(); for (let i = 0; i < 20 && !D.getElementById('fx-modal'); i++) await sleep(20);
+    D.querySelector('#fx-modal [data-kind="emphasis"]').click(); await sleep(20);
+    const it = D.querySelector('#fx-modal [data-fx="bold-reveal"]'); over(it); await sleep(450);
+    card = D.getElementById('fx-demo'); assert(card && /negrita/i.test(card.textContent) && /Énfasis/.test(card.textContent), 'en el diálogo, también: ' + card?.textContent);
+    const blockEl = D.querySelector(`#stage .block[data-id="${b.id}"]`);
+    assert(blockEl.getAnimations().length > 0, 'y el objeto seleccionado lo hace');
+    // Chosen: it plays once on the object (PowerPoint's «Vista previa automática»).
+    it.click(); await sleep(150);
+    eq(b.animation.effect, 'bold-reveal', 'elegido'); assert(blockEl.getAnimations().length > 0 || /rvxBoldReveal/.test(blockEl.style.animation), 'se ve en el objeto al elegirlo');
+    // An option changed: seen again.
+    R.store.commit(() => { b.animation.effect = 'wipe'; }); R.render(); await sleep(400);
+    blockEl.getAnimations().forEach(a => a.cancel()); blockEl.style.animation = '';
+    const opts = D.querySelector('#ribbon [data-anim-opts]'); opts.value = 'dir:top'; opts.dispatchEvent(new W.Event('change')); await sleep(80);
+    const el2 = D.querySelector(`#stage .block[data-id="${b.id}"]`);
+    assert(/rvxWipe/.test(el2.style.animation) && el2.style.getPropertyValue('--fx-clip'), 'cambiar la dirección: se ve con ella');
+    // A slide's transition: its direction changed shows the example by the control.
+    R.slides.addSlide('blank'); R.store.commit(() => { slide().transition = 'wipe'; }); R.render(); await sleep(30);
+    const dir = D.querySelector('#ribbon [data-slide-trans-dir]');
+    if (dir.options.length > 1) { dir.value = dir.options[1].value; dir.dispatchEvent(new W.Event('change', { bubbles: true })); await sleep(60);
+      assert(D.getElementById('trans-preview'), 'transición: al cambiar su dirección, el ejemplo'); }
+    D.getElementById('trans-preview')?.remove();
+  });
+
   await test('énfasis que no oculta: latido, balanceo, salto y destello (editor, presentación y PowerPoint)', async () => {
     reset(); const W = frame.contentWindow, T = await W.eval("import('/src/features/animation/transitions.js')");
     for (const e of ['pulse', 'teeter', 'jump', 'color-pulse']) { assert(!T.isEntrance(e) && T.EFFECT_KF[e], e + ': énfasis con su animación'); }

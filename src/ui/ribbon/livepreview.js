@@ -8,6 +8,7 @@ import { swapPalette, swapFontPair, deckFg, deckBodyFont } from '../../features/
 import { masterBlocksFor, styled, isEmptyPlaceholder } from '../../features/document/master.js';
 import { blockPreview } from '../shell/preview.js';
 import { animateEl } from '../canvas/preview.js';
+import { animsOf, animEditIndex } from '../../features/animation/transitions.js';
 import { t } from '../../i18n/index.js';
 
 const DELAY = 250;
@@ -20,8 +21,16 @@ export function previewAnimation(effect) {
   stopAnimationPreview();
   const b = selectedBlock(), el = b && document.querySelector(`#stage .block[data-id="${b.id}"]`); if (!el || !playable(effect)) return false;
   animEl = el;
-  const play = () => { if (animEl !== el || !el.isConnected) return; animateEl(el, { effect }, 700, 0); loop = setTimeout(play, 1500); };
+  const play = () => { if (animEl !== el || !el.isConnected) return; animateEl(el, { effect }, 700, 0); loop = setTimeout(play, 1700); };
   play(); return true;
+}
+// PowerPoint's «Vista previa automática»: an effect just chosen, or an option of it changed (its direction, colour,
+// duration), plays once on its object — what it does is seen without looking for «Vista previa».
+export function playEdited() {
+  const b = selectedBlock(), el = b && document.querySelector(`#stage .block[data-id="${b.id}"]`), a = b && animsOf(b)[animEditIndex(b)];
+  if (!el || !a || !playable(a.effect)) return;
+  stopAnimationPreview();
+  requestAnimationFrame(() => animateEl(el, a, Math.min(2500, a.duration ?? 500), 0));
 }
 export function stopAnimationPreview() {
   clearTimeout(loop); loop = null;
@@ -54,9 +63,9 @@ export function previewDesign({ palette = null, fontpair = null } = {}) {
 export function hideDesignPreview() { document.getElementById('design-preview')?.remove(); }
 
 // Hover (delegated: the galleries are drawn when opened).
-const ITEMS = '#anim-add-menu [data-add], [data-palette], [data-fontpair]';
+const ITEMS = '#anim-add-menu [data-add], #ribbon [data-animation], #fx-modal [data-fx], [data-palette], [data-fontpair]';
 function start(btn) {
-  if (btn.dataset.add != null) previewAnimation(btn.dataset.add);
+  if (btn.dataset.add != null || btn.dataset.animation || btn.dataset.fx) previewAnimation(btn.dataset.add ?? btn.dataset.animation ?? btn.dataset.fx);
   else if (btn.dataset.palette) previewDesign({ palette: btn.dataset.palette });
   else if (btn.dataset.fontpair) previewDesign({ fontpair: btn.dataset.fontpair });
 }

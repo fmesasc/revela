@@ -5,8 +5,6 @@
 import { FX, FX_GROUPS } from '../../features/animation/fxcatalog.js';
 import { setAnimation, addAnimation, animsOf, animEditIndex, effectKind } from '../../features/animation/transitions.js';
 import { selectedBlock } from '../../core/store.js';
-import { stage } from '../canvas/canvas.js';
-import { animateEl } from '../canvas/preview.js';
 import { esc } from '../../core/text.js';
 import { t } from '../../i18n/index.js';
 
@@ -32,7 +30,7 @@ export function openMoreEffects({ add = false } = {}) {
     <h3>${esc(t(add ? 'Añadir animación' : 'Más efectos'))}</h3>
     <div class="fx-tabs" role="tablist">${KINDS.map(([k, l]) => `<button type="button" role="tab" data-kind="${k}">${esc(t(l))}</button>`).join('')}</div>
     <div class="fx-list"></div>
-    <p class="host-help">${esc(t(b ? 'Pasa el ratón por un efecto para verlo en el objeto seleccionado.' : 'Selecciona un objeto para verlo y aplicarlo.'))}</p></div>`;
+    <p class="host-help">${esc(t(b ? 'Pasa el ratón por un efecto para ver un ejemplo y cómo queda en el objeto seleccionado.' : 'Pasa el ratón por un efecto para ver un ejemplo. Para aplicarlo, selecciona antes un objeto.'))}</p></div>`;
   document.body.appendChild(back);
   const close = () => back.remove(), list = back.querySelector('.fx-list');
   const paint = () => {
@@ -43,16 +41,11 @@ export function openMoreEffects({ add = false } = {}) {
   };
   paint();
   back.querySelector('.fx-tabs').addEventListener('click', e => { const k = e.target.closest('[data-kind]')?.dataset.kind; if (k) { kind = k; paint(); } });
-  // (A taste on the object, as PowerPoint's live preview: played and undone.)
-  let last = null;
-  list.addEventListener('pointerover', e => {
-    const id = e.target.closest('[data-fx]')?.dataset.fx; if (!id || id === last || !b) return; last = id;
-    const el = stage.querySelector(`.block[data-id="${b.id}"]`); if (el && id !== 'draw') animateEl(el, { effect: id }, 700, 0);
-  });
+  // (Pointing at one: an example card by it, and the selected object plays it — ui/shell/fxdemo.js, ribbon/livepreview.js.)
   list.addEventListener('click', e => {
     const id = e.target.closest('[data-fx]')?.dataset.fx; if (!id) return;
     if (add) addAnimation(id); else setAnimation(id);
-    close();
+    close(); import('../ribbon/livepreview.js').then(m => m.playEdited());
   });
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });

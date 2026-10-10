@@ -13,13 +13,18 @@ function fxStyles() {
   const st = document.createElement('style'); st.id = 'rv-fx-kf'; st.textContent = FX_PROPS_CSS + '\n' + FX_KF_CSS; document.head.appendChild(st);
 }
 // Its options as CSS variables on the object (a direction, a colour), and its mask while it plays; undone after.
-function fxSetup(el, anim) {
+function fxSetup(el, anim, dur = 600, delay = 0) {
   const f = FX[anim.effect]; if (!f) return () => {};
   fxStyles();
   const vars = fxVars(anim).split(';').filter(Boolean).map(x => x.split(/:(.*)/s).slice(0, 2));
   vars.forEach(([k, v]) => el.style.setProperty(k, v));
   const m = fxMask(anim.effect); if (m) { el.style.maskImage = m; el.style.webkitMaskImage = m; }
-  return () => { vars.forEach(([k]) => el.style.removeProperty(k)); if (m) { el.style.maskImage = ''; el.style.webkitMaskImage = ''; } };
+  // (Fill and line colour change the shape's drawing — its SVG —, as in the presentation: seen here too.)
+  const prop = anim.effect === 'fill-color' ? 'fill' : anim.effect === 'line-color' ? 'stroke' : null, col = vars.find(([k]) => k === '--fx-color')?.[1];
+  const parts = prop ? [...el.querySelectorAll('svg :is(polygon,path,rect,ellipse,circle,line,polyline)')].filter(p => (p.getAttribute(prop) || 'none') !== 'none' && p.getAttribute(prop) !== 'transparent') : [];
+  const t = parts.length ? setTimeout(() => parts.forEach(p => { p.style.transition = `${prop} ${dur}ms ease`; p.style[prop] = col; }), delay) : null;
+  return () => { clearTimeout(t); parts.forEach(p => { p.style.transition = ''; p.style[prop] = ''; });
+    vars.forEach(([k]) => el.style.removeProperty(k)); if (m) { el.style.maskImage = ''; el.style.webkitMaskImage = ''; } };
 }
 import { stage } from './canvas.js';
 import { model3dRuntime } from '../../io/runtime/model3d.js';
@@ -74,12 +79,13 @@ export function animateEl(el, anim, dur, delay) {
     walkIn(el, dur, delay);
     return;
   }
-  const kf = KEYFRAME[effect] || 'rvIn', undo = fxSetup(el, anim);
+  const kf = KEYFRAME[effect] || 'rvIn', undo = fxSetup(el, anim, dur, delay);
   if (SIZE_FX.includes(effect)) el.style.setProperty('--anim-scale', animScale(anim));
   el.style.animation = 'none'; void el.offsetWidth;
   el.style.animation = `${kf} ${dur}ms ease ${delay}ms ${FX[effect]?.reverse ? 'reverse ' : ''}both`;
   walkIn(el, dur, delay);
-  const done = () => { el.style.animation = ''; undo(); el.removeEventListener('animationend', done); };
+  // (A colour change is seen a moment before going back.)
+  const done = () => { el.style.animation = ''; setTimeout(undo, FX[effect]?.colour ? 600 : 0); el.removeEventListener('animationend', done); };
   el.addEventListener('animationend', done);
 }
 // A named CSS animation's keyframes (to play several on one object, added up).
@@ -121,7 +127,7 @@ export function playAnimations() {
     const frames = a.effect === 'path' ? motionFrames(a).map(([x, y, r]) => ({ translate: `${x}px ${y}px`, rotate: model ? '0deg' : `${r}deg` }))
       : SIZE_FX.includes(a.effect) ? [{ transform: 'none' }, { transform: `scale(${animScale(a)})` }]
       : keyframesOf(KEYFRAME[a.effect] || 'rvIn');
-    const undo = fxSetup(el, a); restore.push(undo);
+    const undo = fxSetup(el, a, at.dur, when); restore.push(undo);
     played.push(el.animate(FX[a.effect]?.reverse ? [...frames].reverse().map((k, n, all) => ({ ...k, offset: k.offset == null ? null : 1 - k.offset })) : frames, opts));
     walkIn(el, at.dur, when);
   }

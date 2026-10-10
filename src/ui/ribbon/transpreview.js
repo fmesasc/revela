@@ -25,15 +25,15 @@ export function hideTransitionPreview() {
   if (url) { URL.revokeObjectURL(url); url = null; }
 }
 
-function show(btn) {
+function show(btn, value = btn.dataset.slideTransition, label = btn.querySelector('span')?.textContent || '') {
   hideTransitionPreview();
-  const value = btn.dataset.slideTransition, deck = { ...state.deck, slides: slidesFor(value) };
+  const deck = { ...state.deck, slides: slidesFor(value) };
   // (So small, reveal.js would turn into its scrolling view for phones, with no transitions.)
   const html = buildHTML(deck, { inApp: true }).replace('Reveal.initialize({', 'Reveal.initialize({ scrollActivationWidth: null,').replace('</head>',
     '<style>.reveal .controls,.reveal .progress,.reveal .slide-number,#ink-bar,#rv-class{display:none!important}</style></head>');
   url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
   pop = document.createElement('div'); pop.id = 'trans-preview';
-  pop.innerHTML = `<iframe title="${t('Vista previa de la transición')}" tabindex="-1"></iframe><span>${btn.querySelector('span')?.textContent || ''}</span>`;
+  pop.innerHTML = `<iframe title="${t('Vista previa de la transición')}" tabindex="-1"></iframe><span>${label.replace(/[<&]/g, c => (c === '<' ? '&lt;' : '&amp;'))}</span>`;
   const f = pop.querySelector('iframe'); f.src = url; f.style.aspectRatio = `${state.deck.size.w} / ${state.deck.size.h}`;
   document.body.appendChild(pop);
   const r = btn.getBoundingClientRect(), W = pop.offsetWidth;
@@ -59,6 +59,15 @@ function show(btn) {
     });
   };
   cycle();
+}
+
+// An option of the slide's transition just changed (its direction, its speed): the example, by that control, for a
+// few seconds — with the option, as it will be.
+export function flashTransitionPreview(sel) {
+  const el = document.querySelector('#ribbon ' + sel), s = currentSlide(); if (!el || !s) return;
+  const value = s.transition ?? 'inherit'; if (value === 'none') return;
+  show(el, value, el.selectedOptions?.[0]?.textContent || '');
+  const me = pop; setTimeout(() => { if (pop === me) hideTransitionPreview(); }, 3800);
 }
 
 // Hover (not on touch screens: there a tap chooses it).

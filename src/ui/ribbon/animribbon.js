@@ -11,6 +11,7 @@ import { ANIM_SOUNDS, soundRuntime } from '../../io/runtime/sounds.js';
 import { readFile } from '../shell/openfile.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { FX, FX_COLOURS } from '../../features/animation/fxcatalog.js';
+import { playEdited } from './livepreview.js';
 
 const $ = s => document.querySelector('#ribbon [data-page="animations"] ' + s);
 const MIXED = Symbol('mixed');
@@ -48,9 +49,9 @@ export function wireAnimRibbon() {
   document.querySelectorAll('#ribbon [data-animation]').forEach(b => { b.dataset.kind = trans.effectKind(b.dataset.animation); b.setAttribute('aria-pressed', 'false'); });
   $('[data-anim-start]').addEventListener('change', e => trans.setEditedAnimProp('start', e.target.value));
   for (const p of ['duration', 'delay'])
-    $(`[data-anim-${p}]`).addEventListener('change', e => { if (e.target.value !== '') trans.setEditedAnimProp(p, Math.round(parseFloat(e.target.value) * 1000) || 0); });
+    $(`[data-anim-${p}]`).addEventListener('change', e => { if (e.target.value !== '') { trans.setEditedAnimProp(p, Math.round(parseFloat(e.target.value) * 1000) || 0); if (p === 'duration') playEdited(); } });
   $('[data-anim-trigger]').addEventListener('change', e => trans.setEditedAnimProp('trigger', e.target.value || null));
-  $('[data-anim-opts]').addEventListener('change', e => { const [p, v] = e.target.value.split(':'); if (v) trans.setEditedAnimProp(p, v); });
+  $('[data-anim-opts]').addEventListener('change', e => { const [p, v] = e.target.value.split(':'); if (v) { trans.setEditedAnimProp(p, v); playEdited(); } });
   $('[data-anim-sound]').addEventListener('change', e => {
     const v = e.target.value;
     if (v !== 'custom') { trans.setEditedAnimProp('sound', v); if (v) sounds().play(v); return; }

@@ -47,6 +47,6 @@ export function openAddAnimation(anchor) {
       if (k === 'draw') startPathDraw({ append: true });
       else if (k.startsWith('media-')) addAnimation(k, { start: 'click' });   // (a step of its own: a click, not after the previous)
       else if (k.startsWith('clip:')) addAnimation('clip3d', { clip: k.slice(5), once: true, duration: 1500 });
-      else addAnimation(k);
+      else { addAnimation(k); import('./livepreview.js').then(m => m.playEdited()); }
     } });
 }

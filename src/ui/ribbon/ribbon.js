@@ -36,7 +36,8 @@ import { readFile } from '../shell/openfile.js';
 import { animPaint, endAnimPaint, ACTIONS, slidesFocused } from './actions.js';
 import { applyZoom, fitZoom, zoomFitting, wireZoom } from './zoom.js';
 import { compactGroups } from './compact.js';
-import { wireTransitionPreview } from './transpreview.js';
+import { wireTransitionPreview, flashTransitionPreview } from './transpreview.js';
+import { playEdited } from './livepreview.js';
 import { closePopover, togglePopover } from './popovers.js';
 import { syncMasterRibbon } from '../shell/masterview.js';
 import { syncCharState, syncBoxFormat, syncSlideState, press } from './reflect.js';
@@ -159,7 +160,7 @@ export function initRibbon() {
     const st = e.target.closest('[data-slide-transition]');
     if (st) { trans.setSlideTransition(st.dataset.slideTransition); return; }
     const an = e.target.closest('[data-animation]');
-    if (an) { trans.setAnimation(an.dataset.animation); return; }
+    if (an) { trans.setAnimation(an.dataset.animation); playEdited(); return; }
     const tpl = e.target.closest('[data-template]');
     // (The ones named like a layout apply the deck's layout, as Home ▸ Layout does: one feature, one behaviour.)
     if (tpl) { const lay = TEMPLATE_LAYOUT[tpl.dataset.template]; if (lay && master.ensureLayouts().some(l => l.id === lay)) master.applyLayout(lay); else templates.applyTemplate(templates.BUILTIN[tpl.dataset.template]); return; }
@@ -212,8 +213,8 @@ export function initRibbon() {
   bindInput('[data-deck-fg]', v => palettes.setDeckTextColor(v));
   bindInput('[data-ink-color]', v => { drawOpts.color = v; });
   bindChange('[data-slide-trans-out]', v => trans.setSlideTransOptions({ transitionOut: v }));
-  bindChange('[data-slide-trans-dir]', v => trans.setSlideTransOptions({ transitionDir: v }));
-  bindChange('[data-slide-speed]', v => trans.setSlideTransOptions({ transitionSpeed: v }));
+  bindChange('[data-slide-trans-dir]', v => { trans.setSlideTransOptions({ transitionDir: v }); flashTransitionPreview('[data-slide-trans-dir]'); });
+  bindChange('[data-slide-speed]', v => { trans.setSlideTransOptions({ transitionSpeed: v }); flashTransitionPreview('[data-slide-speed]'); });
   bindChange('[data-ink-width]', v => { drawOpts.width = +v || 4; });
   addEyedroppers();
   bindChange('[data-theme]', v => commit(() => (state.deck.theme = v)));
