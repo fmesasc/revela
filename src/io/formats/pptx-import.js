@@ -564,13 +564,18 @@ const FLY = { 4: 'fade-up', 1: 'fade-down', 8: 'fade-right', 2: 'fade-left' };
 const MEDIA_CALL = { 1: 'media-play', 2: 'media-pause', 3: 'media-stop' };
 // groupOf: a group's shape id → its objects' (Revela flattens groups): an effect on the group plays on all of them at
 // once — before, it was lost, and with it its click (the next effects joined the click before).
-function readAnimations(doc, spidOf, blocks, size, groupOf = new Map()) {
+// partsOf: a shape that became more than one block (its outline and its text) → all of them: an effect on the shape
+// plays on both, as in PowerPoint — before, only its text moved and the arrow or circle was there from the start.
+// (By paragraphs, p:txEl, only the text.)
+function readAnimations(doc, spidOf, blocks, size, groupOf = new Map(), partsOf = new Map()) {
   const main = all(doc, 'p:cTn').find(c => c.getAttribute('nodeType') === 'mainSeq');
   if (!main) return;
   let order = 0, carry = false;           // (carry: an effect left out started a click; the next one starts it)
   for (const c of all(main, 'p:cTn').filter(x => x.getAttribute('presetClass'))) {
-    const spid = all(c, 'p:spTgt')[0]?.getAttribute('spid');
-    const targets = (spidOf.has(spid) ? [spidOf.get(spid)] : groupOf.get(spid) || []).map(id => blocks.find(x => x.id === id)).filter(Boolean);
+    const tgt = all(c, 'p:spTgt')[0], spid = tgt?.getAttribute('spid'), whole = !(tgt && all(tgt, 'p:txEl').length);
+    const ids = whole && partsOf.has(spid) ? partsOf.get(spid) : spidOf.has(spid) ? [spidOf.get(spid)] : groupOf.get(spid) || [];
+    const targets = ids.map(id => blocks.find(x => x.id === id)).filter(Boolean)
+      .filter((t, k, list) => c.getAttribute('presetClass') !== 'mediacall' || list.length < 2 || ['video', 'audio'].includes(t.type));   // (play/pause: the video itself)
     const b = targets[0];
     if (!b) { if (c.getAttribute('nodeType') === 'clickEffect') carry = true; continue; }
     const cls = c.getAttribute('presetClass'), preset = +c.getAttribute('presetID'), sub = +(c.getAttribute('presetSubtype') || 0);
@@ -769,7 +774,7 @@ export async function importPPTX(file, { progress = null, notes: said = [], medi
     const slideNo = slides.length + 1;
     const links = Object.fromEntries(Object.entries(srels).filter(([, v]) => v.type === 'hyperlink').map(([k, v]) => [k, v.path]));
     let partRels = srels;
-    const spidOf = new Map(), groupOf = new Map();
+    const spidOf = new Map(), groupOf = new Map(), partsOf = new Map();
     let decorMode = false;       // walking a layout/master: only its own graphics, not its placeholders        // relationships of the part being walked (slide, layout or master)
     // (Each file read once: a picture used on many slides — a background, a logo — is the same text every time,
     // not one copy per slide: big presentations ran out of memory.)
@@ -802,6 +807,7 @@ export async function importPPTX(file, { progress = null, notes: said = [], medi
           const made = blocks.slice(before), cnv = all(el, 'p:cNvPr')[0], spid = cnv?.getAttribute('id');
           if (cnv?.getAttribute('hidden') === '1' || cnv?.getAttribute('hidden') === 'true') made.forEach(b => { b.hidden = true; });   // (hidden in its selection pane)
           if (spid && made.length && !decorMode) spidOf.set(spid, (made.find(b => b.type === 'text') || made[made.length - 1]).id);
+          if (spid && made.length > 1 && !decorMode) partsOf.set(spid, [...made.filter(b => b.type === 'text'), ...made.filter(b => b.type !== 'text')].map(b => b.id));   // (its text keeps the start; the rest go with it)
         }
       }
     };
@@ -1126,7 +1132,7 @@ export async function importPPTX(file, { progress = null, notes: said = [], medi
       const m = [...all(tr, '*')].find(e => /:morph$/.test(e.tagName));
       if (m) { morph = { byWord: 'words', byChar: 'chars' }[m.getAttribute('option')] || 'objects'; transition = null; }
     }
-    readAnimations(doc, spidOf, blocks, size, groupOf);
+    readAnimations(doc, spidOf, blocks, size, groupOf, partsOf);
     // (No transition in PowerPoint is none — a cut —, not the deck's.)
     return { _path: slidePath, id: uid(), sectionId: null, background, transition: tr ? transition : 'none', ...(transitionDir && { transitionDir }), hidden, notes, autoSlide, blocks, _layout: layoutPath, ...(hideMaster && { hideMaster: true }),
       ...(dur && transition && { transitionDur: dur }), ...(morph && { autoAnimate: true }), ...(morph && dur && { aaDuration: dur / 1000 }),

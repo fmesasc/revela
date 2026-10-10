@@ -376,6 +376,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     s1.addMedia({ type: 'video', data: 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDE=', x: 1, y: 3, w: 4, h: 2 });
     P.addSlide().addText('Morph', { x: 1, y: 1, w: 4, h: 1 });
     const s3 = P.addSlide(); s3.addText('Corte', { x: 1, y: 1, w: 4, h: 1 }); s3.addText('G1', { x: 1, y: 3, w: 2, h: 1 }); s3.addText('G2', { x: 4, y: 3, w: 2, h: 1 });
+    s3.addText('Flecha', { shape: P.ShapeType.rightArrow, fill: { color: 'A9D18E' }, x: 6, y: 1, w: 3, h: 1 });   // (a shape with text: two blocks)
     const zip = await W.JSZip.loadAsync(await P.write({ outputType: 'blob' }));
     // (PptxGenJS gives the video the id of a text box: a unique one, as PowerPoint would.)
     let x = (await zip.file('ppt/slides/slide1.xml').async('string')).replace(/(<p:pic>\s*<p:nvPicPr><p:cNvPr id=")\d+"/, (m, a) => a + '99"');
@@ -401,10 +402,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     zip.file('ppt/slides/slide2.xml', x2);
     // A group (G1 and G2) that fades in on a click; then a click on something that isn't there; then «with previous».
     let x3 = await zip.file('ppt/slides/slide3.xml').async('string');
-    const spOf = t => new RegExp(`<p:sp>(?:(?!<p:sp>).)*?<a:t>${t}</a:t>.*?</p:sp>`, 's').exec(x3)[0], g1 = spOf('G1'), g2 = spOf('G2'), corte = /<p:cNvPr id="(\d+)"[^>]*>(?:(?!<p:cNvPr).)*?<a:t>Corte<\/a:t>/s.exec(x3)[1];
+    const spOf = t => new RegExp(`<p:sp>(?:(?!<p:sp>).)*?<a:t>${t}</a:t>.*?</p:sp>`, 's').exec(x3)[0], g1 = spOf('G1'), g2 = spOf('G2'), corte = /<p:cNvPr id="(\d+)"[^>]*>(?:(?!<p:cNvPr).)*?<a:t>Corte<\/a:t>/s.exec(x3)[1],
+      flecha = /<p:cNvPr id="(\d+)"[^>]*>(?:(?!<p:cNvPr).)*?<a:t>Flecha<\/a:t>/s.exec(x3)[1];
     x3 = x3.replace(g1, '').replace(g2, `<p:grpSp><p:nvGrpSpPr><p:cNvPr id="60" name="Grupo"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>${g1}${g2}</p:grpSp>`);
     x3 = x3.replace('</p:sld>', `<p:timing><p:tnLst><p:par><p:cTn id="1" dur="indefinite" restart="never" nodeType="tmRoot"><p:childTnLst><p:seq concurrent="1" nextAc="seek"><p:cTn id="2" dur="indefinite" nodeType="mainSeq"><p:childTnLst>`
-      + [eff('clickEffect', 'entr', 10, 60, fade), eff('clickEffect', 'entr', 10, 999, fade), eff('withEffect', 'entr', 10, corte, fade)].join('') + '</p:childTnLst></p:cTn></p:seq></p:childTnLst></p:cTn></p:par></p:tnLst></p:timing></p:sld>');
+      + [eff('clickEffect', 'entr', 10, 60, fade), eff('clickEffect', 'entr', 10, 999, fade), eff('withEffect', 'entr', 10, corte, fade), eff('withEffect', 'entr', 10, flecha, fade)].join('') + '</p:childTnLst></p:cTn></p:seq></p:childTnLst></p:cTn></p:par></p:tnLst></p:timing></p:sld>');
     zip.file('ppt/slides/slide3.xml', x3);
     const blob = await zip.generateAsync({ type: 'blob' });
     const deck = await R.pptxImport.importPPTX(new File([blob], 'anim.pptx'));
@@ -421,6 +423,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const b3 = t => deck.slides[2].blocks.find(q => q.type === 'text' && q.html.includes(t)).animation;
     assert(b3('G1')?.order === 1 && b3('G2')?.order === 1 && b3('G2').start === 'withPrev', 'la animación de un grupo, en todos sus objetos a la vez');
     assert(b3('Corte')?.order === 2 && b3('Corte').start === 'click', 'un clic de algo que no se importa no se pierde: lo hereda la siguiente');
+    const arrow = deck.slides[2].blocks.find(q => q.type === 'shape' && q.shape === 'rightarrow');
+    assert(arrow && b3('Flecha')?.order === 2, 'la flecha con texto: dos objetos');
+    assert(arrow.animation?.order === 2 && arrow.animation.effect === 'fade-in' && arrow.animation.start === 'withPrev', 'la flecha entra con su texto (no solo el texto): ' + JSON.stringify(arrow.animation));
     const html = R.io.buildHTML(deck);
     const sec1 = new DOMParser().parseFromString(html, 'text/html').querySelector(`section[data-rv-id="${deck.slides[0].id}"]`);
     eq(sec1.querySelectorAll('[data-fragment-index="1"]').length, 3, 'tres efectos en el primer clic');
@@ -915,8 +920,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const back = await R.pptxImport.importPPTX(new File([blob], 'x.pptx'));
     eq(back.slides[1].transition, 'zoom'); eq(back.slides[1].autoSlide, 4000, 'avance automático');
     assert(back.slides[7].autoAnimate && back.slides[7].morphBy === 'words', 'Transformar por palabras, de vuelta');
-    const an = back.slides[4].blocks.filter(b => b.animation).map(b => `${b.animation.effect}/${b.animation.start}`);
+    const an = back.slides[4].blocks.filter(b => b.animation && b.type === 'text').map(b => `${b.animation.effect}/${b.animation.start}`);
     eq(an.join(' '), 'fade-up/click fade-left/withPrev fade-out/afterPrev', 'animaciones de vuelta con su efecto y su inicio');
+    // (A card comes back as its outline and its text: both move together, the outline «with» its text.)
+    const outl = back.slides[4].blocks.filter(b => b.animation && b.type !== 'text');
+    eq(outl.length, 3, 'y el fondo de cada tarjeta con ella'); assert(outl.every(b => b.animation.start === 'withPrev'), 'a la vez que su texto');
   });
 
   await test('varias animaciones de un objeto: PowerPoint y LibreOffice las conservan', async () => {
