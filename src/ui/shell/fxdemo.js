@@ -60,3 +60,73 @@ export function wireEffectDemos(root = document) {
   root.addEventListener('pointerdown', () => { over = null; hideEffectDemo(); }, true);
   root.addEventListener('keydown', e => { if (e.key === 'Escape') hideEffectDemo(); }, true);
 }
+
+// ---- Morph (Transformar): what each way of matching does, on a sample ----
+// Objects: a box glides and grows to its new place; words: «Revela hace presentaciones» rearranges itself word by word;
+// characters: the letters of «ROMA» travel to spell «AMOR». The pieces are measured in both layouts and animated
+// between them (as reveal.js does when presenting).
+const MORPH_SAMPLES = { words: ['Revela hace presentaciones', 'presentaciones hace Revela'], chars: ['ROMA', 'AMOR'] };
+const MORPH_NAMES = { objects: 'Objetos', words: 'Palabras', chars: 'Caracteres' };
+const MORPH_HELP = { objects: 'Lo que está en las dos diapositivas se desplaza y cambia de tamaño', words: 'Cada palabra viaja a su sitio en la frase nueva',
+  chars: 'Cada letra viaja a su sitio en la palabra nueva' };
+function tokens(text, by) {
+  const seen = {};
+  return (by === 'chars' ? [...text] : text.split(/(\s+)/)).map(p => {
+    if (!p.trim()) return { space: p };
+    seen[p] = (seen[p] || 0) + 1; return { key: p + '#' + seen[p], text: p };
+  });
+}
+export function showMorphDemo(anchor, mode = 'objects') {
+  hideEffectDemo();
+  if (!anchor?.isConnected) return null;
+  card = document.createElement('div'); card.id = 'fx-demo'; card.className = 'fx-demo fx-morph'; card.setAttribute('aria-hidden', 'true');
+  card.innerHTML = `<div class="fxd-stage"></div><div class="fxd-cap"><b>${esc(t('Transformar'))} · ${esc(t(MORPH_NAMES[mode] || mode))}</b><small>${esc(t(MORPH_HELP[mode] || ''))}</small></div>`;
+  document.body.appendChild(card);
+  const r = anchor.getBoundingClientRect(), W = card.offsetWidth, H = card.offsetHeight;
+  card.style.left = Math.max(8, Math.min(r.left + r.width / 2 - W / 2, innerWidth - W - 8)) + 'px';
+  card.style.top = (r.bottom + 8 + H > innerHeight ? Math.max(8, r.top - H - 8) : r.bottom + 8) + 'px';
+  const stage = card.querySelector('.fxd-stage'), me = card;
+  stage.style.position = 'relative';
+  if (mode === 'objects') {
+    stage.innerHTML = '<div class="fxd-box"></div>';
+    const box = stage.querySelector('.fxd-box');
+    const play = () => { if (card !== me) return;
+      box.animate([{ transform: 'translate(-58px,18px) scale(.7)', borderRadius: '50%' }, { transform: 'translate(-58px,18px) scale(.7)', borderRadius: '50%', offset: 0.25 },
+        { transform: 'translate(52px,-14px) scale(1.15)', borderRadius: '6px', offset: 0.75 }, { transform: 'translate(52px,-14px) scale(1.15)', borderRadius: '6px' }], { duration: 2200, easing: 'ease-in-out' });
+      loop = setTimeout(play, 2400); };
+    play(); return card;
+  }
+  const [a, b] = MORPH_SAMPLES[mode], ta = tokens(a, mode), tb = tokens(b, mode);
+  const lay = list => { const d = document.createElement('div'); d.className = 'fxd-line' + (mode === 'chars' ? ' big' : '');
+    d.innerHTML = list.map(x => (x.space ? x.space.replace(/ /g, '&nbsp;') : `<span data-k="${esc(x.key)}">${esc(x.text)}</span>`)).join(''); d.style.visibility = 'hidden'; stage.appendChild(d); return d; };
+  const A = lay(ta), B = lay(tb), sr = stage.getBoundingClientRect();
+  const pos = (box, k) => { const e = box.querySelector(`[data-k="${CSS.escape(k)}"]`).getBoundingClientRect(); return [e.left - sr.left, e.top - sr.top]; };
+  const live = ta.filter(x => x.key).map(x => {
+    const s = document.createElement('span'); s.className = 'fxd-tok' + (mode === 'chars' ? ' big' : ''); s.textContent = x.text; stage.appendChild(s);
+    const p = pos(A, x.key), q = pos(B, x.key); s.style.left = p[0] + 'px'; s.style.top = p[1] + 'px'; return [s, q[0] - p[0], q[1] - p[1]];
+  });
+  A.remove(); B.remove();
+  const play = () => { if (card !== me) return;
+    live.forEach(([s, dx, dy]) => s.animate([{ transform: 'none' }, { transform: 'none', offset: 0.25 }, { transform: `translate(${dx}px,${dy}px)`, offset: 0.75 }, { transform: `translate(${dx}px,${dy}px)` }],
+      { duration: 2400, easing: 'ease-in-out' }));
+    loop = setTimeout(play, 2700); };
+  play();
+  return card;
+}
+// Pointing at «Transformar» or its options: the example of the one shown; choosing another: its example for a moment.
+export function wireMorphDemos(root = document) {
+  root.addEventListener('pointerover', e => {
+    if (e.pointerType === 'touch') return;
+    const el = e.target.closest?.('#ribbon [data-morphby], #ribbon [data-action="toggle-autoanimate"]'); if (!el || el === over) return;
+    over = el; clearTimeout(timer);
+    timer = setTimeout(() => { if (over === el && el.isConnected) showMorphDemo(el, el.matches('[data-morphby]') ? el.value || 'objects' : 'objects'); }, 250);
+  });
+  root.addEventListener('pointerout', e => {
+    const el = e.target.closest?.('#ribbon [data-morphby], #ribbon [data-action="toggle-autoanimate"]');
+    if (el && el === over && !el.contains(e.relatedTarget)) { over = null; hideEffectDemo(); }
+  });
+  root.addEventListener('change', e => {
+    const el = e.target.closest?.('#ribbon [data-morphby]'); if (!el) return;
+    over = null; const c = showMorphDemo(el, el.value); setTimeout(() => { if (card === c) hideEffectDemo(); }, 5000);
+  });
+}

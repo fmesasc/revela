@@ -9,6 +9,7 @@ import { masterBlocksFor, styled, isEmptyPlaceholder } from '../../features/docu
 import { blockPreview } from '../shell/preview.js';
 import { animateEl } from '../canvas/preview.js';
 import { animsOf, animEditIndex } from '../../features/animation/transitions.js';
+import { applyWordart } from '../../render/svg.js';
 import { t } from '../../i18n/index.js';
 
 const DELAY = 250;
@@ -37,6 +38,15 @@ export function stopAnimationPreview() {
   if (animEl) { animEl.style.animation = ''; animEl.getAnimations?.().forEach(a => a.cancel()); animEl = null; }
 }
 
+// ---- Text Art (WordArt): the selected text with the style pointed at; back as it was when leaving ----
+let waEl = null;
+export function previewWordart(key) {
+  stopWordartPreview();
+  const b = selectedBlock(), el = b?.type === 'text' && document.querySelector(`#stage .block[data-id="${b.id}"] .rich`); if (!el) return false;
+  waEl = [el, b]; applyWordart(el, key, b.wordartColor); return true;
+}
+export function stopWordartPreview() { if (waEl) { const [el, b] = waEl; applyWordart(el, b.wordart, b.wordartColor); waEl = null; } }
+
 // ---- Theme colours and fonts ----
 // A copy of the deck light enough to change: the current slide and the masters and layouts, their objects one
 // level deep (what swapPalette / swapFontPair change), never the pictures' data.
@@ -63,13 +73,14 @@ export function previewDesign({ palette = null, fontpair = null } = {}) {
 export function hideDesignPreview() { document.getElementById('design-preview')?.remove(); }
 
 // Hover (delegated: the galleries are drawn when opened).
-const ITEMS = '#anim-add-menu [data-add], #ribbon [data-animation], #fx-modal [data-fx], [data-palette], [data-fontpair]';
+const ITEMS = '#anim-add-menu [data-add], #ribbon [data-animation], #fx-modal [data-fx], [data-palette], [data-fontpair], [data-wa]';
 function start(btn) {
   if (btn.dataset.add != null || btn.dataset.animation || btn.dataset.fx) previewAnimation(btn.dataset.add ?? btn.dataset.animation ?? btn.dataset.fx);
+  else if (btn.dataset.wa) previewWordart(btn.dataset.wa);
   else if (btn.dataset.palette) previewDesign({ palette: btn.dataset.palette });
   else if (btn.dataset.fontpair) previewDesign({ fontpair: btn.dataset.fontpair });
 }
-export function endPreviews() { clearTimeout(timer); timer = null; over = null; stopAnimationPreview(); hideDesignPreview(); }
+export function endPreviews() { clearTimeout(timer); timer = null; over = null; stopAnimationPreview(); stopWordartPreview(); hideDesignPreview(); }
 export function wireLivePreviews(root = document) {
   root.addEventListener('pointerover', e => {
     if (e.pointerType === 'touch') return;

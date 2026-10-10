@@ -282,3 +282,20 @@ body.assistant-open .tb-ai{background:var(--accent);color:var(--on-accent)}
 .fxd-obj b{font-size:15px;font-weight:600}
 .fxd-cap{display:flex;flex-direction:column;margin-top:6px;font-size:12px;line-height:1.25;color:var(--txt)}
 .fxd-cap small{color:var(--txt2)}
+.fx-morph{width:264px}
+.fx-morph .fxd-box{width:46px;height:30px;background:#5b8def;border:2px solid #2e5fb8;border-radius:6px}
+.fxd-line,.fxd-tok{font:600 13px/1.2 system-ui,sans-serif;color:#1f2a3a;white-space:nowrap}
+.fxd-line{position:absolute;left:10px;top:42px}
+.fxd-line.big,.fxd-tok.big{font-size:26px;letter-spacing:.04em}
+.fxd-line.big{left:72px;top:34px}
+.fxd-tok{position:absolute}
+/* Image adjustments (dialogs/object.js): the picture itself with each correction, to pick by looking. */
+.ia-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:4px 0 10px}
+.ia-presets button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px;border:1px solid var(--line2);border-radius:8px;background:none;color:var(--txt);cursor:pointer;font-family:inherit;font-size:11px}
+.ia-presets button:hover{border-color:var(--accent);background:var(--accent-bg)}
+.ia-presets img{width:100%;height:54px;object-fit:cover;border-radius:4px;background:repeating-conic-gradient(#ddd 0 25%,#fff 0 50%) 0 0/10px 10px}
+/* Examples of the presentation's options (dialogs/settings.js). */
+.set-ex{margin:-2px 0 8px;color:var(--txt2)}
+.set-ease{position:relative;width:140px;height:14px;border-bottom:1px dashed var(--line2)}
+.set-ease i{position:absolute;left:0;top:2px;width:10px;height:10px;border-radius:50%;background:var(--accent);animation:setEase 1.6s infinite alternate}
+@keyframes setEase{from{left:0}to{left:130px}}

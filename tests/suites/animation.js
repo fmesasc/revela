@@ -775,6 +775,44 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.getElementById('trans-preview')?.remove();
   });
 
+  await test('más ejemplos: Transformar por palabras, texto artístico, estilos de tabla, correcciones de imagen y opciones de la presentación', async () => {
+    reset(); const W = frame.contentWindow, over = el => el.dispatchEvent(new W.PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' }));
+    // Morph: words — the sample's words move.
+    const mb = D.querySelector('#ribbon [data-morphby]'); mb.value = 'words'; over(mb); await sleep(500);
+    let card = D.getElementById('fx-demo');
+    assert(card && /Palabras/.test(card.textContent) && card.querySelectorAll('.fxd-tok').length === 3 && card.querySelector('.fxd-tok').getAnimations().length, 'Transformar por palabras: tres palabras que viajan');
+    mb.value = 'chars'; mb.dispatchEvent(new W.Event('change', { bubbles: true })); await sleep(50);
+    card = D.getElementById('fx-demo'); assert(card && card.querySelectorAll('.fxd-tok').length === 4 && /Caracteres/.test(card.textContent), 'por caracteres: ROMA → AMOR');
+    card.remove();
+    // Text Art: the selected text shows the style pointed at, and goes back.
+    const b = newText(); select(b); await sleep(10);
+    const rich = D.querySelector(`#stage .block[data-id="${b.id}"] .rich`), was = rich.style.cssText;
+    const L = await W.eval("import('/src/ui/ribbon/livepreview.js')"), S = await W.eval("import('/src/render/svg.js')");
+    assert(L.previewWordart(S.WORDART_KEYS[1]) && rich.style.cssText !== was, 'texto artístico: se ve en el texto seleccionado');
+    L.endPreviews(); eq(rich.style.cssText, was, 'y vuelve');
+    // Table styles: the table shows the style pointed at.
+    R.blocks.addTable(); const tb = last(); select(tb); R.render(); await sleep(20);
+    (await W.eval("import('/src/ui/dialogs/object.js')")).openTableStyle(tb); await sleep(20);
+    const tEl = D.querySelector(`#stage .block[data-id="${tb.id}"] table`), cls0 = tEl.className, opts = [...D.querySelectorAll('#ts-modal [data-ts]')];
+    const other = opts.find(x => { x.dispatchEvent(new W.PointerEvent('pointerenter')); const changed = tEl.className !== cls0 || tEl.style.cssText; x.dispatchEvent(new W.PointerEvent('pointerleave')); return changed; });
+    assert(other, 'estilo de tabla: se ve en la tabla al pasar el ratón');
+    eq(tEl.className, cls0, 'y al salir, como estaba'); D.querySelector('#ts-modal .modal-close').click();
+    // Picture corrections: examples of the picture itself; one chosen sets its values.
+    R.store.commit(() => slide().blocks.push({ id: 'im1', type: 'image', x: 10, y: 10, w: 100, h: 80, rotation: 0, animation: null, src: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' }));
+    const im = slide().blocks.find(x => x.id === 'im1');
+    (await W.eval("import('/src/ui/dialogs/object.js')")).openImageAdjust(im); await sleep(20);
+    const presets = D.querySelectorAll('#img-modal [data-ip] img'); assert(presets.length >= 6 && /saturate\(0%\)/.test([...presets].map(x => x.style.filter).join(' ')), 'correcciones: la imagen con cada una');
+    select(im); [...D.querySelectorAll('#img-modal [data-ip]')].find(x => /Blanco y negro/.test(x.textContent)).click(); await sleep(10);
+    eq(+slide().blocks.find(x => x.id === 'im1').adj.saturate, 0, 'elegida: blanco y negro'); D.querySelector('#img-modal .modal-close').click();
+    // Presentation options: an example by each less obvious one, following the choice.
+    (await W.eval("import('/src/ui/dialogs/settings.js')")).openSettings(); await sleep(30);
+    const ex = k => D.querySelector(`#set-modal [data-ex="${k}"]`);
+    assert(ex('navigationMode') && ex('view') && ex('controlsLayout') && ex('autoAnimateEasing'), 'ejemplos en navegación, vista, flechas y curva');
+    const nm = D.querySelector('#set-modal select[data-k="navigationMode"]'), before = ex('navigationMode').innerHTML;
+    nm.value = 'grid'; nm.dispatchEvent(new W.Event('change')); assert(ex('navigationMode').innerHTML !== before, 'cambia con la opción');
+    D.querySelector('#set-modal .modal-close').click();
+  });
+
   await test('énfasis que no oculta: latido, balanceo, salto y destello (editor, presentación y PowerPoint)', async () => {
     reset(); const W = frame.contentWindow, T = await W.eval("import('/src/features/animation/transitions.js')");
     for (const e of ['pulse', 'teeter', 'jump', 'color-pulse']) { assert(!T.isEntrance(e) && T.EFFECT_KF[e], e + ': énfasis con su animación'); }

@@ -5,7 +5,7 @@
 import { initPainter } from '../canvas/painter.js';
 import { initTextAids } from './textaids.js';
 import { wireLivePreviews } from '../ribbon/livepreview.js';
-import { wireEffectDemos } from './fxdemo.js';
+import { wireEffectDemos, wireMorphDemos } from './fxdemo.js';
 import { initSaveState } from './savestate.js';
 
-export function initEditAids() { initPainter(); initTextAids(); wireLivePreviews(); wireEffectDemos(); initSaveState(); }
+export function initEditAids() { initPainter(); initTextAids(); wireLivePreviews(); wireEffectDemos(); wireMorphDemos(); initSaveState(); }

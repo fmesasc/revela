@@ -2,6 +2,7 @@
 // image adjustments and crop, equations, chart data, opacity, icon colour,
 // box style, slide links, captions, alt text, table style, background removal.
 
+import { esc } from '../../core/text.js';
 import { state, commit } from '../../core/store.js';
 import * as blocks from '../../features/document/blocks.js';
 import { t } from '../../i18n/index.js';
@@ -13,9 +14,14 @@ import { gifRemoveBackground } from '../../features/live/gifbg.js';
 import { MATHLIVE, BG_REMOVAL, loadScript } from '../../core/vendor.js';
 import { renderLatex } from '../canvas/content.js';
 import { tablePresets, tableClass, tableVars, tableCSS, chartSVG } from '../../render/svg.js';
-import { withBlobs } from '../../io/formats/blobmedia.js';
+import { withBlobs, blobURL } from '../../io/formats/blobmedia.js';
 import { currentPalette, deckFg } from '../../features/design/palettes.js';
 
+// PowerPoint's «Correcciones» and «Color», as examples of the picture itself.
+const IMG_PRESETS = [['Original', { brightness: 100, contrast: 100, saturate: 100, opacity: 100 }], ['Más claro', { brightness: 130, contrast: 100, saturate: 100, opacity: 100 }],
+  ['Más oscuro', { brightness: 75, contrast: 100, saturate: 100, opacity: 100 }], ['Más contraste', { brightness: 100, contrast: 145, saturate: 100, opacity: 100 }],
+  ['Suave', { brightness: 108, contrast: 80, saturate: 90, opacity: 100 }], ['Blanco y negro', { brightness: 100, contrast: 110, saturate: 0, opacity: 100 }],
+  ['Colores vivos', { brightness: 100, contrast: 110, saturate: 170, opacity: 100 }], ['Desvaída', { brightness: 110, contrast: 90, saturate: 60, opacity: 60 }]];
 export function openImageAdjust(b) {
   if (document.getElementById('img-modal')) return;
   const a = Object.assign({ brightness: 100, contrast: 100, saturate: 100, opacity: 100 }, b.adj);
@@ -23,8 +29,9 @@ export function openImageAdjust(b) {
     `<label class="fr-l">${label} <input type="range" data-adj="${prop}" min="0" max="${max}" value="${a[prop]}"></label>`;
   const back = document.createElement('div');
   back.id = 'img-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:start;min-width:280px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:280px;max-width:420px">
     <button class="modal-close">✕</button><h3>${t('Ajustes de imagen')}</h3>
+    <div class="ia-presets">${IMG_PRESETS.map(([n, v], i) => `<button type="button" data-ip="${i}" title="${esc(t(n))}"><img src="${esc(blobURL(b.src))}" alt="" style="filter:brightness(${v.brightness}%) contrast(${v.contrast}%) saturate(${v.saturate}%);opacity:${v.opacity / 100}"><span>${esc(t(n))}</span></button>`).join('')}</div>
     ${sl(t('Brillo'), 'brightness', 200)}${sl(t('Contraste'), 'contrast', 200)}
     ${sl(t('Saturación'), 'saturate', 200)}${sl(t('Opacidad'), 'opacity', 100)}
     <div class="fr-actions"><button class="fr-do" data-reset>${t('Restablecer')}</button></div>
@@ -35,6 +42,11 @@ export function openImageAdjust(b) {
   back.addEventListener('click', e => { if (e.target === back) close(); });
   back.querySelectorAll('[data-adj]').forEach(r =>
     r.addEventListener('input', () => blocks.setImageAdj(r.dataset.adj, r.value)));
+  // (A correction from the gallery: its four values at once, the sliders following.)
+  back.querySelectorAll('[data-ip]').forEach(x => x.addEventListener('click', () => {
+    const v = IMG_PRESETS[+x.dataset.ip][1];
+    for (const [k, val] of Object.entries(v)) { blocks.setImageAdj(k, val); const r = back.querySelector(`[data-adj="${k}"]`); if (r) r.value = val; }
+  }));
   back.querySelector('[data-reset]').addEventListener('click', () => {
     blocks.resetImageAdj();
     back.querySelectorAll('[data-adj]').forEach(r => (r.value = r.dataset.adj === 'opacity' ? 100 : 100));
@@ -437,9 +449,16 @@ export function openTableStyle(b) {
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   const sync = () => back.querySelectorAll('[data-o]').forEach(c => (c.checked = !!b[c.dataset.o]));
-  back.querySelectorAll('[data-ts]').forEach(x => x.addEventListener('click', () => {
-    const { name, ...p } = presets[x.dataset.ts]; blocks.setTableStyle(p); sync();
-  }));
+  // (Pointing at a style: the table on the slide shows it, as PowerPoint's live preview; leaving puts it back.)
+  const live = () => document.querySelector(`#stage .block[data-id="${b.id}"] table`);
+  let saved = null;
+  const unpreview = () => { const tb = live(); if (saved && tb) { tb.className = saved[0]; tb.style.cssText = saved[1]; } saved = null; };
+  back.querySelectorAll('[data-ts]').forEach(x => {
+    x.addEventListener('click', () => { saved = null; const { name, ...p } = presets[x.dataset.ts]; blocks.setTableStyle(p); sync(); });
+    x.addEventListener('pointerenter', () => { const tb = live(); if (!tb) return; unpreview(); saved = [tb.className, tb.style.cssText];
+      const { name, ...p } = presets[x.dataset.ts], m = { ...b, ...p }; tb.className = tableClass(m); tb.style.cssText = tableVars(m); });
+    x.addEventListener('pointerleave', unpreview);
+  });
   back.querySelectorAll('[data-o]').forEach(c => c.addEventListener('change', () => blocks.setTableStyle({ [c.dataset.o]: c.checked })));
   const ink = back.querySelector('.ts-ink'), auto = back.querySelector('.ts-ink-auto');
   ink.addEventListener('input', () => { auto.checked = false; blocks.setTableStyle({ color: ink.value }); });

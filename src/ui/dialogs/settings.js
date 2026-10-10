@@ -30,11 +30,28 @@ function showFitPreview(box, mode) {
   box.querySelectorAll('iframe').forEach(f => { f.srcdoc = html; });
 }
 
+// Examples of the less obvious options, drawn small and changed with the choice: how the slides are walked through
+// (navigation mode, view), where the arrows go, and Morph's curve (a dot that moves with it, over and over).
+const sq = (x, y, on = false) => `<rect x="${x}" y="${y}" width="16" height="10" rx="1.5" fill="${on ? 'var(--accent)' : 'none'}" stroke="currentColor" stroke-width="1.2"/>`;
+const arrow = (x1, y1, x2, y2) => `<path d="M${x1} ${y1}L${x2} ${y2}" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#sx-a)"/>`;
+const svgEx = inner => `<svg viewBox="0 0 120 52" width="120" height="52" aria-hidden="true"><defs><marker id="sx-a" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0L6,3L0,6z" fill="var(--accent)"/></marker></defs>${inner}</svg>`;
+const EXAMPLES = {
+  navigationMode: v => (v === 'grid' ? svgEx([0, 1, 2].flatMap(c => [0, 1, 2].map(r => sq(14 + c * 34, 2 + r * 17, !c && !r))).join('') + arrow(31, 7, 47, 7) + arrow(56, 13, 56, 18))
+    : v === 'linear' ? svgEx([0, 1, 2, 3].map(i => sq(4 + i * 30, 21, !i)).join('') + [0, 1, 2].map(i => arrow(21 + i * 30, 26, 33 + i * 30, 26)).join(''))
+    : svgEx(sq(14, 6, true) + sq(48, 6) + sq(48, 34) + sq(82, 6) + arrow(31, 11, 47, 11) + arrow(56, 17, 56, 33) + arrow(65, 11, 81, 11))),
+  view: v => (v === 'scroll' ? svgEx(`<rect x="38" y="1" width="44" height="50" rx="2" fill="none" stroke="currentColor" stroke-width="1.2"/>${sq(52, 5, true)}${sq(52, 20)}${sq(52, 35)}<path d="M90 12v28" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>`)
+    : svgEx(`<rect x="22" y="4" width="76" height="44" rx="2" fill="none" stroke="currentColor" stroke-width="1.2"/>${arrow(70, 26, 90, 26)}`)),
+  controlsLayout: v => svgEx(`<rect x="22" y="4" width="76" height="44" rx="2" fill="none" stroke="currentColor" stroke-width="1.2"/>`
+    + (v === 'edges' ? '<path d="M30 26l-4 0M90 26l4 0" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>' : '<circle cx="90" cy="40" r="4" fill="var(--accent)"/>')),
+  autoAnimateEasing: v => `<div class="set-ease"><i style="animation-timing-function:${String(v).replace(/[^\w().,\-\s]/g, '')}"></i></div>`,
+};
+const exampleHTML = (k, v) => `<div class="set-ex" data-ex="${k}">${EXAMPLES[k](v)}</div>`;
 export function openSettings() {
   document.getElementById('set-modal')?.remove();
   const o = { ...REVEAL_DEFAULTS, ...(state.deck.reveal || {}) }, s = currentSlide(), wm = state.deck.watermark;
   const ck = (k, l) => `<label class="fr-chk"><input type="checkbox" data-k="${k}"${o[k] ? ' checked' : ''}> ${t(l)}</label>`;
-  const sel = (k, l, opts) => `<label class="fr-l">${t(l)}<select data-k="${k}">${opts.map(([v, n]) => `<option value="${v}"${String(o[k]) === String(v) ? ' selected' : ''}>${t(n)}</option>`).join('')}</select></label>`;
+  const sel = (k, l, opts) => `<label class="fr-l">${t(l)}<select data-k="${k}">${opts.map(([v, n]) => `<option value="${v}"${String(o[k]) === String(v) ? ' selected' : ''}>${t(n)}</option>`).join('')}</select></label>`
+    + (EXAMPLES[k] ? exampleHTML(k, o[k]) : '');
   const back = document.createElement('div'); back.id = 'set-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(640px,94vw);max-width:94vw;max-height:88vh;overflow:auto">
     <button class="modal-close">✕</button><h3>${t('Configuración de la presentación')}</h3>
@@ -94,6 +111,8 @@ export function openSettings() {
   const fitSel = back.querySelector('[data-k="fit"]'), prev = back.querySelector('.fit-prev');
   showFitPreview(prev, fitSel.value);
   fitSel.addEventListener('change', () => showFitPreview(prev, fitSel.value));
+  back.querySelectorAll('[data-ex]').forEach(ex => { const sl = back.querySelector(`select[data-k="${ex.dataset.ex}"]`);
+    sl?.addEventListener('change', () => { ex.innerHTML = EXAMPLES[ex.dataset.ex](sl.value); }); });
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
   // Pictures: a choice of this browser (not of the presentation), kept at once.
