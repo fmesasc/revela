@@ -131,7 +131,8 @@ export function initRibbon() {
     const more = e.target.closest('[data-more]');
     if (more) { e.stopPropagation(); togglePopover(more, more.dataset.more); return; }
     const sym = e.target.closest('[data-symbols]');
-    if (sym) { e.stopPropagation(); togglePopover(sym, 'symbols'); return; }
+    // (A dialog of its own, loaded when first opened: thousands of characters, a search and a drawing pad.)
+    if (sym) { e.stopPropagation(); closePopover(); const at = format.textCaret(); import('../dialogs/symbols.js').then(m => m.openSymbols(at)); return; }
     const ics = e.target.closest('[data-icons]');
     if (ics) { e.stopPropagation(); togglePopover(ics, 'icons'); return; }
     const wa = e.target.closest('[data-wordart]');

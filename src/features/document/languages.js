@@ -79,6 +79,8 @@ export function deckIn(deck, lang) {
   const d = structuredClone(deck);
   translateDeck(d, d.i18n.texts?.[lang] || {}, { rtl: RTL.includes(lang) });
   d.lang = lang;
+  // (A box in another language than the rest — proofing.js textLang — is translated too: it reads in this one now.)
+  for (const s of d.slides || []) for (const b of s.blocks || []) if (b.textLang && b.textLang !== 'none') delete b.textLang;
   return sanitizeDeck(d);
 }
 // The language for someone: the one the author forces, else the one asked for (?lang=), else the first of the

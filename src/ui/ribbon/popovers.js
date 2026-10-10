@@ -1,5 +1,5 @@
 // Ribbon group launchers (the small arrow in a group's corner, as in Office)
-// and the galleries they open: symbols, icons, WordArt, palettes, fonts, layouts.
+// and the galleries they open: icons, WordArt, palettes, fonts, layouts. (Symbols have a dialog: dialogs/symbols.js.)
 
 import { DIAGRAM_LAYOUTS, DIAGRAM_SAMPLES, DEFAULT_DIAGRAM_TEXT, diagramHTML } from '../../render/diagrams.js';
 import { esc } from '../../core/text.js';
@@ -31,13 +31,6 @@ function savedTemplates() {
     + mine.map(([id, tp]) => `<button data-user-tpl="${esc(id)}" type="button">${esc(tp.name)}</button>`).join('') + '</div>';
 }
 export const POPS = {
-  symbols: () => {
-    const chars = ['→','←','↑','↓','↔','⇒','•','◦','▪','‣','✓','✔','✗','✘','★','☆','♦','●','■','▶',
-      '€','$','£','¥','©','®','™','°','±','×','÷','≈','≠','≤','≥','∞','∑','√','π',
-      '😀','😉','🎉','🚀','✅','⚠️','💡','📌','🔗','📈','🔥','👍','❤️','⭐','🧠','🛠️'];
-    return `<h4>${t('Símbolos y emojis')}</h4><div class="sym-grid">`
-      + chars.map(c => `<button data-sym type="button">${c}</button>`).join('') + `</div>`;
-  },
   // By groups, with a search box (Spanish or English names, and in the app's language).
   icons: () => `<h4>${t('Iconos')}</h4><input type="search" class="icon-search" data-icon-search placeholder="${esc(t('Buscar icono…'))}"><div class="icon-groups">`
     + [['Básicos', BASIC_ICONS], ...ICON_GROUPS].map(([cat, list]) => `<h5 class="icon-cat">${esc(t(cat))}</h5><div class="sym-grid icons">`
@@ -142,10 +135,6 @@ export function togglePopover(launcher, type, { replaceId = null } = {}) {
   if (csel) { csel.value = String(selectedBlock()?.columns || 1); csel.addEventListener('change', e => format.setColumns(e.target.value)); }
   const nsel = pop.querySelector('[data-pop="numstyle"]');
   if (nsel) { nsel.value = selectedBlock()?.numStyle || 'decimal'; nsel.addEventListener('change', e => format.setNumStyle(e.target.value)); }
-  pop.querySelectorAll('[data-sym]').forEach(x => {
-    x.addEventListener('mousedown', e => e.preventDefault());   // keep the caret in the text
-    x.addEventListener('click', () => format.insertSymbol(x.textContent));
-  });
   pop.querySelector('[data-icon-search]')?.addEventListener('input', e => {
     const q = fold(e.target.value).trim().split(/\s+/).filter(Boolean);
     let any = false;

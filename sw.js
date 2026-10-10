@@ -41,6 +41,10 @@ self.addEventListener('fetch', e => {
       return res;
     }).catch(() => caches.match(req, { ignoreSearch: req.mode === 'navigate' })
       .then(r => r || (req.mode === 'navigate' ? caches.match('index.html') : Response.error()))).finally(() => tell('end')));
+  } else if (url.hostname === 'cdn.jsdelivr.net' && /^\/(npm\/dictionary-|npm\/@farscrl\/hunspell-wasm@|gh\/LibreOffice\/dictionaries@)/.test(url.pathname)) {
+    // The spell checker's engine and dictionaries (up to ~10 MB each): its worker keeps them in a cache of its own
+    // (src/features/document/spellworker.js), also where there is no service worker (the desktop app). Not twice.
+    return;
   } else if (CDN.includes(url.hostname)) {
     // A fixed version (…@1.2.3/…, or a commit: the 3D models from GitHub) or a font never changes: cache first.
     // A branch (…@main/…) can: network first, the copy offline.

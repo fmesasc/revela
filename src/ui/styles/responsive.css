@@ -79,4 +79,6 @@
   #m-quick .mq-ai{color:var(--accent);font-weight:600}
   body.assistant-open #m-quick .mq-ai{background:var(--accent-bg)}
   #statusbar .legal-link{display:none}
+  /* (No room for the spelling language: it is chosen from a marked word's menu, «Idioma…», or on a wider screen.) */
+  #spell-lang{display:none}
 }

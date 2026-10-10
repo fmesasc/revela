@@ -1,0 +1,7 @@
+# A tiny Spanish dictionary for the spelling tests (tests/suites/text.js): loaded by the same path as the real ones
+# (features/document/spelling.js useDictionary), so the suite needs no dictionary from the network.
+SET UTF-8
+TRY aeoisnrtlcdumpbgvyqhfzjñxkwáéíóú
+SFX S Y 2
+SFX S 0 s [aeiouáéíóú]
+SFX S 0 es [^aeiouáéíóú]

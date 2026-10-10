@@ -119,11 +119,47 @@ export function exec(cmd, value = null) {
   document.execCommand(cmd, false, value);
   commit(() => { c.b.html = c.el.innerHTML; }, { history: false });
 }
-export function insertSymbol(ch) {
-  const c = ctx(); if (!c) return;
+// The text cursor in the text box being edited, as offsets in its text ({ id, start, end }; the end of the selected
+// text box if it isn't being edited; null without one): it survives the box being redrawn, which a Range doesn't. For
+// dialogs that take the focus and then write where the cursor was (Insert ▸ Symbols).
+export function caretOf(el) {
+  const s = getSelection(); if (!s.rangeCount) return null;
+  const r = s.getRangeAt(0); if (!el.contains(r.startContainer) || !el.contains(r.endContainer)) return null;
+  const at = (node, off) => { const x = document.createRange(); x.selectNodeContents(el); x.setEnd(node, off); return x.toString().length; };
+  return { start: at(r.startContainer, r.startOffset), end: at(r.endContainer, r.endOffset) };
+}
+export function textCaret() {
+  const c = ctx(); if (!c) return null;
+  const len = c.el.textContent.length;
+  return { id: c.b.id, ...(c.el.isContentEditable && caretOf(c.el) || { start: len, end: len }) };
+}
+// Into a text box's editing, with the cursor there (a text box shown with its maths drawn goes back to its source first,
+// as when editing it: offsets are in that).
+export function editAt(el, caret) { enterEdit(el); setTextCaret(el, caret); }
+export function setTextCaret(el, { start, end }) {
+  const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), r = document.createRange();
+  let n = 0, node, s = null, e = null;
+  while ((node = w.nextNode())) {
+    const len = node.data.length;
+    if (!s && start <= n + len) s = [node, start - n];
+    if (!e && end <= n + len) { e = [node, end - n]; break; }
+    n += len;
+  }
+  if (!s || !e) { r.selectNodeContents(el); r.collapse(false); } else { r.setStart(...s); r.setEnd(...e); }
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+}
+// font: a CSS font-family list for this character only (Insert ▸ Symbols, chosen there: a symbol of another font, as
+// Word does). Returns whether there was text to insert into.
+export function insertSymbol(ch, font = '') {
+  const c = ctx(); if (!c) return false;
   enterEdit(c.el);
-  document.execCommand('insertText', false, ch);
+  if (font) {
+    ensureFont(font);
+    const e = s => String(s).replace(/[&<>"]/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[x]));
+    document.execCommand('insertHTML', false, `<span style="font-family:${e(font)}">${e(ch)}</span>`);
+  } else document.execCommand('insertText', false, ch);
   commit(() => { c.b.html = c.el.innerHTML; }, { history: false });
+  return true;
 }
 export const color = v => exec('foreColor', v);
 export const highlight = v => exec('hiliteColor', v);

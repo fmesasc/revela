@@ -9,7 +9,8 @@ import { diagramLayout } from '../../render/diagrams.js';
 import { commentText } from '../../features/collab/comments.js';
 import { state } from '../../core/store.js';
 import { alertUser } from '../../core/notify.js';
-import { t } from '../../i18n/index.js';
+import { t, currentLang } from '../../i18n/index.js';
+import { boxLang, deckTag } from '../../features/document/proofing.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
 import { plainText } from '../../core/text.js';
 import { opacityOf } from '../../core/model.js';
@@ -173,6 +174,12 @@ async function naturalSizes(deck) {
   })));
 }
 
+// The language of a text's runs (<a:rPr lang>): PowerPoint checks its spelling in it, and screen readers read it so
+// (features/document/proofing.js; one not checked keeps the presentation's).
+function runLang(b) {
+  const v = boxLang(b, state.deck, currentLang(), plainText(b.html || ''));
+  return { lang: v === 'none' ? deckTag(state.deck, currentLang()) : v };
+}
 function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), link = null) {
   const pos = { x: IN(b.x), y: IN(b.y), w: IN(b.w), h: IN(b.h) }, hl = link ? { hyperlink: link } : {};   // (an object that is a link)
   if (b.rotation) pos.rotate = b.rotation;
@@ -181,7 +188,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
   try {
     if (b.type === 'text') {
       const fam = (b.fontFamily || deckBodyFont() || '').split(',')[0].replace(/['"]/g, '').trim();
-      const base = { fontSize: Math.round(wordartSize(b) * 0.75), color: hex(b.color || deckFg()) || 'FFFFFF', align: b.textAlign || 'left',
+      const base = { ...runLang(b), fontSize: Math.round(wordartSize(b) * 0.75), color: hex(b.color || deckFg()) || 'FFFFFF', align: b.textAlign || 'left',
         ...(fam && { fontFace: fam }), ...(b.fontWeight === '700' && { bold: true }), ...(b.fontStyle === 'italic' && { italic: true }),
         ...(b.lineHeight && { lineSpacingMultiple: +b.lineHeight }) };
       const opts = { ...pos, valign: { middle: 'middle', bottom: 'bottom' }[b.vAlign] || 'top', margin: 4,
@@ -272,7 +279,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
         const line = { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash), ...see };
         if (b.html && plainText(b.html).trim()) {          // text inside: one PowerPoint shape with its text
           const s2 = shapeTextStyle(b), fam = (s2.fontFamily || deckBodyFont() || '').split(',')[0].replace(/['"]/g, '').trim();
-          const base = { fontSize: Math.round(s2.fontSize * 0.75), color: hex(s2.color) || hex(deckFg()) || 'FFFFFF', align: s2.textAlign,
+          const base = { ...runLang(b), fontSize: Math.round(s2.fontSize * 0.75), color: hex(s2.color) || hex(deckFg()) || 'FFFFFF', align: s2.textAlign,
             ...(fam && { fontFace: fam }), ...(s2.fontWeight === '700' && { bold: true }), ...(s2.fontStyle === 'italic' && { italic: true }) };
           slide.addText(htmlToRuns(b.html, base), { ...pos, ...hl, shape: st, fill, line, valign: { top: 'top', bottom: 'bottom' }[s2.vAlign] || 'middle', margin: 4 });
         } else slide.addShape(st, { ...pos, ...hl, fill, line });
@@ -438,7 +445,7 @@ function placeholderOf(s, b, m) {
 function addPlaceholderText(slide, s, b, p) {
   const raw = s.blocks.find(x => x.id === b.id) || {};
   const fam = (raw.fontFamily || '').split(',')[0].replace(/['"]/g, '').trim();
-  const own = { ...(raw.fontSize && { fontSize: Math.round(raw.fontSize * 0.75) }), ...(raw.fit && !raw.fontSize && { fontSize: Math.round(b.fontSize * 0.75) }),
+  const own = { ...runLang(b), ...(raw.fontSize && { fontSize: Math.round(raw.fontSize * 0.75) }), ...(raw.fit && !raw.fontSize && { fontSize: Math.round(b.fontSize * 0.75) }),
     ...(raw.color && { color: hex(raw.color) }), ...(fam && { fontFace: fam }), ...(raw.textAlign && { align: raw.textAlign }),
     ...(raw.fontWeight === '700' && { bold: true }), ...(raw.fontStyle === 'italic' && { italic: true }) };
   slide.addText(htmlToRuns(b.html, own), { placeholder: phName(p) });

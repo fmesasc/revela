@@ -23,6 +23,7 @@ import { activityGame, GAME_WORDS } from '../runtime/games.js';
 import { lockSHA256, lockNorm, lockRuntime, LOCK_CSS } from '../runtime/lock.js';
 import { lockSVG, lockCodes, lockDigits } from '../../render/svg.js';
 import { slideTitle } from '../../features/document/a11y.js';
+import { deckTag, langAttr } from '../../features/document/proofing.js';
 import { blobMedia } from './blobmedia.js';
 import { createMediaPlayer, revelaMediaRuntime, askInVideo } from '../runtime/media.js';
 import { needsPlayer, mediaConfig, cameraSegment, cameraBoxCSS, cameraInnerHTML } from '../../features/live/media.js';
@@ -320,7 +321,7 @@ function blockHTMLRaw(b, slide) {
   // Morph: the object matches its twin on the next slide by id — except text
   // morphing by words/characters, where the words themselves match (morphText).
   const byText = !!b.byText;
-  const a = animAttrs(b, slide) + (b.morphId && !byText ? ` data-id="${esc(b.morphId)}"` : '') + ariaAttrs(b) + linkAttrs(b) + (b.dragLive && !b.locked ? ' data-drag data-prevent-swipe' : '');
+  const a = animAttrs(b, slide) + (b.morphId && !byText ? ` data-id="${esc(b.morphId)}"` : '') + ariaAttrs(b) + langAttr(b) + linkAttrs(b) + (b.dragLive && !b.locked ? ' data-drag data-prevent-swipe' : '');
   if (b.type === 'connector') {
     const { w, h } = state.deck.size;
     const from = slide && slide.blocks.find(x => x.id === b.from);
@@ -768,7 +769,7 @@ function buildHTMLRaw(deck, { inApp = false, selfPaced = false, noCopy = false, 
     ? `<img class="deck-logo" src="${esc(lg.src)}" style="position:fixed;${LOGO_POS[lg.position] || LOGO_POS.br};height:${lg.size || 120}px;z-index:31;pointer-events:none">`
     : '';
   return `<!doctype html>
-<html lang="es"><head><meta charset="utf-8">
+<html lang="${esc(deckTag(deck, currentLang()))}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(deck.name || 'Presentación')}</title>
 <style>aside.notes{display:none}</style>

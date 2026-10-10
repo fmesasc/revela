@@ -35,6 +35,7 @@ import { isGif } from '../../features/live/media.js';
 import { cameraLive, setCameraLive, setCameraBackground } from '../canvas/cameraview.js';
 import { puppetTrying, tryPuppet, togglePuppet } from '../canvas/puppetview.js';
 import { openCameraEffects } from '../dialogs/media.js';
+import { spellAt, spellMenu } from './spellcheck.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
 
 let menuEl, menuOpenedAt = 0;
@@ -51,12 +52,16 @@ export function initContextMenu() {
   window.addEventListener('blur', () => hide());
 
   const stage = document.getElementById('stage');
-  const openStageMenu = (x, y, target) => {
-    const blockEl = target && target.closest('.block');
+  // (On a word marked as misspelt — ui/shell/spellcheck.js —: its suggestions first, as in Word.)
+  // (Elsewhere the menu opens at once, as always: only a marked word waits for its suggestions.)
+  const openStageMenu = (x, y, target, touch, extra) => {
+    const blockEl = target && target.closest('.block'), word = blockEl && !extra ? spellAt(x, y) : null;
+    if (word) { spellMenu(word, x, y).then(items => openStageMenu(x, y, target, touch, items)); return; }
+    extra ||= [];
     if (blockEl) {
       if (!isSelected(blockEl.dataset.id)) commit(() => setSelection(blockEl.dataset.id), { history: false });
       const td = target.closest('td[data-r]');
-      open(x, y, forBlock(selectedBlock(), td ? { r: +td.dataset.r, c: +td.dataset.c } : null));
+      open(x, y, [...extra, ...forBlock(selectedBlock(), td ? { r: +td.dataset.r, c: +td.dataset.c } : null)]);
     } else {
       open(x, y, forCanvas());
     }
@@ -415,9 +420,9 @@ function open(x, y, items) {
   items = items.filter((it, i, a) => it || (i > 0 && a[i - 1] && a.slice(i + 1).some(Boolean)));
   for (const item of items) {
     if (!item) { const sep = document.createElement('div'); sep.className = 'ctx-sep'; menuEl.appendChild(sep); continue; }
-    const [label, fn] = item;
+    const [label, fn, opt = {}] = item;                    // (opt.raw: shown as it is — a spelling suggestion —, not translated)
     const row = document.createElement('button');
-    row.className = 'ctx-item'; row.textContent = t(label); row.disabled = !fn;
+    row.className = 'ctx-item' + (opt.cls ? ' ' + opt.cls : ''); row.textContent = opt.raw ? label : t(label); row.disabled = !fn;
     if (fn) row.addEventListener('click', () => { hide(); fn(); });
     menuEl.appendChild(row);
   }

@@ -139,6 +139,9 @@ src/
       search.js                find and replace across the deck's text
       bulk.js                  «Generar desde una hoja»: a slide's {{placeholders}} filled from each row of a spreadsheet
       autocorrect.js           typographic replacements while typing
+      proofing.js              the language a text is written in (the deck's, a box's, detected) and its words
+      spelling.js  spellworker.js   spell checking: Hunspell (WebAssembly) in a worker, dictionaries on
+                               demand kept in Cache Storage, the personal dictionary
       a11y.js                  accessibility checker (pure analysis)
       magnify.js               the magnifier: lines, placement, picture crop
       imgshrink.js             big pictures made smaller (compress pictures)
@@ -284,7 +287,8 @@ src/
                                the AI), notices, toast (short notes), where (where the presentation
                                is kept), changeimage («Cambiar imagen»: a file or Recursos), editaids
                                (starts the next ones), textaids («/» menu in text, automatic lists' undo,
-                               «Reducir si no cabe» hint), savestate (saved and when; the empty slide's hint)
+                               «Reducir si no cabe» hint), savestate (saved and when; the empty slide's hint),
+                               spellcheck (misspelt words marked on the slide, the status bar's language)
     canvas/                    canvas (render/reconcile), content (per object type),
                                interact (drag/resize/guides/snap), preview (animations),
                                pathdraw (drawn motion paths), mediaview (video/GIF), cameraview
@@ -305,7 +309,7 @@ src/
                                community, ambassador, report (support), share, gdrive, onedrive,
                                othercloud, ai, assistant, theme, model3dai, autorig, model3d, …
     panels/                    a11y, comments, review (track changes), selection pane,
-                               animation pane, call (video call window)
+                               animation pane, call (video call window), spelling (Revisar ▸ Ortografía, F7)
     styles/                    CSS in cascade order: tokens, ribbon, layout, canvas,
                                chrome, responsive, features
 assets/                        files served with the app: fonts/, 3D thumbnails (library3d/, nasa3d/)
@@ -316,7 +320,8 @@ tests/
   layers.py                    architecture check (layers, imported names, linked files, .gitignore)
   suite.js  suites/*.js        the browser test suite, one file per area (animation, editor, io,
                                objects, present, services, slides, text); index.html runs it
-  fixtures/                    test files: Office themes, 3D models for autorig, a CSV, a fake cloud API
+  fixtures/                    test files: Office themes, 3D models for autorig, a CSV, a fake cloud API, a tiny
+                               Spanish dictionary (spell/)
   server.mjs                   the share/collaboration server, with in-memory Durable Objects
   server-api.mjs               the accounts API: sessions, credits, AI, payments, desktop sign-in
   server-lti.mjs               LTI 1.3 against a simulated platform

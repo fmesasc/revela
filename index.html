@@ -764,6 +764,7 @@
             <button data-action="review-panel" class="lg" title="Registrar cada cambio con su autor para aceptarlo o rechazarlo después"><i class="ms">rate_review</i><span>Control de<br>cambios</span></button>
             <button data-action="a11y-check" class="lg"><i class="ms">accessibility_new</i><span>Comprobar<br>accesibilidad</span></button>
             <button data-action="languages" class="lg" title="La presentación en varios idiomas: una tabla con cada texto en cada idioma, que la IA completa; cada persona la ve en el suyo"><i class="ms">translate</i><span>Idiomas</span></button>
+            <button data-action="spelling" class="lg" title="Revisar la ortografía de todas las diapositivas (F7)"><i class="ms">spellcheck</i><span>Ortografía</span></button>
             <button data-action="autocorrect" class="lg" title="Sustituir al escribir: -- → —, -> → →, (c) → ©…"><i class="ms">spellcheck</i><span>Autocorrección</span></button>
             <button data-action="reading-order" class="lg"><i class="ms">format_list_numbered</i><span>Orden de<br>lectura</span></button>
           </div><label>Revisar</label>
@@ -832,6 +833,8 @@
     <a class="legal-link" href="terms.html" target="_blank" rel="noopener">Condiciones</a>
     <a class="legal-link" href="legal.html" target="_blank" rel="noopener">Aviso legal</a>
     <span id="status-slide"></span>
+    <!-- The language the slides' spelling is checked in (ui/shell/spellcheck.js): the presentation's, or the selected box's. -->
+    <button data-action="spell-lang" id="spell-lang" title="Idioma de corrección de la ortografía"><i class="ms">spellcheck</i><bdi></bdi></button>
     <span class="zoom">
       <button data-action="zoom-out" title="Alejar"><i class="ms">remove</i></button>
       <input type="range" id="zoom-slider" min="10" max="300" step="5" value="100" title="Zoom (Ctrl + rueda del ratón)" aria-label="Zoom">

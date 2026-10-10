@@ -274,7 +274,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
 
   await test('localización: todos los textos de la interfaz tienen traducción (también los nuevos)', async () => {
     const tbl = await (await fetch(new URL('../src/i18n/strings.js', D.baseURI))).text();
-    const files = ['src/ui/shell/textaids.js', 'src/ui/shell/savestate.js', 'src/ui/shell/changeimage.js', 'src/ui/ribbon/livepreview.js', 'src/ui/dialogs/shortcuts.js', 'src/ui/dialogs/lock.js', 'src/ui/dialogs/lessonplan.js', 'src/ui/shell/audience.js', 'src/features/document/watermark.js', 'src/ui/dialogs/settings.js', 'src/ui/dialogs/classpace.js', 'src/apps/view/main.js', 'src/ui/dialogs/bulk.js', 'src/features/ai/lessonplan.js', 'src/ui/shell/palette.js', 'src/ui/dialogs/share.js', 'src/ui/dialogs/cloud.js', 'src/ui/dialogs/cloudlibrary.js', 'src/ui/panels/a11y.js', 'src/ui/panels/review.js', 'src/ui/dialogs/poll.js', 'src/ui/dialogs/classroom.js', 'src/ui/dialogs/ai.js', 'src/ui/dialogs/assistant.js', 'src/ui/dialogs/account.js', 'src/ui/dialogs/team.js', 'src/ui/panels/call.js', 'src/ui/dialogs/picture.js', 'src/ui/dialogs/textstyles.js', 'src/ui/shell/masterview.js', 'src/io/share/publish.js', 'src/ui/canvas/content.js', 'src/ui/dialogs/object.js', 'src/io/export/objects.js', 'src/ui/canvas/puppetview.js', 'src/ui/dialogs/autorig.js', 'src/ui/dialogs/model3d.js', 'src/ui/ribbon/animribbon.js', 'src/ui/dialogs/gdrive.js', 'src/ui/panels/animation.js', 'src/ui/shell/notices.js', 'src/ui/dialogs/questions.js', 'src/io/formats/questions.js', 'src/io/export/study.js'];
+    const files = ['src/ui/dialogs/symbols.js', 'src/ui/shell/textaids.js', 'src/ui/shell/savestate.js', 'src/ui/shell/changeimage.js', 'src/ui/ribbon/livepreview.js', 'src/ui/dialogs/shortcuts.js', 'src/ui/dialogs/lock.js', 'src/ui/dialogs/lessonplan.js', 'src/ui/shell/audience.js', 'src/features/document/watermark.js', 'src/ui/dialogs/settings.js', 'src/ui/dialogs/classpace.js', 'src/apps/view/main.js', 'src/ui/dialogs/bulk.js', 'src/features/ai/lessonplan.js', 'src/ui/shell/palette.js', 'src/ui/dialogs/share.js', 'src/ui/dialogs/cloud.js', 'src/ui/dialogs/cloudlibrary.js', 'src/ui/panels/a11y.js', 'src/ui/panels/review.js', 'src/ui/dialogs/poll.js', 'src/ui/dialogs/classroom.js', 'src/ui/dialogs/ai.js', 'src/ui/dialogs/assistant.js', 'src/ui/dialogs/account.js', 'src/ui/dialogs/team.js', 'src/ui/panels/call.js', 'src/ui/dialogs/picture.js', 'src/ui/dialogs/textstyles.js', 'src/ui/shell/masterview.js', 'src/io/share/publish.js', 'src/ui/canvas/content.js', 'src/ui/dialogs/object.js', 'src/io/export/objects.js', 'src/ui/canvas/puppetview.js', 'src/ui/dialogs/autorig.js', 'src/ui/dialogs/model3d.js', 'src/ui/ribbon/animribbon.js', 'src/ui/dialogs/gdrive.js', 'src/ui/panels/animation.js', 'src/ui/shell/notices.js', 'src/ui/dialogs/questions.js', 'src/io/formats/questions.js', 'src/io/export/study.js', 'src/ui/shell/spellcheck.js', 'src/ui/panels/spelling.js'];
     const missing = [];
     for (const f of files) {
       const src = await (await fetch(new URL('../' + f, D.baseURI))).text();
@@ -454,5 +454,146 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     AC.setAutocorrect(false);
     try { rich = await editEmpty(b); await typeIn(rich, '- '); assert(!rich.querySelector('ul'), 'con la autocorrección apagada, no'); }
     finally { AC.setAutocorrect(true); rich.blur(); }
+  });
+
+  // ---- Spelling of our own (ui/shell/spellcheck.js): with a tiny dictionary of the tests (tests/fixtures/spell), loaded
+  // by the same path as the real ones (worker, Cache Storage); the engine comes from the CDN, as the other libraries.
+  const W = frame.contentWindow;
+  const until = async (fn, ms = 30000) => { const end = Date.now() + ms; for (;;) { const v = fn(); if (v || Date.now() > end) return v; await sleep(50); } };
+  const FIX = { aff: '/tests/fixtures/spell/es-mini.aff', dic: '/tests/fixtures/spell/es-mini.dic' };
+  const spellOn = () => { try { W.localStorage.removeItem('revela.spell.words'); } catch {} R.spelling.useDictionary('es-ES', FIX); };
+  const spellOff = () => { D.getElementById('spell-panel')?.querySelector('.cm-close')?.click(); D.getElementById('spell-langs')?.remove(); R.spelling.noDownloads(); try { W.localStorage.removeItem('revela.spell.words'); } catch {} };
+  const marked = id => R.spellcheck.spellMarks().filter(m => !id || m.id === id).map(m => m.word);
+  // A text box out of the way, not being written in.
+  const box = html => { R.blocks.addText(html); const b = last(); R.store.commit(() => { b.x = 80; b.y = 470; b.w = 700; R.store.setSelection(null); }, { history: false }); D.activeElement?.blur?.(); R.render(); return b; };
+  // Where a word of a box is on the screen.
+  const wordAt = (b, word) => {
+    const rich = richOf(b), w = D.createTreeWalker(rich, 4); let n;
+    while ((n = w.nextNode())) { const i = n.nodeValue.search(new RegExp(`(^|\\s)${word}(\\s|$)`)); if (i < 0) continue;
+      const r = D.createRange(), a = i + (n.nodeValue[i] === word[0] ? 0 : 1); r.setStart(n, a); r.setEnd(n, a + word.length);
+      const q = r.getBoundingClientRect(); return { x: q.left + q.width / 2, y: q.top + q.height / 2 }; }
+    return null;
+  };
+  const rightClick = (b, word) => { const p = wordAt(b, word); richOf(b).dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: p.x, clientY: p.y })); };
+  const menuItems = () => [...D.querySelectorAll('#context-menu:not([hidden]) .ctx-item')];
+
+  await test('ortografía: marca «ola» y no «hola» en un cuadro sin foco, con su subrayado (sin tocar el HTML) y su idioma; el diccionario queda guardado', async () => {
+    reset(); spellOn();
+    try {
+      const b = box('hola ola');
+      const words = await until(() => marked(b.id).length && marked(b.id));
+      eq((words || []).join(), 'ola', 'solo «ola» marcada');
+      eq(marked().join(), 'ola', 'el título y el subtítulo, bien escritos');
+      assert(W.CSS.highlights.get('rv-spell')?.size === 1, 'subrayada con ::highlight(rv-spell)');
+      eq(slide().blocks.find(x => x.id === b.id).html, 'hola ola', 'el HTML del documento no cambia');
+      eq(richOf(b).lang, 'es-ES', 'el cuadro dice su idioma'); eq(richOf(b).spellcheck, false, 'y el corrector del navegador no subraya también');
+      eq(D.getElementById('stage').lang, 'es-ES', 'la diapositiva, también');
+      const c = await W.caches.open('revela-dicts-v1');
+      assert(await c.match(new URL(FIX.dic, D.baseURI).href), 'el diccionario, en Cache Storage para la próxima vez');
+      // Written again (not being written in now): marked again, a moment later.
+      R.store.commit(() => { slide().blocks.find(x => x.id === b.id).html = 'ola mundoo <b>hola</b>'; }); R.render();
+      const again = await until(() => marked(b.id).length === 2 && marked(b.id));
+      eq((again || []).join(), 'ola,mundoo', 'cada palabra mal escrita del cuadro');
+      // Not checked: numbers, addresses, e-mails, CAPITALS, words with digits, code.
+      const P = await W.eval("import('/src/features/document/proofing.js')");
+      eq(P.tokenize('ONU 3D H2O mp3 www.ejemplo.com ana@correo.es https://x.org/olaa iPhone ola').map(x => x.word).join(), 'ola', 'lo que no se revisa');
+    } finally { spellOff(); }
+  });
+
+  await test('ortografía: clic derecho en una palabra marcada → sugerencias arriba, «Omitir todo», «Agregar al diccionario» (quita la marca) e «Idioma…»', async () => {
+    reset(); spellOn();
+    try {
+      const b = box('hola ola'), c = box('mundoo');
+      await until(() => marked(b.id).length && marked(c.id).length);
+      rightClick(b, 'ola');
+      await until(() => menuItems().some(x => x.classList.contains('ctx-sugg')));
+      const labels = menuItems().map(x => x.textContent), sugg = menuItems().filter(x => x.classList.contains('ctx-sugg')).map(x => x.textContent);
+      assert(sugg.includes('hola'), 'sugiere «hola»: ' + labels.join('|'));
+      assert(labels.indexOf('Omitir todo') > labels.indexOf('hola') && labels.includes('Agregar al diccionario') && labels.includes('Idioma…'), 'y sus opciones: ' + labels.join('|'));
+      assert(labels.indexOf('Copiar') > labels.indexOf('Idioma…'), 'después, el menú de siempre');
+      menuItems().find(x => x.textContent === 'Agregar al diccionario').click();
+      assert(await until(() => !marked(b.id).length), 'agregarla quita la marca');
+      assert(JSON.parse(W.localStorage.getItem('revela.spell.words')).es.includes('ola'), 'en el diccionario personal (este navegador)');
+      // A suggestion replaces the word in the model (the box isn't being written in).
+      rightClick(c, 'mundoo');
+      await until(() => menuItems().some(x => x.textContent === 'mundo'));
+      menuItems().find(x => x.textContent === 'mundo').click();
+      eq(slide().blocks.find(x => x.id === c.id).html, 'mundo', 'cambiada por la sugerencia');
+      assert(await until(() => !marked(c.id).length), 'y ya no está marcada');
+      // Elsewhere on a box, the usual menu at once.
+      richOf(b).dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: wordAt(b, 'hola').x, clientY: wordAt(b, 'hola').y }));
+      eq(menuItems()[0]?.textContent, 'Copiar', 'en una palabra bien escrita, el menú de siempre');
+      D.getElementById('context-menu').hidden = true;
+    } finally { spellOff(); }
+  });
+
+  await test('ortografía: el idioma desde la barra inferior (la presentación, un cuadro, «No revisar»), y el lang en el HTML exportado', async () => {
+    reset(); spellOn();
+    try {
+      const b = box('hola ola'), btn = D.getElementById('spell-lang'), name = () => btn.querySelector('bdi').textContent;
+      await until(() => marked(b.id).length);
+      eq(name(), 'Español (España)', 'por defecto, el de la interfaz');
+      btn.click(); await sleep(20);
+      let menu = D.getElementById('spell-langs'); assert(menu, 'abre la lista');
+      for (const l of ['es-ES', 'ca-ES', 'gl-ES', 'eu-ES', 'en-US', 'en-GB', 'fr-FR', 'de-DE', 'it-IT', 'pt-PT', 'pt-BR', 'nl-NL', 'ar', 'auto', 'none']) assert(menu.querySelector(`[data-lang="${l}"]`), 'ofrece ' + l);
+      eq(menu.querySelector('[aria-checked="true"]').dataset.lang, 'es-ES', 'marcado el actual');
+      menu.querySelector('[data-lang="en-GB"]').click(); await sleep(30);
+      eq(R.state.deck.textLang, 'en-GB', 'se guarda en la presentación'); eq(name(), 'Inglés (Reino Unido)', 'y la barra lo dice');
+      assert(await until(() => !marked(b.id).length), 'sin diccionario de inglés aquí: sin marcas nuestras');
+      eq(richOf(b).lang, 'en-GB', 'el cuadro, en inglés'); eq(richOf(b).spellcheck, true, 'y el corrector del navegador se queda');
+      // The selected box: a language of its own.
+      R.store.commit(() => R.store.setSelection(b.id), { history: false }); await sleep(10);
+      btn.click(); await sleep(20); menu = D.getElementById('spell-langs');
+      eq(menu.querySelector('.sl-head').textContent, 'Idioma del cuadro seleccionado', 'con un cuadro seleccionado, el suyo');
+      menu.querySelector('[data-lang="es-ES"]').click(); await sleep(30);
+      eq(slide().blocks.find(x => x.id === b.id).textLang, 'es-ES', 'el cuadro, en español'); eq(name(), 'Español (España)', 'la barra dice el del cuadro');
+      assert(await until(() => marked(b.id).join() === 'ola'), 'y se revisa en español');
+      const html = R.io.buildHTML();
+      assert(/<html lang="en-GB"/.test(html), 'la página exportada, en el de la presentación');
+      assert(new RegExp(`lang="es-ES"[^>]*>[^]*?hola ola`).test(html), 'y el cuadro con su lang');
+      // «No revisar la ortografía»: nothing marked, not even by the browser.
+      R.store.commit(() => R.store.setSelection(null), { history: false }); await sleep(10);
+      btn.click(); await sleep(20); D.querySelector('#spell-langs [data-lang="es-ES"]').click(); await sleep(10);
+      const c = box('olaa');
+      assert(await until(() => marked(c.id).length), 'en español otra vez');
+      btn.click(); await sleep(20); D.querySelector('#spell-langs [data-lang="none"]').click();
+      assert(await until(() => !marked(c.id).length), '«No revisar»: sin marcas');
+      eq(richOf(c).spellcheck, false, 'tampoco las del navegador');
+      eq(marked(b.id).join(), 'ola', 'el cuadro con su idioma sigue revisándose');
+    } finally { delete R.state.deck.textLang; spellOff(); }
+  });
+
+  await test('ortografía: Revisar ▸ Ortografía (F7) recorre las diapositivas y las notas: Cambiar, Omitir, Agregar y Omitir todo', async () => {
+    reset(); spellOn();
+    try {
+      const b = box('hola ola');
+      R.slides.addSlide(); const s2 = slide(); const c = box('casa mundoo'); R.store.commit(() => { s2.notes = 'una notaa'; });
+      R.slides.goToSlide(0); await sleep(10);
+      D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'F7', bubbles: true, cancelable: true }));
+      const panel = D.getElementById('spell-panel'); assert(panel, 'F7 abre el panel de Ortografía');
+      const word = () => panel.querySelector('.spp-context mark')?.textContent;
+      eq(await until(() => word()), 'ola', 'la primera palabra'); eq(R.state.ui.slideIndex, 0, 'en su diapositiva'); eq(R.state.ui.selection, b.id, 'con su cuadro seleccionado');
+      await until(() => !panel.querySelector('[data-sp="change"]').disabled);
+      const sel = panel.querySelector('.spp-sugg'); assert([...sel.options].some(o => o.value === 'hola'), 'con sus sugerencias');
+      sel.value = 'hola'; panel.querySelector('[data-sp="change"]').click();
+      eq(await until(() => word() === 'mundoo' && word()), 'mundoo', 'Cambiar: la siguiente, en la otra diapositiva');
+      eq(slide().blocks.find(x => x.id === c.id) && R.state.ui.slideIndex, 1, 'lleva a la diapositiva 2');
+      eq(R.state.deck.slides[0].blocks.find(x => x.id === b.id).html, 'hola hola', 'cambiada en el documento');
+      panel.querySelector('[data-sp="skip"]').click();
+      eq(await until(() => word() === 'notaa' && word()), 'notaa', 'Omitir: después, las notas');
+      assert(/Notas del orador/.test(panel.querySelector('.spp-where').textContent), 'dice que es en las notas');
+      panel.querySelector('[data-sp="add"]').click();
+      assert(await until(() => panel.querySelector('.spp-done')), 'Agregar: ya no queda ninguna');
+      assert(JSON.parse(W.localStorage.getItem('revela.spell.words')).es.includes('notaa'), 'agregada al diccionario');
+      panel.querySelector('.spp-close').click(); assert(!D.getElementById('spell-panel'), 'Cerrar');
+      // Omitir todo, from the ribbon's button.
+      R.slides.goToSlide(0); await sleep(10);
+      D.querySelector('[data-action="spelling"]').click();
+      const p2 = D.getElementById('spell-panel');
+      eq(await until(() => p2.querySelector('.spp-context mark')?.textContent), 'mundoo', 'lo omitido vuelve en otra revisión');
+      p2.querySelector('[data-sp="skipAll"]').click();
+      assert(await until(() => p2.querySelector('.spp-done')), 'Omitir todo: terminada');
+      assert(await until(() => { R.slides.goToSlide(1); return !marked(c.id).length; }), 'y tampoco se marca en la diapositiva');
+    } finally { spellOff(); }
   });
 }

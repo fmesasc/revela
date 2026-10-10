@@ -185,3 +185,7 @@
 .crop-h.n,.crop-h.s{left:50%;width:calc(26px * var(--k,1));height:calc(8px * var(--k,1));cursor:ns-resize}.crop-h.n{top:0;translate:-50% -50%}.crop-h.s{bottom:0;translate:-50% 50%}
 .crop-h.e,.crop-h.w{top:50%;height:calc(26px * var(--k,1));width:calc(8px * var(--k,1));cursor:ew-resize}.crop-h.e{right:0;translate:50% -50%}.crop-h.w{left:0;translate:-50% -50%}
 .block.crop-hidden{visibility:hidden}
+
+/* A misspelt word (ui/shell/spellcheck.js): a wavy red line painted over the text (a CSS Custom Highlight), the
+   document's HTML untouched. */
+::highlight(rv-spell){text-decoration:underline wavy #e5484d;text-decoration-skip-ink:none;text-decoration-thickness:max(1.5px,.06em)}

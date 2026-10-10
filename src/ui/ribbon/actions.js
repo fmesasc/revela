@@ -48,6 +48,8 @@ import * as master from '../../features/document/master.js';
 import * as clip from '../../features/document/clipboard.js';
 import { openGallery, openDesignIdeas } from '../dialogs/gallery.js';
 import { autocorrectOn, setAutocorrect } from '../../features/document/autocorrect.js';
+import { openSpellPanel } from '../panels/spelling.js';
+import { openSpellLangs } from '../shell/spellcheck.js';
 import { openPlugins, openMacros } from '../dialogs/plugins.js';
 import { openVersions } from '../dialogs/versions.js';
 import { openClassResults, shareToClassroom } from '../dialogs/classroom.js';
@@ -206,6 +208,8 @@ export const ACTIONS = {
   'plugins': () => openPlugins(),
   'macros': () => openMacros(),
   'autocorrect': () => { setAutocorrect(!autocorrectOn()); renderRibbon(); },
+  'spelling': () => openSpellPanel(),
+  'spell-lang': () => openSpellLangs(),
   'master-edit': () => master.toggleMasterEdit(),
   'master-close': () => master.toggleMasterEdit(false),
   'master-styles': () => openTextStyles(),

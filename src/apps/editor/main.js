@@ -43,6 +43,8 @@ import * as comments from '../../features/collab/comments.js';
 import * as protect from '../../features/collab/protect.js';
 import { initRibbon, renderRibbon } from '../../ui/ribbon/ribbon.js';
 import { initContextMenu } from '../../ui/shell/contextmenu.js';
+import * as spellcheck from '../../ui/shell/spellcheck.js';
+import * as spelling from '../../features/document/spelling.js';
 import { initBusy } from '../../ui/shell/busy.js';
 import { initErrorReports } from '../../ui/shell/errors.js';
 import { openingScreen, whileOpening } from '../../ui/shell/opening.js';
@@ -153,6 +155,8 @@ function keyboard(e) {
   if (e.key === 'Escape' && editing) { e.preventDefault(); document.activeElement.blur(); return; }
   // Find & replace works anywhere, including while editing text.
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); openFindPanel(); return; }
+  // F7: spelling of the whole presentation, as in PowerPoint and Word (also while writing).
+  if (e.key === 'F7' && !e.ctrlKey && !e.metaKey && !e.altKey && !document.querySelector('.modal-backdrop')) { e.preventDefault(); ACTIONS.spelling(); return; }
   // Paste without formatting while editing text.
   if (editing && (e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'v') {
     e.preventDefault();
@@ -244,6 +248,9 @@ initBusy();                                             // (first: the «loading
 initErrorReports({ testing: new URLSearchParams(location.search).has('test') });   // (the app's errors, to Revela: ui/shell/errors.js)
 mountStage();
 initContextMenu();
+// Spelling of our own (ui/shell/spellcheck.js). The tests download no dictionary: the ones that check spelling bring theirs.
+if (new URLSearchParams(location.search).has('test')) spelling.noDownloads();
+spellcheck.initSpellcheck();
 initDraw();
 initModalKeys();
 palette.initPalette();
@@ -289,7 +296,7 @@ initI18n();
 // and inspect the real app. Only active with ?test in the URL.
 const testing = new URLSearchParams(location.search).has('test');
 if (testing)
-  window.__revela = { state, render, flushThumbs, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, examples, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, aiAgent, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, objects, picture, shares, shareServer, clouddocs, review, files, openfile, palette, video: () => import('../../io/export/video.js') };
+  window.__revela = { state, render, flushThumbs, store, model, blocks, format, slides, trans, fonts, remote, search, i18n, gdrive, pptx, io, a11y, reuse, ribbon, palettes, shapeops, master, gallery, examples, designer, pptxImport, odp, api, ai, versions, comments, protect, aiDeck, aiAgent, poll, dashboards, stock, clipboard: clip, markdown, notify, vendor, session, objects, picture, shares, shareServer, clouddocs, review, files, openfile, palette, spelling, spellcheck, video: () => import('../../io/export/video.js') };
 
 // Public scripting API for plugins, macros and the console; installed plugins
 // load after the editor is ready (not in the test harness).

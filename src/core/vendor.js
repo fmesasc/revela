@@ -37,6 +37,20 @@ export const SELFIE_MODEL = 'https://storage.googleapis.com/mediapipe-models/ima
 // the lightest pose model (the body, ~6 MB) and the face one (head turns, mouth and blinks, ~4 MB).
 export const POSE_MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
 export const FACE_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+// Spelling (features/document/spelling.js): Hunspell compiled to WebAssembly (the wrapper MIT; Hunspell itself
+// MPL 1.1 / GPL 2 / LGPL 2.1), its browser build: ~1 MB with the wasm inside. (nspell, in plain JavaScript, took
+// over two minutes to build the Italian or Portuguese dictionary; Hunspell, under two seconds the biggest.)
+export const HUNSPELL = NPM + '@farscrl/hunspell-wasm@1.0.1/dist/lib/hunspell.web.mjs';
+// The dictionaries, each under its own free licence: wooorm's packages (LibreOffice's, SCOWL's…, as .aff + .dic), and
+// Arabic (Ayaspell, GPL/LGPL/MPL) from LibreOffice's repository, by commit. Downloaded only when that language is used.
+const WOOORM = p => ({ aff: `${NPM}dictionary-${p}/index.aff`, dic: `${NPM}dictionary-${p}/index.dic` });
+const LIBREOFFICE = 'https://cdn.jsdelivr.net/gh/LibreOffice/dictionaries@32b006a2c22a4ac7e8ed3f03346f7b3d85a970a4/';
+export const SPELL_DICTS = {
+  'es-ES': WOOORM('es@4.0.0'), 'ca-ES': WOOORM('ca@3.0.0'), 'gl-ES': WOOORM('gl@3.0.0'), 'eu-ES': WOOORM('eu@4.0.0'),
+  'en-US': WOOORM('en@4.0.0'), 'en-GB': WOOORM('en-gb@3.0.0'), 'fr-FR': WOOORM('fr@3.0.0'), 'de-DE': WOOORM('de@3.0.0'),
+  'it-IT': WOOORM('it@2.0.0'), 'pt-PT': WOOORM('pt-pt@2.0.0'), 'pt-BR': WOOORM('pt@4.0.0'), 'nl-NL': WOOORM('nl@2.0.0'),
+  ar: { aff: LIBREOFFICE + 'ar/ar.aff', dic: LIBREOFFICE + 'ar/ar.dic' },
+};
 
 // A classic script (or an ES module), once: resolves at once if `global` already
 // exists, and concurrent calls for the same URL share one request.

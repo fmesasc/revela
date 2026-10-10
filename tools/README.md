@@ -22,6 +22,12 @@ itself in its first lines.
 | `audit-templates.py` | How the examples look in the editor, slide by slide: text that doesn’t fit, objects off the slide, overlaps, low contrast; exits with 1 if there are any. |
 | `shot-template.py` | Pictures of an example's slides in one sheet, to look at them. |
 
+## App data
+
+| Script | What it does |
+|---|---|
+| `build-symbols.mjs` | Writes `assets/symbols/`: Insert ▸ Symbols' categories and every emoji, their names in the 11 languages (CLDR) and the official names of every Unicode block, from fixed versions on jsDelivr. |
+
 ## Checking by hand
 
 | Script | What it does |

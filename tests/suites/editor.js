@@ -560,7 +560,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
 
   await test('cinta: todas las galerías se abren con su contenido', async () => {
     reset();
-    const launchers = { symbols: '[data-symbols]', icons: '[data-icons]', wordart: '[data-wordart]', palettes: '[data-palettes-open]',
+    const launchers = { icons: '[data-icons]', wordart: '[data-wordart]', palettes: '[data-palettes-open]',
       fontpairs: '[data-fontpairs-open]', layout: '[data-layout-open]', paragraph: '[data-more="paragraph"]' };
     for (const [name, sel] of Object.entries(launchers)) {
       const el = D.querySelector(sel); assert(el, 'lanzador ' + name);
@@ -570,6 +570,159 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       D.body.click(); await sleep(10);
     }
     assert(!D.querySelector('.popover'), 'se cierran al hacer clic fuera');
+  });
+
+  // ---- Insert ▸ Symbols and emojis (ui/dialogs/symbols.js) ----
+  const W0 = frame.contentWindow;
+  const until = async (fn, ms = 8000, what = '') => { const t0 = Date.now(); for (;;) { const v = await fn(); if (v) return v; if (Date.now() - t0 > ms) throw new Error('no llegó a tiempo: ' + what); await sleep(30); } };
+  async function openSymbolsDialog() {
+    D.querySelector('[data-symbols]').click();
+    const S = await W0.eval("import('/src/ui/dialogs/symbols.js')");
+    await until(() => D.querySelector('.sym-dlg'), 4000, 'el diálogo');
+    const ui = S.openSymbols(); await ui.ready();
+    await until(() => ui.items().length, 8000, 'los símbolos');
+    return ui;
+  }
+  const chars = ui => ui.items().filter(it => !it.head).map(it => it.ch.replace(/️/g, ''));
+  const bare = c => c.replace(/️/g, '');
+
+  await test('símbolos: diálogo amplio con categorías (también todos los emojis y Unicode por bloques), cuadrícula que solo dibuja lo que se ve, y no se cierra al pulsar fuera', async () => {
+    reset(); try { W0.localStorage.removeItem('revela.symbols.recent'); W0.localStorage.removeItem('revela.symbols.fav'); } catch {}
+    const ui = await openSymbolsDialog(), dlg = D.querySelector('.sym-dlg');
+    assert(dlg.closest('.modal-backdrop') && dlg.querySelector('.modal-close'), 'es un diálogo con ✕');
+    assert(!D.querySelector('.popover'), 'ya no es el popover pequeño');
+    const tabs = [...dlg.querySelectorAll('[role="tab"]')].map(x => x.dataset.tab);
+    for (const k of ['recent', 'arrows', 'math', 'greek', 'currency', 'bullets', 'shapes', 'marks', 'stars', 'scripts', 'units', 'music', 'games', 'punct', 'special',
+      'smileys', 'people', 'nature', 'food', 'travel', 'activities', 'objects', 'emojisym', 'flags', 'unicode']) assert(tabs.includes(k), 'pestaña ' + k);
+    const count = async id => { dlg.querySelector(`[data-tab="${id}"]`).click(); await sleep(20); return chars(ui); };
+    assert((await count('arrows')).length > 250, 'muchas flechas');
+    const greek = await count('greek'); assert(greek.includes('π') && greek.includes('Ω'), 'griego: π y Ω');
+    assert((await count('marks')).some(c => ['✓', '☐', '☑', '✗'].includes(c)), 'marcas ✓ ☐ ☑ ✗');
+    assert((await count('punct')).includes('«') && chars(ui).includes('¶') && chars(ui).includes('§'), 'puntuación « » ¶ §');
+    let emojis = 0;
+    for (const id of ['smileys', 'people', 'nature', 'food', 'travel', 'activities', 'objects', 'emojisym', 'flags']) emojis += (await count(id)).length;
+    assert(emojis > 1500, `todos los emojis por grupos (${emojis})`);
+    const people = await count('people');
+    assert(!people.some(c => /[\u{1F3FB}-\u{1F3FF}]/u.test(c)), 'sin variantes de tono de piel');
+    assert(dlg.querySelectorAll('.sym-cell').length < 400, `la cuadrícula solo dibuja lo que se ve (${dlg.querySelectorAll('.sym-cell').length} de ${people.length})`);
+    // Unicode by blocks: the CJK ideographs, tens of thousands, scroll without drawing them all.
+    dlg.querySelector('[data-tab="unicode"]').click(); await until(() => ui.items().length, 8000, 'un bloque');
+    const sel = dlg.querySelector('.sym-block'); assert(sel.options.length > 300, `todos los bloques (${sel.options.length})`);
+    await ui.showBlock(0x4E00); assert(ui.items().length > 20000, 'el bloque CJK entero');
+    const g = dlg.querySelector('.sym-grid'); g.scrollTop = g.scrollHeight / 2; g.dispatchEvent(new W0.Event('scroll')); await sleep(60);
+    assert(dlg.querySelectorAll('.sym-cell').length < 400 && dlg.querySelector('.sym-cell'), 'en medio del bloque se ven sus caracteres, y solo esos');
+    // Word's special characters, with names.
+    dlg.querySelector('[data-tab="special"]').click(); await sleep(20);
+    const sp = dlg.querySelectorAll('.sym-sp'); assert(sp.length >= 30 && /no separación/.test(dlg.querySelector('.sym-special').textContent), 'caracteres especiales con nombre');
+    // A click outside doesn't close it; ✕ does.
+    dlg.closest('.modal-backdrop').click(); await sleep(20);
+    assert(D.querySelector('.sym-dlg'), 'pulsar fuera no lo cierra');
+    dlg.querySelector('.modal-close').click(); await sleep(20);
+    assert(!D.querySelector('.sym-dlg'), 'la ✕ lo cierra');
+  });
+
+  await test('símbolos: buscar por nombre (español, inglés, sin acentos), por nombre Unicode y por código; insertar en el texto que se edita', async () => {
+    reset(); const b = newText(); await sleep(20);
+    const rich = richOf(b); rich.contentEditable = 'true'; rich.focus();
+    const r = D.createRange(); r.selectNodeContents(rich); r.collapse(false); W0.getSelection().removeAllRanges(); W0.getSelection().addRange(r);
+    const ui = await openSymbolsDialog();
+    const top = async (q, ch, n = 10) => { await ui.search(q); const got = chars(ui); const i = got.indexOf(bare(ch)); assert(i >= 0 && i < n, `«${q}» → ${ch} entre los ${n} primeros (puesto ${i}: ${got.slice(0, 12).join(' ')})`); };
+    await top('flecha', '→', 40); await top('corazón', '❤️'); await top('corazon', '❤️'); await top('infinito', '∞', 5); await top('euro', '€', 3);
+    await top('check', '✓', 12); await top('cohete', '🚀', 3); await top('rocket', '🚀', 3); await top('pi', 'π', 10); await top('copyright', '©', 3);
+    await top('rightwards arrow', '→', 40);
+    await ui.search('latin small letter a with ogonek'); assert(chars(ui).includes('ą'), 'por el nombre oficial de Unicode (todos los caracteres)');
+    await ui.search('U+2192'); eq(chars(ui)[0], '→', 'por código U+2192');
+    await ui.search('&#8594;'); eq(chars(ui)[0], '→', 'por código &#8594;');
+    await ui.goCode('2192'); await sleep(30);
+    eq(D.querySelector('.sym-dlg [data-tab="unicode"]').getAttribute('aria-selected'), 'true', 'el campo de código va a su bloque');
+    assert(/Arrows/.test(D.querySelector('.sym-block').selectedOptions[0].textContent), 'al bloque Arrows');
+    await until(() => /RIGHTWARDS ARROW/i.test(D.querySelector('.sym-dlg .sym-preview').textContent), 3000, 'la ficha');
+    assert(/U\+2192 · 8594 · &#8594;/.test(D.querySelector('.sym-codes').textContent), 'la ficha: código hexadecimal, decimal y HTML');
+    // Click: inserted where the cursor was, and it stays open for more.
+    await ui.search('euro'); await sleep(20);
+    const cell = [...D.querySelectorAll('.sym-dlg .sym-cell')].find(c => c.textContent === '€'); assert(cell, 'la celda del euro');
+    cell.click(); await sleep(30);
+    assert(slide().blocks.find(x => x.id === b.id).html.replace(/<[^>]+>/g, '').endsWith('€'), 'insertado al final del texto que se editaba: ' + slide().blocks.find(x => x.id === b.id).html + ' / ' + D.querySelector('.sym-dlg .sym-status').textContent + ' / ' + slide().blocks.map(x => x.type + ':' + (x.html || '')).join(' | '));
+    cell.isConnected ? cell.click() : [...D.querySelectorAll('.sym-dlg .sym-cell')].find(c => c.textContent === '€').click(); await sleep(30);
+    assert(slide().blocks.find(x => x.id === b.id).html.includes('€€'), 'y otro después, sin perder el sitio');
+    assert(D.querySelector('.sym-dlg'), 'el diálogo sigue abierto');
+    eq(JSON.parse(W0.localStorage.getItem('revela.symbols.recent'))[0], '€', 'queda entre los recientes');
+    D.querySelector('.sym-dlg [data-tab="recent"]').click(); await sleep(20);
+    eq(chars(ui)[0], '€', 'la pestaña de recientes lo muestra');
+    D.querySelector('.sym-dlg .sym-fav').click(); await sleep(20);
+    assert(chars(ui).includes('€') && /Favoritos/.test(D.querySelector('.sym-dlg .sym-rowhead')?.textContent || ''), 'favoritos');
+    // Keyboard: arrows move, Enter inserts.
+    const grid = D.querySelector('.sym-dlg .sym-grid'); grid.focus();
+    const key = k => grid.dispatchEvent(new W0.KeyboardEvent('keydown', { key: k, bubbles: true }));
+    const before = slide().blocks.find(x => x.id === b.id).html.length;
+    key('ArrowRight'); key('Enter'); await sleep(30);
+    assert(slide().blocks.find(x => x.id === b.id).html.length > before, 'con el teclado: flechas y Intro');
+    assert(grid.getAttribute('aria-activedescendant'), 'la celda activa se anuncia');
+    // With nothing selected: a new text box with the symbol.
+    D.querySelector('.sym-dlg .modal-close').click(); await sleep(20);
+    R.store.commit(() => R.store.setSelection(null), { history: false }); await sleep(20);
+    const n = slide().blocks.length, ui2 = await openSymbolsDialog();
+    await ui2.search('cohete'); ui2.insert(0); await sleep(30);
+    eq(slide().blocks.length, n + 1, 'sin texto elegido, un cuadro de texto nuevo');
+    assert(last().html.includes('🚀'), 'con el símbolo');
+    D.querySelector('.sym-dlg .modal-close').click();
+  });
+
+  await test('símbolos: dibujar para buscar reconoce flechas, ✓, ★, ∞, π, ∑, √, ♥, ☺, € y © (entre los 10 primeros), sin salir del navegador', async () => {
+    reset();
+    const { SKETCHES } = await import(new URL('fixtures/sketches.js', location.href).href);
+    const ui = await openSymbolsDialog();
+    const misses = [], places = [];
+    for (const [ch, strokes] of Object.entries(SKETCHES)) {
+      const found = (await ui.draw(strokes)).map(bare), i = found.indexOf(bare(ch));
+      places.push(`${ch}:${i + 1}`);
+      if (i < 0 || i >= 10) misses.push(`${ch} (puesto ${i + 1}: ${found.slice(0, 10).join(' ')})`);
+    }
+    window.__sketchPlaces = places.join(' ');
+    eq(misses.length, 0, 'mal reconocidos: ' + misses.join(' | '));
+    // With real pointer events on the pad: a stroke gives results.
+    D.querySelector('.sym-dlg .sym-clear').click();
+    const cv = D.querySelector('.sym-dlg .sym-canvas'), rc = cv.getBoundingClientRect();
+    const pe = (type, x, y) => cv.dispatchEvent(new W0.PointerEvent(type, { pointerId: 7, pointerType: 'pen', clientX: rc.left + x, clientY: rc.top + y, bubbles: true, isPrimary: true, buttons: type === 'pointerup' ? 0 : 1 }));
+    pe('pointerdown', 20, 90); for (let x = 20; x <= 160; x += 10) pe('pointermove', x, 90); pe('pointerup', 160, 90);
+    pe('pointerdown', 130, 65); pe('pointermove', 160, 90); pe('pointermove', 130, 115); pe('pointerup', 130, 115);
+    await until(() => chars(ui).length, 4000, 'resultados del dibujo');
+    assert(chars(ui).slice(0, 15).some(c => /[→⟶⇾➝⭢➞]/u.test(c)), 'una flecha a la derecha dibujada con el lápiz: ' + chars(ui).slice(0, 10).join(' '));
+    D.querySelector('.sym-dlg .sym-clear').click(); await sleep(20);
+    eq(chars(ui).length, 0, 'Borrar limpia el dibujo');
+    D.querySelector('.sym-dlg .modal-close').click();
+  });
+
+  await test('símbolos: en el idioma de la aplicación, en el móvil y en tema oscuro', async () => {
+    reset();
+    await R.i18n.setLang('fr');
+    let ui = await openSymbolsDialog();
+    eq(D.querySelector('.sym-dlg [data-tab="arrows"]').textContent.includes('Flèches'), true, 'pestañas en francés');
+    await ui.search('coeur'); assert(chars(ui).slice(0, 10).includes(bare('❤️')), 'busca en francés (cœur, sin acentos)');
+    await ui.search('corazón'); assert(chars(ui).slice(0, 10).includes(bare('❤️')), 'y en español');
+    await ui.search('rocket'); assert(chars(ui).slice(0, 3).includes('🚀'), 'y en inglés');
+    D.querySelector('.sym-dlg .modal-close').click();
+    await R.i18n.setLang('es');
+    // Phone width: the whole dialog on the screen, the categories in a strip.
+    // (The app's frame is as wide as the test page lets it: fixed, for a moment, at a phone's width.)
+    const fr = frame, f0 = fr.style.flex;
+    fr.style.flex = '0 0 390px'; await sleep(120);
+    try {
+      ui = await openSymbolsDialog(); await sleep(60);
+      const dlg = D.querySelector('.sym-dlg'), r = dlg.getBoundingClientRect();
+      assert(r.left >= -1 && r.right <= W0.innerWidth + 1 && dlg.scrollWidth <= dlg.clientWidth + 1, `cabe en el ancho del teléfono (${Math.round(r.width)} de ${W0.innerWidth})`);
+      const tb = dlg.querySelector('.sym-tabs').getBoundingClientRect(); assert(tb.width > tb.height, 'las categorías en una tira');
+      assert(dlg.querySelector('.sym-grid').getBoundingClientRect().height > 100, 'y la cuadrícula se ve');
+      dlg.querySelector('.modal-close').click();
+    } finally { fr.style.flex = f0; await sleep(120); }
+    const H = D.documentElement, ui0 = H.dataset.ui;
+    H.dataset.ui = 'dark';
+    try {
+      await openSymbolsDialog();
+      const bg = W0.getComputedStyle(D.querySelector('.sym-dlg')).backgroundColor.match(/\d+/g).map(Number);
+      assert(bg[0] + bg[1] + bg[2] < 200, 'tema oscuro: fondo oscuro ' + bg);
+      D.querySelector('.sym-dlg .modal-close').click();
+    } finally { if (ui0) H.dataset.ui = ui0; else delete H.dataset.ui; }
   });
 
   await test('botón de borrar: cruz dibujada y centrada en el círculo', async () => {
