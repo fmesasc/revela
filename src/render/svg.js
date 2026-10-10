@@ -897,6 +897,22 @@ function sketchPath(pts, rnd, amp, closed = true) {
 }
 // The fill: the same outline, barely moved, as one closed shape.
 const sketchFill = (pts, rnd) => 'M' + pts.map(p => `${(p[0] + (rnd() - 0.5)).toFixed(1)},${(p[1] + (rnd() - 0.5)).toFixed(1)}`).join(' L') + ' Z';
+// PowerPoint's cloud callout (imported: b.adj = [adj1, adj2], where its tail points, from the centre in 1/100000 of the
+// box): the cloud fills the box and its three bubbles go out towards that point — Revela's own thought bubble keeps
+// room for them inside, and an imported one came out a flat cloud half its height.
+const CLOUD_FULL = (() => {
+  const pts = SHAPE_PATHS.cloud.match(/-?[\d.]+/g).map(Number), xs = pts.filter((_, i) => i % 2 === 0), ys = pts.filter((_, i) => i % 2);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  let k = 0; return SHAPE_PATHS.cloud.replace(/-?[\d.]+/g, v => { const n = +v, out = k++ % 2 === 0 ? (n - x0) / (x1 - x0) * 100 : (n - y0) / (y1 - y0) * 100; return +out.toFixed(2); });
+})();
+function calloutCloud(b) {
+  const ax = Number.isFinite(+b.adj[0]) && b.adj[0] != null ? +b.adj[0] : -20833, ay = Number.isFinite(+b.adj[1]) && b.adj[1] != null ? +b.adj[1] : 62500;
+  const tx = 50 + ax / 1000, ty = 50 + ay / 1000, dx = tx - 50, dy = ty - 50, d = Math.hypot(dx, dy) || 1;
+  if (Math.hypot(dx / 50, dy / 50) <= 1) return CLOUD_FULL;                     // (the point inside the cloud: no bubbles)
+  const ex = 50 + dx / Math.hypot(dx / 50, dy / 50), ey = 50 + dy / Math.hypot(dx / 50, dy / 50);   // where the line leaves the cloud
+  const dot = (f, r) => { const cx = ex + (tx - ex) * f, cy = ey + (ty - ey) * f; return `M${(cx - r).toFixed(2)} ${cy.toFixed(2)}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`; };
+  return CLOUD_FULL + dot(0.22, 6) + dot(0.6, 4) + dot(1, 2.4);
+}
 // An open path's route (b.route: [['M', x, y], ['L', x, y], ['C', x1, y1, x2, y2, x, y]…] in the 100×100 box) as an SVG
 // path at the shape's size; '' if it isn't one (only those commands, only numbers: it comes from files).
 export function pathlineD(b) {
@@ -956,7 +972,8 @@ export function shapeSVG(b) {
       + head(w, 1) + (two ? head(0, -1) : '') + `</svg>`;
   }
   let inner;
-  if (SHAPE_POINTS[b.shape]) inner = `<polygon points="${pointsOf(b)}" ${paint}/>`;
+  if (b.shape === 'thought' && Array.isArray(b.adj)) inner = `<path d="${calloutCloud(b)}" fill-rule="nonzero" ${paint}/>`;
+  else if (SHAPE_POINTS[b.shape]) inner = `<polygon points="${pointsOf(b)}" ${paint}/>`;
   else if (isOpenShape(b.shape)) inner = `<path d="${SHAPE_PATHS[b.shape]}" stroke-linejoin="round" ${strokeOnly}/>`;
   else if (SHAPE_PATHS[b.shape]) inner = `<path d="${SHAPE_PATHS[b.shape]}" fill-rule="evenodd" ${paint}/>`
     + (SHAPE_SHADES[b.shape] || []).map(([dd, c, o]) => `<path d="${dd}" fill="${c}" fill-opacity="${o}" stroke="${stroke}" stroke-width="${sw}" vector-effect="non-scaling-stroke"/>`).join('');

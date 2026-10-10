@@ -687,7 +687,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       + `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="42" name="Codo"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr>${xf(3000000, 4300000, 1000000, 400000)}<a:prstGeom prst="bentConnector3"><a:avLst/></a:prstGeom><a:ln w="12700"><a:solidFill><a:srgbClr val="7030A0"/></a:solidFill><a:tailEnd type="triangle"/></a:ln></p:spPr></p:cxnSp>`
       + `<p:cxnSp><p:nvCxnSpPr><p:cNvPr id="43" name="Curva"/><p:cNvCxnSpPr/><p:nvPr/></p:nvCxnSpPr><p:spPr><a:xfrm rot="5400000" flipH="1" flipV="1"><a:off x="4500000" y="4000000"/><a:ext cx="6335" cy="346155"/></a:xfrm><a:prstGeom prst="curvedConnector3"><a:avLst><a:gd name="adj1" fmla="val 2794002"/></a:avLst></a:prstGeom><a:ln w="28575"><a:solidFill><a:srgbClr val="C55A11"/></a:solidFill><a:headEnd type="triangle"/><a:tailEnd type="triangle"/></a:ln></p:spPr></p:cxnSp>`
       + `<p:pic><p:nvPicPr><p:cNvPr id="44" name="Mapa"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId4"><a:duotone><a:srgbClr val="00FF00"/><a:prstClr val="white"/></a:duotone></a:blip></p:blipFill><p:spPr>${xf(5200000, 4300000, 400000, 400000)}</p:spPr></p:pic>`
-      + `<p:sp><p:nvSpPr><p:cNvPr id="45" name="Lista"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr>${xf(5800000, 4300000, 1500000, 400000)}</p:spPr><p:txBody><a:bodyPr><a:normAutofit fontScale="92500" lnSpcReduction="20000"/></a:bodyPr><a:p><a:pPr marL="285750" indent="-285750"><a:buClr><a:srgbClr val="3C8F26"/></a:buClr><a:buChar char="•"/></a:pPr><a:r><a:rPr sz="2000"><a:solidFill><a:srgbClr val="111111"/></a:solidFill></a:rPr><a:t>Conceptual Model</a:t></a:r></a:p></p:txBody></p:sp>`
+      + `<p:sp><p:nvSpPr><p:cNvPr id="45" name="Lista"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr>${xf(5800000, 4300000, 1500000, 400000)}</p:spPr><p:txBody><a:bodyPr><a:normAutofit fontScale="92500" lnSpcReduction="20000"/></a:bodyPr><a:p><a:pPr marL="285750" indent="-285750"><a:spcBef><a:spcPts val="1000"/></a:spcBef><a:buClr><a:srgbClr val="3C8F26"/></a:buClr><a:buChar char="•"/></a:pPr><a:r><a:rPr sz="2000"><a:solidFill><a:srgbClr val="111111"/></a:solidFill></a:rPr><a:t>Conceptual Model</a:t></a:r></a:p></p:txBody></p:sp>`
       + `</p:spTree></p:cSld></p:sld>`);
     zip.file('ppt/slides/_rels/slide1.xml.rels', rels(rel('rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml'), rel('rId3', 'hyperlink', 'https://example.org/', ' TargetMode="External"'), rel('rId4', 'image', '../media/logo.png')));
     const deck = await R.pptxImport.importPPTX(new W.File([await zip.generateAsync({ type: 'blob' })], 'plantilla.pptx'));
@@ -736,6 +736,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // A flipped cloud: its words read as always.
     const cloudText = s1.blocks.find(b => b.type === 'text' && /Agent autonomy/.test(b.html)), cloud = s1.blocks.find(b => b.shape === 'thought');
     assert(cloud?.flipH && !cloudText.flipH, 'la nube volteada, su texto no (se leía «ymonotua tnegA»)');
+    assert(cloudText.w < cloud.w * 0.8 && cloudText.h < cloud.h * 0.8, 'el texto, dentro de la nube (su rectángulo de texto, como PowerPoint): ' + [cloudText.w, cloud.w]);
+    assert(Array.isArray(cloud.adj) && /a2\.4 2\.4/.test(SVG.shapeSVG(cloud)), 'la nube de PowerPoint llena su caja, con sus burbujas fuera');
     // Connectors: the elbow and the curve as PowerPoint draws them, arrowheads and all.
     const elbow = s1.blocks.find(b => b.shape === 'pathline' && b.stroke === '#7030a0');
     eq(JSON.stringify(elbow?.route), '[["M",0,0],["L",50,0],["L",50,100],["L",100,100]]', 'conector en ángulo: su codo');
@@ -749,6 +751,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // A green bullet, black words; and the lines tightened by «shrink on overflow».
     const li = s1.blocks.find(b => b.type === 'text' && /Conceptual Model/.test(b.html)).html;
     assert(/<li[^>]*color:#3c8f26[^>]*><span style="color:#111111">/.test(li), 'viñeta verde, texto con su color: ' + li.slice(0, 160));
+    assert(!/margin-top/.test(li), 'sin el espacio anterior en el primer párrafo (PowerPoint no lo pone)');
     assert(/line-height:0\.92/.test(li), 'interlineado reducido (1,15 de Arial menos el 20 %): ' + (li.match(/line-height:[^;"]+/) || [''])[0]);
     assert(c1 && c1.shape === 'arrow' && c1.rotation === 45, 'flecha diagonal: ' + JSON.stringify(c1 && [c1.shape, c1.rotation]));
     eq(c1.strokeWidth, Math.round(28575 * 1280 / 9144000), 'grosor de línea en px (2,25 pt no es 1 px)');
@@ -1148,7 +1151,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const steps = bl.filter(b => b.type === 'text' && /Paso \d/.test(b.html));
     eq(steps.length, 3, 'el SmartArt se convierte en formas con su texto');
     eq(bl.filter(b => b.type === 'shape' && b.fill === '#70ad47').length, 3, 'con sus formas');
-    eq(steps[0].x, px(4000000), 'colocado dentro de su marco');
+    const box0 = bl.filter(b => b.type === 'shape' && b.fill === '#70ad47').sort((a, b) => a.x - b.x)[0];
+    eq(box0.x, px(4000000), 'colocado dentro de su marco');
+    assert(steps[0].x > box0.x && steps[0].x < box0.x + 10 && steps[0].x + steps[0].w < box0.x + box0.w, 'su texto, dentro de la curva de las esquinas (como PowerPoint)');
     // Shadows reach the editor, the show and the exports.
     R.store.replaceDeck(deck); R.render(); await sleep(30);
     assert(/drop-shadow/.test(D.querySelector(`.block[data-id="${sh.id}"]`).style.filter), 'sombra en el lienzo');

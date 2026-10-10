@@ -311,6 +311,30 @@ const adjustOf = (spPr, names) => {
   return names.map(n => { const f = gd.find(g => g.getAttribute('name') === n)?.getAttribute('fmla'), v = f ? +f.replace(/^val /, '') : NaN; return Number.isFinite(v) ? v : null; });
 };
 
+// Where a preset shape keeps its text (presetShapeDefinitions' text rectangle), as fractions of its box [left, top,
+// right, bottom]: an ellipse or a cloud write inside the curve, not edge to edge — «Agent autonomy» went on one line where
+// PowerPoint wraps it in two. null: the whole box (the rest).
+function textRectOf(prst, geo, spPr) {
+  const e = 0.14645, cloud = [2977 / 21600, 3262 / 21600, 17087 / 21600, 17337 / 21600];
+  const R = { ellipse: [e, e, 1 - e, 1 - e], wedgeEllipseCallout: [e, e, 1 - e, 1 - e], flowChartConnector: [e, e, 1 - e, 1 - e],
+    diamond: [0.25, 0.25, 0.75, 0.75], flowChartDecision: [0.25, 0.25, 0.75, 0.75], cloudCallout: cloud, cloud };
+  if (R[prst]) return R[prst];
+  if (prst === 'roundRect' && geo?.w > 0 && geo?.h > 0) {
+    const f = all(kid(spPr, 'a:prstGeom'), 'a:gd').find(g => g.getAttribute('name') === 'adj')?.getAttribute('fmla'), a = f ? +f.replace(/^val /, '') : 16667;
+    const d = Math.min(geo.w, geo.h) * Math.min(50000, Math.max(0, a)) / 100000 * 0.29289;
+    return [d / geo.w, d / geo.h, 1 - d / geo.w, 1 - d / geo.h];
+  }
+  return null;
+}
+// The same box narrowed to that rectangle, turned and flipped with the shape (around the shape's own centre).
+function textGeo(geo, r) {
+  if (!r || !geo) return geo;
+  const w = geo.w * (r[2] - r[0]), h = geo.h * (r[3] - r[1]);
+  let dx = geo.w * ((r[0] + r[2]) / 2 - 0.5), dy = geo.h * ((r[1] + r[3]) / 2 - 0.5);
+  if (geo.flipH) dx = -dx; if (geo.flipV) dy = -dy;
+  const a = (geo.rot || 0) * Math.PI / 180, cx = geo.x + geo.w / 2 + dx * Math.cos(a) - dy * Math.sin(a), cy = geo.y + geo.h / 2 + dx * Math.sin(a) + dy * Math.cos(a);
+  return { ...geo, x: cx - w / 2, y: cy - h / 2, w, h };
+}
 // An elbow or curved connector's route in its box (0–100 each way, before flips), from PowerPoint's own definitions
 // (presetShapeDefinitions: bentConnector2–5, curvedConnector2–5, with their adjustments); null for anything else, or a
 // box with no width or height (a straight line then).
@@ -492,7 +516,9 @@ function paragraphsHTML(txBody, ctx, style) {
     const marL = ctx.emu(pp.marL || 0), indent = ctx.emu(pp.indent || 0);
     const pcss = [];
     if (lineH != null) pcss.push(`line-height:${lineH}`);
-    if (gap(pp.spcBef)) pcss.push(`margin-top:${gap(pp.spcBef)}px`);
+    // (Not before a box's first paragraph: PowerPoint starts its text at the top inset — with it, a date pushed 13 px
+    // down ran out of its box.)
+    if (gap(pp.spcBef) && out.length) pcss.push(`margin-top:${gap(pp.spcBef)}px`);
     if (gap(pp.spcAft)) pcss.push(`margin-bottom:${gap(pp.spcAft)}px`);
     if (ALIGN[pp.algn] && ALIGN[pp.algn] !== align) pcss.push(`text-align:${ALIGN[pp.algn]}`);
     // Each paragraph at its own size: with the box's size (its first run's) a
@@ -932,7 +958,8 @@ export async function importPPTX(file, { progress = null, notes: said = [], medi
           stroke: stroke && stroke !== 'none' ? stroke : (fill || 'none'), strokeWidth: stroke && stroke !== 'none' ? sw : 0, ...bx,
           ...(dash && stroke && stroke !== 'none' && { dash }), ...(shadow && { shadow }),
           ...(prst === 'roundRect' && { radius: Math.round(Math.min(bx.w, bx.h) * Math.min(50000, adj) / 100000) }),
-          ...(hasAdjust(PRESET[prst]) && { adj: adjustOf(spPr, PRESET[prst] === 'homeplate' || PRESET[prst] === 'chevron' ? ['adj'] : ['adj1', 'adj2']) }) });
+          ...(hasAdjust(PRESET[prst]) && { adj: adjustOf(spPr, PRESET[prst] === 'homeplate' || PRESET[prst] === 'chevron' ? ['adj'] : ['adj1', 'adj2']) }),
+          ...(prst === 'cloudCallout' && { adj: adjustOf(spPr, ['adj1', 'adj2']) }) });
       }
       if (!hasText) return;
       const anchor = body.anchor || (ph?.type === 'ctrTitle' ? 'b' : null);
@@ -943,7 +970,7 @@ export async function importPPTX(file, { progress = null, notes: said = [], medi
         .map(x => ({ pos: Math.round(ctx.emu(+x.getAttribute('pos') || 0) * 10) / 10, align: { ctr: 'center', r: 'right', dec: 'decimal' }[x.getAttribute('algn')] || 'left' })).filter(x => x.pos > 0);
       // (A flipped shape's text isn't mirrored, as in PowerPoint: flipped left-right it reads as always; upside down, it turns
       // half a turn. Before, the clouds of a slide read «ymonotua tnegA».)
-      const { flipH: _fh, flipV: _fv, ...tbox } = box(geo);
+      const { flipH: _fh, flipV: _fv, ...tbox } = box(textGeo(geo, !ph && textRectOf(prst, geo, spPr)));
       blocks.push({ id: uid(), type: 'text', ...tbox, ...(tabs.length && { tabs }), rotation: Math.round(((geo.rot || 0) + (geo.flipV ? 180 : 0)) % 360), fontSize: first.size || ctx.pt(levels[0].r.sz || 18),
         html: t.html, pad: [ctx.emu(body.t), ctx.emu(body.r), ctx.emu(body.b), ctx.emu(body.l)], ...(body.noWrap && { noWrap: true }),
         ...(t.align && { textAlign: t.align }), ...(anchor && { vAlign: { t: 'top', ctr: 'middle', b: 'bottom' }[anchor] }),
