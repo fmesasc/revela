@@ -3413,12 +3413,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   // place search answers from here.
   const mapStub = `(function(){var W=window;function M(o){var t=this;t.o=o;t.c=o.center;t.z=o.zoom;t.p=o.pitch||0;t.b=o.bearing||0;t.h={};t.src={};t.lay={};t.flights=[];
     t.cv=document.createElement('canvas');t.cv.width=Math.max(16,o.container.clientWidth||100);t.cv.height=Math.max(9,o.container.clientHeight||60);o.container.appendChild(t.cv);
-    t.keyboard={disable:function(){t.noKeys=true;}};(W.__maps=W.__maps||[]).push(t);setTimeout(function(){t.fire('style.load');t.fire('load');},10);}
+    t.keyboard={disable:function(){t.noKeys=true;}};(W.__maps=W.__maps||[]).push(t);setTimeout(function(){t.fire('style.load');t.fire('load');t.fire('idle');},10);}
   M.prototype={on:function(e,f){(this.h[e]=this.h[e]||[]).push(f);return this;},once:function(e,f){var t=this,g=function(){t.h[e]=t.h[e].filter(function(x){return x!==g;});f();};return this.on(e,g);},
     fire:function(e){(this.h[e]||[]).slice().forEach(function(f){f();});},setProjection:function(p){this.proj=p.type;},setSky:function(){},setTerrain:function(x){this.terrain=x;},
     getStyle:function(){return{layers:[]};},setLayoutProperty:function(){},setPaintProperty:function(){},getSource:function(id){return this.src[id];},
     addSource:function(id,s){var t=this;t.src[id]=Object.assign({},s,{setData:function(d){t.src[id].data=d;}});},getLayer:function(id){return this.lay[id];},addLayer:function(l){this.lay[l.id]=l;},
-    flyTo:function(o){this.flights.push(o);this.jumpTo(o);},jumpTo:function(o){this.c=o.center;this.z=o.zoom;this.p=o.pitch;this.b=o.bearing;},stop:function(){},
+    flyTo:function(o){this.flights.push(Object.assign({at:Date.now()},o));this.jumpTo(o);},jumpTo:function(o){(this.moves=this.moves||[]).push(o.center);this.c=o.center;this.z=o.zoom;this.p=o.pitch;this.b=o.bearing;},stop:function(){},
     getCenter:function(){return{lng:this.c[0],lat:this.c[1]};},getZoom:function(){return this.z;},getPitch:function(){return this.p;},getBearing:function(){return this.b;},
     project:function(){return{x:40,y:20};},getCanvas:function(){return this.cv;},triggerRepaint:function(){var t=this;setTimeout(function(){t.fire('idle');},5);},resize:function(){},setPixelRatio:function(){},
     remove:function(){this.removed=true;},setStyle:function(s){var t=this;t.o.style=s;setTimeout(function(){t.fire('style.load');},5);}};
@@ -3464,7 +3464,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     await searchAdd('madrid'); await searchAdd('paris'); await searchAdd('roma');
     eq([...D.querySelectorAll('#map-modal .gm-name')].map(x => x.value).join(), 'Madrid,París,Roma', 'tres paradas buscadas');
     // «Añadir la vista actual»: where the (stand-in) map is looking.
-    const live = frame.contentWindow.__maps.at(-1); live.jumpTo({ center: [-0.38, 39.47], zoom: 9 + Math.log2(D.querySelector('#map-modal .gm-view').clientWidth / b.w), pitch: 30, bearing: 10 });
+    const live = frame.contentWindow.__maps.filter(x => x.o.attributionControl !== false).at(-1); live.jumpTo({ center: [-0.38, 39.47], zoom: 9 + Math.log2(D.querySelector('#map-modal .gm-view').clientWidth / b.w), pitch: 30, bearing: 10 });
     D.querySelector('#map-modal .gm-here').click(); await sleep(30);
     const names = () => [...D.querySelectorAll('#map-modal .gm-name')].map(x => x.value).join();
     eq(names(), 'Madrid,París,Roma,Parada 4', 'la vista actual, como parada');
@@ -3572,6 +3572,80 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       RV.next(); await sleep(50); eq(vis(), '1', 'un clic: la de la segunda');
       RV.prev(); await sleep(50); eq(vis(), '0', 'y atrás');
     });
+  });
+
+  // Warming the way of each flight (io/runtime/geomap.js, warm()): a hidden map of the same size goes along it ahead
+  // of time, so its tiles are in the browser's cache when the map flies.
+  const hiddenMaps = W => (W.__maps || []).filter(x => x.o.interactive === false && x.o.attributionControl === false);
+  const FAR = [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 9, pitch: 40 }, { name: 'Tokio', lon: 139.69, lat: 35.69, zoom: 9 }, { name: 'Yokohama', lon: 139.64, lat: 35.44, zoom: 10 },
+    { name: 'Nueva York', lon: -74, lat: 40.71, zoom: 9, pitch: 50 }, { name: 'Río', lon: -43.17, lat: -22.9, zoom: 9 }];
+
+  await test('mapa: cada vuelo se precarga antes en un mapa oculto (el siguiente primero, de grueso a fino) y se suelta al acabar', async () => {
+    reset(); const { G, W } = await mapSetup(); R.slides.addSlide('blank'); await sleep(10);
+    const b = G.addMap({ route: 'line', stops: FAR.slice(0, 3) });
+    G.setMap(b.id, { stops: b.stops, flyMs: 400 });
+    // (The satellite's imagery has, under it, the same imagery at most at zoom 2: a blurred Earth where a flight gets
+    // ahead of its tiles; the street map, none: its land is its background.)
+    const sat = G.mapConfig({ ...b, look: 'satellite' }).style, ids = sat.layers.map(l => l.id);
+    assert(ids.indexOf('rv-lo') > ids.indexOf('rv-bg') && ids.indexOf('rv-lo') < ids.indexOf('rv-sat') && sat.sources.lo.maxzoom === 2 && sat.sources.lo.tiles[0] === sat.sources.sat.tiles[0],
+      'satélite: bajo sus imágenes, las mismas hasta zoom 2: ' + ids.join());
+    eq(typeof G.mapConfig(b).style, 'string', 'el mapa de calles, su estilo tal cual');
+    const html = R.io.buildHTML(R.state.deck, { inApp: true }), S = await W.eval("import('/src/core/vendor.js')");
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    try {
+      f.srcdoc = html.split(JSON.stringify(S.MAPLIBRE)).join(JSON.stringify('data:text/javascript;charset=utf-8,' + encodeURIComponent(mapStub) + '%2F%2F'));
+      for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
+      const F = f.contentWindow, el = F.document.querySelector('[data-geomap]');
+      // On the slide before: the map's first view and its flights, warmed on a hidden map of its size.
+      for (let k = 0; k < 60 && !hiddenMaps(F).length; k++) await sleep(50);
+      const hm = hiddenMaps(F)[0]; assert(hm, 'un mapa oculto para precargar, desde la diapositiva anterior');
+      const box = hm.o.container;
+      eq(box.style.visibility, 'hidden', 'oculto…'); assert(box.style.display !== 'none' && box.clientWidth === el.clientWidth && box.clientHeight === el.clientHeight, '…pero con el tamaño del mapa (para que pida lo mismo)');
+      eq(hm.o.interactive, false); assert(!el._rvm, 'el mapa de verdad, aún sin montar');
+      for (let k = 0; k < 100 && !hm.removed; k++) await sleep(50);
+      assert(hm.removed && !box.isConnected, 'terminado, el mapa oculto se quita (no gasta un contexto WebGL)');
+      eq(String(hm.moves[0]), String([-3.7, 40.4]), 'primero, la vista de la primera parada');
+      assert(hm.flights.length >= 4 && hm.flights.every(x => x.duration === 1 && x.essential === true && x.curve === 1.42 && typeof x.easing === 'function'), 'cada punto, con el mismo flyTo (1 ms)');
+      const to = x => String(x.center), legA = hm.flights.filter(x => to(x) === String([139.69, 35.69])), legB = hm.flights.filter(x => to(x) === String([139.64, 35.44]));
+      assert(legA.length && legB.length && hm.flights.indexOf(legA.at(-1)) < hm.flights.indexOf(legB[0]), 'los vuelos en orden: el siguiente primero');
+      assert(legA.length > legB.length * 2, `más puntos en un vuelo largo (${legA.length}) que en uno corto (${legB.length})`);
+      const fr = legA.map(x => x.easing(0)), n = fr.length + 1;
+      assert(fr.every(v => v > 0 && v < 1) && new Set(fr).size === fr.length, 'cada punto, una fracción distinta del camino: ' + fr.map(v => v.toFixed(2)));
+      assert(fr[0] >= 0.5 && Math.abs(fr[0] * n - Math.round(fr[0] * n)) < 1e-9, 'de grueso a fino: primero el más lejano a mitad, ' + fr.slice(0, 4).map(v => v.toFixed(2)));
+      // Arriving: the live map, and nothing warmed again (it was all done); a click flies with the tiles there.
+      const before = hiddenMaps(F).length;
+      F.Reveal.slide(1); for (let k = 0; k < 60 && !el.classList.contains('rvm-on'); k++) await sleep(50);
+      await sleep(250); eq(hiddenMaps(F).length, before, 'lo ya precargado no se vuelve a pedir');
+      F.Reveal.next(); await sleep(100); eq(el._rvm.cur, 1, 'y el vuelo, como siempre');
+    } finally { f.remove(); }
+  });
+
+  await test('mapa: la precarga espera mientras el mapa vuela, se cancela al cerrar y no gasta datos con «Ahorro de datos»', async () => {
+    reset(); const { G, W } = await mapSetup();
+    const M = await W.eval("import('/src/ui/dialogs/geomap.js')");
+    const b = G.addMap({ stops: FAR }); G.setMap(b.id, { stops: b.stops });
+    W.__maps = [];
+    M.openMapEditor(slide().blocks.find(x => x.id === b.id));
+    for (let k = 0; k < 60 && !hiddenMaps(W).some(x => x.flights.length); k++) await sleep(20);
+    assert(hiddenMaps(W).some(x => x.flights.length), 'en el diálogo, al cargar el mapa, empieza a precargar');
+    // A flight on the live map (the stop's «Ver en el mapa», 1.2 s): nothing warmed meanwhile.
+    const t0 = Date.now(); D.querySelector('#map-modal .gm-stop[data-i="3"] [data-a="fly"]').click();
+    await sleep(2400);
+    const during = hiddenMaps(W).flatMap(x => x.flights).filter(x => x.at > t0 + 40 && x.at < t0 + 1200);
+    eq(during.length, 0, 'mientras vuela el mapa de verdad, la precarga espera');
+    assert(hiddenMaps(W).flatMap(x => x.flights).some(x => x.at >= t0 + 1200), 'y sigue al aterrizar');
+    // Closing the dialog: the warming stops, the hidden map goes.
+    D.querySelector('#map-modal .gm-cancel').click(); const t1 = Date.now(); await sleep(150);
+    assert(hiddenMaps(W).every(x => x.removed && !x.o.container.isConnected), 'al cerrar, el mapa oculto se quita');
+    eq(hiddenMaps(W).flatMap(x => x.flights).filter(x => x.at > t1 + 20).length, 0, 'y no se mueve más');
+    // On a connection that asks to save data: no warming at all.
+    W.__maps = [];
+    Object.defineProperty(W.navigator, 'connection', { configurable: true, value: { saveData: true } });
+    try {
+      M.openMapEditor(slide().blocks.find(x => x.id === b.id)); await sleep(400);
+      assert(W.__maps.length >= 1 && !hiddenMaps(W).length, 'con «Ahorro de datos», sin precarga');
+      D.querySelector('#map-modal .gm-cancel').click();
+    } finally { delete W.navigator.connection; }
   });
 
   await test('mapa: PDF, imágenes, PowerPoint y miniaturas usan la imagen de su primera parada', async () => {
