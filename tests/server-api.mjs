@@ -2773,8 +2773,12 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     // (Polled, not a fixed 10 ms: the pushes to the relays are fetches, and a busy CI machine took longer than that.)
     const settle = async (want, ms = 2000) => { for (const end = Date.now() + ms; pushes.filter(t => t === 'ptr').length < want && Date.now() < end;) await new Promise(r => setTimeout(r, 5)); };
     for (let k = 1; k <= 3; k++) await B.webSocketMessage(pres, JSON.stringify({ t: 'ptr', x: k / 10, y: 0.5 }));
-    await settle(6);
-    ok(pushes.filter(t => t === 'ptr').length === 6, 'emisión: con poco público, cada posición del puntero a cada repetidora (nada retenido): ' + pushes.join());
+    // (While a push to a relay is still on its way, a newer position replaces the one waiting behind it — the last one
+    // wins: so 2 or 3 per relay, depending on how fast the pushes go; never held back for pacing, and the last always arrives.)
+    for (let i = 0; i < 400 && !(R0.ptrLast?.x === 0.3 && R3.ptrLast?.x === 0.3); i++) await new Promise(r => setTimeout(r, 5));
+    const nPtr = pushes.filter(t => t === 'ptr').length;
+    ok(nPtr >= 4 && nPtr <= 6 && R0.ptrLast?.x === 0.3 && R3.ptrLast?.x === 0.3 && !B.queues[0].ptrNext && !B.queues[3].ptrNext,
+      'emisión: con poco público, el puntero llega a cada repetidora sin retenerlo, hasta su última posición: ' + pushes.join());
     B.counts = { 0: 1500, 3: 1500 }; pushes.length = 0; const gap = 1500 / 5 * 0.8;
     await new Promise(r => setTimeout(r, gap + 10));
     for (let k = 1; k <= 5; k++) await B.webSocketMessage(pres, JSON.stringify({ t: 'ptr', x: k / 10, y: 0.5 }));
