@@ -113,6 +113,19 @@ def main():
         rel = t.relative_to(ROOT).as_posix()
         if rel.startswith('src/') and f"'{rel}'" not in paths:
             errors.append(f'server.yml: el servidor usa {rel}, pero no está entre sus paths (no se desplegaría al cambiar)')
+    # alarms only through brakes.js (scheduleAlarm: a minimum delay, a valid time, a budget per hour), and every alarm()
+    # handler through its runAlarm — a Durable Object that set its alarm to «now» from its own alarm ran ~600 times a
+    # second for two weeks (a $10,811 bill); here it would use up the free plan's daily quota and stop production
+    for f in sorted((ROOT / 'server').rglob('*.js')):
+        if 'node_modules' in f.parts or f.name == 'brakes.js':
+            continue
+        rel, text = f.relative_to(ROOT).as_posix(), f.read_text(encoding='utf-8')
+        for i, line in enumerate(text.splitlines(), 1):
+            if re.search(r'\bsetAlarm\b', line):
+                errors.append(f'{rel}:{i}: setAlarm fuera de brakes.js — usa scheduleAlarm(ctx, env, kind, at)')
+        for m in re.finditer(r'^\s+(?:async\s+)?alarm\s*\([^)]*\)\s*\{', text, re.M):
+            if 'runAlarm(' not in text[m.end():m.end() + 200]:
+                errors.append(f'{rel}:{text[:m.start()].count(chr(10)) + 1}: alarm() sin runAlarm (brakes.js)')
     # every file of the app must be committable: an ignored one works locally
     # but is missing (404) once published
     ignored = subprocess.run(['git', 'check-ignore', '--no-index', '--stdin'], cwd=ROOT, capture_output=True, text=True,

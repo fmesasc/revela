@@ -17,8 +17,12 @@
 //   Crm ops used: crawl-next (whose website is due), web-facts (what was found), import (new places).
 
 import { searchPlaces, resolveArea, subAreas, crmCall } from './crm.js';
+import { scheduleAlarm, runAlarm } from './brakes.js';
 
 const QUEUE = 25;
+// With nothing due, it looks again only after IDLE_MS: each look with an empty queue asks the CRM for its list of every
+// contact (each a row read against the plan's 5 M a day) — every 5 minutes, 20,000 contacts were 5.8 M a day.
+export const IDLE_MS = 3 * 36e5;
 export const UA = 'Mozilla/5.0 (compatible; RevelaBot/1.0; +https://revelaslides.com/bot)';
 export const CRAWL_DEFAULT = { on: false, everyMin: 5, pagesPerSite: 4, recrawlDays: 30, discover: false, areas: [], kinds: ['school'], areaDays: 30, blocked: [] };
 const PAGE_BYTES = 1.5 * 1024 * 1024, TIMEOUT = 12e3, BETWEEN = 2000, DAY = 864e5;
@@ -220,16 +224,19 @@ export class Crawler {
     if (op === 'settings') {
       const s = cleanCrawl(a.settings, await this.settings()); if (!s) return Response.json({ error: 'bad request' }, { status: 400 });
       await st.put('settings', s); await st.delete('queue');      // (blocked domains or days may have changed)
-      if (s.on && !(await st.getAlarm())) await st.setAlarm(Date.now() + 5000); else if (!s.on) await st.deleteAlarm();
+      if (s.on && !(await st.getAlarm())) await scheduleAlarm(this.ctx, this.env, 'crawler', Date.now() + 60e3); else if (!s.on) await st.deleteAlarm();
       return Response.json({ settings: s });
     }
     if (op === 'step') return Response.json(await this.step(a.now || Date.now()));   // (now, by hand: «Mirar ahora»)
     return Response.json({ error: 'unknown' }, { status: 404 });
   }
-  async alarm() {
+  // (brakes.js: put off while the emergency switch is on; at most ALARMS.crawler.perHour runs an hour.)
+  alarm() { return runAlarm(this.ctx, this.env, 'crawler', () => this.tick()); }
+  async tick() {
     const s = await this.settings(); if (!s.on) return;
-    try { await this.step(Date.now()); } catch (e) { await this.note({ at: Date.now(), kind: 'error', what: String(e?.message || e).slice(0, 200) }); }
-    if ((await this.settings()).on) await this.ctx.storage.setAlarm(Date.now() + s.everyMin * 60e3);
+    let r = null;
+    try { r = await this.step(Date.now()); } catch (e) { await this.note({ at: Date.now(), kind: 'error', what: String(e?.message || e).slice(0, 200) }); }
+    if ((await this.settings()).on) await scheduleAlarm(this.ctx, this.env, 'crawler', Date.now() + (r?.kind === 'idle' ? Math.max(IDLE_MS, s.everyMin * 60e3) : s.everyMin * 60e3));
   }
   async note(entry) { const log = (await this.ctx.storage.get('log')) || []; log.unshift(entry); await this.ctx.storage.put('log', log.slice(0, 100)); }
   // One step: the next website due; if there's none, a new area to look for places in (when discover is on).
@@ -238,7 +245,7 @@ export class Crawler {
     // (The next sites due are asked for QUEUE at a time and kept here: asking the CRM reads every contact.)
     let queue = (await st.get('queue')) || [];
     if (!queue.length) queue = (await crmCall(this.env, 'crawl-next', { before: now - s.recrawlDays * DAY, blocked: s.blocked, n: QUEUE }))?.items || [];
-    const next = queue.shift(); await st.put('queue', queue);
+    const had = queue.length, next = queue.shift(); if (had) await st.put('queue', queue);   // (nothing due: nothing written)
     if (next?.id) {
       const facts = await crawlSite(next.web, { f, pages: s.pagesPerSite, robotsCache: this.robots, sleep: this.env.CRAWL_SLEEP === '0' ? async () => {} : undefined });
       await crmCall(this.env, 'web-facts', { id: next.id, facts });

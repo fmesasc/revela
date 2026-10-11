@@ -22,6 +22,7 @@ import { applyOps, allowed, ROLES, pack, unpacker } from '../../src/features/liv
 import { authorize, whoKey } from './worker.js';
 import { writeDeck, readDeck, takeQuota } from './store.js';
 import { random } from './util.js';
+import { scheduleAlarm, runAlarm } from './brakes.js';
 
 const COLORS = ['#e8590c', '#1c7ed6', '#2f9e44', '#ae3ec9', '#f08c00', '#0c8599', '#e03131', '#5c7cfa'];
 const SAVE_DELAY = 5000, IDLE = 7 * 864e5;
@@ -69,14 +70,16 @@ export class CollabRoom {
     this.parts = await writeDeck(this.ctx.storage, this.doc.deck, this.parts);   // only the slides that changed
     await this.ctx.storage.put({ chat: this.doc.chat, touched: Date.now() });
   }
-  changed() { this.dirty = true; this.ctx.storage.getAlarm().then(a => { if (!a || a > Date.now() + SAVE_DELAY) this.ctx.storage.setAlarm(Date.now() + SAVE_DELAY); }); }
+  changed() { this.dirty = true; this.ctx.storage.getAlarm().then(a => { if (!a || a > Date.now() + SAVE_DELAY) return scheduleAlarm(this.ctx, this.env, 'collab', Date.now() + SAVE_DELAY); }).catch(e => console.log('collab alarm', e?.message)); }
   // Save; and when nobody is in, check again in 7 days and delete it if nobody came back.
-  async alarm() {
+  // (brakes.js: at least SAVE_DELAY apart, a budget per hour.)
+  alarm() { return runAlarm(this.ctx, this.env, 'collab', () => this.tick()); }
+  async tick() {
     await this.save();
     if (this.ctx.getWebSockets().length) return;
     const touched = (await this.ctx.storage.get('touched')) || 0;
     if (Date.now() - touched >= IDLE) { await this.ctx.storage.deleteAll(); this.doc = null; }
-    else await this.ctx.storage.setAlarm(touched + IDLE);
+    else await scheduleAlarm(this.ctx, this.env, 'collab', touched + IDLE);
   }
 
   async fetch(req) {
@@ -85,7 +88,7 @@ export class CollabRoom {
       const { meta, deck } = await req.json();
       this.doc = { meta, deck, chat: [] }; this.parts = null; this.dirty = true;
       await this.ctx.storage.put('meta', meta); await this.save();
-      await this.ctx.storage.setAlarm(Date.now() + IDLE);
+      await scheduleAlarm(this.ctx, this.env, 'collab', Date.now() + IDLE);
       return new Response('ok');
     }
     const room = path.split('/').pop();
@@ -147,7 +150,7 @@ export class CollabRoom {
     if (a?.id) this.toAll({ t: 'peers', peers: this.peerList().filter(p => p.id !== a.id) }, a.id);
     if (!this.ctx.getWebSockets().some(s => s !== ws && s.deserializeAttachment()?.id)) {
       await this.save();                                     // last one out: saved, and deleted in 7 days if nobody returns
-      if (this.doc) await this.ctx.storage.setAlarm(Date.now() + IDLE);
+      if (this.doc) await scheduleAlarm(this.ctx, this.env, 'collab', Date.now() + IDLE);
     }
   }
   async webSocketError(ws) { await this.webSocketClose(ws); }

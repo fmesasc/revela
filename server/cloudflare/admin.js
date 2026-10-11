@@ -39,6 +39,11 @@
 //   GET  /api/admin/storage                → { config: { freeMb, proMb, alertGb }, bytes, top }   (the cloud's space: storage.js)
 //   POST /api/admin/storage                { freeMb, proMb, alertGb } → { config }
 //   POST /api/admin/storage/measure        → { accounts, measured, more }   (documents from before space was counted)
+//   GET  /api/admin/brakes                 → «Consumo y frenos»: { paused, hours: [{ hour, c: { 'alarm:<kind>': n, … } }] (24 h),
+//                                          incidents, mailed, kinds (each alarm's minimum and budget), quota (quota.js: today's use
+//                                          against the free plan, or { configured: false }), limits, alerts }
+//   POST /api/admin/brakes                 { paused, reason } → { paused }   (the emergency switch: brakes.js; reason needed to turn it on)
+//   POST /api/admin/brakes/clear           → { ok }   (empties the list of incidents)
 //   POST /api/admin/storage-quota          { sub, mb (0: the plan's), reason } → { before, after }   (one account's own quota)
 //   POST /api/admin/sessions-end           { sub, id?, reason } → { ended }   (one session, or all: a stolen account signed out
 //                                          everywhere; the person signs in again with Google)
@@ -108,6 +113,8 @@ import { communityAdmin } from './community.js';
 import { ltiAdmin } from './lti.js';
 import { record, financeCall, financeSettings, cleanEntry, periodOk, dayOf, promoKey } from './finance.js';
 import { enc, dec, EMAIL, DAY } from './util.js';
+import { ALARMS, MIN_ALARM_MS, PAUSE_DEFER_MS, resetBrakesCache } from './brakes.js';
+import { quotaUsage, quotaConfigured, FREE_DAILY, QUOTA_ALERTS } from './quota.js';
 
 const pad = n => String(n).padStart(10, '0');
 export const STATUSES = ['open', 'waiting', 'closed'];   // (see Tickets)
@@ -683,6 +690,26 @@ export async function handleAdmin(req, env, url) {
     await call(stub(env.BUDGET, 'global'), 'storage-set', { storage: conf }); resetStorageCache();
     await audit(env, { by, action: 'storage-config', target: 'storage', before, after: conf });
     return json({ config: conf });
+  }
+  // «Consumo y frenos» (brakes.js, quota.js): what ran by itself in the last 24 hours, the incidents, the emergency
+  // switch, and today's use of the account (Cloudflare's GraphQL API, asked only when this page is opened).
+  if (path === '/brakes' || path === '/brakes/clear') {
+    if (!env.BUDGET) return json({ error: 'not configured' }, 503);
+    const B = stub(env.BUDGET, 'global');
+    if (GET && path === '/brakes') {
+      const [r, quota] = await Promise.all([call(B, 'brakes-report', { now: Date.now() }), quotaUsage(env).catch(e => ({ configured: true, error: String(e?.message || e) }))]);
+      return json({ ...r, kinds: Object.entries(ALARMS).map(([kind, k]) => ({ kind, ...k })), minMs: MIN_ALARM_MS, pauseDeferMs: PAUSE_DEFER_MS,
+        quota, quotaReady: quotaConfigured(env), limits: FREE_DAILY, alerts: QUOTA_ALERTS, mail: mailConfigured(env) });
+    }
+    if (POST && path === '/brakes') {
+      const reason = clip(body.reason, 500).trim(); if (typeof body.paused !== 'boolean' || (body.paused && !reason)) return json({ error: 'bad request' }, 400);
+      const before = (await call(B, 'brakes-get')).paused || null;
+      await audit(env, { by, action: body.paused ? 'brakes-on' : 'brakes-off', target: 'brakes', reason, before: { paused: !!before }, after: { paused: body.paused } });
+      const r = await call(B, 'brakes-set', { paused: body.paused, by, reason }); resetBrakesCache();
+      return json(r);
+    }
+    if (POST && path === '/brakes/clear') { await call(B, 'brakes-clear'); await audit(env, { by, action: 'brakes-clear', target: 'brakes' }); return json({ ok: true }); }
+    return json({ error: 'method' }, 405);
   }
   if (POST && path === '/storage/measure') { const r = await storageBackfill(env); await audit(env, { by, action: 'storage-measure', target: 'storage', after: r }); return json(r); }
   if (POST && path === '/storage-quota') {

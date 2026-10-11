@@ -2823,6 +2823,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = realFetch; W.google = realGoogle; await GD.signOut(); }
   });
 
+  await test('nube de Revela: sin cambios, mira cada vez menos a menudo (cuota diaria de Cloudflare)', async () => {
+    const d = R.clouddocs.pollDelay;
+    eq(d(5000, 0), 5000, 'con cambios recientes, cada 5 s');
+    eq(d(5000, 3 * 60e3), 20000, 'tras 2 min sin cambios, cada 20 s');
+    eq(d(5000, 11 * 60e3), 60000, 'tras 10 min, cada minuto');
+    eq(d(60, 30e3), 60, 'el intervalo de las pruebas no cambia en sus primeros minutos');
+  });
+
   await test('nube de Revela: abrir, guardar solo, recibir cambios de otros y respetar el permiso', async () => {
     reset(); const W = frame.contentWindow, CD = R.clouddocs, CS = await W.eval("import('/src/features/live/collabsync.js')");
     // A server in memory, like server/cloudflare/docs.js: a revision, a log of changes, the role of this person.

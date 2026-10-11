@@ -17,6 +17,8 @@
 
 // Values are limited to 2 MB: ASCII text (images as data URLs) in parts of
 // 1.9 M characters, anything else in parts that fit even as 3-byte UTF-8.
+import { scheduleAlarm, runAlarm } from './brakes.js';
+
 const chunkFor = text => (/[^\x00-\x7f]/.test(text) ? 600 * 1024 : 1900 * 1000);
 const YEAR = 365 * 864e5;
 
@@ -45,10 +47,14 @@ export class ShareBox {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; }
   json(obj, status = 200, headers = {}) { return new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json', ...headers } }); }
   async wipe() { await this.ctx.storage.deleteAll(); await this.ctx.storage.deleteAlarm?.(); }
-  async alarm() {                                            // expired, or a year without views
-    const meta = await this.ctx.storage.get('meta'); if (!meta) return;
-    const end = Math.min(meta.expires || Infinity, (meta.lastView || meta.created) + YEAR);
-    if (Date.now() >= end - 1000) await this.wipe(); else await this.ctx.storage.setAlarm(end);
+  // Expired, or a year without views. (A box without its dates — end NaN — is never put off to «NaN»: brakes.js
+  // refuses that time and records it; it's left as it is for the admin to look at.)
+  alarm() {
+    return runAlarm(this.ctx, this.env, 'share', async () => {
+      const meta = await this.ctx.storage.get('meta'); if (!meta) return;
+      const end = Math.min(meta.expires || Infinity, (meta.lastView || meta.created) + YEAR);
+      if (Date.now() >= end - 1000) await this.wipe(); else await scheduleAlarm(this.ctx, this.env, 'share', end);
+    });
   }
   async fetch(req) {
     const url = new URL(req.url), op = url.pathname.split('/').pop(), st = this.ctx.storage;
@@ -56,7 +62,7 @@ export class ShareBox {
       const { body, meta } = await req.json();
       await writeText(st, 'd', body);
       await st.put('meta', { ...meta, created: Date.now(), views: 0, last: null });
-      await st.setAlarm(Math.min(meta.expires || Infinity, Date.now() + YEAR));
+      await scheduleAlarm(this.ctx, this.env, 'share', Math.min(meta.expires || Infinity, Date.now() + YEAR));
       return this.json({ ok: true });
     }
     const meta = await st.get('meta');

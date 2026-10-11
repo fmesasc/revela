@@ -51,7 +51,7 @@ import { Schedule, runSchedule } from './schedule.js';
 import { ModelJob } from './model3d.js';
 import { handleAdmin, adminHost, Directory, Tickets, Audit, ticketsDue, emails as adminEmails } from './admin.js';
 import { Crm, runCrm } from './crm.js';
-import { storageWatch, storageBackfill } from './storage.js';
+import { storageWatch, storageBackfillDaily } from './storage.js';
 import { releasesAuto } from './releases.js';
 import { Community, communityPage } from './community.js';
 import { wellKnown } from './publicapi.js';
@@ -61,6 +61,8 @@ import { Visits } from './visits.js';
 import { sendMail, mailConfigured } from './mail.js';
 import { Finance } from './finance.js';
 import { random, sha256 } from './util.js';
+import { runCron } from './brakes.js';
+import { quotaWatch, QUOTA_CRON } from './quota.js';
 export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community, Crawler, Visits, Broadcast, verifyGoogleToken, resetCerts };
 
 const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));
@@ -120,15 +122,21 @@ export async function edgeKept(url, make, { fresh = 0, cache = globalThis.caches
 }
 
 export default {
-  // The daily cron: notices due (credits that expire, the end of Pro, unused accounts), and support
-  // tickets left waiting for the person (a reminder, then closed: admin.js). Each on its own: one failing doesn't stop the other.
+  // The crons (wrangler.toml): every hour, the day's use of the account against the free plan's quota (quota.js: one
+  // request to Cloudflare's API, no Durable Object; an email at 50, 80 and 95 %). Once a day: notices due (credits that
+  // expire, the end of Pro, unused accounts), support tickets left waiting for the person (a reminder, then closed:
+  // admin.js), Captación's sequences, publishing by itself, the cloud's space. Each on its own: one failing doesn't stop
+  // the others; with the emergency switch on (brakes.js), none of the daily ones runs.
   scheduled(event, env, ctx) {
     const now = event.scheduledTime || Date.now();
-    ctx.waitUntil(runSchedule(env, now).catch(e => console.log('schedule', e?.message)));
-    ctx.waitUntil(ticketsDue(env, now).catch(e => console.log('tickets', e?.message)));
-    ctx.waitUntil(runCrm(env, { sendMail, mailConfigured, adminEmails: adminEmails(env) }, now).catch(e => console.log('crm', e?.message)));
-    ctx.waitUntil(releasesAuto(env, now).catch(e => console.log('releases', e?.message)));
-    ctx.waitUntil(storageBackfill(env).then(() => storageWatch(env, { sendMail, adminEmails: adminEmails(env) })).catch(e => console.log('storage', e?.message)));
+    if (event.cron === QUOTA_CRON) { ctx.waitUntil(quotaWatch(env, now).catch(e => console.log('quota', e?.message))); return; }
+    ctx.waitUntil(runCron(env, 'daily', {
+      schedule: () => runSchedule(env, now),
+      tickets: () => ticketsDue(env, now),
+      crm: () => runCrm(env, { sendMail, mailConfigured, adminEmails: adminEmails(env) }, now),
+      releases: () => releasesAuto(env, now),
+      storage: async st => { await storageBackfillDaily(env, st.marks, now); return storageWatch(env, { sendMail, adminEmails: adminEmails(env) }); },
+    }).catch(e => console.log('cron', e?.message)));
   },
   async fetch(req, env) {
     const url = new URL(req.url);

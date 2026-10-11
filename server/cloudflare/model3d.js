@@ -22,6 +22,7 @@ import { settings, acct, call } from './api.js';
 import { credits, priceOf } from './ai.js';
 import { writeText, readParts } from './store.js';
 import { DAY, enc, random } from './util.js';
+import { scheduleAlarm, runAlarm } from './brakes.js';
 
 const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 
@@ -137,7 +138,7 @@ export class ModelJob {
       for (let i = 0; i < a.images.length; i++) await st.put('img:' + i, a.images[i]);
       await st.put('job', { id: a.id, sub: a.sub, prompt: a.prompt, images: a.images.length, lang: a.lang, status: 'running', rounds: [], left: k.rounds, total: 0,
         hold: a.hold, run: random(6), feedback: [], pending: null, last: null, glb: false, charged: 0, created: Date.now(), expires: Date.now() + DAY });
-      await st.setAlarm(Date.now()); return this.json({ ok: true });
+      await scheduleAlarm(this.ctx, this.env, 'model3d', Date.now()); return this.json({ ok: true });   // (brakes.js: in a second)
     }
     const job = await st.get('job');
     if (!job || job.sub !== a.sub || Date.now() > job.expires) return this.json({ error: 'not found' }, 404);   // (someone else's: as if it didn't exist)
@@ -147,7 +148,7 @@ export class ModelJob {
     if (op === 'feedback') {
       if (job.status === 'running' || job.total >= k.maxRounds) { await this.release(job, a.hold); return this.json({ error: job.status === 'running' ? 'running' : 'round limit' }, 409); }
       Object.assign(job, { status: 'running', error: null, left: Math.min(k.rounds, k.maxRounds - job.total), hold: a.hold, run: random(6), pending: a.text, feedback: [...job.feedback, a.text].slice(-6) });
-      await st.put('job', job); await st.setAlarm(Date.now()); return this.json({ ok: true });
+      await st.put('job', job); await scheduleAlarm(this.ctx, this.env, 'model3d', Date.now()); return this.json({ ok: true });
     }
     if (op === 'cancel') {
       if (job.status === 'running') await call(acct(this.env, job.sub), 'unslot', { key: '3d', id: job.id });
@@ -158,14 +159,17 @@ export class ModelJob {
   }
   async release(job, hold) { const A = acct(this.env, job.sub); if (hold) await call(A, 'settle', { id: hold, credits: 0 }); }
 
-  async alarm() {
+  // A round per run while it's running (brakes.js: a second apart at least, at most ALARMS.model3d.perHour an hour — a
+  // job has 12 rounds at most), then once more when it expires.
+  alarm() { return runAlarm(this.ctx, this.env, 'model3d', () => this.tick()); }
+  async tick() {
     const st = this.ctx.storage, job = await st.get('job'); if (!job) return;
     if (Date.now() >= job.expires) { if (job.status === 'running') await call(acct(this.env, job.sub), 'unslot', { key: '3d', id: job.id }); await st.deleteAll(); return; }
     if (job.status === 'running') {
       try { await this.round(job); }
       catch (e) { const cur = await st.get('job'); if (cur?.run === job.run && cur.status === 'running') await this.finish(cur, 'error', 'internal'); }
     }
-    const cur = await st.get('job'); if (cur) await st.setAlarm(cur.status === 'running' ? Date.now() + 50 : cur.expires);
+    const cur = await st.get('job'); if (cur) await scheduleAlarm(this.ctx, this.env, 'model3d', cur.status === 'running' ? Date.now() : cur.expires);
   }
   async finish(job, status, error = null) {
     Object.assign(job, { status, error, hold: null, pending: null }); await this.ctx.storage.put('job', job);

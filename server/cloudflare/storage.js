@@ -39,6 +39,16 @@ export async function storageWatch(env, { sendMail, adminEmails }) {
   return { sent, bytes };
 }
 
+// The daily run: the whole pass asks every account in the directory (one Durable Object request each, against the free
+// plan's 100,000 a day) — so once a pass finds nothing left to measure (new documents are measured as they're saved), it
+// is done only once every BACKFILL_RECHECK days. The mark is kept with the brakes (brakes.js, Budget 'bk:marks').
+export const BACKFILL_RECHECK = 30 * 864e5;
+export async function storageBackfillDaily(env, marks = {}, now = Date.now()) {
+  if (marks.backfillDone && now - marks.backfillDone < BACKFILL_RECHECK) return { skipped: true };
+  const r = await storageBackfill(env);
+  if (!r.more && !r.measured && env.BUDGET) await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'brakes-mark', { key: 'backfillDone', value: now });
+  return r;
+}
 // Documents saved before space was counted have no measure until they're opened: measured here, a batch at a time
 // (the daily run, and «Medir ahora» in the administration) → { accounts, measured, more }.
 export async function storageBackfill(env, { max = 300 } = {}) {

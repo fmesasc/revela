@@ -522,6 +522,119 @@ vez, de 22–26 ms por cambio a 5–8 ms; de uno en uno, de 54–61 ms a 35–39
 diapositivas). Nota para repetirlo: el proxy de `wrangler dev` corta conexiones («Network connection
 lost») cuando workerd va saturado; directo al puerto de workerd no pasa.
 
+## Lo que se ejecuta solo (consumo y frenos)
+
+Auditoría del 11 de octubre de 2026, a raíz del caso de la factura de 10.811 $: un Durable Object volvía a
+programar su alarma con `setAlarm(Date.now())` desde la propia alarma y se ejecutó unas 600 veces por segundo
+durante dos semanas, sin usuarios. El fallo estuvo dormido 23 días, hasta que hubo datos con esa antigüedad.
+
+**Qué nos pasaría a nosotros.** La cuenta está en **Workers Free** (comentario de `wrangler.toml`): no se cobra
+nada, pero la cuota diaria es de toda la cuenta y se comparte entre todos los workers. Son 100.000 peticiones
+a Workers, 100.000 peticiones a Durable Objects, 5 millones de filas leídas, 100.000 filas escritas y 13.000 GB·s
+al día. Cada ejecución de una alarma cuenta como una petición, cada `setAlarm` como una fila escrita y cada 20
+mensajes de WebSocket entrantes como una petición. Si una cuota se agota, toda llamada a un Durable Object falla
+hasta las 00:00 UTC: cuentas, documentos de la nube, comunidad e inicios de sesión. Un bucle como el del artículo
+la agotaría en unos tres minutos. En **Workers Paid** se cobraría (precios comprobados el 11 de octubre de 2026):
+0,15 $ por millón de peticiones a partir de 1 millón al mes, 1 $ por millón de filas escritas a partir de 50
+millones, 12,50 $ por millón de GB·s a partir de 400.000.
+
+### Inventario
+
+| Qué | Dónde | Cada cuánto | Qué lo para | Gasto por ejecución | ¿Podía quedarse en bucle o volver a «ahora»? |
+| --- | --- | --- | --- | --- | --- |
+| Guardar la coedición | `collab.js` CollabRoom, alarma | 5 s después del primer cambio, mientras se edita | Se guarda y no se reprograma mientras haya alguien conectado | 1 petición, 1 lectura de alarma por cambio y las filas de las diapositivas cambiadas | No. Antes no había mínimo, ahora es de 5 s y como mucho 800 por hora |
+| Borrar la sala de coedición sin uso | ídem | 7 días después de que salga el último | Se borra; si alguien vuelve, se aplaza otros 7 días | 1 petición y 2 o 3 filas | No: `touched + 7 días`. Sin `touched` (0) se borra sin bucle |
+| Caducidad de una presentación compartida | `store.js` ShareBox | Al caducar o tras un año sin vistas | Se borra o se reprograma a su fecha | 1 petición y 1 lectura | **Sí, con datos rotos**: sin `created`, `lastView` ni `expires`, el fin era `NaN` y se llamaba a `setAlarm(NaN)`. Cloudflare lanza un error y reintenta hasta 6 veces. Ahora se rechaza y se anota (prueba en `tests/server-brakes.mjs`) |
+| Caducidad de LTI | `lti.js` LtiStore | Una vez, al caducar (10 min o 1 día) | Borra si ha caducado y no se reprograma | 1 petición | No |
+| Vincular la app de escritorio | `api.js` DesktopLink | Una vez, a los 10 min | Borra y no se reprograma | 1 petición | No |
+| Fin de una emisión o votación (sala, repetidoras y código) | `broadcast.js` | 12 h; se alarga como mucho cada 10 min mientras entra gente | Cierra los sockets y borra todo | 1 petición por objeto | No |
+| Ronda de un modelo 3D | `model3d.js` ModelJob | Cada ronda programaba la siguiente a +50 ms (al crearlo, a `Date.now()`) | Cada ronda resta: 4 por petición y 12 por trabajo como máximo; termina o falla con `finish()`; borrado a las 24 h | 1 petición, unas filas, 1 llamada a la IA y 1 a Blender (cobradas en créditos) | Acotado por las rondas. Era el único `setAlarm(Date.now())` del código. Ahora el mínimo es de 1 s y hay un máximo de 60 por hora |
+| Rastreador de Captación | `crawler.js` Crawler | Cada `everyMin` (≥ 2 min, por defecto 5) mientras está encendido | Apagarlo en Captación ▸ Rastreador; ahora también el interruptor | Peticiones a webs ajenas, 2–3 peticiones a DO y unas filas. **Con la cola vacía, `crawl-next` lee todos los contactos** | **Riesgo real, dormido**. Cuando ya se ha visitado todo, cada paso lee la lista entera: 20.000 contactos cada 5 min son 5,8 M filas al día, más que la cuota. Saltaba solo con muchos contactos (el descubrimiento importa países enteros de OpenStreetMap) y todo visitado. Ahora, sin nada pendiente, vuelve a mirar a las 3 h (`IDLE_MS`), no escribe nada y el primer paso es a 1 min, no a 5 s |
+| Cron horario «17 * * * *» (nuevo) | `worker.js` y `quota.js` | Cada hora | Sin `CF_ACCOUNT_ID` ni `CF_ANALYTICS_TOKEN` no hace nada | 1 petición a Workers y 1 a la API de Cloudflare; solo pasa por Budget cuando se supera un umbral | No |
+| Cron diario «0 8 * * *» | `worker.js`, que llama a `runSchedule`, `ticketsDue`, `runCrm`, `releasesAuto`, `storageBackfill`/`storageWatch` | 1 vez al día | Ahora el interruptor | Avisos: 1 petición por aviso pendiente (como mucho 400 días por pasada). Tickets: los que esperan. Captación: lee todos los contactos 2 veces (`purge` y `due`) y envía los correos que tocan. Versiones: solo GitHub. **Espacio: `storageBackfill` preguntaba a cada cuenta del directorio (1 petición por cuenta y día)** | Los crons no se reintentan solos. El de espacio crecía con las cuentas: con 50.000, ya media cuota al día. Ahora, cuando una pasada no encuentra nada que medir, se apunta y no se repite hasta 30 días después |
+| Envíos tras responder | `api.js` Account.fetch, `ctx.waitUntil(flush)` | 1 por petición que cambie algo compartido | Termina; un fallo se registra y se pierde | 1 llamada a Finance, Schedule o Directory | No: no reintenta |
+| Webhooks de integraciones | `hooks.js` | Por cada evento (abierta, comentario) | Tras 20 fallos seguidos no se vuelve a llamar | 1 fetch y 1 escritura en la cuenta | No: no reintenta |
+| OpenStreetMap (Overpass) | `crm.js` overpass | Al pedirlo el rastreador o la administración | 3 servidores, uno detrás de otro, una vez cada uno | 1–3 fetch | No |
+| Temporizadores en memoria | `broadcast.js` (recuento, puntero, subida) y `hooks.js` (corte a 5 s) | `setTimeout` de un solo uso | Se disparan una vez | Ninguno o 1 petición | No: nunca se reprograman solos |
+| Reintentos automáticos de Cloudflare | Cualquier `alarm()` que lance un error | Hasta 6 reintentos con espera exponencial desde 2 s | Cloudflare | 1 petición por reintento | Acotado a 6. Ahora cada reintento cuenta contra el máximo por hora del objeto |
+| **Navegador: mirar si otros han cambiado un documento de la nube** | `src/io/cloud/clouddocs.js` | Cada 5 s con la pestaña visible, aunque nadie toque nada | Cerrar el documento u ocultar la pestaña | 1 petición a Workers y 2 a DO (sesión y documento) | **El mayor consumo real**: una pestaña abierta y visible todo el día eran unas 17.000 consultas, unas 35.000 peticiones a DO. Bastaban 3 o 4 pestañas olvidadas para agotar la cuota. Ahora: cada 5 s mientras hay cambios, cada 20 s tras 2 min sin cambios y cada minuto tras 10. Un cambio, en este navegador o en otro, o volver a la pestaña, y otra vez cada 5 s |
+| Navegador: puntero en una emisión | `broadcast.js` toRelay y `src/ui/shell/broadcast.js` | Hasta 10 por segundo mientras se mueve el ratón | Dejar de moverlo | 1 petición a DO por cada repetidora en uso | No es un bucle. **Antes**, con 30 espectadores repartidos al azar en 12 repetidoras, eran 120 peticiones por segundo: un cuarto de hora de puntero agotaba la cuota. **Ahora** el público llena primero la repetidora 0 (hasta 300, como en la votación): 10 por segundo. El puntero a una repetidora con más de 500 espectadores va al ritmo al que ella lo reparte, y cada Worker deja de preguntar a la repetidora 0 en cuanto le ha mandado 300. Medido en local (abajo) |
+
+**Emisión, medido en local** (`wrangler dev --local`, espectadores en Node, 10 s de puntero a 10 posiciones por segundo
+y 10 cambios de diapositiva; peticiones a DO contadas en el registro):
+
+| Espectadores | Al entrar (antes → ahora) | Puntero, 10 s | Diapositivas, 10 | Posiciones recibidas (de 100) | Retraso del puntero p50/p95 | Retraso de diapositiva p50/p95 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 30 | 66 → 32 | 1200 → 100 | 120 → 10 | 100 → 100 | 63/93 → 57/96 ms | 46/69 → 21/23 ms |
+| 300 | 355 → 302 | 1600 → 100 | 160 → 10 | 100 → 100 | 64/99 → 40/82 ms | 60/94 → 28/31 ms |
+| 1000 | 1097 → 1032 | 1600 → 1600 | 160 → 160 | 100 → 100 | 57/102 → 54/103 ms | 66/107 → 60/111 ms |
+| 3000 | 3858 → 3048 | 1600 → 1600 | 160 → 160 | 98 → 100 | 80/139 → 74/112 ms | 91/151 → 83/145 ms |
+
+Con más de 300 espectadores hacen falta las 16 repetidoras: 160 peticiones por segundo mientras se mueve el puntero.
+Una emisión grande con puntero agota la cuota gratuita en unos 10 minutos de movimiento. El ahorro grande está en las
+de una clase. Al entrar, cada repetidora nueva pregunta a la sala una sola vez, aunque lleguen 700 a la vez (antes, 823
+peticiones `/relay` con 3000).
+
+No hay colas de Cloudflare Queues ni otros consumidores. Las colas de `fetch()` en Finance, Schedule, Crm y
+los demás ordenan peticiones en memoria y no reintentan.
+
+### Los frenos (`server/cloudflare/brakes.js`)
+
+- **Programar una alarma:** solo con `scheduleAlarm(ctx, env, kind, at)`. `tests/layers.py` falla si aparece
+  `setAlarm` en cualquier otro archivo del servidor, o si hay un `alarm()` que no pasa por `runAlarm`.
+  - Rechaza lo que no es una fecha (`NaN`, `undefined`, una fecha inválida, `Infinity`) y lo anota.
+  - No programa nada antes del mínimo de su tipo: 60 s en general. Las excepciones están en `ALARMS`, cada una con
+    su porqué: coedición 5 s y modelo 3D 1 s.
+  - Si el objeto ya pasó su máximo de ejecuciones en esa hora, no reprograma, anota un incidente y avisa por
+    correo a `ADMIN_EMAILS`, una vez por tipo y día.
+- **Ejecutar una alarma:** cada `alarm()` es `runAlarm(...)`.
+  - Cuenta la ejecución. Si el objeto se ha pasado del máximo, no hace el trabajo.
+  - Con el interruptor encendido aplaza una hora lo que puede esperar. Lo esencial sigue: guardar la coedición y
+    los modelos 3D en marcha.
+  - Si el trabajo lanza un error, lo vuelve a lanzar (Cloudflare reintenta como mucho 6 veces), y cada reintento
+    cuenta contra el máximo.
+- **Interruptor de emergencia:** Administración ▸ Consumo. Se guarda en el objeto Budget `global`.
+  - Lo leen solo las alarmas que pueden esperar y los crons, como mucho una vez por minuto en cada instancia. Leerlo
+    no añade nada a las peticiones de las personas.
+  - Encendido: el cron diario no se ejecuta, las alarmas que pueden esperar se aplazan de hora en hora y el
+    rastreador se para. La web, el editor, las cuentas y los documentos siguen funcionando.
+  - Se tarda como mucho un minuto en notarlo. Si no se puede leer, no se para nada: un freno nunca debe tirar el
+    servicio.
+- **Contadores:** cada ejecución se cuenta en memoria y se envía a Budget la primera vez, cada 15 minutos o cada 500
+  ejecuciones. Nunca hay una escritura por ejecución.
+  - Se guardan por horas durante 48 horas, y la administración enseña las últimas 24.
+  - Son un mínimo: lo que cuenta una instancia que se para antes de enviarlo se pierde.
+- **Cuota del día:** `quota.js` pregunta a la API GraphQL de analíticas de Cloudflare.
+  - Datos: `workersInvocationsAdaptive`, `durableObjectsInvocationsAdaptiveGroups` y, para filas y duración,
+    `durableObjectsPeriodicGroups`.
+  - Se pregunta al abrir la página de la administración y en el cron horario, que escribe a los administradores al
+    50, al 80 y al 95 % de cualquiera de las cuotas, una vez por umbral y día (UTC).
+  - **No se ha probado contra Cloudflare de verdad, solo simulado.** Los nombres de los dos primeros conjuntos están
+    en su documentación; los campos de filas y duración no se han podido comprobar. Si Cloudflare los rechaza,
+    pregunta otra vez sin ellos y la página lo dice.
+
+**Para activar la cuota del día** (sin ella todo lo demás funciona):
+
+1. En Cloudflare, My Profile ▸ API Tokens ▸ Create Token ▸ Custom token. Permiso **Account ▸ Account Analytics ▸
+   Read** y nada más, con Account Resources: solo esta cuenta. Sin caducidad, o con la que prefieras.
+2. `cd server/cloudflare && npx wrangler secret put CF_ANALYTICS_TOKEN` y pegar el token. No va en el repositorio
+   ni en `wrangler.toml`.
+3. La variable `CF_ACCOUNT_ID` es el ID de la cuenta, de 32 caracteres; está en Workers & Pages, en la columna de la
+   derecha. Ponla en Workers ▸ revela-share ▸ Settings ▸ Variables and secrets ▸ Add ▸ Text. `keep_vars` la
+   conserva en cada despliegue. Para pruebas, lo mismo con `--env staging`, si se quiere.
+
+**Pruebas:**
+
+- `tests/server-brakes.mjs`: el mínimo, las fechas que no lo son y el máximo por hora.
+  - El caso del artículo, simulado: 23 días normales y luego dos semanas de bucle, que el freno corta en 6
+    ejecuciones con un incidente y un correo. Sin freno, el mismo bucle hace 10.000 ejecuciones en el mismo
+    milisegundo.
+  - También: la ShareBox sin fechas, el interruptor y su caché, los contadores, el rastreador sin nada pendiente,
+    la medición mensual, la cuota (con su API simulada) y que el cron horario sin configurar no toque ningún
+    Durable Object.
+- `tests/server-api.mjs`: las rutas de la administración.
+- `tests/suites/services.js`: el intervalo del navegador.
+
 ## Qué impide saltarse las restricciones
 
 | Riesgo | Protección |

@@ -182,13 +182,24 @@ export async function recheckReadOnly() {
 
 let chain = Promise.resolve();
 const queue = fn => (chain = chain.then(fn, fn));
+// How long to wait before the next look for others' changes: pollMs while something changes here or there, then less
+// often the longer nothing does — each look is a request to the Worker and two to Durable Objects (the session, the
+// document), and on Cloudflare's free plan the whole account has 100,000 of those a day: one tab left open and idle at
+// 5 s was ~17,000 looks a day, ~35,000 requests to them (docs/NUBE.md ▸ «Lo que se ejecuta solo»). A change, either
+// side, or coming back to the tab, and it's pollMs again.
+export const pollDelay = (pollMs, quietMs) => (quietMs < 2 * 60e3 ? pollMs : quietMs < 10 * 60e3 ? Math.max(pollMs, 20e3) : Math.max(pollMs, 60e3));
 function startSync(pollMs, debounceMs) {
-  const me = cur; let timer = null;
-  const schedule = () => { if (cur !== me || me.role === 'view' || me.readOnly) return; clearTimeout(timer); timer = setTimeout(() => queue(() => push(me)), debounceMs); if (diff(me.base, state.deck).length) setStatus('pending'); };
+  const me = cur; let timer = null, poll = null;
+  me.quietSince = Date.now();
+  const schedule = () => { if (cur !== me || me.role === 'view' || me.readOnly) return; me.quietSince = Date.now(); clearTimeout(timer); timer = setTimeout(() => queue(() => push(me)), debounceMs); if (diff(me.base, state.deck).length) setStatus('pending'); };
   const unsub = subscribe(schedule);
-  const poll = setInterval(() => { if (typeof document === 'undefined' || document.visibilityState !== 'hidden') queue(() => pull(me)); }, pollMs);
+  const next = () => { clearTimeout(poll); poll = setTimeout(() => { if (cur !== me) return; if (typeof document === 'undefined' || document.visibilityState !== 'hidden') queue(() => pull(me)); next(); }, pollDelay(pollMs, Date.now() - me.quietSince)); };
+  next();
+  // (Back to the tab after a while: a look at once, and the short interval again.)
+  const seen = () => { if (cur === me && document.visibilityState === 'visible' && Date.now() - me.quietSince >= 2 * 60e3) { me.quietSince = Date.now(); queue(() => pull(me)); next(); } };
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', seen);
   const stats = me.role === 'owner' ? null : watchViews(me);
-  me.stop = () => { unsub(); clearInterval(poll); clearTimeout(timer); clearTimeout(me.thumbTimer); stats?.(); };
+  me.stop = () => { unsub(); clearTimeout(poll); clearTimeout(timer); clearTimeout(me.thumbTimer); stats?.(); if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', seen); };
   me.flush = () => { clearTimeout(timer); return queue(() => push(me)); };
 }
 export const flushCloud = () => cur?.flush?.() || Promise.resolve();
@@ -204,7 +215,7 @@ async function pull(me) {
     const local = diff(me.base, state.deck), next = snapshot(r.deck);
     applyOps(next, local); me.base = snapshot(r.deck); adoptDeck(next, { sameDocument: true });
   }
-  me.rev = r.rev; emit('pulled');
+  me.rev = r.rev; me.quietSince = Date.now(); emit('pulled');
 }
 // This browser's changes.
 async function push(me) {

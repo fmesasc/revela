@@ -120,6 +120,7 @@ keeps them across deploys. Every feature whose secret is missing is simply off.
 | `BLENDER_SECRET` | signs the requests to `revela-blender` (the same value there) |
 | `UPLOAD_KEY` | lets someone upload shares and open rooms without Google sign-in |
 | `ALLOWED` | limits who may upload or open rooms (`ana@x.org, @school.example`) |
+| `CF_ANALYTICS_TOKEN` | read-only API token («Account Analytics: Read», nothing else) for the day's use against the free plan's quota (`quota.js`; with the plain var `CF_ACCOUNT_ID` set in the dashboard). See docs/NUBE.md ▸ «Lo que se ejecuta solo» |
 
 **Variables in `wrangler.toml`**
 

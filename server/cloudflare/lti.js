@@ -20,6 +20,7 @@
 
 import { gradeAnswer } from '../../src/features/live/grading.js';
 import { enc, dec, b64url, fromB64url, random, escHtml as esc } from './util.js';
+import { scheduleAlarm, runAlarm } from './brakes.js';
 
 const LTI = 'https://purl.imsglobal.org/spec/lti/claim/', DL = 'https://purl.imsglobal.org/spec/lti-dl/claim/', AGS = 'https://purl.imsglobal.org/spec/lti-ags/claim/endpoint';
 const SCORE_SCOPE = 'https://purl.imsglobal.org/spec/lti-ags/scope/score', LINEITEM_SCOPE = 'https://purl.imsglobal.org/spec/lti-ags/scope/lineitem';
@@ -29,7 +30,7 @@ export class LtiStore {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; }
   async fetch(req) {
     const op = new URL(req.url).pathname.split('/').pop(), a = await req.json(), st = this.ctx.storage;
-    if (op === 'put') { await st.put('v', { value: a.value, expires: a.ttl ? Date.now() + a.ttl : 0 }); if (a.ttl) await st.setAlarm(Date.now() + a.ttl); return Response.json({ ok: true }); }
+    if (op === 'put') { await st.put('v', { value: a.value, expires: a.ttl ? Date.now() + a.ttl : 0 }); if (a.ttl) await scheduleAlarm(this.ctx, this.env, 'lti', Date.now() + a.ttl); return Response.json({ ok: true }); }
     const v = await st.get('v');
     if (!v || (v.expires && v.expires < Date.now())) { if (v) await st.deleteAll(); return Response.json({ value: null }); }
     if (op === 'get') return Response.json({ value: v.value });
@@ -37,7 +38,7 @@ export class LtiStore {
     if (op === 'patch') { v.value = { ...v.value, ...a.value }; await st.put('v', v); return Response.json({ value: v.value }); }
     return Response.json({ error: 'unknown' }, { status: 404 });
   }
-  async alarm() { const v = await this.ctx.storage.get('v'); if (v?.expires && v.expires <= Date.now()) await this.ctx.storage.deleteAll(); }
+  alarm() { return runAlarm(this.ctx, this.env, 'lti', async () => { const v = await this.ctx.storage.get('v'); if (v?.expires && v.expires <= Date.now()) await this.ctx.storage.deleteAll(); }); }
 }
 const kv = (env, name) => env.LTI.get(env.LTI.idFromName(name));
 const kvDo = async (env, name, op, body = {}) => (await (await kv(env, name).fetch('https://lti/' + op, { method: 'POST', body: JSON.stringify(body) })).json()).value;

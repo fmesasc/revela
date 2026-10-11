@@ -70,6 +70,7 @@ import { handle3d, configured3d } from './model3d.js';
 import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES, emails as adminEmails } from './admin.js';
 import { record } from './finance.js';
 import { NOTICE_PLACES, noticesFor, noticesOp } from './notices.js';
+import { scheduleAlarm, runAlarm, brakesOp } from './brakes.js';
 import { takeQuota } from './store.js';
 import { handleCommunity } from './community.js';
 import { handleLead, goLink, crmUnsub, crmClick, campaignSignup, eventsPublic, eventSignup, referralInfo } from './crm.js';
@@ -766,6 +767,8 @@ export class Budget {
     if (op === 'releases-set') { await this.ctx.storage.put('releases', a.releases); return Response.json({ ok: true }); }
     // (And the notices, notices.js.)
     const n = await noticesOp(this.ctx.storage, op, a); if (n) return Response.json(n);
+    // (And the brakes: the emergency switch, the counters of what runs by itself, its incidents — brakes.js.)
+    const bk = await brakesOp(this.ctx.storage, op, a); if (bk) return Response.json(bk);
     const month = new Date().toISOString().slice(0, 7), cur = (await this.ctx.storage.get('m')) || { month, usd: 0 };
     const m = cur.month === month ? cur : { month, usd: 0 }, limit = settings(this.env).monthlyBudget;
     if (op === 'check') return Response.json({ ok: m.usd + (+a.usd || 0) <= limit, usd: m.usd, limit });
@@ -787,7 +790,7 @@ export class DesktopLink {
     const cur = await st.get('link');
     if (op === 'start') {
       if (cur) return Response.json({ ok: false }, { status: 409 });
-      await st.put('link', { challenge: a.challenge, expires: Date.now() + 10 * 60e3 }); await st.setAlarm?.(Date.now() + 10 * 60e3);
+      await st.put('link', { challenge: a.challenge, expires: Date.now() + 10 * 60e3 }); await scheduleAlarm(this.ctx, this.env, 'desktop', Date.now() + 10 * 60e3);
       return Response.json({ ok: true, code: shortCode(a.challenge) });
     }
     if (!cur || cur.expires < Date.now()) { await st.deleteAll(); return Response.json({ ok: false, expired: true }, { status: 410 }); }
@@ -802,7 +805,7 @@ export class DesktopLink {
     }
     return Response.json({ error: 'unknown' }, { status: 404 });
   }
-  async alarm() { await this.ctx.storage.deleteAll(); }
+  alarm() { return runAlarm(this.ctx, this.env, 'desktop', () => this.ctx.storage.deleteAll()); }
 }
 
 // ---- Requests ----------------------------------------------------------------------------------------

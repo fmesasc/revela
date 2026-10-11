@@ -22,6 +22,7 @@ on:
       - 'tests/server-api.mjs'
       - 'tests/server-lti.mjs'
       - 'tests/server-blender.mjs'
+      - 'tests/server-brakes.mjs'
       - 'src/features/live/grading.js'
       - '.github/workflows/server.yml'
       - 'src/core/busy.js'

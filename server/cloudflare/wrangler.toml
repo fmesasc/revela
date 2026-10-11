@@ -176,8 +176,11 @@ class_name = "Schedule"
 tag = "v8"
 new_sqlite_classes = ["Schedule"]
 
+# Every hour at :17, the day's use of the account against the free plan's quota (quota.js; worker.js tells the two
+# apart by the expression — keep QUOTA_CRON in quota.js the same). It needs CF_ACCOUNT_ID (plain var) and the secret
+# CF_ANALYTICS_TOKEN (Account Analytics: Read, nothing else); without them it does nothing. See docs/NUBE.md.
 [triggers]
-crons = ["0 8 * * *"]
+crons = ["0 8 * * *", "17 * * * *"]
 
 # «Crear modelo 3D con IA» (model3d.js): one object per job (its rounds, the GLB; deleted after 24 h).
 # Blender runs in another Worker, revela-blender (server/blender), reached at BLENDER_URL with the

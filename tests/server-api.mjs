@@ -10,7 +10,7 @@ import { verifyBody } from '../server/blender/gate.js';
 import { shortCode, settings, deviceOf } from '../server/cloudflare/api.js';
 import { verifyStripe, stripeConf, billingMode } from '../server/cloudflare/billing.js';
 import { sha256, voterOf } from '../server/cloudflare/util.js';
-import { relayHeaders, PHONE_RATE, UP_MS } from '../server/cloudflare/broadcast.js';
+import { relayHeaders, PHONE_RATE, UP_MS, joinLive, joinVote, FIRST_RELAY, PTR_GAP } from '../server/cloudflare/broadcast.js';
 
 function fakeStorage() {
   const m = new Map(); let alarm = null;
@@ -2421,6 +2421,24 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok((await A('GET', '/users/nadie-aqui/docs')).status === 404, 'restaurar: las presentaciones de una cuenta que existe');
   }
 
+  // «Consumo y frenos» (brakes.js, quota.js): the emergency switch, with a reason, audited; it stops the daily cron.
+  {
+    x = await A('GET', '/brakes');
+    ok(x.status === 200 && x.j.paused === null && x.j.quota.configured === false && x.j.kinds.some(k => k.kind === 'collab' && k.essential) && x.j.limits.doRequests === 100000,
+      'frenos: la página, con el interruptor apagado y sin token de analíticas: ' + JSON.stringify(x.j).slice(0, 200));
+    ok((await A('POST', '/brakes', { body: { paused: true } })).status === 400, 'frenos: encenderlo pide un motivo');
+    ok((await A('POST', '/brakes', { body: { paused: true, reason: 'Algo se ha disparado' } }, )).j.paused?.by === 'jefe@example.com', 'frenos: encendido, con quién');
+    ok((await A('GET', '/audit?target=brakes')).j.entries.some(e => e.action === 'brakes-on' && e.reason === 'Algo se ha disparado'), 'frenos: en la auditoría');
+    ok((await adm('POST', '/brakes', { body: { paused: false }, origin: 'https://otro.example' })).status === 403, 'frenos: desde otra web, no');
+    const sched = env.SCHEDULE.inst.get('global'), seen = JSON.stringify([...(sched?.ctx.storage.m || new Map())]);
+    await runCron(Date.now() + 400 * 864e5);
+    ok(JSON.stringify([...(sched?.ctx.storage.m || new Map())]) === seen, 'frenos: con el interruptor encendido, el cron diario no toca nada');
+    x = await A('GET', '/brakes');
+    ok(x.j.paused?.reason === 'Algo se ha disparado' && x.j.hours.some(h => h.c['paused:cron'] >= 1), 'frenos: el cron saltado aparece en los contadores');
+    ok((await A('POST', '/brakes', { body: { paused: false } })).j.paused === null, 'frenos: apagado (sin motivo, vale)');
+    ok((await A('POST', '/brakes/clear', {})).j.ok && (await A('GET', '/brakes')).j.incidents.length === 0, 'frenos: borrar los incidentes');
+  }
+
   // Deleting the account takes it out of the directory.
   ok((await req('POST', '/api/account/delete', { headers: { Cookie: pia }, body: { confirm: 'pia@example.com' } })).status === 200 && (await A('GET', '/users?q=pia')).j.users.length === 0, 'cuenta eliminada: fuera del directorio');
   // Without the admin vars again: nothing.
@@ -2738,19 +2756,43 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   env.LIVE.get(j.room + '~0'); env.LIVE.get(j.room + '~3'); const R0 = rooms.get(j.room + '~0'), R3 = rooms.get(j.room + '~3');
   const rel0 = await R0.asRelay(j.room, 0), rel3 = await R3.asRelay(j.room, 3);
   ok(rel0?.doc === doc && (await B.ctx.storage.get('relays')).join() === '0,3', 'emisión: las repetidoras se apuntan a la sala con su primer espectador');
+  { env.LIVE.get(j.room + '~5'); const R5 = rooms.get(j.room + '~5'), f = B.fetch.bind(B); let asked = 0; B.fetch = r => { if (new URL(r.url).pathname === '/relay') asked++; return f(r); };
+    const both = await Promise.all([R5.asRelay(j.room, 5), R5.asRelay(j.room, 5), R5.asRelay(j.room, 5)]); B.fetch = f;
+    ok(asked === 1 && both.every(x => x?.doc === doc), 'emisión: tres espectadores a la vez en una repetidora nueva → una sola petición a la sala: ' + asked); }
   env.LIVE.get('nohay-esta-sala-x~1');
   ok(!(await rooms.get('nohay-esta-sala-x~1').asRelay('nohay-esta-sala-x', 1)), 'emisión: una repetidora de una sala que no existe no acepta a nadie');
   const v0 = sock(), v3 = sock(); await R0.relayJoin(v0, rel0); await R3.relayJoin(v3, rel3);
   ok(v0.last('hello')?.state.h === 1 && v0.last('hello').state.f === 2 && v0.last('hello').doc === doc, 'emisión: en la repetidora se entra donde va la presentación');
   await B.webSocketMessage(pres, JSON.stringify({ t: 'go', h: 4, v: 0, f: -1 })); await new Promise(r => setTimeout(r, 30));
   ok(v0.last('go')?.h === 4 && v3.last('go')?.h === 4 && a1.last('go')?.h === 4, 'emisión: el cambio llega a todas las repetidoras (y a quien entró directo)');
+  // The pointer to the relays: a relay that keeps up with the presenter gets every position; one with so many viewers
+  // that it passes on fewer (n/5 ms, more than PTR_GAP) gets them paced — five at once are one push and the last one a
+  // moment later, never after a slide change that came behind it.
+  { const pushes = [], wrap = R => { const f = R.pushed.bind(R); R.pushed = m => { pushes.push(m.t); return f(m); }; return f; };
+    const f0 = wrap(R0), f3 = wrap(R3);
+    for (let k = 1; k <= 3; k++) await B.webSocketMessage(pres, JSON.stringify({ t: 'ptr', x: k / 10, y: 0.5 }));
+    await new Promise(r => setTimeout(r, 10));
+    ok(pushes.filter(t => t === 'ptr').length === 6, 'emisión: con poco público, cada posición del puntero a cada repetidora (nada retenido): ' + pushes.join());
+    B.counts = { 0: 1500, 3: 1500 }; pushes.length = 0; const gap = 1500 / 5 * 0.8;
+    await new Promise(r => setTimeout(r, gap + 10));
+    for (let k = 1; k <= 5; k++) await B.webSocketMessage(pres, JSON.stringify({ t: 'ptr', x: k / 10, y: 0.5 }));
+    await new Promise(r => setTimeout(r, 10));
+    ok(pushes.filter(t => t === 'ptr').length === 2, 'emisión: con 1500 en cada repetidora, cinco posiciones seguidas → una petición por repetidora, no cinco: ' + pushes.join());
+    await new Promise(r => setTimeout(r, gap + 30));
+    ok(pushes.filter(t => t === 'ptr').length === 4 && R0.ptrLast?.x === 0.5, 'emisión: y enseguida la última posición, a cada repetidora');
+    pushes.length = 0; await new Promise(r => setTimeout(r, gap + 10));
+    await B.webSocketMessage(pres, JSON.stringify({ t: 'ptr', x: 0.7, y: 0.5 })); await B.webSocketMessage(pres, JSON.stringify({ t: 'ptr', x: 0.8, y: 0.5 }));
+    await B.webSocketMessage(pres, JSON.stringify({ t: 'go', h: 4, v: 0, f: -1 })); await new Promise(r => setTimeout(r, 30));
+    await new Promise(r => setTimeout(r, gap + 30));
+    ok(pushes.filter(t => t === 'ptr').length === 4 && pushes.at(-1) === 'go' && R0.ptrLast?.x === 0.8 && R3.ptrLast?.x === 0.8, 'emisión: un puntero retenido sale antes que el cambio de diapositiva de detrás, no después: ' + pushes.join());
+    B.counts = (await B.ctx.storage.get('counts')) || {}; R0.pushed = f0; R3.pushed = f3; await new Promise(r => setTimeout(r, 400)); }   // (the relay's own pace, below: 300 ms with 1500)
   const q = v0.last('go').q; await R0.pushed({ t: 'go', h: 2, v: 0, f: -1, q: q - 1 });
   ok(v0.last('go').h === 4 && (await R0.ctx.storage.get('state')).h === 4, 'emisión: una repetidora nunca vuelve a un cambio anterior (si llegan desordenados)');
   // The pointer: with many viewers, less often, and always its last position.
   for (let k = 0; k < 1500; k++) R0.ctx.sockets.push({ tags: ['v'], send() {}, closed: false });
   const before = v0.got.filter(m => m.t === 'ptr').length;
   for (let k = 0; k < 5; k++) await R0.pushed({ t: 'ptr', x: k / 10, y: 0.5 });
-  ok(v0.got.filter(m => m.t === 'ptr').length === before + 1, 'emisión: con 1500 espectadores en una repetidora, el puntero no sale cinco veces seguidas');
+  ok(v0.got.filter(m => m.t === 'ptr').length === before + 1, 'emisión: con 1500 espectadores en una repetidora, el puntero no sale cinco veces seguidas: ' + (v0.got.filter(m => m.t === 'ptr').length - before));
   await new Promise(r => setTimeout(r, 450));
   ok(v0.last('ptr')?.x === 0.4, 'emisión: y enseguida sale su última posición');
   R0.ctx.sockets = R0.ctx.sockets.filter(x => x.got);
@@ -2759,6 +2801,18 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   await B.webSocketMessage(pres, JSON.stringify({ t: 'end' }));
   ok(a1.last('end') && a1.closed && !(await B.ctx.storage.get('meta')), 'emisión: al terminar, todos fuera y la sala borrada');
   ok(v0.last('end') && v0.closed && v3.closed && !(await R0.ctx.storage.get('relay')), 'emisión: y las repetidoras también');
+}
+// ---- Which relay each one goes to: relay 0 first, up to FIRST_RELAY; then the others (broadcast.js toRelayOf) ----
+{
+  const asked = [], full = new Set(), L = { idFromName: n => n, get: id => ({ fetch: async () => { asked.push(id); return new Response(null, { status: full.has(id) ? 503 : 200 }); } }) };
+  const e = { LIVE: L }, ws = new Request('https://revelaslides.com/api/live/abcdefghijklmnop', { headers: { Upgrade: 'websocket' } });
+  for (let k = 0; k < 3; k++) await joinLive(ws, e, 'abcdefghijklmnop');
+  ok(asked.join() === ['abcdefghijklmnop~0', 'abcdefghijklmnop~0', 'abcdefghijklmnop~0'].join(), 'emisión: el público llena primero una repetidora (una petición por mensaje, no una por cada una de 16)');
+  full.add('abcdefghijklmnop~0'); asked.length = 0;
+  for (let k = 0; k < 20; k++) await joinLive(ws, e, 'abcdefghijklmnop');
+  ok(asked.filter(x => x.endsWith('~0')).length === 1 && asked.length === 21, `emisión: llena (${FIRST_RELAY}), a las demás; y no se vuelve a preguntar a la llena cada vez: ${asked.length} peticiones para 20`);
+  asked.length = 0; await joinVote(new Request('https://revelaslides.com/api/vote/bcdefghijklmnopq', { headers: { Upgrade: 'websocket' } }), e, 'bcdefghijklmnopq', null);
+  ok(asked[0] === 'bcdefghijklmnopq~0', 'votos: igual, la repetidora 0 primero');
 }
 
 // ---- Votes through the server: the phones in the relays of a vote room (broadcast.js) ----

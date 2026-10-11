@@ -16,8 +16,9 @@
 // Nothing about the audience is kept: not who they are, not their address; only how many are connected now.
 //
 // The room is spread over Durable Objects (all of class Broadcast): the room itself (`room`) holds the presenter, and
-// RELAYS relays (`room~0`…`room~15`) hold the audience, each viewer in one picked at random. The room passes each
-// message to the relays that have someone (one request each) and each relay to its own viewers: a single object
+// RELAYS relays (`room~0`…`room~15`) hold the audience: relay 0 up to FIRST_RELAY, then each viewer in one of the others
+// picked at random. The room passes each message to the relays that have someone (one request each; the pointer paced,
+// PTR_GAP) and each relay to its own viewers: a single object
 // sending to everyone managed ~20,000 messages a second, so 5,000 viewers with the pointer moving fell seconds behind
 // and 20,000 couldn't even get in (stress test on Cloudflare, 2026-10-09). Slide changes carry a number (q) so a relay
 // never goes back to an older one; the pointer, the most frequent, goes out of each relay less often the more
@@ -53,13 +54,21 @@
 
 import { random, sha256, voterOf } from './util.js';
 import { takeQuota } from './store.js';
+import { scheduleAlarm, runAlarm, count, flushCounts } from './brakes.js';
 
 export const ROOM_HOURS = 12, MAX_AUDIENCE = 20000, RELAYS = 16;
 const PER_RELAY = Math.ceil(MAX_AUDIENCE / RELAYS) + 500;     // (picked at random: some room for unevenness)
 export const UP_MS = 100, PHONE_RATE = 40, PHONE_MAX = 320000, KEEPS = ['css', 'slide', 'poll', 'qa'];
-// (A vote room's phones go to relay 0 until it has FIRST_RELAY, then spread over the others: what reaches every phone
-// costs a request per relay in use, and a class fits in one — 16 for 30 phones was ~1 request per vote instead of 0.1.)
+// (The audience — phones of a vote room, viewers of a broadcast — goes to relay 0 until it has FIRST_RELAY, then spreads
+// over the others: what reaches everyone costs a request per relay in use, and a class fits in one — 16 for 30 phones
+// was ~1 request per vote instead of 0.1; and a broadcast's pointer, 10 a second to each of 12 relays for 30 viewers,
+// was 120 Durable Object requests a second: the free plan's daily 100,000 in a quarter of an hour.)
 export const FIRST_RELAY = 300;
+// The pointer to a relay with n viewers passes on its pointer every n/5 ms (pushed()), when that's longer than PTR_GAP
+// (the presenter's own pace, ui/shell/broadcast.js: 10 a second): then the room sends it at most every 4/5 of that — more
+// often only made requests the relay dropped; exactly its pace made it drop some more (jitter: 100 → 91 positions in 10 s,
+// measured), and pacing a relay that keeps up with the presenter only delayed it under load. Always the last position.
+export const PTR_GAP = 100;
 const PRESENTER_MAX = 1000000, BACKLOG = 5000, CODE = /^[A-HJ-NP-Z2-9]{5}$/, CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM = /^[\w-]{16,24}$/;
 const num = (v, lo, hi) => (Number.isFinite(+v) ? Math.max(lo, Math.min(hi, +v)) : null);
@@ -76,7 +85,7 @@ export class Broadcast {
     if (url.pathname === '/init') {
       const a = await req.json();
       await st.put({ meta: { doc: a.doc || null, token: await sha256(a.token), created: Date.now(), owner: a.owner, room: a.room, ...(a.vote && { vote: true, code: a.code || null }) }, state: { h: 0, v: 0, f: -1, q: 0 }, relays: [] });
-      await st.setAlarm(Date.now() + ROOM_HOURS * 36e5);
+      await scheduleAlarm(this.ctx, this.env, 'broadcast', Date.now() + ROOM_HOURS * 36e5);
       return Response.json({ ok: true });
     }
     if (url.pathname === '/relay') {                         // a relay with its first viewer: from now on it gets every message
@@ -92,7 +101,7 @@ export class Broadcast {
     if (url.pathname === '/code-set') {
       const a = await req.json(), now = Date.now(), c = await st.get('code');
       if (c && c.until > now) return Response.json({ ok: false }, { status: 409 });
-      await st.put('code', { room: a.room, until: now + ROOM_HOURS * 36e5 }); await st.setAlarm(now + ROOM_HOURS * 36e5);
+      await st.put('code', { room: a.room, until: now + ROOM_HOURS * 36e5 }); await scheduleAlarm(this.ctx, this.env, 'broadcast', now + ROOM_HOURS * 36e5);
       return Response.json({ ok: true });
     }
     if (url.pathname === '/code-get') { const c = await st.get('code'); return c && c.until > Date.now() ? Response.json({ room: c.room }) : Response.json({ error: 'not found' }, { status: 404 }); }
@@ -127,7 +136,7 @@ export class Broadcast {
   }
   // (In use: it stays. At most every 10 minutes: when thousands open the link at once, one write per viewer made
   // them come in at ~185 a second.)
-  async keep() { if (Date.now() - (this.alarmSet || 0) > 600e3) { this.alarmSet = Date.now(); await this.ctx.storage.setAlarm(Date.now() + ROOM_HOURS * 36e5); } }
+  async keep() { if (Date.now() - (this.alarmSet || 0) > 600e3) { this.alarmSet = Date.now(); await scheduleAlarm(this.ctx, this.env, 'broadcast', Date.now() + ROOM_HOURS * 36e5); } }
   // How many follow, to the presenter: at once, or within a second when many come together. (Its own + the relays'.)
   count(force = false) {
     const now = Date.now();
@@ -151,9 +160,21 @@ export class Broadcast {
   }
   toRelay(room, i, msg) {
     this.queues ||= {};
-    const q = this.queues[i] ||= { items: [], run: null };
+    const q = this.queues[i] ||= { items: [], run: null, ptrAt: 0, ptrNext: null, ptrLater: null };
+    if (msg.t === 'ptr') {                                  // (paced: see PTR_GAP; the last one held goes when its turn comes)
+      const relayGap = (this.counts?.[i] || 0) / 5, wait = relayGap > PTR_GAP ? q.ptrAt + relayGap * 0.8 - Date.now() : 0;
+      if (wait > 0) {
+        q.ptrNext = msg; count('do:live-ptr-held');
+        q.ptrLater ||= setTimeout(() => { q.ptrLater = null; const m = q.ptrNext; q.ptrNext = null; if (m) this.toRelay(room, i, m); }, wait);
+        return q.run || Promise.resolve();
+      }
+      q.ptrAt = Date.now(); q.ptrNext = null;
+    } else if (q.ptrNext) { q.items.push(q.ptrNext); q.ptrNext = null; }   // (a held pointer before what comes after it)
     if (msg.t === 'ptr' && q.items.at(-1)?.t === 'ptr') q.items[q.items.length - 1] = msg; else q.items.push(msg);
-    q.run ||= (async () => { while (q.items.length) { const m = q.items.shift(); await post(relayOf(this.env, room, i), 'push', m).catch(() => {}); } q.run = null; })();
+    q.run ||= (async () => {
+      while (q.items.length) { const m = q.items.shift(); count('do:live-push'); await post(relayOf(this.env, room, i), 'push', m).catch(() => {}); }
+      q.run = null; await flushCounts(this.env).catch(() => {});
+    })();
     return q.run;
   }
   async webSocketMessage(ws, data) {
@@ -180,27 +201,35 @@ export class Broadcast {
   webSocketError(ws) { this.gone(ws); this.left(); }
   gone(ws) { const at = attached(ws); if (at?.cid && !at.out) { at.out = true; this.up(at.cid, { type: '_close' }); } }
   left() { this.ctx.storage.get('relay').then(rel => (rel ? this.report() : this.count())).catch(() => {}); }
-  async alarm() {
-    for (const s of this.ctx.getWebSockets()) { try { s.close(1001, 'expired'); } catch {} }
-    await this.ctx.storage.deleteAll();
+  alarm() {
+    return runAlarm(this.ctx, this.env, 'broadcast', async () => {
+      for (const s of this.ctx.getWebSockets()) { try { s.close(1001, 'expired'); } catch {} }
+      await this.ctx.storage.deleteAll();
+    });
   }
 
   // ---- As a relay ----
   async viewerAtRelay(req, room, i) {
     const rel = await this.asRelay(room, i); if (!rel) return new Response('no such room', { status: 404 });
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('websocket only', { status: 426 });
-    if (this.ctx.getWebSockets('v').length >= (rel.vote && i === 0 ? FIRST_RELAY : PER_RELAY)) return new Response('full', { status: 503 });
+    if (this.ctx.getWebSockets('v').length >= (i === 0 ? FIRST_RELAY : PER_RELAY)) return new Response('full', { status: 503 });
     const pair = new WebSocketPair(), [client, server] = Object.values(pair);
     if (rel.vote) await this.voteJoin(server, rel, req.headers.get('X-Vote-Sub')); else await this.relayJoin(server, rel);
     return new Response(null, { status: 101, webSocket: client });
   }
   // This relay's room; with its first viewer, it registers with the room (which must exist) and takes its state.
+  // (Once: viewers who come together to a new relay wait for the same request to the room — a crowd of 700 at once
+  // made 700 of them, measured.)
   async asRelay(room, i) {
-    const st = this.ctx.storage; let rel = await st.get('relay');
+    const rel = await this.ctx.storage.get('relay');
     if (rel) return rel;
-    const r = await post(roomOf(this.env, room), 'relay', { i, room }).catch(() => null);
+    this.registering ||= this.register(room, i).finally(() => { this.registering = null; });
+    return this.registering;
+  }
+  async register(room, i) {
+    const st = this.ctx.storage, r = await post(roomOf(this.env, room), 'relay', { i, room }).catch(() => null);
     if (!r || !r.ok) return null;
-    const a = await r.json(); rel = { room, i, doc: a.doc, ...(a.vote && { vote: true, owner: a.owner }) };
+    const a = await r.json(), rel = { room, i, doc: a.doc, ...(a.vote && { vote: true, owner: a.owner }) };
     await st.put({ relay: rel, state: a.state || { h: 0, v: 0, f: -1, q: 0 } });
     if (a.vote) { this.kept = { ...(a.kept || {}), ...this.kept }; this.keptAll = true; }
     return rel;
@@ -328,18 +357,30 @@ export async function startLive(env, me, body, json, docs) {
   const site = env.SITE_URL || 'https://revelaslides.com';
   return json({ room, token, url: `${site}/app/view.html?doc=${encodeURIComponent(doc)}&live=${room}` });
 }
-// The presenter (?token=) to the room; each viewer to a relay picked at random (another if that one is full).
+// Which relay a viewer or phone goes to: relay 0 while it has room (FIRST_RELAY), else one of the others at random (another
+// if that one is full). Once relay 0 has said it's full, this Worker instance skips it for that room a while — else
+// each one coming in after the first FIRST_RELAY cost a request to be told so.
+// (Counted as they're sent, not as they're answered: a crowd opening the link at once — 1,000 together — all asked
+// relay 0 before its first «full» came back.)
+const sent0 = new Map(), FULL0_MS = 60e3;
+async function toRelayOf(req, env, room, sub) {
+  let r; const now = Date.now(), s0 = sent0.get(room)?.at > now - FULL0_MS ? sent0.get(room) : { n: 0, at: now };
+  for (let k = 0; k < 4; k++) {
+    const i = k === 0 && s0.n < FIRST_RELAY ? 0 : 1 + crypto.getRandomValues(new Uint32Array(1))[0] % (RELAYS - 1);
+    if (i === 0) { s0.n++; sent0.set(room, s0); if (sent0.size > 500) sent0.clear(); }
+    count('do:live-join');
+    r = await relayOf(env, room, i).fetch(new Request(req, { headers: relayHeaders(req.headers, room, i, sub) }));
+    if (r.status !== 503) return r;
+    if (i === 0) s0.n = FIRST_RELAY;
+  }
+  return r;
+}
+// The presenter (?token=) to the room; each viewer to a relay (toRelayOf).
 export async function joinLive(req, env, room) {
   if (!env.LIVE || !ROOM.test(room)) return new Response('not found', { status: 404 });
   const own = relayHeaders(req.headers, null, 0, null);   // (only set here)
   if (new URL(req.url).searchParams.get('token')) return roomOf(env, room).fetch(new Request(req, { headers: own }));
-  let r;
-  for (let k = 0; k < 3; k++) {
-    const i = crypto.getRandomValues(new Uint32Array(1))[0] % RELAYS;
-    r = await relayOf(env, room, i).fetch(new Request(req, { headers: relayHeaders(req.headers, room, i, null) }));
-    if (r.status !== 503) return r;
-  }
-  return r;
+  return toRelayOf(req, env, room, null);
 }
 // The headers a relay trusts — which room, which relay, whose account — set only here: the same ones sent from outside
 // are dropped first.
@@ -369,16 +410,9 @@ export async function voteCode(env, code, json) {
   const r = await post(codeOf(env, code), 'code-get', {});
   return json(await r.json(), r.status);
 }
-// The presenter (?token=) to the room; each phone to relay 0 while it has room (FIRST_RELAY), else to one of the others
-// picked at random, with its account (sub) when it has one.
+// The presenter (?token=) to the room; each phone to a relay (toRelayOf), with its account (sub) when it has one.
 export async function joinVote(req, env, room, sub) {
   if (!env.LIVE || !ROOM.test(room)) return new Response('not found', { status: 404 });
   if (new URL(req.url).searchParams.get('token')) return roomOf(env, room).fetch(new Request(req, { headers: relayHeaders(req.headers, null, 0, null) }));
-  let r;
-  for (let k = 0; k < 4; k++) {
-    const i = k === 0 ? 0 : 1 + crypto.getRandomValues(new Uint32Array(1))[0] % (RELAYS - 1);
-    r = await relayOf(env, room, i).fetch(new Request(req, { headers: relayHeaders(req.headers, room, i, sub) }));
-    if (r.status !== 503) return r;
-  }
-  return r;
+  return toRelayOf(req, env, room, sub);
 }
