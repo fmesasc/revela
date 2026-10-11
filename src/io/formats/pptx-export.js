@@ -472,7 +472,7 @@ export async function buildPptx(deck = state.deck) {
       else if (b.type === 'chart' && ['map', 'waterfall', 'funnel', 'treemap'].includes(b.chartType)) raster.set(b.id, await svgToPNG(chartSVG(b), b.w, b.h));      // (PowerPoint's own maps can't be written here)
       else if (b.type === 'file' && b.poster) raster.set(b.id, b.poster);          // (a PDF's page; the file itself stays in Revela)
       else if (b.type === 'model' && b.poster) raster.set(b.id, await posterPNG(b.poster, b.w, b.h));
-      else if (b.type === 'math' || b.type === 'poll' || b.type === 'figindex' || b.type === 'file') { const img = await blockImage(b, s, deck); if (img) raster.set(b.id, img); }
+      else if (b.type === 'math' || b.type === 'poll' || b.type === 'figindex' || b.type === 'file' || b.type === 'map') { const img = await blockImage(b, s, deck); if (img) raster.set(b.id, img); }
       else if (b.type === 'magnify' && !magCrop(b, slideBlocks(s, deck))) { const img = await magnifyImage(b, s, deck); if (img) raster.set(b.id, img); }
     } catch {}
   }
@@ -645,7 +645,7 @@ function timingXML(s, spids, deck) {
   // Every animation of every object, in order (an object's next ones too; a 3D
   // model's own clips have no PowerPoint equivalent and are left out).
   const tl = animTimeline(s);
-  const list = animEntries(s).filter(e => tl.has(e.key) && spids.has(e.b.id) && !['clip3d', 'pdfview'].includes(e.a.effect))
+  const list = animEntries(s).filter(e => tl.has(e.key) && spids.has(e.b.id) && !['clip3d', 'pdfview', 'mapfly'].includes(e.a.effect))
     .sort((x, y) => tl.get(x.key).step - tl.get(y.key).step || tl.get(x.key).delay - tl.get(y.key).delay);
   if (!list.length) return '';
   const ids = { n: 3 }, steps = [...new Set(list.map(e => tl.get(e.key).step))];

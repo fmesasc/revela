@@ -46,12 +46,13 @@ import { uncrop } from '../../features/document/crop.js';
 import { fitTextToBox } from '../canvas/canvas.js';
 import { editText } from '../canvas/content.js';
 import { MAP_SCOPES } from '../../features/content/maps.js';
+import { MAP_LOOKS, MAP_ROUTES, MARKER_KINDS, MARKER_SIZES } from '../../features/content/geomap.js';
 import { openObjectLink } from '../dialogs/objlink.js';
 import { t } from '../../i18n/index.js';
 import { press, common, MIXED } from './reflect.js';
 
 const TITLES = { diagram: 'Diagrama', file: 'Archivo', shape: 'Forma', image: 'Imagen', model: 'Modelo 3D', video: 'Vídeo', audio: 'Audio', text: 'Cuadro de texto', table: 'Tabla', chart: 'Gráfico',
-  math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', magnify: 'Lupa', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás', lock: 'Candado' };
+  math: 'Ecuación', code: 'Código', poll: 'Votación', embed: 'Web', icon: 'Icono', camera: 'Cámara', slideref: 'Zoom', magnify: 'Lupa', figindex: 'Índice', ink: 'Dibujo', connector: 'Conector', timer: 'Cuenta atrás', lock: 'Candado', map: 'Mapa' };
 // Every shape once (the catalogue's first name for each).
 const SHAPES = Object.entries(SHAPE_NAMES).filter(([k]) => !isLineShape(k) && k !== 'freeform');
 const CHARTS = [['bar', 'Barras'], ['stacked', 'Barras apiladas'], ['stacked100', 'Barras apiladas al 100 %'], ['hbar', 'Barras horizontales'], ['histogram', 'Histograma'], ['line', 'Líneas'], ['area', 'Área'], ['stackedArea', 'Áreas apiladas'], ['pie', 'Circular'], ['doughnut', 'Dona'], ['scatter', 'Dispersión'], ['radar', 'Radar'], ['bubble', 'Burbujas'], ['treemap', 'Rectángulos (treemap)'], ['waterfall', 'Cascada'], ['funnel', 'Embudo'], ['map', 'Mapa']];
@@ -234,6 +235,20 @@ function groupsFor(b) {
   else if (b.type === 'math') G.push(['Ecuación', [btn('functions', 'Editar ecuación', () => openMath(b)), btn('format_color_fill', 'Relleno y borde', () => openBoxStyle(b))]]);
   else if (b.type === 'code') G.push(['Código', [btn('code', 'Editar código y pasos', () => openCodeEditor(b))]]);
   else if (b.type === 'poll') G.push(['Votación', [btn('how_to_vote', 'Editar votación', () => openPollEditor(b))]]);
+  // A map that flies from stop to stop: its places (the dialog) and, at hand, its look, markers and line. (Its pictures
+  // follow each change: ui/dialogs/geomap.js updateMap.)
+  else if (b.type === 'map') {
+    const edit = () => import('../dialogs/geomap.js').then(m => m.openMapEditor(b)), upd = props => import('../dialogs/geomap.js').then(m => m.updateMap(b, props));
+    const mk = { kind: 'pin', color: '#e63946', size: 1, ...b.marker };
+    G.push(['Mapa', [btn('edit_location_alt', 'Editar mapa y paradas', edit), ['select', 'Estilo', MAP_LOOKS.map(([v, l]) => [v, l]), b.look || 'map', v => upd({ look: v })],
+        btn('landscape', 'Relieve 3D', () => upd({ terrain: !b.terrain }), !!b.terrain)]],
+      ['Marcadores', [['select', 'Marcador', MARKER_KINDS, mk.kind, v => upd({ marker: { ...mk, kind: v } })],
+        ['color', 'palette', 'Color del marcador', mk.color, v => upd({ marker: { ...mk, color: v } })],
+        ['select', 'Tamaño', MARKER_SIZES, String(mk.size || 1), v => upd({ marker: { ...mk, size: +v } })],
+        btn('visibility', 'Mostrar todas desde el principio', () => upd({ showAll: !b.showAll }), !!b.showAll)]],
+      ['Ruta', [['select', 'Línea entre paradas', MAP_ROUTES, b.route || 'line', v => upd({ route: v })],
+        ['color', 'timeline', 'Color de la línea', b.routeColor || '#e63946', v => upd({ routeColor: v })]]]);
+  }
   else if (b.type === 'lock') G.push(['Candado', [btn('lock', 'Configurar candado', () => import('../dialogs/lock.js').then(m => m.openLock(b))),
     ['color', 'palette', 'Color', b.color || '#f2b705', v => set(b, x => { x.color = v; })]]]);
   // Ink replay: when presenting, the drawing traces itself (the "Draw" effect).

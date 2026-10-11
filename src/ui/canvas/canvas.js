@@ -25,6 +25,7 @@ import { pollEditorHTML } from '../../features/live/poll.js';
 import { masterBlocksFor, PH_PROMPT, styled, viewBackground } from '../../features/document/master.js';
 import { stageBackground } from '../../io/formats/html.js';
 import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, applyModelAttrs, content, hostOf, hasInlineMath, renderInlineMath, paintCode, setupCode, tableSig, fillTable, fileSig, paintFile, paintTabs, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
+import { mapPreviewHTML, mapSig } from '../../features/content/geomap.js';
 import { mediaViewCurrent } from './mediaview.js';
 import { cameraViewCurrent, syncCameras } from './cameraview.js';
 import { syncPuppet } from './puppetview.js';
@@ -373,6 +374,9 @@ function reconcile(b) {
   } else if (b.type === 'lock') {
     const d = el.querySelector('.lock-blk'); const sig = lockSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = lockSVG(b); }
+  } else if (b.type === 'map') {
+    const d = el.querySelector('.map-blk'), sig = mapSig(b);
+    if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = mapPreviewHTML(b); }
   } else if (b.type === 'timer') {
     const d = el.querySelector('.timer-blk'); const sig = timerSig(b);
     if (d && d.dataset.sig !== sig) { d.dataset.sig = sig; d.innerHTML = timerSVG(b); }
@@ -424,6 +428,7 @@ function blockEl(b) {
   else if (b.type === 'diagram') el.addEventListener('dblclick', () => openDiagramText(el._b));
   // (As in PowerPoint and Slides: double-click a chart for its data, a poll for its question and options.)
   else if (b.type === 'chart') el.addEventListener('dblclick', () => { if (!state.deck.final && !state.ui.lock) import('../dialogs/object.js').then(m => m.openChartData(el._b)); });
+  else if (b.type === 'map') el.addEventListener('dblclick', () => { if (!state.deck.final && !state.ui.lock) import('../dialogs/geomap.js').then(m => m.openMapEditor(el._b)); });
   else if (b.type === 'poll') el.addEventListener('dblclick', () => { if (!state.deck.final && !state.ui.lock) import('../dialogs/poll.js').then(m => m.openPollEditor(el._b)); });   // (double-click: its text)   // (double-click: open or download it)
   // (Double-click a picture: crop it on the slide, as in PowerPoint.)
   else if (b.type === 'image') el.addEventListener('dblclick', e => { if (!e.target.closest('.handle-size,.handle-rot')) import('./imagecrop.js').then(m => m.startImageCrop(el._b)); });

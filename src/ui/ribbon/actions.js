@@ -245,6 +245,8 @@ export const ACTIONS = {
   'insert-math': blocks.addMath,
   'insert-timer': () => blocks.addTimer(),
   'bulk-generate': () => import('../dialogs/bulk.js').then(m => m.openBulk()),
+  // A map that flies from place to place: its dialog at once (cancelled, it goes: an empty map is no use).
+  'insert-map': () => import('../../features/content/geomap.js').then(G => { const b = G.addMap(); if (b) import('../dialogs/geomap.js').then(m => m.openMapEditor(b, { isNew: true })); }),
   'insert-lock': () => { const b = blocks.addLock(); if (b) import('../dialogs/lock.js').then(m => m.openLock(b)); },
   'insert-file': () => { const i = document.createElement('input'); i.type = 'file'; i.addEventListener('change', () => { if (i.files.length) insertFiles(i.files); }); i.click(); },
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),

@@ -43,7 +43,7 @@ export const MENU = [
     ['Acercar', 'zoom-in'], ['Alejar', 'zoom-out'], ['Ajustar a la ventana', 'zoom-fit'], ['Tamaño real', 'zoom-reset'], SEP, ['Pantalla completa', 'desk:fullscreen'],
     ['Mostrar siempre la barra de menús', 'desk:menubar']]],
   ['Insertar', [['Nueva diapositiva', 'slide-add'], SEP, ['Cuadro de texto', 'insert-text'], ['Imagen', 'insert-image'], ['Tabla', 'insert-table'], ['Gráfico', 'insert-chart'],
-    ['Ecuación', 'insert-math'], ['Código', 'insert-code'], ['Vídeo', 'insert-video'], ['Audio', 'insert-audio'], ['Modelo 3D', 'insert-model'], SEP,
+    ['Ecuación', 'insert-math'], ['Código', 'insert-code'], ['Vídeo', 'insert-video'], ['Audio', 'insert-audio'], ['Modelo 3D', 'insert-model'], ['Mapa', 'insert-map'], SEP,
     ['Votación en directo', 'insert-poll'], ['Candado', 'insert-lock'], ['Temporizador', 'insert-timer']]],
   ['Ayuda', [['Guías en vídeo', 'desk:guides'], ['Atajos de teclado', 'shortcuts'], ['Buscar comandos…', 'desk:palette'], ['Informar de un problema', 'report-problem'], SEP,
     ['Buscar actualizaciones', 'desk:update'], ['Acerca de Revela', 'desk:about']]],

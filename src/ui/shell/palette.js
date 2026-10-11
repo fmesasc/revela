@@ -80,6 +80,7 @@ const SYN = {
   'a:insert-embed': 'web|página web|incrustar|iframe|embed|website|webpage|url',
   'a:bulk-generate': 'diplomas|diploma|certificados|certificado|tarjetas con nombre|identificadores|combinar correspondencia|generar en lote|desde excel|desde csv|hoja de cálculo|bulk create|mail merge|certificates|name cards|badges|publipostage|serienbrief|stampa unione',
   'a:insert-lock': 'candado|código|clave|contraseña|escape room|escape|reto|enigma|acertijo|cerradura|lock|padlock|code|puzzle|breakout|cadenas|vorhängeschloss|lucchetto|cadeado',
+  'a:insert-map': 'mapa|mapas|recorrido|ruta|viaje|ciudades|lugares|google earth|globo|globo terráqueo|satélite|geografía|itinerario|map|maps|route|trip|journey|globe|satellite|earth|carte|karte|mappa|mapa',
   'a:insert-timer': 'temporizador|cronómetro|cuenta atrás|reloj|timer|countdown|clock|stopwatch',
   'a:insert-camera': 'cámara|webcam|mi cara|camera|face cam',
   'a:insert-link': 'enlace|vínculo|hipervínculo|link|hyperlink|url|lien',

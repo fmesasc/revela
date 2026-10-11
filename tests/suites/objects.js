@@ -3303,4 +3303,186 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.body.classList.contains('format-painting'), 'y la brocha se guarda');
     rich.blur();
   });
+
+  // ── Maps that fly from stop to stop (Insertar ▸ Mapa). Without the network: MapLibre is a stand-in (mapStub), the
+  // place search answers from here.
+  const mapStub = `(function(){var W=window;function M(o){var t=this;t.o=o;t.c=o.center;t.z=o.zoom;t.p=o.pitch||0;t.b=o.bearing||0;t.h={};t.src={};t.lay={};t.flights=[];
+    t.cv=document.createElement('canvas');t.cv.width=Math.max(16,o.container.clientWidth||100);t.cv.height=Math.max(9,o.container.clientHeight||60);o.container.appendChild(t.cv);
+    t.keyboard={disable:function(){t.noKeys=true;}};(W.__maps=W.__maps||[]).push(t);setTimeout(function(){t.fire('style.load');t.fire('load');},10);}
+  M.prototype={on:function(e,f){(this.h[e]=this.h[e]||[]).push(f);return this;},once:function(e,f){var t=this,g=function(){t.h[e]=t.h[e].filter(function(x){return x!==g;});f();};return this.on(e,g);},
+    fire:function(e){(this.h[e]||[]).slice().forEach(function(f){f();});},setProjection:function(p){this.proj=p.type;},setSky:function(){},setTerrain:function(x){this.terrain=x;},
+    getStyle:function(){return{layers:[]};},setLayoutProperty:function(){},setPaintProperty:function(){},getSource:function(id){return this.src[id];},
+    addSource:function(id,s){var t=this;t.src[id]=Object.assign({},s,{setData:function(d){t.src[id].data=d;}});},getLayer:function(id){return this.lay[id];},addLayer:function(l){this.lay[l.id]=l;},
+    flyTo:function(o){this.flights.push(o);this.jumpTo(o);},jumpTo:function(o){this.c=o.center;this.z=o.zoom;this.p=o.pitch;this.b=o.bearing;},stop:function(){},
+    getCenter:function(){return{lng:this.c[0],lat:this.c[1]};},getZoom:function(){return this.z;},getPitch:function(){return this.p;},getBearing:function(){return this.b;},
+    project:function(){return{x:40,y:20};},getCanvas:function(){return this.cv;},triggerRepaint:function(){var t=this;setTimeout(function(){t.fire('idle');},5);},resize:function(){},setPixelRatio:function(){},
+    remove:function(){this.removed=true;},setStyle:function(s){var t=this;t.o.style=s;setTimeout(function(){t.fire('style.load');},5);}};
+  function K(o){this.e=o.element;}K.prototype={setLngLat:function(c){this.c=c;return this;},addTo:function(m){m.o.container.appendChild(this.e);return this;},getElement:function(){return this.e;},remove:function(){this.e.remove();}};
+  W.maplibregl={Map:M,Marker:K};})();`;
+  const PLACES = { madrid: ['Madrid', 'Madrid, España', 40.4168, -3.7038, 'es'], paris: ['París', 'París, Francia', 48.8566, 2.3522, 'fr'], roma: ['Roma', 'Roma, Italia', 41.9028, 12.4964, 'it'] };
+  const mapSetup = async () => {
+    const W = frame.contentWindow, G = await W.eval("import('/src/features/content/geomap.js')");
+    if (!W.maplibregl) W.eval(mapStub);
+    const asked = [];
+    G.clearGeocodeCache();
+    G.geocoder.fetch = async (u, o) => { asked.push({ u, o, at: Date.now() }); const q = decodeURIComponent(/[?&]q=([^&]*)/.exec(u)[1]).toLowerCase(), p = PLACES[q];
+      return { ok: true, json: async () => (p ? [{ name: p[0], display_name: p[1], lat: String(p[2]), lon: String(p[3]), boundingbox: [String(p[2] - 0.15), String(p[2] + 0.15), String(p[3] - 0.2), String(p[3] + 0.2)], address: { country_code: p[4] } }] : []) }; };
+    return { W, G, asked };
+  };
+  const searchAdd = async q => {
+    D.querySelector('#map-modal .gm-q').value = q; D.querySelector('#map-modal .gm-search').requestSubmit();
+    for (let k = 0; k < 40 && !D.querySelector('#map-modal .gm-res'); k++) await sleep(100);
+    D.querySelector('#map-modal .gm-res').click(); await sleep(30);
+  };
+
+  await test('mapa: se inserta con su diálogo; cancelar uno nuevo lo quita; buscar lugares respeta a Nominatim', async () => {
+    reset(); const { G, asked } = await mapSetup(), n = slide().blocks.length;
+    D.querySelector('[data-action="insert-map"]').click();
+    for (let k = 0; k < 30 && !D.getElementById('map-modal'); k++) await sleep(50);
+    assert(D.getElementById('map-modal') && slide().blocks.at(-1).type === 'map', 'Insertar ▸ Mapa: el bloque y su diálogo');
+    assert(D.querySelector('#map-modal .gm-view canvas'), 'el mapa en vivo, en el diálogo');
+    eq(D.querySelectorAll('#map-modal .gm-look').length, 3, 'tres estilos, con su ejemplo'); assert(D.querySelector('#map-modal .gm-look svg'), 'cada uno con su dibujo');
+    D.querySelector('#map-modal .gm-cancel').click(); await sleep(30);
+    eq(slide().blocks.length, n, 'cancelado, el mapa nuevo no se queda');
+    // Search: only when asked, at most one a second, the referrer sent, answers kept.
+    const a = await G.geocode('Madrid', { lang: 'es' }), b = await G.geocode('París', { lang: 'es' });
+    eq(a[0].name, 'Madrid'); eq(a[0].cc, 'es', 'con su país (para su bandera)'); assert(a[0].zoom > 8 && a[0].zoom < 13, 'zoom según su tamaño: ' + a[0].zoom);
+    eq(asked.length, 2); assert(asked[1].at - asked[0].at >= 1000, 'una petición por segundo como mucho');
+    assert(/nominatim\.openstreetmap\.org\/search\?format=jsonv2/.test(asked[0].u) && /accept-language=es/.test(asked[0].u), 'Nominatim, en el idioma');
+    eq(asked[0].o.referrerPolicy, 'strict-origin-when-cross-origin', 'se identifica con la dirección de la página');
+    await G.geocode('madrid', { lang: 'es' }); eq(asked.length, 2, 'lo ya buscado no se vuelve a pedir');
+  });
+
+  await test('mapa: paradas buscadas y con la vista actual, reordenar y quitar; al aplicar, una imagen por parada y un paso por vuelo', async () => {
+    reset(); const { G } = await mapSetup();
+    const b = G.addMap(); const M = await frame.contentWindow.eval("import('/src/ui/dialogs/geomap.js')"); M.openMapEditor(b, { isNew: true }); await sleep(60);
+    await searchAdd('madrid'); await searchAdd('paris'); await searchAdd('roma');
+    eq([...D.querySelectorAll('#map-modal .gm-name')].map(x => x.value).join(), 'Madrid,París,Roma', 'tres paradas buscadas');
+    // «Añadir la vista actual»: where the (stand-in) map is looking.
+    const live = frame.contentWindow.__maps.at(-1); live.jumpTo({ center: [-0.38, 39.47], zoom: 9 + Math.log2(D.querySelector('#map-modal .gm-view').clientWidth / b.w), pitch: 30, bearing: 10 });
+    D.querySelector('#map-modal .gm-here').click(); await sleep(30);
+    const names = () => [...D.querySelectorAll('#map-modal .gm-name')].map(x => x.value).join();
+    eq(names(), 'Madrid,París,Roma,Parada 4', 'la vista actual, como parada');
+    // Reorder and remove.
+    D.querySelector('#map-modal .gm-stop[data-i="3"] [data-a="up"]').click(); await sleep(20);
+    eq(names(), 'Madrid,París,Parada 4,Roma', 'subir');
+    D.querySelector('#map-modal .gm-stop[data-i="0"] [data-a="down"]').click(); await sleep(20);
+    eq(names(), 'París,Madrid,Parada 4,Roma', 'bajar');
+    D.querySelector('#map-modal .gm-stop[data-i="2"] [data-a="del"]').click(); await sleep(20);
+    eq(names(), 'París,Madrid,Roma', 'quitar');
+    D.querySelector('#map-modal .gm-stop[data-i="0"] .gm-name').value = 'París (Francia)'; D.querySelector('#map-modal .gm-stop[data-i="0"] .gm-name').dispatchEvent(new Event('input', { bubbles: true }));
+    // A stop's own marker: its country's flag.
+    D.querySelector('#map-modal .gm-stop[data-i="2"] [data-a="more"]').click(); await sleep(20);
+    const sel = D.querySelector('#map-modal .gm-skind'); sel.value = 'country'; sel.dispatchEvent(new Event('change', { bubbles: true })); await sleep(20);
+    D.querySelector('#map-modal .gm-kind[data-kind="number"]').click(); await sleep(20);
+    D.querySelector('#map-modal .gm-ok').click();
+    for (let k = 0; k < 100 && D.getElementById('map-modal'); k++) await sleep(50);
+    assert(!D.getElementById('map-modal'), 'aplicado, se cierra');
+    const m = slide().blocks.find(x => x.id === b.id);
+    eq(m.stops.map(s => s.name).join(), 'París (Francia),Madrid,Roma');
+    assert(m.stops.every(s => /^data:image\/jpeg;base64,/.test(s.shot) && s.shotKey), 'una imagen guardada de cada parada');
+    eq(m.alt, 'Mapa: París (Francia) → Madrid → Roma', 'texto alternativo automático');
+    eq(m.marker.kind, 'number', 'marcador del mapa'); eq(m.stops[2].marker.kind, 'country', 'y el de una parada'); eq(m.stops[2].cc, 'it');
+    const flights = [m.animation, ...(m.anims || [])].filter(a => a.effect === 'mapfly');
+    eq(flights.map(a => a.stop).join(), [m.stops[1].id, m.stops[2].id].join(), 'un paso (clic) por cada parada después de la primera, en su orden');
+    assert(D.querySelector(`#stage .block[data-id="${m.id}"] .map-blk img.map-shot`), 'en el lienzo, la imagen de la primera parada');
+    // Reordering the stops later: the steps follow; a stop removed takes its step with it.
+    G.setMap(m.id, { stops: [m.stops[2], m.stops[0], m.stops[1]] });
+    const m2 = slide().blocks.find(x => x.id === b.id), f2 = [m2.animation, ...(m2.anims || [])].filter(a => a.effect === 'mapfly');
+    eq(f2.map(a => a.stop).join(), [m2.stops[1].id, m2.stops[2].id].join(), 'reordenadas, los vuelos también');
+    G.setMap(m.id, { stops: m2.stops.slice(0, 2) });
+    eq([slide().blocks.find(x => x.id === b.id).animation, ...(slide().blocks.find(x => x.id === b.id).anims || [])].filter(a => a.effect === 'mapfly').length, 1, 'una parada menos, un paso menos');
+    // Only the pictures that changed are taken again.
+    const m3 = slide().blocks.find(x => x.id === b.id);
+    assert(G.staleShots(m3, 'es').length >= 1, 'cambiar el orden deja viejas algunas imágenes (la línea y los marcadores cambian)');
+  });
+
+  await test('mapa: guardar y abrir, con valores comprobados (sanitizeDeck)', async () => {
+    reset(); const { G } = await mapSetup(), W = frame.contentWindow, Sz = await W.eval("import('/src/features/document/sanitize.js')");
+    const b = G.addMap({ stops: [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 9 }, { name: 'Lisboa', lon: -9.14, lat: 38.72, zoom: 9, note: 'Hola' }] });
+    const saved = JSON.parse(JSON.stringify(R.state.deck)), again = Sz.sanitizeDeck(saved).slides[0].blocks.find(x => x.id === b.id);
+    eq(JSON.stringify(again.stops.map(s => [s.name, s.lon, s.lat, s.zoom, s.note || ''])), JSON.stringify([['Madrid', -3.7, 40.4, 9, ''], ['Lisboa', -9.14, 38.72, 9, 'Hola']]), 'vuelve igual');
+    const bad = Sz.sanitizeDeck({ slides: [{ blocks: [{ id: 'm1', type: 'map', look: 'evil"><script>', route: 'x', routeColor: 'red;background:url(x)', curve: 99, terrain: 'yes',
+      marker: { kind: 'bomb', color: 'javascript:1', size: 50, icon: '<b>' }, arrive: 'boom', past: 'x',
+      stops: [{ id: '"><img>', name: 'x'.repeat(500), lon: 540, lat: 999, zoom: 'muy', pitch: -9, bearing: 900, note: 'n'.repeat(900), shot: 'javascript:alert(1)', cc: 'ESP', marker: { kind: 'flag', color: '#00ff00' } },
+        ...Array.from({ length: 60 }, (_, i) => ({ name: 'p' + i, lon: i, lat: i }))] }] }] }).slides[0].blocks[0];
+    eq(bad.look, 'map'); eq(bad.route, 'line'); eq(bad.routeColor, '#e63946'); eq(bad.curve, 3); eq(bad.terrain, true);
+    eq(JSON.stringify(bad.marker), JSON.stringify({ kind: 'pin', color: '#e63946', size: 2 }), 'marcador del mapa, comprobado'); eq(bad.arrive, 'drop'); eq(bad.past, undefined);
+    const s0 = bad.stops[0];
+    assert(/^[\w-]+$/.test(s0.id) && s0.name.length === 120 && s0.note.length === 500, 'nombres y notas acotados, id limpio');
+    eq([s0.lon, s0.lat, s0.zoom, s0.pitch, s0.bearing].join(), '180,85,4,0,180', 'números en su rango');
+    assert(!('shot' in s0) && !('cc' in s0), 'una imagen que no es una imagen incrustada, fuera'); eq(JSON.stringify(s0.marker), JSON.stringify({ kind: 'flag', color: '#00ff00' }));
+    eq(bad.stops.length, G.MAX_STOPS, 'como mucho ' + G.MAX_STOPS + ' paradas');
+    const out = R.io.blockHTML(bad, { blocks: [bad] });
+    assert(/data-geomap="/.test(out) && !/<script|javascript:|<img>|<b>/.test(out.replace(/<img class="rv-map-shot"[^>]*>/g, '')), 'nada de eso llega a la presentación: ' + out.slice(0, 200));
+  });
+
+  await test('mapa: en la presentación, cada clic vuela a la siguiente parada (y atrás vuelve); sin conexión, su imagen', async () => {
+    reset(); const { G, W } = await mapSetup(); R.slides.addSlide('blank'); await sleep(10);
+    const shot = c => { const cv = D.createElement('canvas'); cv.width = 32; cv.height = 18; const g = cv.getContext('2d'); g.fillStyle = c; g.fillRect(0, 0, 32, 18); return cv.toDataURL('image/jpeg'); };
+    const b = G.addMap({ route: 'geodesic', stops: [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 5 }, { name: 'París', lon: 2.35, lat: 48.86, zoom: 6, pitch: 45, note: 'Torre Eiffel' }, { name: 'Roma', lon: 12.5, lat: 41.9, zoom: 7 }] });
+    G.setMap(b.id, { stops: b.stops.map((s, i) => ({ ...s, shot: shot(['#f00', '#0f0', '#00f'][i]) })), flyMs: 400 });
+    const html = R.io.buildHTML(R.state.deck, { inApp: true });
+    assert(/data-geomap="/.test(html) && /class="fragment mapfly" data-fragment-index="1"/.test(html) && /data-mapgo="1"/.test(html) && /data-mapgo="2"/.test(html), 'los pasos de vuelo, como fragmentos');
+    assert(/role="img" aria-label="Mapa: Madrid → París → Roma"/.test(html), 'con su descripción');
+    assert(/<img class="rv-map-shot" data-k="0" src="data:image\/jpeg/.test(html), 'la imagen de la primera parada (exportaciones y sin conexión)');
+    const V = await W.eval("import('/src/io/formats/html.js')"), S = await W.eval("import('/src/core/vendor.js')");
+    const play = async (lib, run) => {
+      const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+      try {
+        f.srcdoc = html.split(JSON.stringify(S.MAPLIBRE)).join(JSON.stringify(lib));
+        for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
+        await run(f.contentWindow, f.contentWindow.Reveal);
+      } finally { f.remove(); }
+    };
+    // (The stand-in MapLibre as the page's script: "lib" + '.js'.)
+    const stubURL = 'data:text/javascript;charset=utf-8,' + encodeURIComponent(mapStub) + '#';
+    await play(stubURL.slice(0, -1) + '%2F%2F', async (F, RV) => {
+      RV.slide(1); const el = F.document.querySelector('[data-geomap]');
+      for (let k = 0; k < 60 && !el.classList.contains('rvm-on'); k++) await sleep(50);
+      assert(el.classList.contains('rvm-on'), 'el mapa en vivo, al llegar a su diapositiva');
+      const map = el._rvm.map; eq(map.c.join(), '-3.7,40.4', 'en la primera parada'); eq(map.noKeys, true, 'las flechas son de la presentación');
+      eq(map.lay['rv-route'] && map.src['rv-route'].data.geometry.coordinates.length, 0, 'sin línea todavía');
+      RV.next(); await sleep(80);
+      eq(el._rvm.cur, 1, 'un clic: a París'); eq(map.flights.at(-1).center.join(), '2.35,48.86'); eq(map.flights.at(-1).pitch, 45, 'con su inclinación');
+      eq(map.flights.at(-1).duration, 400, 'con su duración');
+      await sleep(600);
+      eq(map.src['rv-route'].data.geometry.coordinates.length, 1, 'la línea hasta París, dibujada');
+      assert(F.document.querySelector('.rvm-note.rvm-show') && /Torre Eiffel/.test(F.document.querySelector('.rvm-note').textContent), 'su nota, al llegar');
+      const mk = [...el.querySelectorAll('.rvm-mk')];
+      eq(mk.map(x => x.classList.contains('rvm-hide') ? 0 : 1).join(), '1,1,0', 'los marcadores de las paradas visitadas; la siguiente, aún no');
+      RV.next(); await sleep(700); eq(el._rvm.cur, 2, 'otro: a Roma');
+      RV.prev(); await sleep(100); eq(el._rvm.cur, 1, 'atrás: de vuelta a París'); eq(map.c.join(), '2.35,48.86');
+      RV.prev(); await sleep(100); eq(el._rvm.cur, 0, 'y a Madrid');
+      RV.slide(0); RV.slide(1, 0, 2); await sleep(150);
+      eq(F.document.querySelector('[data-geomap]')._rvm.cur, 2, 'al volver desde después, en la última parada, sin volar');
+    });
+    // Without a connection (the library doesn't load): the stop's picture, and a discreet notice.
+    await play('https://127.0.0.1:9/no-maplibre', async (F, RV) => {
+      RV.slide(1); const el = F.document.querySelector('[data-geomap]');
+      for (let k = 0; k < 60 && !el.classList.contains('rvm-offline'); k++) await sleep(50);
+      assert(el.classList.contains('rvm-offline') && el.querySelector('.rvm-off'), 'aviso discreto de que no hay conexión');
+      const vis = () => [...el.querySelectorAll('.rv-map-shot')].filter(i => i.style.visibility !== 'hidden').map(i => i.dataset.k).join();
+      eq(vis(), '0', 'la imagen de la primera parada');
+      RV.next(); await sleep(50); eq(vis(), '1', 'un clic: la de la segunda');
+      RV.prev(); await sleep(50); eq(vis(), '0', 'y atrás');
+    });
+  });
+
+  await test('mapa: PDF, imágenes, PowerPoint y miniaturas usan la imagen de su primera parada', async () => {
+    reset(); const { G, W } = await mapSetup();
+    const cv = D.createElement('canvas'); cv.width = 64; cv.height = 36; const g = cv.getContext('2d'); g.fillStyle = '#ff0000'; g.fillRect(0, 0, 64, 36);
+    const b = G.addMap({ x: 0, y: 0, w: 1280, h: 720, stops: [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 5, shot: cv.toDataURL('image/jpeg', 1) }, { name: 'Roma', lon: 12.5, lat: 41.9, zoom: 6 }] });
+    R.render(); await sleep(30);
+    assert(D.querySelector('#navigator .map-shot, .thumb .map-shot'), 'en la miniatura');
+    const I = await W.eval("import('/src/io/export/images.js')");
+    const blob = await I.slideImageBlob(slide(), 'png'), bmp = await createImageBitmap(blob), c2 = D.createElement('canvas'); c2.width = bmp.width; c2.height = bmp.height;
+    const g2 = c2.getContext('2d'); g2.drawImage(bmp, 0, 0); const px = g2.getImageData(bmp.width / 2, bmp.height / 2, 1, 1).data;
+    assert(px[0] > 200 && px[1] < 60 && px[2] < 60, 'la diapositiva como imagen (y en PDF): el mapa en su primera parada, ' + [...px].slice(0, 3));
+    const png = await I.blockImage(b, slide()); assert(/^data:image\/png/.test(png), 'como imagen para PowerPoint y ODP');
+    const pptx = await R.pptx.buildPptxBlob(); assert(pptx.size > 0, 'PowerPoint se exporta');
+    // Without stops yet: a drawing of a map that says what to do.
+    const e = G.addMap(); R.render(); await sleep(20);
+    assert(/Doble clic para añadir lugares/.test(D.querySelector(`#stage .block[data-id="${e.id}"] .map-ph`)?.textContent || ''), 'vacío: dice cómo empezar');
+  });
 }

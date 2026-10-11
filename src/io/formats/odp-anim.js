@@ -48,7 +48,7 @@ function effectNodes(a, xid, deck) {
   if (a.effect === 'spin360') return ['emphasis', 'ooo-emphasis-spin', `<anim:animateTransform smil:dur="${d}" smil:fill="hold" ${T} smil:by="360" svg:type="rotate"/>`];
   if (a.effect === 'pulse' || a.effect === 'color-pulse')               // a little bigger and back
     return ['emphasis', 'ooo-emphasis-grow-and-shrink', `<anim:animateTransform smil:dur="${sec((a.duration ?? 500) / 2)}" smil:autoReverse="true" ${T} smil:by="0.15,0.15" svg:type="scale"/>`];
-  if (['strike', 'clip3d', 'pdfview', 'teeter', 'jump'].includes(a.effect)) return null;   // no ODF equivalent
+  if (['strike', 'clip3d', 'pdfview', 'mapfly', 'teeter', 'jump'].includes(a.effect)) return null;   // no ODF equivalent
   if (!isEntrance(a.effect))
     return ['exit', 'ooo-exit-fade-out', `<anim:transitionFilter smil:dur="${d}" ${T} smil:type="fade" smil:subtype="crossfade" smil:mode="out"/>`
       + `<anim:set smil:begin="${d}" smil:dur="0.001s" smil:fill="hold" ${T} smil:attributeName="visibility" smil:to="hidden"/>`];

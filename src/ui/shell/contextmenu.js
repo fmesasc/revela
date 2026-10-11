@@ -248,6 +248,8 @@ function forBlock(b, cell = null) {
       null);
   } else if (b.type === 'poll') {
     items.push(['Editar votación…', () => openPollEditor(b)], null);
+  } else if (b.type === 'map') {
+    items.push(['Editar mapa y paradas…', () => import('../dialogs/geomap.js').then(m => m.openMapEditor(b))], null);
   } else if (b.type === 'lock') {
     items.push(['Configurar candado…', () => import('../dialogs/lock.js').then(m => m.openLock(b))], null);
   } else if (b.type === 'camera') {

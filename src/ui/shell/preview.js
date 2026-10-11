@@ -14,6 +14,7 @@ import { levelVars, masterBlocksFor, styled } from '../../features/document/mast
 import { state } from '../../core/store.js';
 import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, underArea, viewOf, MAG_SKIP } from '../../features/document/magnify.js';
 import { lockSVG } from '../../render/svg.js';
+import { mapPreviewHTML } from '../../features/content/geomap.js';
 import { shadowCSS, borderCSS, levelCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, shapeTextHTML, hasShapeText, deviceCSS, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 
 // Table look for thumbnails (same rules as the exports), injected once.
@@ -85,6 +86,8 @@ export function blockPreview(b, slide, { small = false } = {}) {
     el.innerHTML = timerSVG(b);
   } else if (b.type === 'lock') {
     el.innerHTML = lockSVG(b);
+  } else if (b.type === 'map') {
+    el.innerHTML = mapPreviewHTML(b);
   } else if (b.type === 'figindex') {
     el.innerHTML = `<div style="width:100%;height:100%;display:grid;place-items:center;color:#fff;font-size:40px">📑</div>`;
   } else if (b.type === 'diagram') {

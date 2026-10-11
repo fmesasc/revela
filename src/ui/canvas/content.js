@@ -32,6 +32,7 @@ import { findBlock, readOnly, fitFontSize } from './canvas.js';
 import { openMath } from '../dialogs/object.js';
 import { keyedView, mediaView } from './mediaview.js';
 import { modelAttrs, modelBleed } from '../../features/content/model3d.js';
+import { mapPreviewHTML, mapSig } from '../../features/content/geomap.js';
 
 export const pollSig = b => JSON.stringify([b.kind, b.display, b.question, b.options, b.fontSize, b.color, b.text, b.points, (b.image || '').length, (b.images || []).map(x => x.length), b.min, b.max, b.unit, b.answer, savedVotes(b.pollId)]);
 export function renderSlideRef(wrap, b) {
@@ -183,6 +184,9 @@ export function content(b) {
   }
   if (b.type === 'lock') {
     const d = document.createElement('div'); d.className = 'lock-blk'; d.dataset.sig = lockSig(b); d.innerHTML = lockSVG(b); return d;
+  }
+  if (b.type === 'map') {        // (its first stop's picture: the live map is the dialog's and the presentation's)
+    const d = document.createElement('div'); d.className = 'map-blk'; d.dataset.sig = mapSig(b); d.innerHTML = mapPreviewHTML(b); return d;
   }
   if (b.type === 'timer') {
     const d = document.createElement('div'); d.className = 'timer-blk'; d.dataset.sig = timerSig(b); d.innerHTML = timerSVG(b); return d;

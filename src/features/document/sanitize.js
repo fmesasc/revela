@@ -5,6 +5,7 @@
 // Cheap when there is nothing to clean (the usual case).
 
 import { unpackDeck } from '../../core/deckfile.js';
+import { normalizeMap } from '../content/geomap.js';
 
 const RISKY_HTML = /<\s*\/?\s*(script|iframe|frame|object|embed|link|meta|style|base|form|input|textarea|button|select|svg|math|noscript|template|portal)\b|\son[a-z]+\s*=|javascript:|vbscript:|srcdoc|expression\s*\(/i;
 const DROP = new Set(['SCRIPT', 'IFRAME', 'FRAME', 'FRAMESET', 'OBJECT', 'EMBED', 'LINK', 'META', 'STYLE', 'BASE', 'FORM', 'INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'SVG', 'MATH', 'NOSCRIPT', 'TEMPLATE', 'PORTAL']);
@@ -66,6 +67,8 @@ export function cleanValue(v, key = '') {
       if (BAD_KEYS.has(k)) { delete v[k]; continue; }
       v[k] = cleanValue(v[k], k);
     }
+    // (A map's stops are numbers and words in their ranges, its pictures only embedded images: features/content/geomap.js.)
+    if (v.type === 'map') normalizeMap(v);
   }
   return v;
 }

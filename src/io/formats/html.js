@@ -5,6 +5,7 @@
 import { registerCodeLangs } from '../../render/codelangs.js';
 import { diagramHTML } from '../../render/diagrams.js';
 import { pdfRuntime } from '../runtime/pdf.js';
+import { finishStepRuntime } from '../runtime/finishstep.js';
 import { tabRuntime } from '../runtime/tabs.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { scopedCSS, cleanClasses } from '../../features/design/devmode.js';
@@ -14,7 +15,7 @@ import { wordartSize } from '../../render/textfit.js';
 import { morphPlan, morphSig } from '../../features/animation/morph.js';
 export { morphPlan, morphSig };                // (for tests and older callers)
 import { state } from '../../core/store.js';
-import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT, PDFJS, VISION, SELFIE_MODEL, POSE_MODEL, FACE_MODEL, PANNELLUM } from '../../core/vendor.js';
+import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT, PDFJS, VISION, SELFIE_MODEL, POSE_MODEL, FACE_MODEL, PANNELLUM, MAPLIBRE, MAPLIBRE_RTL } from '../../core/vendor.js';
 import { download, slug } from '../files.js';
 import { TRIGGER_JS, pollJS, liveDataJS, LIGHTBOX_JS, overviewJS } from '../runtime/scripts.js';
 import { ACTIVITIES, publicActivity, gradeAnswer, gradeActivity, pollLabels } from '../../features/live/poll.js';
@@ -30,6 +31,8 @@ import { needsPlayer, mediaConfig, cameraSegment, cameraBoxCSS, cameraInnerHTML 
 import { createCameraEngine, revelaCameraRuntime } from '../runtime/camera.js';
 import { modelAttrsHTML, bleedBox, edgeCSS } from '../../features/content/model3d.js';
 import { model3dRuntime } from '../runtime/model3d.js';
+import { geoMapRuntime } from '../runtime/geomap.js';
+import { mapConfig, stopIndex, mapAlt } from '../../features/content/geomap.js';
 import { puppetBones, puppetMorph, puppetSolve, puppetMirror, createPuppet, revelaPuppetRuntime } from '../runtime/puppet.js';
 import { timerRuntime } from '../runtime/timer.js';
 import { screenFitRuntime } from '../runtime/screenfit.js';
@@ -192,10 +195,11 @@ function animAttrs(b, slide, a = b.animation, key = b.id) {
   const { effect, order, trigger, duration, delay } = a;
   const clip = (effect === 'clip3d' ? ` data-clip="${esc(a.clip || '*')}"${a.once ? ' data-clip-once' : ''}` : '')
     + (effect === 'pdfview' ? ` data-pdfgo="${esc(JSON.stringify(pdfStep(a)))}"` : '')
+    + (effect === 'mapfly' && stopIndex(b, a) > 0 ? ` data-mapgo="${stopIndex(b, a)}"` : '')
     + (MEDIA_FX.includes(effect) ? ` data-mfx="${effect}"` : '')
     + (a.sound ? ` data-sound="${esc(a.sound)}"${a.sound === 'custom' && a.soundSrc && /^(data:audio\/|blob:)/.test(a.soundSrc) ? ` data-sound-src="${esc(a.soundSrc)}"` : ''}` : '');
   if (trigger && slide?.blocks.some(x => x.id === trigger))       // played on click of another object
-    return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}${isFx(effect) ? ' ' + effect : ''}"${FX_REV(effect) ? ' data-rev' : ''} data-trig="${trigger}" data-kf="${effect === 'path' ? 'rvP' + cssKey(key) : effect === 'pdfview' || MEDIA_FX.includes(effect) ? 'none' : EFFECT_KF[effect] || 'rvIn'}"`
+    return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}${isFx(effect) ? ' ' + effect : ''}"${FX_REV(effect) ? ' data-rev' : ''} data-trig="${trigger}" data-kf="${effect === 'path' ? 'rvP' + cssKey(key) : effect === 'pdfview' || effect === 'mapfly' || MEDIA_FX.includes(effect) ? 'none' : EFFECT_KF[effect] || 'rvIn'}"`
       + ` data-dur="${duration ?? 500}" data-del="${delay ?? 0}"` + clip;
   const cls = effect === 'path' ? ((a.pathShape && a.pathShape !== 'line') || (pathTurns(a) && b.type !== 'model') ? 'rv-pathc' : 'rv-path') : effect;
   // (An emphasis on some paragraphs only: its rule finds them by this key — fxParagraphCSS.)
@@ -421,6 +425,7 @@ function blockHTMLRaw(b, slide) {
     return `<div${a} data-timer role="timer" data-secs="${Math.max(1, Math.round(+b.seconds || 300))}"${b.auto !== false ? ' data-auto' : ''}${b.sound !== false ? ' data-sound' : ''}`
       + ` data-end="${esc(b.endText ?? t('¡Tiempo!'))}" style="${box(b)}cursor:pointer">${timerSVG(b)}</div>`;
   if (b.type === 'lock') return `<div${a}${lockAttrs(b)} style="${box(b)}">${lockSVG(b)}</div>`;
+  if (b.type === 'map') return mapHTML(b, a);
   if (b.type === 'math')
     return `<div${a} class="math" data-latex="${esc(mathTeX(b))}" style="${box(b)}display:flex;align-items:center;${mathCSS(b)}"></div>`;
   if (b.type === 'diagram') {
@@ -458,6 +463,17 @@ function blockHTMLRaw(b, slide) {
   return '';
 }
 
+// A map that flies from stop to stop (io/runtime/geomap.js draws it live): its settings as data, and each stop's
+// picture — the first one seen; the others stand in, without a connection, when the map gets to their stop —, so
+// the pictures (PDF, images, PowerPoint) show it as it starts. Its name says where it goes («Mapa: Madrid → París»).
+function mapHTML(b, a = '') {
+  const stops = b.stops || [], lang = deckTag(state.deck, currentLang());
+  const shots = stops.map((s, k) => (s.shot && /^data:image\//.test(s.shot)
+    ? `<img class="rv-map-shot" data-k="${k}" src="${esc(s.shot)}" alt="" style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;${k ? 'visibility:hidden' : ''}">` : '')).join('');
+  const label = b.decorative ? ' aria-hidden="true"' : ` role="img" aria-label="${esc((b.alt || '').trim() || mapAlt(b))}"`;
+  return `<div${a.replace(/ (role|aria-label|aria-hidden)="[^"]*"/g, '')}${stops.length ? ` data-geomap="${esc(JSON.stringify(mapConfig(b, lang)))}" data-prevent-swipe` : ''}${label} style="${box(b)}overflow:hidden;background:${b.look === 'map' ? '#e8e8e0' : '#0b1d33'}">${shots}</div>`;
+}
+
 // A magnifier: the lines and the area's frame over the slide, under its box;
 // the box with the slide's objects under the area, enlarged; its frame. An
 // entrance grows it out of the area.
@@ -478,6 +494,7 @@ function magCloneHTML(o, slide, deck, chain) {
   if (o.type === 'magnify') return `<div style="${box({ ...o, ...STILL })}">${magnifyInsetHTML(o, slide, deck, chain)}<div style="position:absolute;inset:0;pointer-events:none">${magFrameSVG(o, currentPalette(deck).accents[0])}</div></div>`;
   const pic = src => (src && safeURL(src) ? `<img src="${esc(src)}" alt="" style="${box({ ...o, ...STILL })}object-fit:contain">` : '');
   if (o.type === 'model') return pic(o.poster);
+  if (o.type === 'map') return pic(o.stops?.[0]?.shot);                // (its picture: a magnifier doesn't start a live map)
   if (o.type === 'video') return pic(o.poster) || `<div style="${box({ ...o, ...STILL })}background:#000"></div>`;
   if (o.type === 'file' && o.display === 'viewer') return pic(o.poster);
   if (o.type === 'image' && needsPlayer(o))
@@ -813,7 +830,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${backdropCSS(bd, w, h)}
  .reveal .slides section .fragment.rv-path{opacity:1;visibility:inherit}
  .reveal .slides section .fragment.rv-path.visible{translate:var(--dx) var(--dy)}
- .reveal .slides section .fragment.spin360,.reveal .slides section .fragment.clip3d,.reveal .slides section .fragment.pdfview,.reveal .slides section .fragment.draw,.reveal .slides section .fragment[data-mfx]{opacity:1;visibility:inherit}
+ .reveal .slides section .fragment.spin360,.reveal .slides section .fragment.clip3d,.reveal .slides section .fragment.pdfview,.reveal .slides section .fragment.mapfly,.reveal .slides section .fragment.draw,.reveal .slides section .fragment[data-mfx]{opacity:1;visibility:inherit}
  .reveal .fragment.draw .rvd{stroke-dasharray:1;stroke-dashoffset:1;fill-opacity:0}
  .reveal .fragment.draw.visible .rvd{animation:rvDraw var(--anim-dur,1500ms) ease-in-out var(--anim-del,0ms) forwards}
  @keyframes rvDraw{70%{fill-opacity:0}to{stroke-dashoffset:0;fill-opacity:1}}
@@ -867,6 +884,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasMath ? 'window.addEventListener("load",function(){window.katex&&document.querySelectorAll(".math[data-latex]").forEach(function(el){try{katex.render(el.getAttribute("data-latex"),el,{throwOnError:false,displayMode:true,strict:"ignore"});}catch(e){el.textContent=el.getAttribute("data-latex");}});});' : ''}
  ${hasInlineMath ? 'window.addEventListener("load",function(){window.renderMathInElement&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:true},{left:"$",right:"$",display:false}],throwOnError:false});});' : ''}
  ${hasTrig ? TRIGGER_JS : ''}
+ (${finishStepRuntime})();
  ${hasCam ? `${createCameraEngine.toString()}\n${revelaCameraRuntime.toString()}\nrevelaCameraRuntime(${JSON.stringify(VISION)}, ${JSON.stringify(SELFIE_MODEL)});` : ''}
  ${hasPuppet ? `${hasCam ? '' : createCameraEngine.toString()}\n${[puppetBones, puppetMorph, puppetSolve, puppetMirror, createPuppet, revelaPuppetRuntime].join('\n')}\nrevelaPuppetRuntime(${JSON.stringify(VISION)}, ${JSON.stringify(POSE_MODEL)}, ${JSON.stringify(FACE_MODEL)});` : ''}
  ${hasPoll && !selfPaced ? pollJS(currentPalette(deck).accents, { classroom: !!deck.classroom, labels: pollLabels(), teams: Array.isArray(deck.teams) ? deck.teams.slice(0, 8) : [], starStep: +deck.starStep || 5 }) : ''}
@@ -884,6 +902,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${/ data-sound="/.test(slides) ? `(${soundRuntime.toString()})();` : ''}
  ${/ data-tabs="/.test(slides) ? `(${tabRuntime.toString()})();` : ''}
  ${/ data-pdf[ >]/.test(slides) ? `(${pdfRuntime.toString()})(${JSON.stringify(PDFJS)});` : ''}
+ ${/ data-geomap="/.test(slides) ? `(${geoMapRuntime.toString()})(${JSON.stringify(MAPLIBRE)}, ${JSON.stringify(MAPLIBRE_RTL)}, ${jsData({ offline: t('Sin conexión: imagen guardada del mapa') })});` : ''}
  ${bgmHTML ? BGM_JS : ''}
  ${/ data-rv-start[ >]/.test(slides) ? START_JS : ''}
  ${bd.layers.length || / data-rv-dur="/.test(slides) ? BD_JS : ''}

@@ -65,6 +65,15 @@ function pdfStepPreview(el, b, a, when, dur, restore) {
     requestAnimationFrame(() => { img.style.transition = `transform ${dur}ms ease-in-out`; img.style.transform = `translate(${tr.tx}px, ${tr.ty}px) scale(${tr.s})`; });
   }, when);
 }
+// A map's flight, in the editor: its picture cross-fades to the stop's (the live flight is the presentation's).
+function mapStepPreview(el, b, a, when, dur, restore) {
+  const img = el.querySelector('.map-blk img'), to = (b.stops || []).find(s => s.id === a.stop)?.shot; if (!img || !to) return;
+  if (!img._orig) { img._orig = img.src; restore.push(() => { img.src = img._orig; img.style.transition = img.style.opacity = ''; delete img._orig; }); }
+  setTimeout(() => {
+    img.style.transition = `opacity ${Math.min(400, dur / 2)}ms`; img.style.opacity = '0.2';
+    setTimeout(() => { img.src = to; img.style.opacity = '1'; }, Math.min(400, dur / 2));
+  }, when);
+}
 // The animation's sound, as it starts (the same sounds as in the presentation).
 let snd = null;
 function soundOf(anim, delay) { if (anim.sound) setTimeout(() => (snd ||= soundRuntime()).play(anim.sound, anim.soundSrc), delay); }
@@ -112,6 +121,7 @@ export function playAnimations() {
     const el = stage.querySelector(`.block[data-id="${b.id}"]`); if (!el) continue;
     const when = offset.get(at.step) + at.delay;
     if (a.effect === 'pdfview') { soundOf(a, when); pdfStepPreview(el, b, a, when, at.dur, restore); continue; }
+    if (a.effect === 'mapfly') { soundOf(a, when); mapStepPreview(el, b, a, when, at.dur, restore); continue; }
     if (MEDIA_FX.includes(a.effect)) { soundOf(a, when); setTimeout(() => mediaStepInEditor(b.id, a.effect), when); continue; }
     if (!b.anims?.length) { animateEl(el, a, at.dur, when); continue; }
     // A sequence: every step kept (added up) until the end, then all undone.

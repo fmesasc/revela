@@ -37,7 +37,7 @@ export const EFFECT_NAMES = { 'fade-in': 'Aparecer', 'fade-up': 'Subir', 'fade-d
   'fade-in-then-semi-out': 'Aparecer y atenuar', 'current-visible': 'Visible solo en su paso', 'highlight-red': 'Resaltar en rojo',
   'highlight-green': 'Resaltar en verde', 'highlight-blue': 'Resaltar en azul', 'highlight-current-red': 'Rojo solo en su paso',
   'highlight-current-green': 'Verde solo en su paso', 'highlight-current-blue': 'Azul solo en su paso', path: 'Trayectoria',
-  spin360: 'Dar una vuelta', pulse: 'Latido', teeter: 'Balanceo', jump: 'Salto', 'color-pulse': 'Destello', 'media-play': 'Reproducir', 'media-pause': 'Pausar', 'media-stop': 'Detener', clip3d: 'Animación del modelo 3D', draw: 'Dibujar', pdfview: 'Página y zoom del PDF',
+  spin360: 'Dar una vuelta', pulse: 'Latido', teeter: 'Balanceo', jump: 'Salto', 'color-pulse': 'Destello', 'media-play': 'Reproducir', 'media-pause': 'Pausar', 'media-stop': 'Detener', clip3d: 'Animación del modelo 3D', draw: 'Dibujar', pdfview: 'Página y zoom del PDF', mapfly: 'Volar a la parada',
   ...Object.fromEntries(Object.values(FX).map(f => [f.id, f.name])) };
 export const EFFECT_LABEL = e => t(EFFECT_NAMES[e] || e);
 // Short label of an object for the trigger list.
@@ -104,7 +104,7 @@ function renderList(panel, list) {
         <span class="an-n">${a.trigger ? '<i class="ms" title="' + t('Con disparador') + '">touch_app</i>' : first ? x.step : ''}</span>
         <i class="ms an-start" title="${t(START_NAME[start] || start)}">${START_ICON[start] || 'ads_click'}</i>
         <i class="ms an-kind k-${trans.effectKind(a.effect)}" aria-hidden="true">${a.effect === 'path' ? 'route' : 'star'}</i>
-        <span class="an-name"><b>${esc(objLabel(b))}</b>${count.get(b.id) > 1 ? ` <span class="an-step">${i + 1}/${count.get(b.id)}</span>` : ''}<small>${esc(EFFECT_LABEL(a.effect))}</small></span>
+        <span class="an-name"><b>${esc(objLabel(b))}</b>${count.get(b.id) > 1 ? ` <span class="an-step">${i + 1}/${count.get(b.id)}</span>` : ''}<small>${esc(EFFECT_LABEL(a.effect) + (a.effect === 'mapfly' ? ' · ' + ((b.stops || []).find(x => x.id === a.stop)?.name || '') : ''))}</small></span>
         <span class="an-bar" title="${x ? `${(x.delay / 1000).toFixed(1)} s → ${((x.delay + x.dur) / 1000).toFixed(1)} s` : ''}">${x ? `<i style="inset-inline-start:${(x.delay / end * 100).toFixed(1)}%;width:${Math.max(2, x.dur / end * 100).toFixed(1)}%"></i>` : ''}</span>
         <button type="button" class="an-x" data-remove title="${t('Quitar')}">✕</button></li>`];
   });
@@ -176,7 +176,7 @@ function detailOne(box, { b, a, i }, clash = null) {
     : clash === 'exit' ? t('Este objeto sale con su animación en la diapositiva anterior: aquí aparece sin deslizarse.') : '';
   box.innerHTML = `<div class="an-title">${esc(objLabel(b))} · ${esc(EFFECT_LABEL(a.effect))}</div>${note ? `<p class="an-clash"><i class="ms">info</i> ${esc(note)}</p>` : ''}
     <div class="an-grid">
-      <label>${t('Efecto')}<select data-p="effect">${[...ANIM_EFFECTS, ...(b.type === 'model' ? ['clip3d'] : []), ...(isPdf(b) ? ['pdfview'] : []), ...(mediaKind(b) ? trans.MEDIA_FX : [])].map(e => `<option value="${e}"${a.effect === e ? ' selected' : ''}>${EFFECT_LABEL(e)}</option>`).join('')}</select></label>
+      <label>${t('Efecto')}<select data-p="effect">${[...ANIM_EFFECTS, ...(b.type === 'model' ? ['clip3d'] : []), ...(isPdf(b) ? ['pdfview'] : []), ...(b.type === 'map' ? ['mapfly'] : []), ...(mediaKind(b) ? trans.MEDIA_FX : [])].map(e => `<option value="${e}"${a.effect === e ? ' selected' : ''}>${EFFECT_LABEL(e)}</option>`).join('')}</select></label>
       <label>${t('Comienzo')}<select data-p="start">${Object.entries(START_NAME).map(([v, l]) => `<option value="${v}"${(a.start || 'click') === v ? ' selected' : ''}>${t(l)}</option>`).join('')}</select></label>
       <label class="an-wide">${t('Disparador')}<select data-p="trigger"><option value="">${t('Secuencia de clics')}</option>${currentSlide().blocks
         .filter(x => x.id !== b.id && x.type !== 'connector').map(x => `<option value="${x.id}"${a.trigger === x.id ? ' selected' : ''}>${t('Al hacer clic en')} ${esc(objLabel(x))}</option>`).join('')}</select></label>

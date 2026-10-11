@@ -15,6 +15,14 @@ export const PEERJS = NPM + 'peerjs@1.5.4/dist/peerjs.min.js';
 export const QRCODE = NPM + 'qrcode@1.5.1/build/qrcode.min.js';
 // 360° photos (equirectangular) walked through while presenting: Pannellum (MIT). + '.js' / '.css'.
 export const PANNELLUM = NPM + 'pannellum@2.5.6/build/pannellum';
+// Maps that fly from place to place while presenting (Insertar ▸ Mapa: features/content/geomap.js, io/runtime/geomap.js):
+// MapLibre GL JS (BSD-3), its 5.x line — the last one shipped as one classic script with its worker inside (6.x is
+// ES modules only, its worker a separate module, which a page from a blob: address can't start). + '.js' / '.css'.
+// And the plugin that shapes right-to-left place names (Arabic) on the map, loaded only for those (BSD-2).
+export const MAPLIBRE = NPM + 'maplibre-gl@5.24.0/dist/maplibre-gl';
+// Countries' flags for a map's stops (flag-icons, MIT): one small SVG each, by its ISO code (+ 'es.svg').
+export const FLAG_ICONS = NPM + 'flag-icons@7.5.0/flags/4x3/';
+export const MAPLIBRE_RTL = NPM + '@mapbox/mapbox-gl-rtl-text@0.3.0/dist/mapbox-gl-rtl-text.js';
 export const POLYGON_CLIPPING = NPM + 'polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js';
 export const MATHLIVE = NPM + 'mathlive@0.100.0/dist/mathlive.min.js';
 export const HIGHLIGHT = NPM + '@highlightjs/cdn-assets@11.9.0';
