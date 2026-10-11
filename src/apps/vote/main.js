@@ -542,5 +542,15 @@ async function answerLater(doc, pid) {
     onData({ type: 'poll', poll: d.poll });
   } catch { show('join'); $('#join').innerHTML = '<h1>Esta votación ya no está abierta</h1><p>Pide a quien te la envió un enlace nuevo.</p>'; $('#status').textContent = ''; }
 }
+// The poll editor's preview of the phone (ui/dialogs/poll.js): this page in a frame of the editor, fed the poll as the
+// presentation would send it, each time it changes; answers go nowhere. (Same origin only: nothing else can feed it.)
+if (new URLSearchParams(location.search).has('preview') && window.parent !== window) {
+  conn = { open: true, send() {} }; show('wait'); $('#status').textContent = 'Vista previa';
+  addEventListener('message', e => {
+    if (e.source !== window.parent || e.origin !== location.origin || e.data?.type !== 'rv-preview') return;
+    poll = null; onData({ type: 'poll', poll: e.data.poll || null });       // (poll = null: drawn again, also with the same pollId)
+  });
+  window.parent.postMessage({ type: 'rv-preview-ready' }, location.origin === 'null' ? '*' : location.origin);
+}
 // (For the tests: feed it messages as if from the presentation.)
 if (new URLSearchParams(location.search).has('test')) window.__vote = { onData: d => { conn = conn || { open: true, send: m => (window.__sent = window.__sent || []).push(m) }; onData(d); } };

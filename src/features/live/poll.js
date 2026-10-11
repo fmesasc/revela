@@ -364,9 +364,10 @@ export const pollLabels = () => Object.fromEntries(POLL_WORDS.map(w => [w, t(w)]
 export const GRADED = ['quiz', ...ACTIVITIES];
 // (The activities drawn as a grid — or a wheel — on the screen: pollResultsHTML gets their layout, solution included, as res.layout.)
 export const GRIDS = ['crossword', 'wordsearch', 'wheel'];
-export function pollEditorHTML(b, accents) {
+// (votes: those kept, or the made-up ones of the poll editor's preview — ui/dialogs/poll.js.)
+export function pollEditorHTML(b, accents, votes = savedVotes(b.pollId)) {
   const res = b.kind === 'board' ? { board: quizTotals(state.deck.slides.flatMap(s => s.blocks).filter(x => x.type === 'poll' && GRADED.includes(x.kind)).map(p => ({ poll: p, votes: savedVotes(p.pollId) }))) }
-    : (r => ({ ...r, showRight: true, revealed: (b.kind === 'quiz' && r.voters > 0) || ACTIVITIES.includes(b.kind), ...(GRIDS.includes(b.kind) && { layout: publicActivity(b, true) }) }))(tallyVotes(b, savedVotes(b.pollId)));
+    : (r => ({ ...r, showRight: true, revealed: (b.kind === 'quiz' && r.voters > 0) || ACTIVITIES.includes(b.kind), ...(GRIDS.includes(b.kind) && { layout: publicActivity(b, true) }) }))(tallyVotes(b, votes));
   // (A race runs towards every quiz's points: its finish line.)
   if (b.display === 'race') res.goal = 1000 * state.deck.slides.flatMap(s => s.blocks).filter(x => x.type === 'poll' && GRADED.includes(x.kind)).length;
   return `<div style="width:100%;height:100%;display:grid;grid-template-columns:1fr auto;gap:1em;font-size:${b.fontSize || 32}px${/^#[0-9a-f]{3,8}$/i.test(b.color || '') ? ';color:' + b.color : ''}">`
@@ -374,6 +375,15 @@ export function pollEditorHTML(b, accents) {
     + `<div style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center">${pollResultsHTML(b, res, accents, pollLabels())}</div></div>`
     + `<div style="align-self:center;text-align:center;font-size:18px"><div style="width:220px;height:220px;border-radius:8px;background:#fff;color:#223;display:grid;place-items:center">`
     + `<div><div style="font-size:64px;line-height:1">▦</div><div>QR</div></div></div><div style="margin-top:6px;opacity:.8;font-size:16px;max-width:220px;overflow-wrap:anywhere">${VOTE_URL.replace(/^https?:\/\//, '')}</div></div></div>`;
+}
+
+// What a phone gets of a poll on the slide shown (as io/runtime/scripts.js current() sends it, which keep the same):
+// for the poll editor's preview of the phone, drawn by the real voting page (apps/vote/main.js ?preview).
+export function phonePoll(p) {
+  const act = ACTIVITIES.includes(p.kind);
+  return { pollId: p.pollId, kind: p.kind, question: p.question, options: act ? [] : p.options, pub: act ? publicActivity(p) : null, time: p.time,
+    left: p.kind === 'quiz' ? (+p.time || 20) : null, revealed: false, mode: p.mode, min: p.min, max: p.max, step: p.step, unit: p.unit,
+    images: p.kind === 'image' ? p.images : undefined, image: p.kind === 'point' || p.kind === 'draw' ? p.image : undefined };
 }
 
 // Results saved by the presentation (same origin) for the editor.

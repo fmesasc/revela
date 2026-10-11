@@ -110,13 +110,105 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const E = await W.eval("import('/src/ui/dialogs/poll.js')"); E.openPollEditor(slide().blocks.find(x => x.id === b.id)); await sleep(10);
     const m = D.getElementById('poll-modal'); m.querySelector('.pl-kind').value = 'quiz'; m.querySelector('.pl-kind').dispatchEvent(new W.Event('change'));
     assert(!m.querySelector('.pl-time').closest('label').hidden, 'con tiempo para responder');
-    m.querySelector('.pl-opts').value = 'Madrid\n*París\nRoma'; m.querySelector('.pl-time').value = '30'; m.querySelector('.pl-ok').click(); await sleep(20);
+    // (An option typed with «*» in front, as before: marked right, without the «*».)
+    ['Madrid', '*París', 'Roma'].forEach((v, i) => { const inp = m.querySelectorAll('.pe-opt .pe-in')[i]; inp.value = v; inp.dispatchEvent(new W.Event('input', { bubbles: true })); });
+    m.querySelector('.pl-time').value = '30'; m.querySelector('.pl-ok').click(); await sleep(20);
     const q = slide().blocks.find(x => x.id === b.id);
     eq(JSON.stringify([q.kind, q.options, q.correct, q.time]), '["quiz",["Madrid","París","Roma"],[1],30]', 'la correcta, marcada con *');
     const html = R.io.buildHTML();
     assert(/function quizTotals/.test(html) && /type:'quizresult'/.test(html), 'la presentación juega el cuestionario y avisa a cada móvil de cómo le fue');
     assert(!/correct:p\.correct/.test(html), 'sin enviar la respuesta correcta a los móviles');
     assert(/data-poll="[^"]*&quot;correct&quot;:\[1\],&quot;time&quot;:30/.test(html), 'la presentación sabe cuál es la correcta y el tiempo');
+  });
+
+  await test('editor de votaciones: el tipo con tarjetas, solo sus campos, vista previa en vivo y la correcta con un clic', async () => {
+    reset(); const W = frame.contentWindow, n0 = slide().blocks.length;
+    const fire = (el, ev = 'input') => el.dispatchEvent(new W.Event(ev, { bubbles: true }));
+    const vis = (m, sel) => { const el = m.querySelector(sel); return !!el && !el.closest('[hidden]'); };
+    // A new one starts by choosing the kind: cards, each with its name and what it is for.
+    D.querySelector('[data-action="insert-poll"]').click(); await sleep(20);
+    let m = D.getElementById('poll-modal');
+    assert(vis(m, '.pe-step1') && !vis(m, '.pe-step2'), 'primero, el tipo');
+    const cards = [...m.querySelectorAll('.pe-card')];
+    eq(cards.length, 24, 'una tarjeta por tipo');
+    assert(cards.every(c => c.querySelector('b').textContent && c.querySelector('small').textContent.length > 10 && c.querySelector('.ms')), 'con icono, nombre y para qué sirve');
+    eq(m.querySelector('.pe-card[aria-pressed="true"]').dataset.kind, 'choice', 'la encuesta, la elegida por defecto');
+    eq(D.activeElement, m.querySelector('.pe-card[aria-pressed="true"]'), 'el foco, en la tarjeta elegida');
+    m.querySelector('.pe-cancel').click(); await sleep(10);
+    eq(slide().blocks.length, n0, 'Cancelar: la votación nueva no se queda');
+    // Each kind: only its fields; the advanced ones folded, in groups that say what is chosen.
+    D.querySelector('[data-action="insert-poll"]').click(); await sleep(20); m = D.getElementById('poll-modal');
+    m.querySelector('.pe-card[data-kind="quiz"]').click(); await sleep(10);
+    assert(vis(m, '.pe-step2') && !vis(m, '.pe-step1') && D.activeElement === m.querySelector('.pl-q'), 'elegido, sus campos y el foco en la pregunta');
+    eq(m.querySelector('.pe-kind-name').textContent, 'Cuestionario', 'arriba, el tipo elegido');
+    const expect = { quiz: ['.pe-opts', '.pe-ok', '.pl-time', '.pe-g-game', '.pe-g-who'], choice: ['.pe-opts', '.pe-disp', '.pe-g-later'], word: ['.pe-g-mod', '.pl-clean'],
+      open: ['.pe-g-ai', '.pl-rubric', '.pe-g-mod'], number: ['.pl-num', '.pl-ans'], gaps: ['.pl-text'], crossword: ['.pl-opts'], board: ['.pe-g-game', '.pl-teams'], qa: ['.pl-mod', '.pe-g-mod'], image: ['.pe-thumb'], wheel: ['.pl-wtime', '.pl-opts'] };
+    const never = { quiz: ['.pl-opts', '.pe-disp', '.pe-g-later', '.pe-g-mod', '.pl-num'], choice: ['.pe-ok', '.pl-time', '.pe-g-game', '.pl-opts'], word: ['.pe-opts', '.pl-opts', '.pl-mod'], open: ['.pe-opts', '.pe-g-game'],
+      number: ['.pe-opts', '.pe-disp'], gaps: ['.pe-opts', '.pl-opts'], crossword: ['.pe-opts', '.pl-time'], board: ['.pe-g-who', '.pe-opts'], qa: ['.pe-opts', '.pe-g-ai'], image: ['.pe-ok'], wheel: ['.pe-opts', '.pl-time'] };
+    for (const k in expect) { m.querySelector('.pe-change').click(); m.querySelector(`.pe-card[data-kind="${k}"]`).click(); await sleep(5);
+      const shown = expect[k].filter(x => !vis(m, x)), wrong = never[k].filter(x => vis(m, x));
+      assert(!shown.length && !wrong.length, `${k}: sus campos (faltan ${shown.join(' ')}; sobran ${wrong.join(' ')})`); }
+    assert([...m.querySelectorAll('.pe-grp')].every(g => !g.open), 'lo avanzado, plegado');
+    m.querySelector('.pe-change').click(); m.querySelector('.pe-card[data-kind="choice"]').click(); await sleep(5);
+    assert(/Un voto por dispositivo/.test(m.querySelector('.pe-g-who .pe-grp-s').textContent) && /Barras/.test(m.querySelector('.pe-g-look .pe-grp-s').textContent), 'cada grupo plegado dice lo elegido');
+    // The preview: the real drawing of the slide, with made-up results, follows what is typed and chosen.
+    m.querySelector('.pl-q').value = '¿Playa o montaña?'; fire(m.querySelector('.pl-q'));
+    const ins = m.querySelectorAll('.pe-opt .pe-in'); ins[0].value = 'Playa'; fire(ins[0]); await sleep(250);
+    const pv = () => m.querySelector('.pe-slide').innerHTML;
+    assert(/¿Playa o montaña\?/.test(pv()) && />Playa</.test(pv()), 'la pantalla: la pregunta y las opciones al escribirlas');
+    assert(/Con votos de ejemplo/.test(m.querySelector('.pe-screen .pe-cap').textContent) && !Object.keys(R.poll.savedVotes(last().pollId)).length, 'con votos de ejemplo, que no se guardan');
+    m.querySelector('.pe-disp input[value="pie"]').click(); await sleep(250);
+    assert(/conic-gradient/.test(pv()) && /Circular/.test(m.querySelector('.pe-g-look .pe-grp-s').textContent), 'el gráfico circular, al elegirlo');
+    m.querySelector('.pl-ink').value = '#aa2200'; fire(m.querySelector('.pl-ink')); await sleep(250);
+    assert(m.querySelector('.pl-ink-own').checked && /color:#aa2200/.test(pv()), 'y el color del texto');
+    // The phone: the voting page itself, fed the poll as the presentation would send it.
+    m.querySelector('.pe-tab[data-tab="phone"]').click();
+    const ph = m.querySelector('.pe-device iframe'); assert(/vote\.html\?preview/.test(ph.src) && !m.querySelector('.pe-phone').hidden, 'la pestaña del móvil');
+    const phq = () => ph.contentDocument?.getElementById('q')?.textContent;
+    for (let i = 0; i < 80 && phq() !== '¿Playa o montaña?'; i++) await sleep(50);
+    eq(phq(), '¿Playa o montaña?', 'el móvil: la misma pregunta');
+    eq([...ph.contentDocument.querySelectorAll('#answers .opt')].map(x => x.textContent).join(), 'Playa,Opción B,Opción C', 'y sus opciones, como botones');
+    ins[1].value = 'Montaña'; fire(ins[1]); await sleep(300);
+    assert(/Montaña/.test(ph.contentDocument.getElementById('answers').textContent), 'cambia al escribir');
+    m.querySelector('.pe-change').click(); m.querySelector('.pe-card[data-kind="quiz"]').click(); await sleep(300);
+    eq(ph.contentDocument.querySelectorAll('#answers .quiz-opt').length, 3, 'un cuestionario: las fichas de colores del móvil');
+    ph.contentDocument.querySelector('#answers .quiz-opt').click(); await sleep(20);
+    eq(Object.keys(R.poll.savedVotes(last().pollId)).length, 0, 'probarlo no vota de verdad');
+    // The right answer, with a click (several can be); a reminder while none is marked; Enter adds a row.
+    assert(/✓/.test(m.querySelector('.pe-warn').textContent), 'sin correcta, un aviso');
+    const ok = i => m.querySelectorAll('.pe-opt .pe-ok')[i];
+    ok(1).click(); assert(ok(1).getAttribute('aria-pressed') === 'true' && D.activeElement === ok(1), 'marcada con un clic (y el foco sigue ahí)');
+    eq(m.querySelector('.pe-warn').textContent, '', 'sin aviso');
+    const last3 = m.querySelectorAll('.pe-opt .pe-in')[2]; last3.focus(); last3.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    eq(m.querySelectorAll('.pe-opt').length, 4, 'Intro: otra opción'); eq(D.activeElement, m.querySelectorAll('.pe-opt .pe-in')[3], 'con el foco en ella');
+    D.activeElement.value = '*Ninguna'; fire(D.activeElement);
+    assert(m.querySelectorAll('.pe-opt .pe-ok')[3].getAttribute('aria-pressed') === 'true' && m.querySelectorAll('.pe-opt .pe-in')[3].value === 'Ninguna', 'el asterisco de siempre la marca correcta');
+    m.querySelector('.pl-ok').click(); await sleep(20);
+    const saved = last(); eq(JSON.stringify([saved.kind, saved.options, saved.correct]), '["quiz",["Playa","Montaña","Opción C","Ninguna"],[1,3]]', 'se guarda como siempre');
+    // An old poll opens as it was, straight to its fields; applied unchanged, nothing of it changes.
+    reset(); R.poll.addPoll({ kind: 'quiz', question: 'Vieja', options: ['a', 'b', 'c'], correct: [2], time: 45, mode: 'accuracy', display: 'race', color: '#112233' }); const old = last();
+    const keys = ['kind', 'question', 'options', 'correct', 'time', 'mode', 'display', 'color', 'pollId'], before = JSON.stringify(keys.map(k => old[k]));
+    const E = await W.eval("import('/src/ui/dialogs/poll.js')"); E.openPollEditor(old); await sleep(10); m = D.getElementById('poll-modal');
+    assert(vis(m, '.pe-step2') && !vis(m, '.pe-step1'), 'una que ya existe: directamente a sus campos');
+    assert(m.querySelectorAll('.pe-opt .pe-ok')[2].getAttribute('aria-pressed') === 'true' && m.querySelector('.pl-time').value === '45' && m.querySelector('.pl-mode').value === 'accuracy'
+      && m.querySelector('.pe-race-on').checked && m.querySelector('.pl-ink-own').checked, 'con su correcta, su tiempo, su modo, su carrera y su color');
+    m.querySelector('.pl-ok').click(); await sleep(10);
+    eq(JSON.stringify(keys.map(k => last()[k])), before, 'aplicada sin cambios, queda igual');
+    R.poll.addPoll({ kind: 'crossword', question: 'C', options: ['Sol = La estrella', 'Mar = Agua salada'] }); const cw = last();
+    E.openPollEditor(cw); await sleep(10); m = D.getElementById('poll-modal');
+    eq(m.querySelector('.pl-opts').value, 'Sol = La estrella\nMar = Agua salada', 'una actividad: sus líneas, en su cuadro de texto');
+    m.querySelector('.pl-kind').value = 'choice'; fire(m.querySelector('.pl-kind'), 'change'); m.querySelector('.pl-kind').value = 'crossword'; fire(m.querySelector('.pl-kind'), 'change');
+    eq(m.querySelector('.pl-opts').value, 'Sol = La estrella\nMar = Agua salada', 'cambiar de tipo y volver no pierde lo escrito');
+    m.querySelector('.pl-ok').click(); await sleep(10); eq(last().options.join('|'), 'Sol = La estrella|Mar = Agua salada', 'y se guarda igual');
+    // Right to left (Arabic): the dialog too, the slide's preview always left to right; nothing wider than the dialog.
+    await R.i18n.setLang('ar');
+    try {
+      E.openPollEditor(cw); await sleep(30); m = D.getElementById('poll-modal'); const box = m.querySelector('.modal');
+      assert(W.getComputedStyle(box).direction === 'rtl' && W.getComputedStyle(m.querySelector('.pe-stage')).direction === 'ltr', 'en árabe, de derecha a izquierda (la diapositiva, no)');
+      assert(/[؀-ۿ]/.test(m.querySelector('.pe-kind-name').textContent + m.querySelector('.pe-g-who .pe-grp-t').textContent), 'y traducido');
+      assert(box.scrollWidth <= box.clientWidth + 1, 'sin desbordarse a lo ancho');
+      m.querySelector('.modal-close').click();
+    } finally { await R.i18n.setLang('es'); }
   });
 
   await test('actividades con nota: ordenar, unir, completar huecos, etiquetar una imagen, clasificar en grupos', async () => {
@@ -573,7 +665,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/conic-gradient/.test(P.pollResultsHTML({ kind: 'choice', display: 'pie', options: ['a'] }, { counts: [3], voters: 3 })), 'circular');
     D.querySelector('[data-action="insert-poll"]').click(); await sleep(10);
     assert(D.getElementById('poll-modal'), 'editor de la votación');
-    D.querySelector('#poll-modal .pl-q').value = '¿Café o té?'; D.querySelector('#poll-modal .pl-opts').value = 'Café\nTé';
+    D.querySelector('#poll-modal .pe-card[data-kind="choice"]').click();
+    D.querySelector('#poll-modal .pl-q').value = '¿Café o té?';
+    const ins = [...D.querySelectorAll('#poll-modal .pe-opt .pe-in')]; ins[0].value = 'Café'; ins[1].value = 'Té'; ins[2].value = '';
+    ins.forEach(x => x.dispatchEvent(new frame.contentWindow.Event('input', { bubbles: true })));
     D.querySelector('#poll-modal .pl-ok').click(); await sleep(10);
     const b = last(); eq(b.question, '¿Café o té?', 'pregunta'); eq(b.options.join(), 'Café,Té', 'opciones');
     assert(D.querySelector(`.block[data-id="${b.id}"] .poll-blk`), 'en el lienzo');
@@ -1357,12 +1452,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); R.poll.addPoll({ kind: 'board', question: '', options: [] }); const b = last();
     const E = await W.eval("import('/src/ui/dialogs/poll.js')"); E.openPollEditor(b); await sleep(10);
     try {
-      const m = D.getElementById('poll-modal'), opt = v => m.querySelector(`.pl-disp option[value="${v}"]`);
-      assert(!opt('race').hidden && opt('pie').hidden && !m.querySelector('.pl-race').hidden, 'la clasificación: lista o carrera');
+      const m = D.getElementById('poll-modal'), race = () => !m.querySelector('.pe-g-game').hidden, bars = () => !m.querySelector('.pe-disp').hidden;
+      assert(race() && !bars() && m.querySelector('.pl-race .pe-qbtn'), 'la clasificación: lista o carrera (con su explicación)');
       m.querySelector('.pl-kind').value = 'choice'; m.querySelector('.pl-kind').dispatchEvent(new W.Event('change'));
-      assert(opt('race').hidden && !opt('pie').hidden, 'una votación: sin carrera');
+      assert(!race() && bars(), 'una votación: sin carrera, con barras, circular o cifras');
       m.querySelector('.pl-kind').value = 'board'; m.querySelector('.pl-kind').dispatchEvent(new W.Event('change'));
-      m.querySelector('.pl-disp').value = 'race'; m.querySelector('.pl-ok').click(); await sleep(10);
+      m.querySelector('.pe-race-on').click(); m.querySelector('.pl-ok').click(); await sleep(10);
     } finally { D.getElementById('poll-modal')?.remove(); }
     eq(slide().blocks.find(x => x.id === b.id).display, 'race', 'se guarda');
     // Presenting: a quiz shown as a race on its reveal, then the leaderboard runs from where it was last seen.
@@ -1407,7 +1502,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.poll.addPoll({ kind: 'qa', question: '¿Dudas?', options: [] }); const pq = last(); R.poll.clearVotes(pq.pollId);
     const E = await frame.contentWindow.eval("import('/src/ui/dialogs/poll.js')"); E.openPollEditor(pq); await sleep(10);
     const m = D.getElementById('poll-modal'); assert(m, 'el diálogo de la votación');
-    assert(!m.querySelector('.pl-mod').closest('label').hidden && !m.querySelector('.pl-clean').closest('label').hidden, 'con las dos opciones para las preguntas');
+    assert(!m.querySelector('.pe-g-mod').hidden && !m.querySelector('.pl-mod').closest('.pl-mod-l').hidden && !m.querySelector('.pl-clean').closest('label').hidden, 'con las dos opciones para las preguntas, en «Moderación»');
     m.querySelector('.pl-mod').checked = true; m.querySelector('.pl-clean').checked = true; m.querySelector('.pl-ok').click(); await sleep(10);
     eq(!!last().moderate + '|' + !!last().clean, 'true|true', 'se guardan');
     const fake = URL.createObjectURL(new Blob(['window.Peer=function(id){var s=this;s.h={};s.on=function(e,f){(s.h[e]=s.h[e]||[]).push(f);};s.destroy=function(){};window.__votePeer=s;setTimeout(function(){(s.h.open||[]).forEach(function(f){f(id);});},0);};'], { type: 'text/javascript' }));
