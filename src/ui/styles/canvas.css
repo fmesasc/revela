@@ -61,6 +61,8 @@
 .block .tbl.banded:not(.has-header) tr:nth-child(odd) td,.block .tbl.banded.has-header tr:nth-child(even) td{background:var(--band,rgba(127,127,127,.18))}
 .block .tbl.first-col td:first-child{font-weight:700}
 .block .tbl.has-header tr:first-child td{font-weight:700;background:var(--th-bg,rgba(127,127,127,.25));color:var(--th-fg,inherit)}
+/* Cells picked for a command (Tabla ▸ Sombreado…): a tint over them, so their own colour still shows under it. */
+.block .tbl td.cell-sel{box-shadow:inset 0 0 0 999px rgba(56,132,255,.28)}
 .block .code{margin:0;width:100%;height:100%;overflow:auto;background:#0b0e14;color:#e6e6e6;padding:10px;
   border-radius:4px;font-family:'Fira Code','Courier New',monospace;white-space:pre-wrap}
 .block .code code{font-family:inherit;outline:none;display:block;min-height:100%}

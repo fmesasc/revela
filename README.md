@@ -24,7 +24,7 @@ standard, self-contained web page.
   70+ shapes (with text inside, action buttons, freeform) and shape merging,
   SmartArt-style diagrams (15 layouts written as an outline, editable in
   PowerPoint),
-  tables with merged cells, styles and formulas (=SUM(ABOVE)…), charts
+  tables with merged cells, cell shading, styles and formulas (=SUM(ABOVE)…), charts
   (multi-series, combo, stacked, 100 %, histogram, waterfall, funnel, treemap,
   bubble, maps; from a table or a
   live CSV), icons, equations, code, **3D models**, video, PDFs and attached

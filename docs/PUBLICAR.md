@@ -49,6 +49,32 @@ El número lo pone el flujo: si la versión de `package.json` ya se publicó, su
 «Versión X.Y.Z» en `main`. Para un salto mayor (0.5.0, 1.0.0), cambia a mano `package.json` y `APP_VERSION` antes de
 publicar (`tests/layers.py` comprueba que coinciden).
 
+### Aviso «Hay una versión nueva · Recargar»
+
+Una pestaña abierta sigue con el código con el que se cargó (en un móvil, días): tras un despliegue no ve lo nuevo
+hasta que recarga. Por eso el editor web pregunta de vez en cuando qué compilación hay en el servidor y, si es otra,
+ofrece recargar en una barra pequeña (`src/ui/shell/update.js`).
+
+- **Qué se compara:** no el número de versión (solo sube al publicar en producción; test.revelaslides.com recibe
+  varios despliegues con el mismo) ni el commit (cambia también cuando solo cambia la web o el servidor), sino una
+  huella del contenido de los archivos de la app. `tools/build-site.mjs` la calcula al copiar la app y la escribe en
+  `index.html` (`<meta name="revela-build">`, la de la pestaña) y en `version.json` a su lado (la del servidor). Igual
+  código, igual huella: pruebas y producción con lo mismo no avisan.
+- **Cuándo pregunta:** al volver a la pestaña (y al volver de la caché de atrás/adelante, como hace Safari en el
+  iPhone), al recuperar la conexión y cada 30 minutos con la pestaña a la vista; como mucho una vez por minuto. Un
+  archivo de unos 50 bytes, sin caché (`no-store`, `?t=` y `sw.js` no lo guarda); sin conexión no hay respuesta y no
+  se dice nada.
+- **Recargar sin perder trabajo:** antes se guarda todo (la copia de este navegador, la nube de Revela, Drive,
+  OneDrive) y, si algo no llega en unos segundos, lo dice y solo recarga si se le confirma.
+- **Cerrado con ✕** no vuelve a salir en esa pestaña para esa misma compilación (sí para una más nueva). Nunca sale
+  mientras se presenta.
+- **Dónde no:** la app de escritorio (Tauri, Flatpak, .deb) se compila sin huella (`--app-only`) y tiene su propio
+  actualizador; una copia servida desde el repositorio tampoco la lleva. Tampoco en `view.html`, `vote.html` ni
+  `remote.html`: son páginas del público o del mando que duran lo que una charla, sin trabajo que guardar, y una
+  recarga cortaría la presentación o la conexión.
+
+Pruebas: `tests/build-stamp.mjs` (la huella en las compilaciones) y «versión nueva…» en `tests/suites/editor.js`.
+
 ## Volver a una versión anterior
 
 Si una versión publicada falla: **Versiones ▸ Volver a esta** en la anterior buena (o Actions ▸ *Volver a una

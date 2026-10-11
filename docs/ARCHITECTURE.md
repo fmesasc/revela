@@ -214,7 +214,7 @@ src/
       stl.js                   STL → glTF
       autorig.js               automatic skeleton and animations, guessing the kind from the shape
       examples.js              example presentations (File ▸ Examples)
-      tplang.js                the example presentations in the interface's language
+      tplang.js                the example presentations in the interface's language (and the words inside their equations)
       templates/               the example presentations: kit.js (the builders), one file per group
                                (biz*, creative*, data*, edu*, life*, prod*/product, sci*, showcase),
                                catalog.js (made by tools/build-catalog.mjs), names/<lang>.js (names
@@ -411,6 +411,17 @@ animation = { effect, order (click), seq (play order), start, duration, delay,
 
 model (3D) block: src (GLB data URL), clip (rest animation), walk:{clip, end,
         endOnce, face, look} (what it does while moving), view, motion, autoRotate
+
+table block: rows:[[cell html]], header, banded, firstCol, lines, headBg, headFg, band, stroke, color,
+        merges:[{r,c,rs,cs}], colW, rowH, cellPad, cellBg:{"r,c": colour | 'none'}
+        cellBg is a cell's own shading (Tabla ▸ Sombreado, the cell's right-click menu, or a PowerPoint's a:tcPr
+        fill when importing: one field, so all of them draw, save and export alike). It is drawn inline on the
+        cell, so it wins over the style's header and bands, as in PowerPoint; 'none' is «Sin relleno» (no colour
+        even where the style puts one); no entry, the style's. A merged cell keeps it on its top-left cell.
+        The cells a command acts on are the screen's, not the document's: state.ui.tableCells (features/document/
+        blocks.js tableCellKeys: the ones picked while writing in the table, else all of it). Exported to the
+        presentation, PDF, PPTX (a:solidFill in the cell; the table has no PowerPoint style, so «Sin relleno» is
+        no fill) and ODP; the accessibility check judges the shaded cells' text against their colour.
 
 lock block: codes (as written: the exported page only gets SHA-256(salt:code), compared without case, accents
         or extra spaces), hint, openTo ('next' | a slide id | ''), reveal (ids of objects of its slide hidden until it

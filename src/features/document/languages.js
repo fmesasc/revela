@@ -11,7 +11,7 @@
 // text that needs more lines is made a little smaller, and right-to-left languages are aligned to the right —, and
 // cleaned again (sanitize.js), since the table's texts are HTML too.
 
-import { textsOf, translateDeck, TEXT_KEYS } from '../content/tplang.js';
+import { textsOf, translateDeck, TEXT_KEYS, mathTexts } from '../content/tplang.js';
 import { sanitizeDeck } from './sanitize.js';
 
 // Languages offered (any other code also works): those of Revela and those most spoken in classrooms here.
@@ -101,7 +101,12 @@ export function rebase(deck, lang) {
   if (!langsOf(deck).includes(lang)) return deck;
   const old = baseOf(deck), T = deck.i18n.texts || {}, d = deckIn(deck, lang), pairs = new Map();
   const walk = (a, b, k) => {
-    if (typeof a === 'string') { if (typeof b === 'string' && TEXT_KEYS.has(k) && !pairs.has(a)) pairs.set(a, b); return; }
+    if (typeof a === 'string') {
+      if (typeof b === 'string' && TEXT_KEYS.has(k) && !pairs.has(a)) pairs.set(a, b);
+      // (An equation's words are rows too — tplang.js mathTexts —: paired one by one, in order.)
+      else if (typeof b === 'string' && k === 'latex') { const x = mathTexts(a), y = mathTexts(b); if (x.length === y.length) x.forEach((t, i) => { if (!pairs.has(t)) pairs.set(t, y[i]); }); }
+      return;
+    }
     if (Array.isArray(a) && Array.isArray(b)) { a.forEach((v, i) => walk(v, b[i], k)); return; }
     if (a && typeof a === 'object' && b && typeof b === 'object') for (const kk of Object.keys(a)) if (kk !== 'i18n') walk(a[kk], b[kk], kk);
   };

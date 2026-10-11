@@ -450,9 +450,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(calls[0].body.aspect_ratio, '16:9', 'pide la proporción');
       slide().blocks[0].html = '<b>Título</b>'; slide().notes = 'Nota';
       R.blocks.addTable(); last().rows[0][0] = 'celda';
+      // (and the words inside an equation, put back into its LaTeX: the rest of the formula as it was)
+      R.blocks.addMath(); const eqn = last(); eqn.latex = '\\text{celda} = \\dfrac{\\mathrm{CO_2}}{x}';
       const n = await AI.translateDeck('English');
       eq(slide().blocks[0].html, '<b>Title</b>', 'traduce conservando el formato'); eq(slide().notes, 'Note', 'notas');
-      eq(last().rows[0][0], 'cell', 'celdas de tabla'); assert(n >= 3, 'recuento');
+      eq(R.state.deck.slides[0].blocks.find(b => b.type === 'table').rows[0][0], 'cell', 'celdas de tabla'); assert(n >= 4, 'recuento');
+      eq(eqn.latex, '\\text{cell} = \\dfrac{\\mathrm{CO_2}}{x}', 'las palabras de las ecuaciones');
       R.store.undo(); eq(slide().blocks[0].html, '<b>Título</b>', 'un solo paso de deshacer');
       // Adapted to a reading level: the slides' texts, never the notes; only the chosen ones.
       calls.length = 0; const sys = () => calls.at(-1).body.messages[0].content, first = R.state.deck.slides[0];

@@ -24,6 +24,10 @@ design, and [SECURITY.md](../../SECURITY.md).
   (`stock.js`: Unsplash, Pexels), Stripe payments (`billing.js`), signing in the
   desktop app, exporting and deleting the account, TURN relays for live
   connections (`/api/ice`).
+- **Live broadcasts and the audience's votes** (`/api/live/…`, `/api/vote/…`, `broadcast.js`): the presenter's
+  slide and pointer to thousands of viewers, and — presenting from the editor with an account — the phones' polls,
+  activities and questions both ways through the same relays (browser to browser, PeerJS, stops at ~500 phones).
+  A poll may ask to sign in: one vote per account (`util.js` `voterOf`, never the email).
 - **Cloud documents** (`/api/docs/…`, `docs.js`): presentations shared with
   people or by link with a role — present, view, comment or edit — and
   permission settings (no copies, editors who share, access that ends); every
@@ -85,6 +89,7 @@ Durable Objects (each with a `new_sqlite_classes` migration):
 | `CRM`       | `Crm`         | `crm.js`       | contacts, sequences, campaigns |
 | `CRAWLER`   | `Crawler`     | `crawler.js`   | the «Rastreador»: visits the contacts' websites (its alarm keeps it going), robots.txt cache, log |
 | `COMMUNITY` | `Community`   | `community.js` | the community gallery |
+| `LIVE`      | `Broadcast`   | `broadcast.js` | a live broadcast's room and its 16 relays (`room~i`); a **vote room** the same (the phones' polls, `/api/vote`), and the 5-letter codes (`code~XXXXX`) |
 
 Optional: `EMAIL` (`[[send_email]]`, Cloudflare Email Service; commented out in
 `wrangler.toml` until the domain is onboarded) and `BLENDER_SVC` (a service

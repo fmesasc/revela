@@ -24,7 +24,7 @@ import { blockLabel } from '../../features/document/a11y.js';
 import { pollEditorHTML } from '../../features/live/poll.js';
 import { masterBlocksFor, PH_PROMPT, styled, viewBackground } from '../../features/document/master.js';
 import { stageBackground } from '../../io/formats/html.js';
-import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, applyModelAttrs, content, hostOf, hasInlineMath, renderInlineMath, paintCode, setupCode, tableSig, fillTable, fileSig, paintFile, paintTabs, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
+import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHTML, connectorHTML, applyImgStyle, applyModelAttrs, content, hostOf, hasInlineMath, renderInlineMath, paintCode, setupCode, tableSig, fillTable, markTableCells, fileSig, paintFile, paintTabs, setupTable, setupText, setupMath, setupModel, setupEmbed } from './content.js';
 import { mapPreviewHTML, mapSig } from '../../features/content/geomap.js';
 import { mediaViewCurrent } from './mediaview.js';
 import { cameraViewCurrent, syncCameras } from './cameraview.js';
@@ -347,8 +347,13 @@ function reconcile(b) {
   } else if (b.type === 'table') {
     const t = el.querySelector('.tbl'); if (!t) return;
     const sig = tableSig(b);
-    if (t.dataset.sig !== sig) { t.dataset.sig = sig; fillTable(t, b); if (el.classList.contains('editing')) t.querySelectorAll('td').forEach(td => (td.contentEditable = 'true')); }
+    // (Its text changed from outside — accessibility's «Corregir», find and replace…—: drawn again. Not while being
+    // written in: the cells themselves are what changed, and drawing them again would take the caret away.)
+    const txt = el.classList.contains('editing') ? '' : shortSig(b.rows);
+    if (t.dataset.sig !== sig || (txt && t.dataset.txt !== txt)) { t.dataset.sig = sig; fillTable(t, b); if (el.classList.contains('editing')) t.querySelectorAll('td').forEach(td => (td.contentEditable = 'true')); }
+    if (txt) t.dataset.txt = txt;
     t.className = tableClass(b); t.style.cssText = tableVars(b);
+    markTableCells(t, b);                                  // (the cells picked: their tint follows the selection)
   } else if (b.type === 'code') {
     const pre = el.querySelector('.code'), c = el.querySelector('code');
     if (pre) pre.style.fontSize = (b.fontSize || 22) + 'px';

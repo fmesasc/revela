@@ -14,7 +14,7 @@ import { uid } from '../../core/model.js';
 import { commentText, parseCommentText } from '../../features/collab/comments.js';
 import { shownRows } from '../../core/formulas.js';
 import { lockSVG } from '../../render/svg.js';
-import { chartSVG, iconSVG, inkSVG, timerSVG, tableSpan } from '../../render/svg.js';
+import { chartSVG, iconSVG, inkSVG, timerSVG, tableSpan, cellBg } from '../../render/svg.js';
 import { deckFg, deckBodyFont, customPalette, themeFontStacks, PALETTES } from '../../features/design/palettes.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled } from '../../features/document/master.js';
 import { blockImage } from '../export/images.js';
@@ -199,12 +199,14 @@ export async function buildODP(deck = state.deck) {
     if (b.type === 'table') {
       const span = tableSpan(b), cols = b.rows[0]?.length || 1;
       const cellP = style('paragraph', 'P', `<style:text-properties fo:font-size="${pt(22)}" fo:color="${hex(fg) || '#ffffff'}"/>`);
-      const cellSt = style('table-cell', 'ce', `<style:graphic-properties draw:fill="none"/><style:table-cell-properties fo:border="0.03cm solid ${hex(b.stroke) || '#888888'}"/>`);
+      // (A cell with its own shading — Tabla ▸ Sombreado, or a PowerPoint's —: a style of its own with that colour.)
+      const cellSt = (bg = '') => style('table-cell', 'ce', `<style:graphic-properties draw:fill="${bg ? 'solid' : 'none'}"${bg ? ` draw:fill-color="${bg}"` : ''}/>`
+        + `<style:table-cell-properties fo:border="0.03cm solid ${hex(b.stroke) || '#888888'}"${bg ? ` fo:background-color="${bg}"` : ''}/>`);
       const rows = shownRows(b).map((row, r) => `<table:table-row>${row.map((c, j) => {
         const s = span(r, j);
         if (!s) return '<table:covered-table-cell/>';
         const t = new DOMParser().parseFromString(`<div>${c || ''}</div>`, 'text/html').body.textContent;
-        return `<table:table-cell table:style-name="${cellSt}"${s.cs > 1 ? ` table:number-columns-spanned="${s.cs}"` : ''}${s.rs > 1 ? ` table:number-rows-spanned="${s.rs}"` : ''} office:value-type="string"><text:p text:style-name="${cellP}">${X(t)}</text:p></table:table-cell>`;
+        return `<table:table-cell table:style-name="${cellSt(hex(cellBg(b, r, j)) || '')}"${s.cs > 1 ? ` table:number-columns-spanned="${s.cs}"` : ''}${s.rs > 1 ? ` table:number-rows-spanned="${s.rs}"` : ''} office:value-type="string"><text:p text:style-name="${cellP}">${X(t)}</text:p></table:table-cell>`;
       }).join('')}</table:table-row>`).join('');
       return `<draw:frame ${place(b)}><table:table>${'<table:table-column/>'.repeat(cols)}${rows}</table:table></draw:frame>`;
     }

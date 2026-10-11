@@ -12,8 +12,9 @@
 //   POST /api/team/sso                  { issuer, clientId, clientSecret?, domains: [..], autoJoin } → the same          (admin)
 //   POST /api/team/sso/verify           { domain } → { verified }   (looks for TXT «revela-verify=<token>» at the domain)
 //   POST /api/team/sso/delete           → { ok }
-//   GET  /api/sso/start?email=&terms=&lang=   → 302 to the provider (or back to /app/?sso=none)
-//   GET  /api/sso/callback?code=&state=       → 302 to /app/?sso=ok with the session cookie (or ?sso=<error>)
+//   GET  /api/sso/start?email=&terms=&lang=&next=  → 302 to the provider (or back to /app/?sso=none)
+//   GET  /api/sso/callback?code=&state=       → 302 to /app/?sso=ok with the session cookie (or ?sso=<error>); with next
+//                                             (only a poll of vote.html: «Inicia sesión para votar»), back to it
 //
 // Storage: in the Team (Durable Object) 'sso' { issuer, clientId, clientSecret, domains: { d: { token, verified } },
 // autoJoin } — the secret never leaves the server —; and in the registry (a Team object named 'sso-domains'):
@@ -135,6 +136,9 @@ export async function verifyIdToken(env, jwt, { jwksUri, issuer, clientId, nonce
   if (!issOk || !aud.includes(clientId) || claims.nonce !== nonce || !(claims.exp * 1000 > Date.now())) return null;
   return claims;
 }
+// Where a sign-in may come back to besides the app: a poll on vote.html (its room, its code or its document and poll),
+// only on this site — never an address from outside.
+export const NEXT = /^\/app\/vote(\.html)?\?[\w=&%.~-]{1,300}$/;
 const back = (env, what) => Response.redirect(`${site(env)}/app/?sso=${what}`, 302);
 
 export async function ssoStart(env, url) {
@@ -146,7 +150,8 @@ export async function ssoStart(env, url) {
   if (c.status !== 200 || !s?.domains?.[domain]?.verified || !s.clientSecret) return back(env, 'none');
   const d = await discover(env, s.issuer); if (!d) return back(env, 'provider');
   const verifier = random(32), nonce = random(16);
-  const state = await sign(env, { team, v: verifier, n: nonce, terms: String(url.searchParams.get('terms') || '').slice(0, 20), lang: String(url.searchParams.get('lang') || '').slice(0, 5), x: Date.now() + STATE_MINUTES * 6e4 });
+  const next = String(url.searchParams.get('next') || ''), back2 = NEXT.test(next) ? next : '';
+  const state = await sign(env, { team, v: verifier, n: nonce, ...(back2 && { next: back2 }), terms: String(url.searchParams.get('terms') || '').slice(0, 20), lang: String(url.searchParams.get('lang') || '').slice(0, 5), x: Date.now() + STATE_MINUTES * 6e4 });
   const u = new URL(d.authorization_endpoint);
   for (const [k, v] of Object.entries({ response_type: 'code', client_id: s.clientId, redirect_uri: ssoRedirect(env), scope: 'openid email profile', state, nonce,
     code_challenge: b64url(await crypto.subtle.digest('SHA-256', enc.encode(verifier))), code_challenge_method: 'S256', login_hint: email })) u.searchParams.set(k, v);
@@ -168,6 +173,6 @@ export async function ssoCallback(env, url) {
   const email = String(claims.email || claims.preferred_username || claims.upn || '').trim().toLowerCase(), domain = email.split('@')[1] || '';
   if (claims.email_verified === false || !s.domains?.[domain]?.verified) return { error: 'domain' };
   return { sub: 'sso:' + (await sha256(claims.iss + '|' + claims.sub)).slice(0, 32), email, name: typeof claims.name === 'string' ? claims.name.replace(/[<>\r\n]/g, '').slice(0, 80) : null,
-    team: st.team, autoJoin: !!s.autoJoin, terms: st.terms, lang: st.lang };
+    team: st.team, autoJoin: !!s.autoJoin, terms: st.terms, lang: st.lang, next: NEXT.test(st.next || '') ? st.next : null };
 }
 export const ssoJoin = (env, team, email, sub) => ask(teamOf(env, team), 'sso-join', { email, sub });

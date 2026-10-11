@@ -3,6 +3,7 @@
 import { setPoll, removePoll, clearVotes, votesCSV, savedVotes, tallyVotes, mergeVotes, ACTIVITIES } from '../../features/live/poll.js';
 import { ASYNC_KINDS } from '../../features/live/answers.js';
 import * as cd from '../../io/cloud/clouddocs.js';
+import { account } from '../../io/cloud/account.js';
 import { confirmDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
 import { state, commit } from '../../core/store.js';
@@ -45,7 +46,11 @@ export function openPollEditor(b, { fresh = false } = {}) {
       <label class="fr-chk"><input type="checkbox" class="pl-ink-auto"${b.color ? '' : ' checked'}> ${t('El de la paleta')}</label></div>
     <label class="fr-l">${t('Mostrar resultados como')}<select class="pl-disp">${opt('bar', 'Barras', b.display)}${opt('pie', 'Circular', b.display)}${opt('numbers', 'Cifras', b.display)}${opt('race', 'Carrera animada', b.display)}</select></label>
     <p class="host-help pl-race">${t('Carrera: cada jugador (o cada equipo) avanza hacia la meta, los puntos de todos los cuestionarios; al volver a la diapositiva, sale desde donde estaba. En un cuestionario, se ve al mostrar la respuesta.')}</p>
-    <p class="host-help">${t('Al presentar aparece un QR: el público vota desde el móvil y los resultados se actualizan al instante. Los móviles se conectan directamente a este ordenador, sin servidor; funciona bien con decenas de personas.')}</p>
+    <p class="host-help">${t('Al presentar aparece un QR: el público vota desde el móvil y los resultados se actualizan al instante. Si has iniciado sesión en Revela, los votos pasan por su servidor y caben miles de móviles; si no, los móviles se conectan directamente a este ordenador (sin servidor), hasta unos 500 a la vez.')}</p>
+    <fieldset class="pl-who"><legend>${t('Quién puede votar')}</legend>
+      <label class="fr-chk"><input type="radio" name="pl-who" value="device"${b.login ? '' : ' checked'}> ${t('Un voto por dispositivo (sin cuenta)')}</label>
+      <label class="fr-chk"><input type="radio" name="pl-who" value="login" class="pl-login"${b.login ? ' checked' : ''}> ${t('Un voto por persona: exigir iniciar sesión para votar')}</label>
+      <p class="host-help pl-who-help"></p></fieldset>
     <fieldset class="pl-later"><legend>${t('Responder más tarde, sin presentar')}</legend>
       <label class="fr-chk"><input type="checkbox" class="pl-async"${b.async ? ' checked' : ''}> ${t('Abrirla para responder con un enlace, cuando cada uno quiera')}</label>
       <p class="host-help pl-later-help"></p>
@@ -135,6 +140,14 @@ export function openPollEditor(b, { fresh = false } = {}) {
     q('.pl-later-link').hidden = q('.pl-later-get').hidden = !(canLater && on);
     if (canLater) q('.pl-link').value = cd.pollLink(doc.id, b.pollId); };
   q('.pl-async').addEventListener('change', later);
+  // Who can vote: one vote per device (as always: another browser or a private window votes again), or one per person
+  // — only through Revela's server, which knows the accounts (the presenter signed in; server/cloudflare/broadcast.js).
+  const who = () => { const login = q('.pl-login').checked, can = !!account();
+    q('.pl-login').disabled = !can && !login; q('.pl-who').hidden = q('.pl-kind').value === 'board';
+    q('.pl-who-help').textContent = !can ? t('Para exigir iniciar sesión, inicia sesión tú en Revela: los votos tienen que pasar por su servidor, que es quien comprueba las cuentas. Sin él, un voto por dispositivo.')
+      : login ? t('Cada persona inicia sesión (con Google o con la cuenta de su centro) y vota una sola vez: si vuelve a votar, cambia su voto. Tú ves los resultados igual de anónimos, sin nombres ni correos. Los votos pasan por el servidor de Revela.')
+      : t('Cada móvil o navegador vota una vez; desde otro navegador o una ventana privada se puede volver a votar.'); };
+  back.querySelectorAll('input[name=pl-who]').forEach(x => x.addEventListener('change', who)); q('.pl-kind').addEventListener('change', who); who();
   q('.pl-copy').addEventListener('click', e => { navigator.clipboard?.writeText(q('.pl-link').value); e.target.textContent = t('Copiado'); });
   const bring = async () => { if (!canLater || !b.async) return;
     try { const r = await cd.pollVotes(doc.id, b.pollId), n = mergeVotes(b.pollId, r.votes); q('.pl-got').textContent = t('{n} respuestas por enlace').replace('{n}', n); count(); setPoll(b.id, {}); }
@@ -160,6 +173,7 @@ export function openPollEditor(b, { fresh = false } = {}) {
     const kind = q('.pl-kind').value;
     setPoll(b.id, { question: q('.pl-q').value.trim(), kind, display: q('.pl-disp').value, options: options.length ? options : b.options,
       async: ASYNC_KINDS.includes(kind) && q('.pl-async').checked ? true : null,
+      login: kind !== 'board' && q('.pl-login').checked ? true : null,
       moderate: kind === 'qa' && q('.pl-mod').checked ? true : null, clean: ['qa', 'word', 'open'].includes(kind) && q('.pl-clean').checked ? true : null,
       color: q('.pl-ink-auto').checked ? null : q('.pl-ink').value,
       ...(kind === 'quiz' && { correct: correct.length ? correct : [0], time: +q('.pl-time').value, mode: q('.pl-mode').value === 'speed' ? null : q('.pl-mode').value }),

@@ -39,6 +39,19 @@ export async function openBroadcast() {
   q('.lv-go').addEventListener('click', async () => { close(); (await import('./present.js')).present({ live }); });
 }
 
+// The phones' polls through Revela's server (server/cloudflare/broadcast.js, a vote room) while presenting with an
+// account: what the presentation's poll script asks for (window.__revelaVoteRoom, io/runtime/scripts.js), once, when it
+// has polls — the room's WebSocket for the presenter, its code and the address for the QR. Without an account, or when
+// the room can't be had (offline, the day's limit), nothing: the phones connect straight to this browser (PeerJS).
+export function voteRoom() {
+  if (!account() || !apiBase()) return undefined;
+  let asked = null;
+  return () => (asked ||= api('vote', {}).then(r => {
+    const ws = new URL('vote/' + encodeURIComponent(r.room), apiBase()); ws.protocol = ws.protocol === 'https:' ? 'wss:' : 'ws:'; ws.searchParams.set('token', r.token);
+    return { ws: ws.href, room: r.room, code: r.code, url: new URL('/app/vote?r=' + encodeURIComponent(r.room), apiBase()).href };
+  }).catch(() => null));
+}
+
 // While presenting (present.js): the frame's reveal.js and pointer, sent to the room. Returns how to stop.
 export function attachLive(frame, live, overlay) {
   const base = new URL('live/' + encodeURIComponent(live.room), apiBase() || location.origin + '/api/');

@@ -977,6 +977,10 @@ body:not([data-edition="cloud"]):not([data-edition="desktop"]) .accounts-only{di
 .notice-x{border:0;background:none;color:var(--txt2);cursor:pointer;padding:2px 4px;font-size:13px;opacity:.7}.notice-x:hover{opacity:1}
 .gal-notice:empty{display:none}.gal-notice{margin:4px 0 10px}.notice-card{padding:12px 14px}
 @media (max-width:640px){.notice{flex-wrap:wrap}.notice-body{flex-basis:calc(100% - 60px)}}
+/* «Hay una versión nueva · Recargar» (ui/shell/update.js): in a corner, over the editor, under dialogs and notes. */
+#update-bar{position:fixed;right:16px;bottom:calc(44px + env(safe-area-inset-bottom,0px));z-index:2900;max-width:min(440px,calc(100vw - 32px));box-shadow:0 6px 24px #0003}
+#update-bar .notice-go:disabled{opacity:.7;cursor:progress}
+@media (max-width:640px){#update-bar{left:16px;right:16px;max-width:none}}
 .an-clash{display:flex;gap:6px;align-items:flex-start;margin:0 0 8px;padding:6px 8px;border-radius:6px;background:color-mix(in srgb,#e0a100 14%,var(--panel));font-size:12px;color:var(--txt)}.an-clash .ms{font-size:16px;color:#b07c00}
 @media (max-width:860px){.drive-status span,.cloud-status span{display:none}}
 .pop-more{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;margin-top:8px}

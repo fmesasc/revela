@@ -15,7 +15,7 @@ import { MATHLIVE, BG_REMOVAL, loadScript } from '../../core/vendor.js';
 import { renderLatex } from '../canvas/content.js';
 import { tablePresets, tableClass, tableVars, tableCSS, chartSVG } from '../../render/svg.js';
 import { withBlobs, blobURL } from '../../io/formats/blobmedia.js';
-import { currentPalette, deckFg } from '../../features/design/palettes.js';
+import { currentPalette, deckFg, paletteColours } from '../../features/design/palettes.js';
 
 // PowerPoint's «Correcciones» and «Color», as examples of the picture itself.
 const IMG_PRESETS = [['Original', { brightness: 100, contrast: 100, saturate: 100, opacity: 100 }], ['Más claro', { brightness: 130, contrast: 100, saturate: 100, opacity: 100 }],
@@ -424,6 +424,31 @@ export async function removeBackground(b) {
   }
 }
 // Table styles gallery + options (PowerPoint "Table Design").
+// A table's cell shading, from the cell's right-click menu (the ribbon's Tabla ▸ Sombreado has the same): the
+// theme's colours at hand, any other with the colour picker, «Sin relleno» and «Del estilo». It acts on the cells
+// picked (the one right-clicked, or the block it is in), live, each choice one step to undo.
+export function openCellShading(b) {
+  document.getElementById('cs-modal')?.remove();
+  const now = blocks.cellFillOf(b) || '';
+  const back = document.createElement('div');
+  back.id = 'cs-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:260px">
+    <button class="modal-close">✕</button><h3>${t('Sombreado de celda')}</h3>
+    <h4 style="margin:6px 0 4px">${t('Colores del tema')}</h4>
+    <div class="cs-swatches" style="display:flex;gap:6px;flex-wrap:wrap">${[...new Set(paletteColours().map(c => c.toLowerCase()))].map(c =>
+      `<button type="button" data-cs="${esc(c)}" title="${esc(c)}" aria-label="${esc(c)}" aria-pressed="${c === now.toLowerCase()}" style="width:28px;height:28px;border-radius:50%;border:2px solid ${c === now.toLowerCase() ? 'var(--accent)' : 'rgba(127,127,127,.5)'};background:${esc(c)};padding:0"></button>`).join('')}</div>
+    <label class="fr-l" style="margin-top:8px">${t('Otro color')} <input type="color" class="cs-color" value="${/^#[0-9a-f]{6}$/i.test(now) ? now : '#ffffff'}"></label>
+    <div class="fr-actions"><button type="button" class="mini2" data-cs-none aria-pressed="${now === 'none'}">${t('Sin relleno')}</button><button type="button" class="mini2" data-cs-style>${t('Del estilo')}</button></div>
+  </div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelectorAll('[data-cs]').forEach(x => x.addEventListener('click', () => { blocks.setCellFill(x.dataset.cs); close(); }));
+  back.querySelector('.cs-color').addEventListener('change', e => blocks.setCellFill(e.target.value));
+  back.querySelector('[data-cs-none]').addEventListener('click', () => { blocks.setCellFill('none'); close(); });
+  back.querySelector('[data-cs-style]').addEventListener('click', () => { blocks.setCellFill(''); close(); });
+}
 export function openTableStyle(b) {
   document.getElementById('ts-modal')?.remove();
   const presets = tablePresets(currentPalette());

@@ -100,14 +100,18 @@ export async function takeQuota(env, who, { per, scope } = {}) {
 // ---- A presentation stored slide by slide ---------------------------------------------
 // Each slide in its own values (and the rest of the deck apart), so a change
 // rewrites only the slide it touched: the free tier counts rows written.
-// prev (from the last write/read) lets unchanged slides be skipped.
-export async function writeDeck(storage, deck, prev = null) {
+// prev (from the last write/read) lets unchanged slides be skipped. touched (a Set of slide ids, from the operations
+// applied since prev: docs.js) spares even comparing the others — each compare is the slide in JSON, and that, for every
+// slide on every change, was most of a change's work on a big presentation.
+export async function writeDeck(storage, deck, prev = null, touched = null) {
   const { slides = [], ...rest } = deck;
   const head = JSON.stringify({ ...rest, order: slides.map(s => s.id) });
   const next = { head, slides: new Map() };
   if (!prev || prev.head !== head) await storage.put('deck:head', head);
   for (const s of slides) {
-    const text = JSON.stringify(s), old = prev?.slides.get(s.id);
+    const old = prev?.slides.get(s.id);
+    if (old && touched && !touched.has(s.id)) { next.slides.set(s.id, old); continue; }
+    const text = JSON.stringify(s);
     next.slides.set(s.id, old && old.text === text ? old : { text, parts: await writeText(storage, `slide:${s.id}:`, text, old?.parts) });
   }
   for (const [id, old] of prev?.slides || []) if (!next.slides.has(id)) await storage.delete([`slide:${id}:n`, ...old.parts.map((_, i) => `slide:${id}:${i}`)]);

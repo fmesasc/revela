@@ -2201,6 +2201,111 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(D.querySelectorAll(`.block[data-id="${b.id}"] td`).length, b.rows.length * b.rows[0].length, 'todas las celdas');
   });
 
+  await test('tabla: sombreado de celdas (cinta, menú, deshacer, estilos, guardar, exportar y contraste)', async () => {
+    reset(); const W = frame.contentWindow;
+    const tb = R.blocks.addTableFromText('Mes,Ventas,Coste\nEne,10,6\nFeb,12,7\nMar,9,5'); select(tb); await sleep(20);
+    R.blocks.setTableStyle({ banded: true, band: '#3f6497', headBg: '#112233', headFg: '#ffffff' }); await sleep(20);
+    assert(tb.header && tb.banded, 'tabla con encabezado y bandas');
+    const el = () => D.querySelector(`#stage .block[data-id="${tb.id}"]`), td = (r, c) => el().querySelector(`td[data-r="${r}"][data-c="${c}"]`);
+    const bgOf = (r, c) => getComputedStyle(td(r, c)).backgroundColor;
+    const ctxBtn = name => [...D.querySelectorAll('#ribbon [data-page="ctx"] button')].find(x => x.querySelector('span')?.textContent === name);
+    const picker = () => D.querySelector('#ribbon [data-page="ctx"] label.color[title="Sombreado de celda"] input[type=color]');
+    // In the table's tab, where PowerPoint has it (Table Design ▸ Shading): the colour picker, «Sin relleno» and «Del estilo».
+    assert([...D.querySelectorAll('#ribbon [data-page="ctx"] .group > label')].some(l => l.textContent === 'Sombreado'), 'grupo Sombreado en la pestaña Tabla');
+    assert(picker() && ctxBtn('Sin relleno') && ctxBtn('Del estilo'), 'selector de color, Sin relleno y Del estilo');
+    picker().dispatchEvent(new W.PointerEvent('pointerdown', { bubbles: true }));
+    eq(picker().getAttribute('list'), 'theme-swatches', 'el selector ofrece los colores del tema, como los demás');
+    // Writing in a cell: the command is for that cell; dragging across, for the block of cells (tinted while picked).
+    td(1, 0).dispatchEvent(new W.MouseEvent('mousedown', { bubbles: true, button: 0 }));
+    td(1, 0).dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true })); await sleep(30);
+    assert(el().classList.contains('editing'), 'escribiendo en la tabla');
+    eq(JSON.stringify(R.blocks.tableCellKeys(tb)), '["1,0"]', 'la celda con el cursor');
+    td(1, 0).dispatchEvent(new W.MouseEvent('mousedown', { bubbles: true, button: 0 }));
+    td(2, 1).dispatchEvent(new W.MouseEvent('mouseover', { bubbles: true, buttons: 1 }));
+    W.dispatchEvent(new W.MouseEvent('mouseup', { bubbles: true })); await sleep(20);
+    eq(R.blocks.tableCellKeys(tb).join(' '), '1,0 1,1 2,0 2,1', 'arrastrando: un bloque de 2×2 celdas');
+    eq(el().querySelectorAll('td.cell-sel').length, 4, 'las cuatro, marcadas en el lienzo');
+    // The colour from the ribbon (leaving the cell for the ribbon keeps the cells picked).
+    D.activeElement?.blur?.(); await sleep(30);
+    assert(!el().classList.contains('editing') && R.blocks.hasTableCells(tb), 'al ir a la cinta siguen elegidas');
+    const p = picker(); p.value = '#ff0000'; p.dispatchEvent(new W.Event('change')); await sleep(30);
+    eq(JSON.stringify(tb.cellBg), JSON.stringify({ '1,0': '#ff0000', '1,1': '#ff0000', '2,0': '#ff0000', '2,1': '#ff0000' }), 'solo esas cuatro');
+    eq(bgOf(1, 0), 'rgb(255, 0, 0)', 'el color propio manda sobre la banda');
+    assert(/rgba\(63, 100, 151, 0\.18\)/.test(bgOf(1, 2)), 'las demás celdas siguen con su banda: ' + bgOf(1, 2));
+    eq(bgOf(0, 0), 'rgb(17, 34, 51)', 'y el encabezado con el suyo');
+    eq(picker().value, '#ff0000', 'la cinta muestra el color de las celdas elegidas');
+    // Undo / redo: one step.
+    R.store.undo(); await sleep(30);
+    const now = () => slide().blocks.find(x => x.id === tb.id);
+    assert(!now().cellBg, 'deshacer quita el sombreado'); assert(/rgba\(63, 100, 151, 0\.18\)/.test(bgOf(1, 0)), 'y vuelve la banda');
+    R.store.redo(); await sleep(30);
+    eq(now().cellBg?.['2,1'], '#ff0000', 'rehacer lo devuelve'); eq(bgOf(2, 1), 'rgb(255, 0, 0)', 'también en el lienzo');
+    // «Sin relleno»: no colour, not even the band's; «Del estilo»: the band again.
+    const b = now(); select(b); R.blocks.setTableCells(b.id, 3, 0); R.render(); await sleep(20);
+    ctxBtn('Sin relleno').click(); await sleep(30);
+    eq(b.cellBg['3,0'], 'none', 'sin relleno'); eq(bgOf(3, 0), 'rgba(0, 0, 0, 0)', 'transparente aunque la fila tenga banda');
+    assert(ctxBtn('Sin relleno').getAttribute('aria-pressed') === 'true', 'el botón queda pulsado');
+    ctxBtn('Del estilo').click(); await sleep(30);
+    assert(!('3,0' in b.cellBg), 'del estilo: sin color propio'); assert(/rgba\(63, 100, 151, 0\.18\)/.test(bgOf(3, 0)), 'vuelve la banda');
+    // The table selected as a whole (a click on it, not writing): every cell.
+    el().dispatchEvent(new W.MouseEvent('mousedown', { bubbles: true, button: 0 })); select(b); await sleep(20);
+    assert(!R.blocks.hasTableCells(b), 'un clic en la tabla: toda ella'); eq(R.blocks.tableCellKeys(b).length, 12, 'las 12 celdas');
+    eq(R.blocks.cellFillOf(b), null, 'colores distintos: mezcla');
+    assert(D.querySelector('#ribbon [data-page="ctx"] label.color[title="Sombreado de celda"]').classList.contains('mixed'), 'la cinta lo muestra mezclado');
+    // The right-click menu: «Sombreado de celda…» for the cell right-clicked (the theme's colours, another, none).
+    R.blocks.setCellFill(''); await sleep(20);
+    td(3, 2).dispatchEvent(new W.MouseEvent('mousedown', { bubbles: true, button: 2 }));
+    td(3, 2).dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: 20, clientY: 20 })); await sleep(20);
+    const item = [...D.querySelectorAll('.ctx-item')].find(x => x.textContent === 'Sombreado de celda…');
+    assert(item, 'opción en el menú contextual de la celda'); item.click(); await sleep(20);
+    const sw = [...D.querySelectorAll('#cs-modal [data-cs]')], acc = R.palettes.currentPalette().accents[1].toLowerCase();
+    assert(sw.length >= 4 && D.querySelector('#cs-modal input[type=color]') && D.querySelector('#cs-modal [data-cs-none]'), 'colores del tema, otro color y sin relleno');
+    sw.find(x => x.dataset.cs === acc).click(); await sleep(30);
+    eq(JSON.stringify(b.cellBg), JSON.stringify({ '3,2': acc }), 'solo la celda del clic derecho');
+    // A merged cell counts once (its top-left cell); a removed row takes its shading with it.
+    R.blocks.tableMerge(1, 0, 'right'); select(b); R.blocks.setTableCells(b.id, 1, 0, 1, 1); R.blocks.setCellFill('#00aa00'); await sleep(20);
+    eq(b.cellBg['1,0'], '#00aa00', 'la combinada, por su celda de arriba a la izquierda'); assert(!('1,1' in b.cellBg), 'y no la cubierta');
+    R.blocks.tableDelRow(); await sleep(20);
+    assert(!('3,2' in b.cellBg), 'al quitar la fila, se va su color');
+    R.blocks.tableAddRow(); await sleep(20); assert(/rgba\(63, 100, 151, 0\.18\)/.test(bgOf(3, 2)), 'y la fila nueva no lo recupera: la de su banda');
+    // Saved with the document (and opened again).
+    R.blocks.setTableCells(b.id, 2, 2); R.blocks.setCellFill('#0000ff'); R.blocks.setTableCells(b.id, 3, 0); R.blocks.setCellFill('none'); await sleep(20);
+    const saved = JSON.parse(JSON.stringify(R.state.deck)); R.store.replaceDeck(saved); R.render(); await sleep(30);
+    const b2 = slide().blocks.find(x => x.id === tb.id);
+    eq(JSON.stringify(b2.cellBg), JSON.stringify({ '1,0': '#00aa00', '2,2': '#0000ff', '3,0': 'none' }), 'guardado y abierto de nuevo'); eq(bgOf(2, 2), 'rgb(0, 0, 255)', 'y se ve');
+    // Exports: the presented HTML, the PDF (print), PowerPoint (and back) and OpenDocument.
+    const html = R.io.buildHTML();
+    assert(/<td colspan="2" style="background:#00aa00;">/.test(html) && html.includes('background:#0000ff;') && html.includes('background:none;'), 'en la presentación');
+    const PR = await W.eval("import('/src/io/export/print.js')");
+    assert(PR.buildPrintHTML().includes('background:#0000ff;'), 'en el PDF');
+    await R.vendor.loadScript(R.vendor.JSZIP, 'JSZip');
+    const zip = await W.JSZip.loadAsync(await R.pptx.buildPptxBlob());
+    const xs = await Promise.all(Object.keys(zip.files).filter(f => /^ppt\/slides\/slide\d+\.xml$/.test(f)).map(f => zip.file(f).async('string')));
+    const x = xs.find(s => s.includes('<a:tbl>'));
+    // (The cells' properties, by row and column; the borders' colours left out.)
+    const trs = [...x.matchAll(/<a:tr\b[\s\S]*?<\/a:tr>/g)].map(m => [...m[0].matchAll(/<a:tc\b[\s\S]*?<\/a:tc>/g)].map(c => (c[0].match(/<a:tcPr[\s\S]*?<\/a:tcPr>/) || [''])[0].replace(/<a:ln[LRTB]\b[\s\S]*?<\/a:ln[LRTB]>/g, '')));
+    assert(/<a:solidFill><a:srgbClr val="0000FF"\/><\/a:solidFill>/.test(trs[2][2]), 'PPTX: relleno de la celda: ' + trs[2][2]);
+    assert(/srgbClr val="00AA00"/.test(trs[1][0]), 'PPTX: el de la combinada');
+    assert(/solidFill/.test(trs[3][1]) && !/solidFill/.test(trs[3][0]), 'PPTX: «Sin relleno» sin relleno, aunque su fila tenga banda');
+    const back = (await R.pptxImport.importPPTX(new W.File([await zip.generateAsync({ type: 'blob' })], 't.pptx'))).slides.flatMap(s => s.blocks).find(x => x.type === 'table');
+    eq([back.cellBg['1,0'], back.cellBg['2,2']].join(), '#00aa00,#0000ff', 'PPTX: y vuelve al importarlo');
+    const ODP = await W.eval("import('/src/io/formats/odp.js')"), c = await (await W.JSZip.loadAsync(await ODP.buildODP())).file('content.xml').async('string');
+    assert(/draw:fill-color="#0000ff"/.test(c), 'OpenDocument: el color de la celda');
+    // Accessibility: the deck's text on a cell of nearly its colour is reported, and «Corregir» makes it readable.
+    const fg = '#202020'; R.store.commit(() => { b2.color = '#222222'; b2.cellBg['2,1'] = fg; });
+    const iss = R.a11y.checkAccessibility().find(i => i.kind === 'contrast' && i.blockId === b2.id);
+    assert(iss && /celdas de la tabla/.test(iss.msg) && parseFloat(iss.extra) < 1.5, 'contraste bajo en la celda: ' + JSON.stringify(iss));
+    R.store.commit(() => R.a11y.fixContrast(R.state.deck, iss.slide, b2.id)); await sleep(30);
+    assert(!R.a11y.checkAccessibility().some(i => i.kind === 'contrast' && i.blockId === b2.id), 'corregido');
+    eq(b2.cellBg['2,1'], fg, 'el sombreado elegido se queda'); assert(/<span style="color:/.test(b2.rows[2][1]), 'cambia el color del texto de esa celda');
+    assert(/span/.test(td(2, 1).innerHTML), 'y se ve en el lienzo');
+    // A theme colour follows the theme, as the table style's do.
+    const a0 = R.palettes.currentPalette().accents[0]; R.store.commit(() => { b2.cellBg['2,2'] = a0; });
+    const other = Object.keys(R.palettes.PALETTES).find(k => k !== (R.state.deck.palette || 'revela') && R.palettes.PALETTES[k].accents[0].toLowerCase() !== a0.toLowerCase());
+    R.palettes.applyPalette(other); await sleep(20);
+    eq(slide().blocks.find(x => x.id === tb.id).cellBg['2,2'].toLowerCase(), R.palettes.PALETTES[other].accents[0].toLowerCase(), 'cambiar los colores del tema cambia el de la celda');
+  });
+
   await test('cuentagotas: aplica el color elegido al objetivo', async () => {
     reset(); R.blocks.addShape('rect'); const b = last(); select(b); await sleep(20);
     R.ribbon.applyPickedColour(D.querySelector('[data-shape-fill]'), '#12ab34'); await sleep(10);

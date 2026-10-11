@@ -65,10 +65,10 @@ import { handleLti } from './lti.js';
 import { handleCalls } from './calls.js';
 import { docsSettings, TRASH_DAYS, FOLDERS } from './docs.js';
 import { mail, sendMail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL } from './mail.js';
-import { scheduleAt, dayOf } from './schedule.js';
+import { scheduleItem, scheduleAll, dayOf } from './schedule.js';
 import { handle3d, configured3d } from './model3d.js';
 import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES, emails as adminEmails } from './admin.js';
-import { record, active } from './finance.js';
+import { record } from './finance.js';
 import { NOTICE_PLACES, noticesFor, noticesOp } from './notices.js';
 import { takeQuota } from './store.js';
 import { handleCommunity } from './community.js';
@@ -79,7 +79,7 @@ import { enc, b64url, random, sha256, DAY, HOUR } from './util.js';
 import { stockSearch, stockUsed, photoProviders } from './stock.js';
 import { storageConfig, MB } from './storage.js';
 import { handleVisit, visitsCall, cleanPath } from './visits.js';
-import { startLive, joinLive } from './broadcast.js';
+import { startLive, joinLive, startVote, joinVote, voteCode } from './broadcast.js';
 import { ssoStart, ssoCallback, ssoJoin } from './sso.js';
 import { hookOp, handleHooks } from './hooks.js';
 import { keyOp, handleKeys, handleV1, handleMcp, handleOAuth, connectInfo, connectApprove, isKey, parseKey, mcpChallenge } from './publicapi.js';
@@ -200,7 +200,23 @@ export class Account {
     // (Credits and space change often: written again at most every five minutes — at once if the space moved 100 KB.)
     const moved = Math.abs((last?.rec.bytes || 0) - (rec.bytes || 0));
     if (!force && last && same(last.rec) === same(rec) && moved < MB / 10 && ((last.rec.credits === rec.credits && last.rec.testCredits === rec.testCredits && !moved) || now - last.at < 5 * 60e3)) return;
-    if (await directoryUpsert(this.env, rec)) await this.put({ dirRec: { rec, at: now } });
+    if (!force && this.out) this.out.dir = rec;           // (sent after the answer: flush())
+    else if (await directoryUpsert(this.env, rec)) await this.put({ dirRec: { rec, at: now } });
+  }
+  // What a request changes in the objects shared by every account — the business's accounts (finance.js), the
+  // schedule (schedule.js), the administrators' directory (admin.js) — is gathered while it runs and sent after its
+  // answer (flush), one call to each: none of it is needed to answer, and each of those is one object for everyone, so
+  // waiting for them made every request wait in their queues. A new account alone made six such calls (three to
+  // Finance, two to Schedule, one to the directory); 100 at once took 8.1 s here, now ~3 s (local test, 2026-10-11).
+  // (Money and credits themselves never leave this object: only the reports and the notices wait.)
+  // Still in order (one flush after another) and once each; a failure is logged and lost, as when they were awaited
+  // (record() never threw). Outside a request (this.out null) they go at once.
+  fin(ev) { if (this.out) this.out.fin.push(ev); else return record(this.env, ev); }
+  sched(ts, sub, kind, ref) { if (!sub) return; const x = scheduleItem(ts, sub, kind, ref); if (this.out) this.out.sched.push(x); else return scheduleAll(this.env, [x]).catch(e => console.log('schedule', e?.message)); }
+  async flush(out) {
+    if (out.fin.length) await record(this.env, out.fin);
+    if (out.sched.length) await scheduleAll(this.env, out.sched).catch(e => console.log('schedule', e?.message));
+    if (out.dir && (await directoryUpsert(this.env, out.dir))) await this.put({ dirRec: { rec: out.dir, at: Date.now() } });
   }
   // Credits come in lots, each with its expiry ({ n, exp }); they are spent from the one that
   // expires first. What a request really cost beyond the balance is a debt, paid by the next
@@ -228,7 +244,7 @@ export class Account {
   async remind(exp) {
     const sub = (await this.get('profile', {})).sub, done = await this.get('reminders', []); if (!sub || done.includes(exp)) return;
     await this.put({ reminders: [...done.filter(x => x > Date.now()), exp].slice(-50) });
-    await scheduleAt(this.env, exp - 7 * DAY, sub, 'credits', String(exp));
+    this.sched(exp - 7 * DAY, sub, 'credits', String(exp));
   }
   async take(n) {                                         // → [{ n, exp }] taken (to give back exactly), balance
     const lots = await this.lots(), taken = []; let debt = await this.get('debt', 0);
@@ -248,7 +264,7 @@ export class Account {
     list.push({ at: Date.now(), delta, reason, ...(ref && { ref }), ...extra, balance: await this.get('credits', 0) });
     await this.put({ ledger: list.slice(-500) });
     // (The business's accounts, finance.js: credits granted, expired or taken; AI charges go with their request, see 'settle'.)
-    if (delta && !CHARGES.includes(reason)) await record(this.env, { kind: 'credits', reason: String(ref || '').startsWith('refund:') ? 'refund' : reason, delta, sub: (await this.get('profile', {})).sub, ...(extra?.test && { test: true }) });
+    if (delta && !CHARGES.includes(reason)) this.fin({ kind: 'credits', reason: String(ref || '').startsWith('refund:') ? 'refund' : reason, delta, sub: (await this.get('profile', {})).sub, ...(extra?.test && { test: true }) });
   }
   async entry(delta, reason, ref, days = 365, extra) {
     const bal = delta >= 0 ? await this.add(delta, Date.now() + days * DAY, extra?.test) : (await this.take(-delta)).credits;
@@ -318,13 +334,13 @@ export class Account {
     const today = dayOf(Date.now()); if ((await this.get('lastSeen', null)) === today) return;
     const month = await this.get('seenMonth', null);
     await this.put({ lastSeen: today, seenMonth: today.slice(0, 7) });
-    await active(this.env, { mau: month !== today.slice(0, 7) });            // (daily and monthly active users: finance.js)
+    this.fin({ kind: 'active', mau: month !== today.slice(0, 7) });          // (daily and monthly active users: finance.js)
     if (!(await this.get('idleNext', null))) await this.idleFrom(today);
   }
   async idleFrom(day) {
     const sub = (await this.get('profile', {})).sub; if (!sub) return;
     const ref = 'w30:' + day; await this.put({ idleNext: ref });
-    await scheduleAt(this.env, Date.parse(day) + (settings(this.env).idleDays - 30) * DAY, sub, 'idle', ref);
+    this.sched(Date.parse(day) + (settings(this.env).idleDays - 30) * DAY, sub, 'idle', ref);
   }
   // The daily run asks: { kind, ref } → act if it still applies ({ delete: true }: the worker deletes the account).
   async due(a) {
@@ -346,19 +362,29 @@ export class Account {
       if (stage === 'w30' || stage === 'w7') {
         await this.mailMe('idle', { days, date: fmtDate(end, lang) }, `idle:${stage}:${seen}`);
         const next = stage === 'w30' ? 'w7:' + seen : 'del:' + seen; await this.put({ idleNext: next });
-        await scheduleAt(this.env, stage === 'w30' ? end - 7 * DAY : end, prof.sub, 'idle', next);
+        this.sched(stage === 'w30' ? end - 7 * DAY : end, prof.sub, 'idle', next);
       } else if (stage === 'del') return { delete: true };
     } else if (a.kind === 'trash') {                      // in the trash for TRASH_DAYS: deleted for good (schedule.js); the rest, later
       const docs = await this.get('docs', []), end = d => d.trashed + TRASH_DAYS * DAY;
       const purge = docs.filter(d => d.trashed && end(d) <= now).map(d => d.id), rest = docs.filter(d => d.trashed && end(d) > now);
-      if (rest.length) await scheduleAt(this.env, Math.min(...rest.map(end)), prof.sub, 'trash', '');
+      if (rest.length) this.sched(Math.min(...rest.map(end)), prof.sub, 'trash', '');
       return { purge };
     }
     return {};
   }
   // One request at a time, whole (Cloudflare already runs a Durable Object's
   // storage steps in order; this also keeps any await in between from mixing two).
-  fetch(req) { const run = () => this.handle(req); const p = (this.queue || Promise.resolve()).then(run, run); this.queue = p.catch(() => {}); return p; }
+  // Then, after its answer, what it has for the shared objects (flush(): one after another, in their own line, so the
+  // next request here doesn't wait for them either; 'wipe' does).
+  fetch(req) {
+    const out = { fin: [], sched: [], dir: null }, before = this.flushing;
+    const run = async () => { this.out = out; this.before = before; try { return await this.handle(req); } finally { this.out = null; } };
+    const p = (this.queue || Promise.resolve()).then(run, run); this.queue = p.catch(() => {});
+    const send = () => (out.fin.length || out.sched.length || out.dir ? this.flush(out).catch(e => console.log('flush', e?.message)) : null);
+    this.flushing = Promise.all([this.flushing, p.catch(() => {})]).then(send);
+    this.ctx.waitUntil?.(this.flushing);
+    return p;
+  }
   async handle(req) {
     const op = new URL(req.url).pathname.split('/').pop(), a = req.method === 'POST' ? await req.json() : {};
     const s = settings(this.env);
@@ -367,7 +393,7 @@ export class Account {
         let fresh = false;
         const prof = await this.get('profile', null), terms = a.terms === s.termsVersion ? { version: s.termsVersion, at: Date.now() } : null;
         if (!prof && !terms) return this.json({ error: 'terms', version: s.termsVersion });   // (a new account accepts the terms first)
-        if (!prof) { await this.put({ profile: { sub: a.sub, email: a.email, ...(a.name && { name: a.name }), ...(a.lang && { lang: a.lang }), created: Date.now(), terms } }); await record(this.env, { kind: 'signup', sub: a.sub }); if (s.trial > 0) await this.entry(s.trial, 'trial', null, s.trialDays); fresh = true; }
+        if (!prof) { await this.put({ profile: { sub: a.sub, email: a.email, ...(a.name && { name: a.name }), ...(a.lang && { lang: a.lang }), created: Date.now(), terms } }); this.fin({ kind: 'signup', sub: a.sub }); if (s.trial > 0) await this.entry(s.trial, 'trial', null, s.trialDays); fresh = true; }
         else {
           const next = { ...prof, email: a.email, ...(a.name && { name: a.name }), ...(a.lang && { lang: a.lang }), ...(terms && prof.terms?.version !== s.termsVersion && { terms }) };
           if (JSON.stringify(next) !== JSON.stringify(prof)) await this.put({ profile: next });
@@ -456,7 +482,7 @@ export class Account {
         const end = +a.end, lang = (await this.get('profile', {})).lang; await this.put({ cancelAt: end });
         await this.mailMe('proEnding', { date: fmtDate(end, lang), ...(await this.proVars(lang)) }, 'pro-ending:' + end);
         const sub = (await this.get('profile', {})).sub;
-        if (end - 7 * DAY > Date.now() + DAY) await scheduleAt(this.env, end - 7 * DAY, sub, 'pro-soon', String(end));
+        if (end - 7 * DAY > Date.now() + DAY) this.sched(end - 7 * DAY, sub, 'pro-soon', String(end));
         return this.json({ ok: true });
       }
       case 'plan-ended': {                                 // { ref }: Pro is over
@@ -516,8 +542,8 @@ export class Account {
         // (In the person's ledger, what it was for and which model: the admin sees it.)
         await this.entry(-used, a.reason || 'ai', a.ref, undefined, a.ai && { feature: String(a.ai.feature || 'other').slice(0, 30), model: String(a.ai.model || '').slice(0, 80) });
         // (What the request cost Revela and what it charged, for the business's accounts: finance.js.)
-        if (a.ai) await record(this.env, { kind: 'ai', ...a.ai, credits: used, sub: (await this.get('profile', {})).sub });
-        else if (used) await record(this.env, { kind: 'credits', reason: a.reason || 'ai', delta: -used, sub: (await this.get('profile', {})).sub });
+        if (a.ai) this.fin({ kind: 'ai', ...a.ai, credits: used, sub: (await this.get('profile', {})).sub });
+        else if (used) this.fin({ kind: 'credits', reason: a.reason || 'ai', delta: -used, sub: (await this.get('profile', {})).sub });
         return this.json({ ok: true, used });
       }
       case 'grant': {                                      // { credits, reason, ref } — once per ref (payments)
@@ -551,6 +577,7 @@ export class Account {
         ledger: await this.get('ledger', []), docs: await this.get('docs', []), folders: await this.get('folders', []), sessions: Object.values(await this.get('sessions', {})).map(v => ({ created: v.created, last: v.last || v.created, expires: v.expires, kind: v.kind, device: v.device || '', where: v.where || '' })) });
       case 'wipe': {
         const prof = await this.get('profile', {}), out = { docs: (await this.get('docs', [])).map(d => d.id), customer: await this.get('customer', null), customerTest: await this.get('customerTest', null), email: prof.email || null, lang: prof.lang || null };
+        await this.before;                                 // (what earlier requests still had to send — the directory too — first)
         await this.ctx.storage.deleteAll(); if (prof.sub) await directoryRemove(this.env, prof.sub); return this.json(out);
       }
       case 'docs-list': { const d = await this.docState(); return this.json({ docs: (await this.get('docs', [])).map(x => (d.locked.includes(x.id) ? { ...x, readOnly: true } : x)), limit: d.limit, storage: await this.storage() }); }
@@ -584,7 +611,7 @@ export class Account {
         if (a.thumbAt !== undefined) d.thumbAt = +a.thumbAt || null;
         if (a.trashed !== undefined) {
           d.trashed = a.trashed ? Date.now() : null;
-          if (d.trashed) await scheduleAt(this.env, d.trashed + TRASH_DAYS * DAY, (await this.get('profile', {})).sub, 'trash', '');
+          if (d.trashed) this.sched(d.trashed + TRASH_DAYS * DAY, (await this.get('profile', {})).sub, 'trash', '');
         }
         await this.put({ docs }); return this.json({ ok: true, doc: d });
       }
@@ -807,7 +834,7 @@ async function sessionOf(req, env) {
   // An API key (publicapi.js): its account, marked so only /api/v1 and /api/mcp accept it.
   if (isKey(bearer)) {
     const k = parseKey(bearer), r = k ? await call(acct(env, k.sub), 'key-check', { secret: k.secret }) : { ok: false };
-    return r.ok ? { sub: k.sub, via: 'key', key: r.id, email: r.email, ...(r.blocked && { blocked: true }) } : null;
+    return r.ok ? { sub: k.sub, via: 'key', key: r.id, email: r.email, ...(r.who && { who: r.who }), ...(r.blocked && { blocked: true }) } : null;
   }
   const raw = bearer || fromCookie, t = parseToken(raw); if (!t) return null;
   const r = await call(acct(env, t.sub), 'check', { secret: t.secret, ...sessionClient(req), ...(env.STAGE && { email: true }) });   // (the test site: whose, to check the invited list)
@@ -861,7 +888,7 @@ export async function handleApi(req, env, url) {
     if (langOf(who.lang)) await call(acct(env, 'e:' + who.email), 'set-lang', { lang: langOf(who.lang) });
     // (Into the team when its admin chose so and there are seats; already in one: as it was.)
     if (who.autoJoin && !(await call(acct(env, who.sub), 'team-id')).id && (await ssoJoin(env, who.team, who.email, who.sub)).data.ok) await call(acct(env, who.sub), 'team-set', { id: who.team });
-    return new Response(null, { status: 302, headers: { Location: `${s.site}/app/?sso=ok`, 'Cache-Control': 'no-store',
+    return new Response(null, { status: 302, headers: { Location: who.next ? s.site + who.next : `${s.site}/app/?sso=ok`, 'Cache-Control': 'no-store',
       'Set-Cookie': `${COOKIE}=${tokenOf(who.sub, r.secret)}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${r.days * 86400}` } });
   }
   // A live broadcast's room (broadcast.js): the presenter (with its token) and the audience (no session).
@@ -990,6 +1017,12 @@ export async function handleApi(req, env, url) {
     return path === '/mcp' ? handleMcp(req, env, me, body, json) : handleV1(path, req, body, url, env, me, json);
   }
   if (me?.via === 'key') return json({ error: 'an API key only opens /api/v1 and /api/mcp' }, 403);
+  // Votes through the server (broadcast.js): a phone's way in — with its account when it has a session here (a poll
+  // that asks to sign in counts one vote per account) — and the 5 letters of a room typed on vote.html.
+  const vt = path.match(/^\/vote\/([\w-]{1,40})$/);
+  if (vt && req.method === 'GET') return vt[1] === 'code' ? json({ error: 'not found' }, 404) : joinVote(req, env, vt[1], me && !me.blocked ? me.sub : null);
+  const vc = path.match(/^\/vote\/code\/(\w{1,10})$/);
+  if (vc && req.method === 'GET') return voteCode(env, vc[1].toUpperCase(), json);
   // What is asking to connect (the app shows it before asking; no session needed).
   if (path === '/oauth/info' && req.method === 'POST') return connectInfo(env, body, json);
   // Reporting a problem: with a session or with an email address; only from Revela itself (admin.js).
@@ -1013,6 +1046,9 @@ export async function handleApi(req, env, url) {
     return json({ error: 'blocked', message: 'Esta cuenta está bloqueada. Si crees que es un error, escríbenos desde Revela ▸ Vista ▸ Informar de un problema.' }, 403);
   // Cloud documents: a link may give access without a session (to read).
   if (isDocs) {
+    // (Answering a poll by its link: only whose account it is, when the poll asks to sign in — not the profile and team
+    // below, three more requests per vote.)
+    if (/^\/docs\/[\w-]{16,40}\/poll\/[\w-]{4,40}$/.test(path)) return handleDocs(path, req, body, url, env, me && { sub: me.sub }, json);
     // (The team only while they really are in it: someone taken out keeps its id in their account until it's noticed.)
     const who = me && { ...me, ...(await call(acct(env, me.sub), 'me')) }, tid = me && (await call(acct(env, me.sub), 'team-id')).id;
     const team = tid && (await teamStatus(env, tid, who.email))?.member ? tid : null;
@@ -1037,6 +1073,8 @@ export async function handleApi(req, env, url) {
   if (path === '/keys' || path.startsWith('/keys/')) return handleKeys(path, req, body, me, A, json);
   if (path === '/hooks' || path.startsWith('/hooks/')) return handleHooks(path, req, body, me, A, env, json);
   if (path === '/oauth/approve' && req.method === 'POST') return connectApprove(env, me, body, json);
+  // A room for the polls of a presentation about to start (the presenter: broadcast.js).
+  if (path === '/vote' && req.method === 'POST') return startVote(env, me, json);
   if (path === '/live' && req.method === 'POST') {
     const prof = await call(A, 'me'), who = { sub: me.sub, email: prof.email, name: prof.name, plan: prof.plan, features: prof.features };
     const read = async (id, w) => handleDocs('/docs/' + id, { method: 'GET', headers: new Headers() }, {}, new URL('https://x/docs/' + id), env, w && who, (data, status = 200) => ({ data, status }));

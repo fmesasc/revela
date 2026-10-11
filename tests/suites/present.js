@@ -53,6 +53,43 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.WebSocket = Real; D.getElementById('present-overlay')?.querySelector('#present-close')?.click(); }
   });
 
+  await test('votos por el servidor: la sala en vez de PeerJS, lo de todos una vez, los votos en lotes, y uno por persona si se pide', async () => {
+    reset(); const P = R.poll, sent = [], socks = []; let asked = 0;
+    class FakeWS { constructor() { this.readyState = 1; socks.push(this); setTimeout(() => this.onopen?.(), 5); } send(m) { sent.push(JSON.parse(m)); } close() { this.closed = true; } }
+    R.store.commit(() => { slide().blocks.push(P.pollBlock({ pollId: 'sv1', kind: 'choice', options: ['A', 'B', 'C'] }));
+      R.state.deck.slides.push({ id: 'sv2', blocks: [P.pollBlock({ pollId: 'sv2p', kind: 'choice', options: ['Sí', 'No'], login: true })], background: null }); });
+    assert(/&quot;login&quot;:true/.test(R.io.buildHTML()), 'la presentación sabe qué votación pide iniciar sesión');
+    let w = null;
+    try {
+      R.io.present({ fullscreen: false, votes: () => { asked++; return { open: () => new FakeWS(), room: 'sala-de-votos-12345', code: 'ABCDE', url: 'https://revelaslides.com/app/vote?r=sala-de-votos-12345' }; } });
+      for (let i = 0; i < 80; i++) { await sleep(100); w = D.querySelector('#present-overlay iframe')?.contentWindow; if (socks.length && w?.Reveal?.isReady?.()) break; }
+      await sleep(300);
+      assert(asked === 1 && socks.length === 1 && !w.document.querySelector('script[src*="peerjs"]'), 'pide la sala una vez y se conecta a ella, sin PeerJS: ' + JSON.stringify({ asked, socks: socks.length, peer: [...w.document.querySelectorAll('script[src]')].map(x => x.src) }));
+      eq(w.document.querySelector('.rv-poll-code').textContent, 'ABCDE', 'el código de la sala, en la pantalla');
+      assert(sent.some(m => m.t === 'all' && m.keep === 'poll' && m.d.poll?.pollId === 'sv1'), 'la votación de la diapositiva, una vez para todos (y guardada para quien llegue)');
+      // 300 phones and their votes, in one batch: counted, saved and drawn once; an «ok» to each one, in a few messages.
+      const l = []; for (let k = 0; k < 300; k++) l.push(['1.p' + k, { type: '_open' }], ['1.p' + k, { type: 'vote', pollId: 'sv1', voter: 'votante' + k, answer: k % 3 }]);
+      const n0 = sent.length, t0 = performance.now(); socks[0].onmessage({ data: JSON.stringify({ t: 'up', l }) }); const ms = performance.now() - t0;
+      await sleep(200);
+      eq(Object.keys(JSON.parse(w.localStorage.getItem('revela.poll.sv1'))).length, 300, 'los 300 votos, guardados');
+      const to = sent.slice(n0).filter(m => m.t === 'to');
+      eq(to.flatMap(m => m.l).filter(x => x[1].type === 'ok').length, 300, 'a cada móvil, su «ok»');
+      assert(to.length <= 2 && ms < 1500, `en ${to.length} mensajes; el lote, en ${Math.round(ms)} ms`);
+      // «Exigir iniciar sesión para votar»: only answers from an account, one per account.
+      w.Reveal.next(); await sleep(150);
+      assert(sent.some(m => m.t === 'all' && m.d.poll?.pollId === 'sv2p' && m.d.poll.login === true), 'la votación avisa de que pide iniciar sesión');
+      socks[0].onmessage({ data: JSON.stringify({ t: 'up', l: [['2.a', { type: 'vote', pollId: 'sv2p', voter: 'inventado', answer: 0 }], ['2.b', { type: 'vote', pollId: 'sv2p', voter: 'aCuentaDeAna', answer: 1, acct: true }],
+        ['3.c', { type: 'vote', pollId: 'sv2p', voter: 'aCuentaDeAna', answer: 0, acct: true }]] }) });
+      await sleep(150);
+      assert(sent.filter(m => m.t === 'to').flatMap(m => m.l).some(x => x[0] === '2.a' && x[1].type === 'login'), 'sin cuenta: le pide iniciar sesión');
+      eq(w.localStorage.getItem('revela.poll.sv2p'), '{"aCuentaDeAna":0}', 'con cuenta: un voto por persona (el último)');
+      D.querySelector('#present-close').click(); await sleep(80);
+      assert(sent.at(-1)?.t === 'end', 'al salir, la sala termina (y los móviles lo saben)');
+    } finally { D.getElementById('present-overlay')?.querySelector('#present-close')?.click(); try { w?.localStorage.removeItem('revela.poll.sv1'); w?.localStorage.removeItem('revela.poll.sv2p'); } catch {} }
+    // Without a room (no account): PeerJS, as always.
+    assert(/new Peer\('revela-vote-'/.test(R.io.buildHTML()), 'sin sala, PeerJS');
+  });
+
   await test('cuestionario tipo Kahoot: respuesta correcta, puntos por rapidez, resultados y clasificación', async () => {
     reset(); const W = frame.contentWindow, P = await W.eval("import('/src/features/live/poll.js')");
     const quiz = { kind: 'quiz', pollId: 'q1', question: '¿Capital de Francia?', options: ['Madrid', 'París', 'Roma'], correct: [1], time: 20 };
@@ -654,6 +691,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       v.__vote.onData({ type: 'poll', poll: { pollId: 'o5', kind: 'open', question: 'Q', options: [] } });
       v.__vote.onData({ type: 'feedback', pollId: 'o5', score: 8, text: 'Muy bien' }); assert(/8\/10[\s\S]*Muy bien/.test(Q('#answers .fb')?.textContent || ''), 'la nota de la IA y su comentario');
       v.__vote.onData({ type: 'picked' }); assert(!Q('#picked').hidden, '«te ha tocado»');
+      // A poll that asks to sign in: on a phone without an account, the way to sign in instead of the answers.
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'lg1', kind: 'choice', question: '¿Una por persona?', options: ['Sí', 'No'], login: true } });
+      assert(/iniciar sesión/i.test(Q('#answers').textContent) && [...f.contentDocument.querySelectorAll('#answers button')].some(b => /Google/.test(b.textContent)) && Q('#send').hidden && !Q('#answers .opt'),
+        'pide iniciar sesión (con Google o la cuenta del centro) antes de votar');
+      v.__vote.onData({ type: 'poll', poll: { pollId: 'lg2', kind: 'choice', question: 'Otra', options: ['a', 'b'] } });
+      assert(Q('#answers .opt') && !/iniciar sesión/i.test(Q('#answers').textContent), 'una que no lo pide, como siempre');
+      v.__vote.onData({ type: 'login', pollId: 'lg2' }); assert(/iniciar sesión/i.test(Q('#answers').textContent), 'y si la presentación lo pide, también');
       // My summary: what I answered and how it went.
       assert(!Q('#mine').hidden, 'el resumen se ofrece al responder');
       let saved = null; const realURL = v.URL.createObjectURL; v.URL.createObjectURL = blob => { saved = blob; return 'blob:x'; };

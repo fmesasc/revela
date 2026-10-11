@@ -51,7 +51,9 @@
 //                                     notify: an email to the owner when one is opened (at most every TRACK_QUIET per link)
 //   GET  /api/docs/:id?r=T&e=email&n=name  (a tracked link: → { ask: true, name } while its email is missing)
 //   GET  /api/docs/:id/poll/:pid      → the poll, to answer it later by a link (no session; only one opened so: async)
-//   POST /api/docs/:id/poll/:pid      { voter, answer } → { ok }   (one answer per voter, changeable; at most POLL_MAX voters)
+//   POST /api/docs/:id/poll/:pid      { voter, answer } → { ok }   (one answer per voter, changeable; at most POLL_MAX voters.
+//                                     A poll with «login» — Exigir iniciar sesión para votar —: a session, and the voter
+//                                     is its account's, made here (voterOf): the one sent is ignored; without one, 401)
 //   GET  /api/docs/:id/pollvotes/:pid → { votes: { voter: answer } }  (edit role: brought into the editor's results)
 //   POST /api/docs/:id/progress       { voter, name?, slide?, of?, graded?, score?: { id, s } } (anyone who can read it:
 //                                     the class at its own pace — view.html?doc=…&self=1 —, at most PROGRESS_MAX people)
@@ -70,12 +72,13 @@
 // others can be opened, presented, exported, shared and deleted, but no change
 // is accepted from anyone. Nothing is deleted. The owner's Account decides (docState).
 
-import { applyOps, allowed } from '../../src/features/live/collabsync.js';
+import { applyOps, allowed, diff } from '../../src/features/live/collabsync.js';
+import { EDITS } from './deckedit.js';
 import { writeDeck, readDeck, writeText, readParts } from './store.js';
 import { mail } from './mail.js';
 import { acct, call } from './api.js';
 import { notifyHooks } from './hooks.js';
-import { random, EMAIL, DAY } from './util.js';
+import { random, EMAIL, DAY, voterOf } from './util.js';
 import { ASYNC_KINDS, publicPoll, cleanAnswer } from '../../src/features/live/answers.js';
 
 const ROLE_RANK = { present: 1, view: 2, comment: 3, edit: 4, owner: 5 };
@@ -88,8 +91,24 @@ export const onlySlides = (deck, ids) => (ids ? { ...deck, slides: (deck.slides 
 const MAX_SLIDE_IDS = 1000;
 // An end date: a time in the future (at most 5 years ahead), or none.
 const untilOf = v => { const n = Math.round(+v); return Number.isFinite(n) && n > Date.now() && n < Date.now() + 5 * 365 * 864e5 ? n : null; };
-const POLL_MAX = 5000, PROGRESS_MAX = 500;   // (voters of a poll answered by a link)
+const POLL_MAX = 20000, PROGRESS_MAX = 500;   // (voters of a poll answered by a link)
+// A poll's answers by link are kept in PV_PIECES pieces ('pvb:<poll>:<n>', each { voter: answer }; a voter's piece
+// picked by a hash of it), and an answer rewrites only its own piece. They were one object per poll, rewritten whole
+// with every answer: 1.2 MB with 5,000 open answers, each one slower than the last (local stress test, 2026-10-11: from
+// 380 to 1,070 ms an answer, 66 a second), and a Durable Object's value can't pass 2 MB — it would have stopped near
+// 8,000. Pieces, not one key per answer: a row written per answer either way (what the Workers Free plan counts:
+// 100,000 a day), but «Traer las respuestas» reads PV_PIECES rows, not thousands. With 20,000 open answers a piece is
+// ~90 KB.
+const PV_PIECES = 64;
+const pvPiece = (pid, voter) => { let h = 0x811c9dc5; for (let i = 0; i < voter.length; i++) h = Math.imul(h ^ voter.charCodeAt(i), 16777619); return `pvb:${pid}:${(h >>> 0) % PV_PIECES}`; };
 const LOG_CHARS = 1.5e6, LOG_MAX = 200, VERSIONS = 10, VERSION_EVERY = 30 * 60e3;
+// The log of recent changes ('since') is kept in pieces of LOG_PIECE changes ('log:<n>'): a change rewrites only the last
+// piece, and the oldest pieces go whole. It was one value ('log'), read and written whole with every change — up to
+// LOG_MAX changes, 1.5 MB —, which made each change slower than the last (local stress test, 2026-10-11). Kept in memory
+// while the object is awake. A document from before has its 'log' moved into pieces with its next change.
+const LOG_PIECE = 20;
+const logKey = n => 'log:' + String(n).padStart(9, '0');
+const opsChars = e => JSON.stringify(e.ops).length;
 
 export const docsSettings = env => ({
   maxMb: +env.MAX_MB || 30,
@@ -109,7 +128,7 @@ export function indexOf(deck) {
 
 // ---- One document ---------------------------------------------------------------------------
 export class CloudDoc {
-  constructor(ctx, env) { this.ctx = ctx; this.env = env; this.doc = null; this.parts = null; }
+  constructor(ctx, env) { this.ctx = ctx; this.env = env; this.doc = null; this.parts = null; this.pvN = {}; this.log = null; this.versions = null; this.edits = []; }
   json(o, status = 200) { return new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json' } }); }
   async load() {
     if (this.doc) return this.doc;
@@ -147,8 +166,38 @@ export class CloudDoc {
   // log of recent changes.
   async bytes(meta) {
     this.size ??= JSON.stringify(this.doc.deck).length;
-    const versions = ((await this.ctx.storage.get('versions')) || []).reduce((t, v) => t + (+v.bytes || 0), 0);
+    const versions = (await this.versionList()).reduce((t, v) => t + (+v.bytes || 0), 0);
     return this.size + versions + (+meta.thumbChars || 0) + (+meta.logChars || 0);
+  }
+  // The saved versions' list (kept in memory while awake; snapshot() changes it).
+  async versionList() { return (this.versions ??= (await this.ctx.storage.get('versions')) || []); }
+  // The log of recent changes, its pieces in memory: [{ n, entries: [{ rev, ops }], chars }] (see LOG_PIECE).
+  async logLoad() {
+    if (this.log) return this.log;
+    const st = this.ctx.storage, pieces = [];
+    for (const [k, entries] of await st.list({ prefix: 'log:' })) pieces.push({ n: +k.slice(4), entries, chars: entries.reduce((t, e) => t + opsChars(e), 0) });
+    const old = pieces.length ? null : await st.get('log'), dirty = new Set();
+    if (old) for (let i = 0; i < old.length; i += LOG_PIECE) { const entries = old.slice(i, i + LOG_PIECE), x = { n: i / LOG_PIECE, entries, chars: entries.reduce((t, e) => t + opsChars(e), 0) }; pieces.push(x); dirty.add(x); }
+    return (this.log = { pieces, dirty, gone: [], old: !!old });
+  }
+  // One more change in the log; the oldest pieces go while it's over LOG_MAX changes or LOG_CHARS (the newest piece
+  // stays). → its characters now.
+  async logAdd(entry) {
+    const L = await this.logLoad(), c = opsChars(entry);
+    let last = L.pieces.at(-1);
+    // (A new piece when this one is full, or would pass a quarter of LOG_CHARS: a value can't pass 2 MB.)
+    if (!last || last.entries.length >= LOG_PIECE || (last.entries.length && last.chars + c > LOG_CHARS / 4)) L.pieces.push(last = { n: last ? last.n + 1 : 0, entries: [], chars: 0 });
+    last.entries.push(entry); last.chars += c; L.dirty.add(last);
+    let n = L.pieces.reduce((t, x) => t + x.entries.length, 0), chars = L.pieces.reduce((t, x) => t + x.chars, 0);
+    while (L.pieces.length > 1 && (n > LOG_MAX || chars > LOG_CHARS)) { const x = L.pieces.shift(); n -= x.entries.length; chars -= x.chars; L.dirty.delete(x); L.gone.push(logKey(x.n)); }
+    return chars;
+  }
+  // What logAdd changed, to write (with the meta, in the same put) and to delete.
+  logWrites() {
+    const L = this.log, put = {}, del = [...L.gone, ...(L.old ? ['log'] : [])];
+    for (const x of L.dirty) put[logKey(x.n)] = x.entries;
+    L.dirty = new Set(); L.gone = []; L.old = false;
+    return { put, del };
   }
   // Whether its owner's plan leaves it read-only, and the owner's space (id: given by the worker, never by the body).
   // (It tells the owner's account what it takes now.)
@@ -157,8 +206,100 @@ export class CloudDoc {
     const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('u:' + meta.owner)).fetch('https://do/docs-locked', { method: 'POST', body: JSON.stringify({ id, bytes: await this.bytes(meta) }) });
     return r.ok ? r.json() : { locked: false };
   }
-  // One request at a time (see Account.fetch).
-  fetch(req) { const run = () => this.handle(req); const p = (this.queue || Promise.resolve()).then(run, run); this.queue = p.catch(() => {}); return p; }
+  // A poll's answers by link, all together: its pieces, and what was kept whole before them.
+  async pollVotes(pid) {
+    const st = this.ctx.storage, all = { ...((await st.get('pv:' + pid)) || {}) };
+    for (const piece of (await st.list({ prefix: `pvb:${pid}:` })).values()) Object.assign(all, piece);
+    return all;
+  }
+  // One request at a time (see Account.fetch). Changes ('ops', from the app; 'change', from the public API) wait
+  // together: see drain().
+  fetch(req) {
+    const op = new URL(req.url).pathname.split('/').pop();
+    if (op === 'ops' || op === 'change') return this.edit(op, req);
+    const run = () => this.handle(req); const p = (this.queue || Promise.resolve()).then(run, run); this.queue = p.catch(() => {}); return p;
+  }
+  async edit(op, req) {
+    const a = await req.json();
+    return new Promise((resolve, reject) => {
+      this.edits.push({ op, a, resolve, reject });
+      if (this.edits.length === 1) { const run = () => this.drain(); this.queue = (this.queue || Promise.resolve()).then(run, run).catch(() => {}); }
+    });
+  }
+  // The changes that came while the object was busy, in their order, each checked and applied as when they came one
+  // by one (its own answer, its own rev, its own refusal), and then written once: the deck's slides that changed, the
+  // log, the meta. The owner's account is asked once whether it may change, not twice per change. Before, each change
+  // was a full turn (read the log whole, write it whole, ask the account…): 50 at once on one presentation waited for
+  // each other ~22–26 ms each here, now 5–8 ms (local stress test, 2026-10-11). Something that breaks halfway (storage): every
+  // change of the group fails, and the deck is read again as it was stored.
+  async drain() {
+    const group = this.edits; this.edits = [];
+    let replies;
+    try { replies = await this.applyEdits(group); }
+    catch (e) { this.doc = null; this.log = null; this.versions = null; for (const x of group) x.reject(e); return; }
+    group.forEach((x, i) => x.resolve(replies[i]));
+  }
+  async applyEdits(group) {
+    const st = this.ctx.storage, maxBytes = docsSettings(this.env).maxMb * 1024 * 1024;
+    if (!(await this.load())) return group.map(() => this.json({ error: 'not found' }, 404));
+    const { meta } = this.doc, out = [], done = [];
+    let lk = null, used = 0, snap = null, touched = new Set();
+    // (A change refused after it was applied — too large, no space —: the deck read again as stored, with the earlier
+    // changes of this group applied again.)
+    const undo = async () => { this.doc = null; await this.load(); this.doc.meta = meta; for (const ops of done) applyOps(this.doc.deck, ops); this.size = null; await this.bytes(meta); };
+    for (const x of group) {
+      const a = x.a, role = this.roleOf(meta, a.who, a.r), deck = this.doc.deck;
+      if (meta.trashed && role !== 'owner') { out.push(this.json({ error: 'not found' }, 404)); continue; }
+      if (!role) { out.push(this.json({ error: a.who?.sub ? 'forbidden' : 'sign in' }, a.who?.sub ? 403 : 401)); continue; }
+      const at = r => ROLE_RANK[role] >= ROLE_RANK[r], only = this.scopeOf(meta, a.who, role, a.r);
+      let ops, res = null;
+      if (x.op === 'change') {                             // the public API: its change made here, on a copy, and compared
+        if (!at('edit') || !EDITS[a.action]) { out.push(this.json({ error: 'forbidden' }, 403)); continue; }
+        const next = structuredClone(deck);
+        // (Whatever goes wrong in it, only its own answer: the copy is thrown away, the rest of the group goes on.)
+        try { res = EDITS[a.action](next, a.args || {}); } catch (e) { if (!e.status) console.log('change', a.action, e?.message); out.push(this.json({ error: e.status ? e.message : 'error' }, e.status || 500)); continue; }
+        ops = diff(deck, next);
+      } else {
+        if (!at('comment')) { out.push(this.json({ error: 'forbidden' }, 403)); continue; }
+        ops = Array.isArray(a.ops) ? a.ops : [];
+      }
+      const roleForOps = role === 'owner' ? 'edit' : role;
+      const ok = ops.filter(o => o && Array.isArray(o.p) && o.p.length && o.p.length < 40 && allowed(o, roleForOps));
+      if (ok.length !== ops.length) { out.push(this.json({ error: 'forbidden' }, 403)); continue; }   // (all or nothing: nothing half-applied)
+      if (only && ok.some(o => !only.includes(o.p[1]))) { out.push(this.json({ error: 'forbidden' }, 403)); continue; }   // (comments only on the slides they see)
+      if (!ok.length) { out.push({ rev: meta.rev, ...(res && { out: res }) }); continue; }
+      if (!lk) { lk = await this.locked(meta, a.id); used = lk.storage?.used || 0; }
+      if (lk.locked) { out.push(this.json({ error: 'read only', reason: 'over limit', limit: lk.limit }, 402)); continue; }
+      await this.bytes(meta); const oldSize = this.size;
+      const last = snap ? snap.at : (await this.versionList()).slice(-1)[0]?.at || 0;
+      const before = at('edit') && Date.now() - last > VERSION_EVERY ? JSON.stringify(this.doc.deck) : null;
+      applyOps(this.doc.deck, ok);
+      const size = JSON.stringify(this.doc.deck).length;
+      if (size > maxBytes) { await undo(); out.push(this.json({ error: 'too large' }, 413)); continue; }
+      // The owner's space full: nothing that makes it bigger (what makes it smaller, yes — that frees space; then
+      // without the saved version, which would take more).
+      let keep = before;
+      if (lk.storage && keep && size <= oldSize && used + size - oldSize + keep.length > lk.storage.quota) keep = null;
+      const grows = size - oldSize + (keep ? keep.length : 0);
+      if (lk.storage && grows > 0 && used + grows > lk.storage.quota) { await undo(); out.push(this.json({ error: 'storage full', used, quota: lk.storage.quota }, 402)); continue; }
+      used += grows; this.size = size; done.push(ok);
+      if (keep) snap = { text: keep, rev: meta.rev, at: Date.now() };
+      meta.rev++; meta.updated = Date.now(); meta.name = nameOf(this.doc.deck);
+      meta.logChars = await this.logAdd({ rev: meta.rev, ops: ok });
+      // (Which slides to write again: those the operations reach; all of them if the list itself is replaced.)
+      for (const o of ok) if (touched && o.p[0] === 'slides') { if (o.p.length === 1) touched = null; else if (o.p[1] !== '#') touched.add(o.p[1]); }
+      out.push({ rev: meta.rev, ...(res && { out: res }), changed: true });
+    }
+    if (!done.length) return out.map(r => (r instanceof Response ? r : this.json(r)));
+    if (snap) await this.snapshot(snap.text, snap.rev);
+    this.parts = await writeDeck(st, this.doc.deck, this.parts, touched);
+    const { put, del } = this.logWrites();
+    await st.put({ meta, ...put }); if (del.length) await st.delete(del);
+    const after = { name: meta.name, owner: meta.owner, bytes: await this.bytes(meta), ...indexOf(this.doc.deck) };
+    // (The owner's list is told once per group: the last change's answer carries it; the others, stale: true.)
+    const lastChanged = out.findLastIndex(r => r.changed);
+    return out.map((r, i) => (r instanceof Response ? r : this.json(r.changed ? { rev: r.rev, ...(r.out && { out: r.out }), ...after, ...(i !== lastChanged && { stale: true }) } : r)));
+  }
   async handle(req) {
     const op = new URL(req.url).pathname.split('/').pop(), a = await req.json(), st = this.ctx.storage;
     // The administration only (admin.js /docs/restore): the document as it was at a moment of the last 30 days, with
@@ -170,14 +311,15 @@ export class CloudDoc {
       if (!a.bookmark && !(at > now - 30 * DAY && at < now)) return this.json({ error: 'bad time' }, 400);
       const before = await st.getCurrentBookmark(), to = a.bookmark ? String(a.bookmark) : await st.getBookmarkForTime(at);
       await st.onNextSessionRestoreBookmark(to);
-      this.doc = null; this.parts = null;
+      this.doc = null; this.parts = null; this.log = null; this.versions = null;
       setTimeout(() => { try { this.ctx.abort('restore'); } catch {} }, 0);       // (after this answer: then it restarts restored)
       return this.json({ ok: true, before, to });
     }
     if (op === 'init') {
       const meta = { owner: a.owner, ownerEmail: a.ownerEmail, name: nameOf(a.deck), link: 'none', people: {}, rev: 1, created: Date.now(), updated: Date.now() };
       this.parts = await writeDeck(st, a.deck); this.doc = { meta, deck: a.deck }; this.size = null;
-      await st.put({ meta, log: [], versions: [] }); return this.json({ ok: true, rev: 1 });
+      this.log = { pieces: [], dirty: new Set(), gone: [], old: false }; this.versions = [];
+      await st.put({ meta, versions: [] }); return this.json({ ok: true, rev: 1 });
     }
     const doc = await this.load(); if (!doc) return this.json({ error: 'not found' }, 404);
     const { meta } = doc, role = this.roleOf(meta, a.who, a.r);
@@ -187,12 +329,22 @@ export class CloudDoc {
     if (op === 'poll-public' || op === 'poll-vote') {
       const b = doc.deck.slides.flatMap(sl => sl.blocks || []).find(x => x?.type === 'poll' && x.pollId === String(a.pid) && x.async && ASYNC_KINDS.includes(x.kind));
       if (!b || meta.trashed) return this.json({ error: 'not found' }, 404);
-      if (op === 'poll-public') return this.json({ poll: publicPoll(b), name: meta.name });
-      const voter = String(a.voter || '').slice(0, 40), ans = cleanAnswer(b, a.answer);
+      if (op === 'poll-public') return this.json({ poll: publicPoll(b), name: meta.name, ...(b.login && { signed: !!a.sub }) });
+      // (One vote per account: the voter is made from the account — the same for this owner's polls, live or by link, and
+      // nobody else's —, never the one sent, which anyone can invent.)
+      if (b.login && !a.sub) return this.json({ error: 'sign in' }, 401);
+      const voter = b.login ? await voterOf(this.env, a.sub, meta.owner) : String(a.voter || '').slice(0, 40), ans = cleanAnswer(b, a.answer);
       if (!/^[\w-]{8,40}$/.test(voter) || ans === null) return this.json({ error: 'bad request' }, 400);
-      const key = 'pv:' + b.pollId, votes = (await st.get(key)) || {};
-      if (!(voter in votes) && Object.keys(votes).length >= POLL_MAX) return this.json({ error: 'full' }, 409);
-      votes[voter] = ans; await st.put(key, votes);
+      const pid = b.pollId, old = await st.get('pv:' + pid);
+      if (old) {                                             // (answers kept whole, from before the pieces: moved into them once)
+        const pieces = {}; for (const [v, x] of Object.entries(old)) (pieces[pvPiece(pid, v)] ||= {})[v] = x;
+        await st.put(pieces); await st.delete('pv:' + pid); this.pvN[pid] = Object.keys(old).length;
+      }
+      // (How many answered: counted once while this object is awake — requests here go one at a time —, not stored.)
+      this.pvN[pid] ??= Object.keys(await this.pollVotes(pid)).length;
+      const key = pvPiece(pid, voter), piece = (await st.get(key)) || {};
+      if (!(voter in piece)) { if (this.pvN[pid] >= POLL_MAX) return this.json({ error: 'full' }, 409); this.pvN[pid]++; }
+      piece[voter] = ans; await st.put(key, piece);
       return this.json({ ok: true });
     }
     if (op === 'role') return this.json({ role });                 // (for the video calls: only who may open it)
@@ -223,44 +375,12 @@ export class CloudDoc {
           ...(noCopy && { noCopy: true }), ...(manages && { sharing: sharing() }), ...(role !== 'owner' && { owner: meta.ownerEmail }), ...(notify && { notify }) });
       }
       case 'since': {
-        const log = (await st.get('log')) || [], from = +a.rev || 0;
+        const log = (await this.logLoad()).pieces.flatMap(x => x.entries), from = +a.rev || 0;
         if (from === meta.rev) return this.json({ rev: meta.rev, ops: [] });
         if (role === 'present' || only) return this.json({ rev: meta.rev, deck: seen() });   // (the changes could carry notes, or other slides: the whole, cleaned)
         const first = log[0]?.rev;
         if (first == null || from < first - 1 || from > meta.rev) return this.json({ rev: meta.rev, deck: doc.deck });
         return this.json({ rev: meta.rev, ops: log.filter(e => e.rev > from).flatMap(e => e.ops) });
-      }
-      case 'ops': {
-        if (!at('comment')) return this.json({ error: 'forbidden' }, 403);
-        const ops = Array.isArray(a.ops) ? a.ops : [];
-        const roleForOps = role === 'owner' ? 'edit' : role;
-        const ok = ops.filter(o => o && Array.isArray(o.p) && o.p.length && o.p.length < 40 && allowed(o, roleForOps));
-        if (ok.length !== ops.length) return this.json({ error: 'forbidden' }, 403);   // (all or nothing: nothing half-applied)
-        if (only && ok.some(o => !only.includes(o.p[1]))) return this.json({ error: 'forbidden' }, 403);   // (comments only on the slides they see)
-        if (!ok.length) return this.json({ rev: meta.rev });
-        const lk = await this.locked(meta, a.id);
-        if (lk.locked) return this.json({ error: 'read only', reason: 'over limit', limit: lk.limit }, 402);
-        await this.bytes(meta); const oldSize = this.size;
-        const before = at('edit') && Date.now() - (((await st.get('versions')) || []).slice(-1)[0]?.at || 0) > VERSION_EVERY ? JSON.stringify(doc.deck) : null;
-        applyOps(doc.deck, ok);
-        const size = JSON.stringify(doc.deck).length;
-        if (size > docsSettings(this.env).maxMb * 1024 * 1024) { this.doc = null; return this.json({ error: 'too large' }, 413); }   // (reloaded as it was)
-        // The owner's space full: nothing that makes it bigger (what makes it smaller, yes — that frees space; then
-        // without the saved version, which would take more).
-        let keep = before;
-        if (lk.storage && keep && size <= oldSize && lk.storage.used + size - oldSize + keep.length > lk.storage.quota) keep = null;
-        const grows = size - oldSize + (keep ? keep.length : 0);
-        if (lk.storage && grows > 0 && lk.storage.used + grows > lk.storage.quota) { this.doc = null; return this.json({ error: 'storage full', used: lk.storage.used, quota: lk.storage.quota }, 402); }
-        this.size = size;
-        if (keep) await this.snapshot(keep, meta.rev);
-        meta.rev++; meta.updated = Date.now(); meta.name = nameOf(doc.deck);
-        this.parts = await writeDeck(st, doc.deck, this.parts);
-        let log = (await st.get('log')) || []; log.push({ rev: meta.rev, ops: ok });
-        let chars = log.reduce((t, e) => t + JSON.stringify(e.ops).length, 0);
-        while (log.length > LOG_MAX || (chars > LOG_CHARS && log.length > 1)) chars -= JSON.stringify(log.shift().ops).length;
-        meta.logChars = chars;
-        await st.put({ meta, log });
-        return this.json({ rev: meta.rev, name: meta.name, owner: meta.owner, bytes: await this.bytes(meta), ...indexOf(doc.deck) });
       }
       case 'share': {
         if (!manages) return this.json({ error: 'forbidden' }, 403);
@@ -318,7 +438,7 @@ export class CloudDoc {
       }
       case 'delete': {
         if (role !== 'owner') return this.json({ error: 'forbidden' }, 403);
-        const people = Object.keys(meta.people), team = meta.team || null; await st.deleteAll(); this.doc = null;
+        const people = Object.keys(meta.people), team = meta.team || null; await st.deleteAll(); this.doc = null; this.pvN = {}; this.log = null; this.versions = null;
         return this.json({ ok: true, people, team });
       }
       case 'trash': {                                       // { on }: into the trash (or back)
@@ -350,7 +470,7 @@ export class CloudDoc {
       }
       case 'progress-get': return at('edit') ? this.json({ people: Object.entries((await st.get('sp')) || {}).map(([voter, x]) => ({ voter, ...x })) }) : this.json({ error: 'forbidden' }, 403);
       case 'progress-clear': if (!at('edit')) return this.json({ error: 'forbidden' }, 403); await st.delete('sp'); return this.json({ ok: true });
-      case 'poll-votes': return at('edit') ? this.json({ votes: (await st.get('pv:' + String(a.pid))) || {} }) : this.json({ error: 'forbidden' }, 403);
+      case 'poll-votes': return at('edit') ? this.json({ votes: await this.pollVotes(String(a.pid)) }) : this.json({ error: 'forbidden' }, 403);
       case 'thumb-get': return this.json(only ? { thumb: null, at: null } : { thumb: (await st.get('thumb')) || null, at: meta.thumbAt || null });
       case 'versions': return at('edit') ? this.json({ versions: (await st.get('versions')) || [] }) : this.json({ error: 'forbidden' }, 403);
       case 'version': {
@@ -401,7 +521,7 @@ export class CloudDoc {
   }
   // A version of the whole deck (before a change, at most one every half hour; the last ten).
   async snapshot(text, rev) {
-    const st = this.ctx.storage, list = (await st.get('versions')) || [], at = Date.now();
+    const st = this.ctx.storage, list = await this.versionList(), at = Date.now();
     await writeText(st, `v:${at}:`, text); list.push({ at, rev, bytes: text.length });
     while (list.length > VERSIONS) {
       const old = list.shift(), n = (await st.get(`v:${old.at}:n`)) || 0;
@@ -420,6 +540,16 @@ const ID = /^[\w-]{16,40}$/;
 
 // Deleted for good (by its owner, or by the daily cron after TRASH_DAYS in the trash): the document,
 // and its place in the owner's list and in the lists of whoever it was shared with.
+// A change by the public API (publicapi.js; deckedit.js EDITS[action] with args), made by the document itself on its
+// latest deck, with the role of `me`; then the owner's list in step, as after the app's changes. → { status, data }
+// (data: the change's answer).
+export async function editDeck(env, me, id, action, args) {
+  const who = { sub: me.sub, email: me.email, ...(me.team && { team: me.team }) };
+  const r = await ask(env, id, 'change', { who, id, action, args });
+  if (r.status !== 200) return r;
+  if (r.data.owner && !r.data.stale) await call(acct(env, r.data.owner), 'docs-touch', { id, name: r.data.name, slides: r.data.slides, text: r.data.text, bytes: r.data.bytes });
+  return { status: 200, data: r.data.out || {} };
+}
 export async function purgeDoc(env, sub, id) {
   const r = await ask(env, id, 'delete', { who: { sub }, id });
   if (r.status !== 200 && r.status !== 404) return r;
@@ -481,9 +611,10 @@ export async function handleDocs(path, req, body, url, env, me, json) {
   if (pm) {
     const [, pid, pkind, poll] = pm;
     if (pkind === 'pollvotes') { if (req.method !== 'GET') return json({ error: 'method' }, 405); if (!me) return json({ error: 'no session' }, 401); return reply(await ask(env, pid, 'poll-votes', { who, id: pid, pid: poll })); }
-    if (req.method === 'GET') return reply(await ask(env, pid, 'poll-public', { who: null, id: pid, pid: poll }));
+    // (who: only to know whose account votes, when the poll asks for one — never a role here.)
+    if (req.method === 'GET') return reply(await ask(env, pid, 'poll-public', { who: null, sub: who?.sub || null, id: pid, pid: poll }));
     if (req.method !== 'POST') return json({ error: 'method' }, 405);
-    return reply(await ask(env, pid, 'poll-vote', { who: null, id: pid, pid: poll, voter: body.voter, answer: body.answer }));
+    return reply(await ask(env, pid, 'poll-vote', { who: null, sub: who?.sub || null, id: pid, pid: poll, voter: body.voter, answer: body.answer }));
   }
   const pg = path.match(/^\/docs\/([\w-]{16,40})\/progress(\/clear)?$/);
   if (pg) {
@@ -583,8 +714,8 @@ export async function handleDocs(path, req, body, url, env, me, json) {
     const said = r.data.owner && r.data.owner !== me.sub ? (body.ops || []).filter(o => Array.isArray(o.p) && o.p.includes('comments') && o.v)
       .map(o => (Array.isArray(o.v) ? o.v.at(-1) : o.v)).find(v => typeof v?.text === 'string') : null;
     if (said) await notifyHooks(env, r.data.owner, 'comment', { name: r.data.name, by: me.name || me.email, text: said.text.slice(0, 500), url: `${env.SITE_URL || 'https://revelaslides.com'}/app/?doc=${encodeURIComponent(id)}` }).catch(() => {});
-    if (r.data.owner) await call(acct(env, r.data.owner), 'docs-touch', { id, name: r.data.name, slides: r.data.slides, text: r.data.text, bytes: r.data.bytes });
-    delete r.data.owner; delete r.data.slides; delete r.data.text; delete r.data.bytes;
+    if (r.data.owner && !r.data.stale) await call(acct(env, r.data.owner), 'docs-touch', { id, name: r.data.name, slides: r.data.slides, text: r.data.text, bytes: r.data.bytes });
+    delete r.data.owner; delete r.data.slides; delete r.data.text; delete r.data.bytes; delete r.data.stale;
   }
   return json(r.data);
 }

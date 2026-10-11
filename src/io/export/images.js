@@ -78,15 +78,22 @@ async function fitPictures(holder) {
     img.setAttribute('style', cs + `;position:absolute;left:${(bw - w) * fx}px;top:${(bh - h) * fy}px;width:${w}px;height:${h}px;max-width:none;max-height:none;object-fit:fill`);
   }
 }
+// html2canvas copies the whole page into an iframe for every picture, each element with its computed style: with the
+// editor's own interface and a thumbnail per slide, that copy was nearly all of an export's time (a 300-slide
+// PowerPoint with 100 equations: ~2.5 min). Only what the picture can show is copied: the page's head (its styles and
+// fonts, and any other stylesheet), the element drawn with its ancestors, and what is inside it. (The holders are fixed and off the page, so
+// leaving the rest out moves nothing.)
+const h2c = (el, opts) => window.html2canvas(el, { ...opts,
+  ignoreElements: n => !(n.closest('head') || /^(STYLE|LINK)$/.test(n.tagName) || n.contains(el) || el.contains(n)) || !!opts.ignoreElements?.(n) });
 export async function rasterize(holder, opts) {
   await loadScript(HTML2CANVAS, 'html2canvas');
   await fitPictures(holder);
   const clipped = [...holder.querySelectorAll('[style]')].filter(isClipped);
-  if (!clipped.length) return window.html2canvas(holder, opts);
+  if (!clipped.length) return h2c(holder, opts);
   const saved = clipped.map(el => el.style.cssText);
   const draw = async (el, style) => {
     const { copy, target } = alone(holder, el);
-    try { target.style.cssText += ';' + style; return await window.html2canvas(copy, { ...opts, backgroundColor: null }); } finally { copy.remove(); }
+    try { target.style.cssText += ';' + style; return await h2c(copy, { ...opts, backgroundColor: null }); } finally { copy.remove(); }
   };
   try {
     const parts = [];
@@ -98,7 +105,7 @@ export async function rasterize(holder, opts) {
       parts.push(both);
     }
     clipped.forEach(el => { el.style.visibility = 'hidden'; });
-    const out = await window.html2canvas(holder, opts);
+    const out = await h2c(holder, opts);
     const o = out.getContext('2d'); o.save(); o.setTransform(1, 0, 0, 1, 0, 0);
     parts.forEach(c => o.drawImage(c, 0, 0));
     o.restore();

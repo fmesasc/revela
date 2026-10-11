@@ -9,7 +9,8 @@ import { ticketToken, render } from '../server/cloudflare/mail.js';
 import { verifyBody } from '../server/blender/gate.js';
 import { shortCode, settings, deviceOf } from '../server/cloudflare/api.js';
 import { verifyStripe, stripeConf, billingMode } from '../server/cloudflare/billing.js';
-import { sha256 } from '../server/cloudflare/util.js';
+import { sha256, voterOf } from '../server/cloudflare/util.js';
+import { relayHeaders, PHONE_RATE, UP_MS } from '../server/cloudflare/broadcast.js';
 
 function fakeStorage() {
   const m = new Map(); let alarm = null;
@@ -23,9 +24,11 @@ function fakeStorage() {
       return new Map(keys.map(k => [k, structuredClone(m.get(k))]));
     } };
 }
+// (An Account sends what it has for the shared objects after answering — Account.flush —: here each call also waits
+// for that, so the tests read them in step. A test below checks the answer doesn't wait for them.)
 const namespace = (Cls, env) => { const inst = new Map();
   return { inst, idFromName: n => n, get: id => { if (!inst.has(id)) inst.set(id, new Cls({ storage: fakeStorage() }, env)); const o = inst.get(id);
-    return { fetch: (u, init) => o.fetch(u instanceof Request ? u : new Request(u, init)) }; } }; };
+    return { fetch: async (u, init) => { const r = o.fetch(u instanceof Request ? u : new Request(u, init)), sent = o.flushing; const res = await r; await sent; return res; } }; } }; };
 
 const SITE = 'https://revelaslides.com', CID = 'cid.apps.googleusercontent.com';
 let blenderCalls = [], blenderReply = () => Response.json({ ok: false }), resendCalls = [], rtCalls = [], stockCalls = [], aiCalls = [], aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'hola' } }], usage: { cost: 0.01, prompt_tokens: 100, completion_tokens: 50 } } }), stripeCalls = [];
@@ -462,6 +465,38 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
       ok((await req('GET', `/api/docs/${id}/pollvotes/pollnum1`)).status === 401 && (await req('GET', `/api/docs/${id}/pollvotes/pollnum1`, { headers: { Cookie: teo } })).status === 403, 'más tarde: las respuestas, solo para quien edita');
       j = await (await req('GET', `/api/docs/${id}/pollvotes/pollnum1`, { headers: { Cookie: ana } })).json();
       ok(JSON.stringify(j.votes) === '{"votante-123456":6}', 'más tarde: las respuestas, una por persona: ' + JSON.stringify(j));
+      // Kept in pieces: an answer rewrites only its own piece, never every answer (5,000 open answers were 1.2 MB
+      // rewritten with each one); «Traer las respuestas» joins them.
+      const DS = env.DOCS.inst.get("doc:" + id).ctx.storage.m;
+      for (let i = 0; i < 300; i++) await P('pollnum1', 'POST', { voter: 'votante-' + String(i).padStart(6, '0'), answer: i % 11 });
+      const pieces = [...DS.keys()].filter(k => k.startsWith('pvb:pollnum1:'));
+      ok(!DS.has('pv:pollnum1') && pieces.length > 30 && pieces.length <= 64 && Math.max(...pieces.map(k => Object.keys(DS.get(k)).length)) < 20, 'más tarde: las respuestas, por trozos pequeños: ' + pieces.length);
+      j = await (await req('GET', `/api/docs/${id}/pollvotes/pollnum1`, { headers: { Cookie: ana } })).json();
+      ok(Object.keys(j.votes).length === 301 && j.votes['votante-000007'] === 7 && j.votes['votante-123456'] === 6, 'más tarde: «Traer las respuestas» las junta todas: ' + Object.keys(j.votes).length);
+      // Answers kept whole before the pieces: still brought, and moved into pieces with the next answer (the count too).
+      for (const k of [...DS.keys()].filter(k => k.startsWith('pvb:'))) DS.delete(k);
+      DS.set('pv:pollnum1', { 'viejo-0000001': 3, 'viejo-0000002': 5 }); env.DOCS.inst.get("doc:" + id).pvN = {};
+      j = await (await req('GET', `/api/docs/${id}/pollvotes/pollnum1`, { headers: { Cookie: ana } })).json();
+      ok(JSON.stringify(j.votes) === '{"viejo-0000001":3,"viejo-0000002":5}', 'más tarde: las de antes de los trozos, también');
+      await P('pollnum1', 'POST', { voter: 'viejo-0000001', answer: 9 });
+      j = await (await req('GET', `/api/docs/${id}/pollvotes/pollnum1`, { headers: { Cookie: ana } })).json();
+      ok(!DS.has('pv:pollnum1') && j.votes['viejo-0000001'] === 9 && j.votes['viejo-0000002'] === 5 && env.DOCS.inst.get("doc:" + id).pvN.pollnum1 === 2, 'más tarde: y pasan a trozos con la siguiente');
+      env.DOCS.inst.get("doc:" + id).pvN.pollnum1 = 20000;
+      ok((await P('pollnum1', 'POST', { voter: 'uno-de-mas-01', answer: 1 })).status === 409 && (await P('pollnum1', 'POST', { voter: 'viejo-0000002', answer: 1 })).status === 200, 'más tarde: lleno, nadie nuevo (cambiar la suya, sí)');
+      // «Exigir iniciar sesión para votar»: one vote per account, whatever the phone says it is.
+      await ops(ana, [{ p: ['slides', 's1', 'blocks', 'pd'], v: { id: 'pd', type: 'poll', pollId: 'pollacc1', kind: 'choice', question: 'Q', options: ['a', 'b', 'c'], async: true, login: true } }]);
+      const PA = (b, c) => req('POST', `/api/docs/${id}/poll/pollacc1`, { body: b, ...(c && { headers: { Cookie: c } }) });
+      j = await (await P('pollacc1')).json();
+      ok(j.poll.login === true && j.signed === false, 'con cuenta: el móvil sabe que hay que iniciar sesión: ' + JSON.stringify(j));
+      ok((await (await req('GET', `/api/docs/${id}/poll/pollacc1`, { headers: { Cookie: teo } })).json()).signed === true, 'con cuenta: y si ya la ha iniciado');
+      r = await PA({ voter: 'votante-123456', answer: 1 });
+      ok(r.status === 401 && (await r.json()).error === 'sign in', 'con cuenta: sin sesión no se vota');
+      ok((await PA({ voter: 'votante-123456', answer: 1 }, teo)).status === 200 && (await PA({ voter: 'otro-inventado-1', answer: 2 }, teo)).status === 200
+        && (await PA({ voter: 'y-otro-mas-0002', answer: 0 }, teo)).status === 200 && (await PA({ answer: 2 }, luis)).status === 200, 'con cuenta: se vota (con o sin votante)');
+      j = await (await req('GET', `/api/docs/${id}/pollvotes/pollacc1`, { headers: { Cookie: ana } })).json();
+      const vs = Object.entries(j.votes);
+      ok(vs.length === 2 && !('votante-123456' in j.votes) && !('otro-inventado-1' in j.votes) && vs.every(([k]) => /^a[\w-]{30}$/.test(k)), 'con cuenta: dos votos de la misma cuenta son uno, y el votante inventado no cuenta: ' + JSON.stringify(j.votes));
+      ok(vs.map(x => x[1]).sort().join() === '0,2' && !JSON.stringify(j).includes('teo') && !JSON.stringify(j).includes('example'), 'con cuenta: queda el último de cada uno, sin su correo');
     }
     // The class at its own pace: where each one is and their marks, for the teacher's panel.
     {
@@ -2726,6 +2761,85 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   ok(v0.last('end') && v0.closed && v3.closed && !(await R0.ctx.storage.get('relay')), 'emisión: y las repetidoras también');
 }
 
+// ---- Votes through the server: the phones in the relays of a vote room (broadcast.js) ----
+// (PeerJS gave the presenter's browser one connection per phone, and Chrome holds ~500.)
+{
+  const rooms = new Map(), realLive = env.LIVE;
+  env.LIVE = { idFromName: n => n, get: id => { if (!rooms.has(id)) { const ctx = { storage: fakeStorage(), sockets: [], acceptWebSocket(ws, tags) { ws.tags = tags; this.sockets.push(ws); },
+    getWebSockets(tag) { return this.sockets.filter(x => !x.closed && (!tag || x.tags.includes(tag))); }, getTags: ws => ws.tags }; rooms.set(id, new Broadcast(ctx, env)); }
+    const o = rooms.get(id); return { fetch: (u, init) => o.fetch(u instanceof Request ? u : new Request(u, init)) }; } };
+  const sock = () => ({ got: [], closed: false, att: null, send(s) { this.got.push(JSON.parse(s)); }, close() { this.closed = true; }, serializeAttachment(o) { this.att = structuredClone(o); }, deserializeAttachment() { return this.att; },
+    of(type) { return this.got.filter(m => m.type === type); }, ups() { return this.got.filter(m => m.t === 'up').flatMap(m => m.l); } });
+  const wait = (ms = UP_MS + 40) => new Promise(r => setTimeout(r, ms));
+  const pia = await login2('tok-pia'), quim = await login2('tok-quim');
+  ok((await req('POST', '/api/vote', {})).status === 401, 'votos por el servidor: la sala pide sesión');
+  let r = await req('POST', '/api/vote', { headers: { Cookie: pia }, body: {} }), j = await r.json();
+  ok(r.status === 200 && /^[\w-]{16}$/.test(j.room) && j.token && /^[A-HJ-NP-Z2-9]{5}$/.test(j.code), 'votos por el servidor: la sala, su clave y su código: ' + JSON.stringify(j));
+  const { room, token, code } = j;
+  ok((await (await req('GET', '/api/vote/code/' + code.toLowerCase())).json()).room === room && (await req('GET', '/api/vote/code/ZZZZ1')).status === 404, 'votos por el servidor: el código lleva a la sala (en minúsculas también)');
+  const B = rooms.get(room), meta = await B.ctx.storage.get('meta');
+  ok(meta.vote && meta.code === code && meta.token !== token && !meta.doc, 'votos por el servidor: sala de votos, del token solo su hash');
+  ok(!relayHeaders(new Headers({ 'X-Vote-Sub': '111', 'X-Live-Room': 'x' }), null, 0, null).has('X-Vote-Sub') && relayHeaders(new Headers({ 'X-Vote-Sub': '111' }), room, 3, null).get('X-Vote-Sub') === null
+    && relayHeaders(new Headers(), room, 3, '222').get('X-Vote-Sub') === '222', 'votos por el servidor: la cuenta del móvil solo la pone el servidor (la que mande el móvil, fuera)');
+  const pres = sock(); await B.join(pres, true, meta);
+  B.ctx.getWebSockets = function (tag) { return this.sockets.filter(x => !x.closed && (!tag || x.tags.includes(tag))); }.bind(B.ctx);
+  env.LIVE.get(room + '~0'); env.LIVE.get(room + '~5'); const R0 = rooms.get(room + '~0'), R5 = rooms.get(room + '~5');
+  const rel0 = await R0.asRelay(room, 0), rel5 = await R5.asRelay(room, 5);
+  ok(rel0.vote && rel0.owner && rel5.vote, 'votos por el servidor: las repetidoras saben que es de votos');
+  // The current poll, sent once to all, and kept for those who come later.
+  const anon = sock(), ana1 = sock(); await R0.voteJoin(anon, rel0, null); await R5.voteJoin(ana1, rel5, '111');
+  ok(anon.of('auth')[0]?.on === false && ana1.of('auth')[0]?.on === true, 'votos por el servidor: el móvil sabe si ha entrado con su cuenta');
+  await B.webSocketMessage(pres, JSON.stringify({ t: 'all', keep: 'poll', d: { type: 'poll', poll: { pollId: 'p1', kind: 'quiz', left: 20, login: true } } })); await wait(30);
+  ok(anon.of('poll')[0]?.poll.pollId === 'p1' && ana1.of('poll')[0]?.poll.pollId === 'p1', 'votos por el servidor: lo de quien presenta llega a todos los móviles');
+  await wait(300);
+  const late = sock(); await R5.voteJoin(late, rel5, null);
+  const lp = late.of('poll')[0]?.poll;
+  ok(lp?.pollId === 'p1' && lp.left < 19.8 && lp.left > 15, 'votos por el servidor: quien llega tarde recibe la votación de ahora (con el tiempo que queda): ' + lp?.left);
+  // Up: as the phone sent it, the voter of its account when it has one; in batches.
+  await wait();
+  const cidOf = s => s.att.cid, opened = pres.ups().filter(x => x[1].type === '_open').map(x => x[0]);
+  ok([anon, ana1, late].every(s => opened.includes(cidOf(s))), 'votos por el servidor: quien presenta sabe qué móviles hay');
+  await R0.webSocketMessage(anon, JSON.stringify({ type: 'vote', pollId: 'p1', voter: 'inventado-1', answer: 2, acct: true }));
+  await R5.webSocketMessage(ana1, JSON.stringify({ type: 'vote', pollId: 'p1', voter: 'falso-de-ana', answer: 1 }));
+  await R0.webSocketMessage(anon, JSON.stringify({ type: 'css', css: 'x' })); await R0.webSocketMessage(anon, 'no es json');
+  await wait();
+  let up = pres.ups().filter(x => x[1].type === 'vote');
+  const va = await voterOf(env, '111', meta.owner);
+  ok(up.length === 2 && up.find(x => x[0] === cidOf(anon))[1].voter === 'inventado-1' && !('acct' in up.find(x => x[0] === cidOf(anon))[1]), 'votos por el servidor: sin cuenta, su voto tal cual (y no puede decir que tiene cuenta)');
+  ok(up.find(x => x[0] === cidOf(ana1))[1].voter === va && up.find(x => x[0] === cidOf(ana1))[1].acct === true, 'votos por el servidor: con cuenta, el votante es el de su cuenta, no el que manda');
+  ok(!pres.ups().some(x => x[1].type === 'css'), 'votos por el servidor: un móvil solo manda lo que manda un móvil');
+  const ana2 = sock(); await R0.voteJoin(ana2, rel0, '111'); await R0.webSocketMessage(ana2, JSON.stringify({ type: 'vote', pollId: 'p1', voter: 'otra-ventana', answer: 3 })); await wait();
+  ok(pres.ups().filter(x => x[1].type === 'vote' && x[1].voter === va).length === 2 && va !== await voterOf(env, '222', meta.owner) && va !== await voterOf(env, '111', 'otra-persona') && !va.includes('111'),
+    'votos por el servidor: la misma cuenta desde otra ventana es el mismo votante (uno por persona); otra cuenta u otro presentador, otro; sin su id');
+  // Many at once: a few requests, not one per vote; and a phone that floods is cut.
+  const crowd = []; for (let k = 0; k < 200; k++) { const s1 = sock(); await R0.voteJoin(s1, rel0, null); crowd.push(s1); }
+  await wait(); let posts = 0, writes = 0; for (const o of [B, R0]) { const put = o.ctx.storage.put.bind(o.ctx.storage); o.ctx.storage.put = (k, v) => { if (k !== 'counts') writes++; return put(k, v); }; } const f0 = R0.flushUp.bind(R0); R0.flushUp = () => { posts++; return f0(); };
+  const n0 = pres.got.filter(m => m.t === 'up').length;
+  for (const s1 of crowd) await R0.webSocketMessage(s1, JSON.stringify({ type: 'vote', pollId: 'p1', voter: 'v' + s1.att.cid, answer: 0 }));
+  await wait(250);
+  const n1 = pres.got.filter(m => m.t === 'up').length;
+  ok(pres.ups().filter(x => x[1].type === 'vote').length === 203 && n1 - n0 <= 3 && posts <= 3, `votos por el servidor: 200 votos llegan juntos (${n1 - n0} mensajes a quien presenta)`);
+  ok(writes === 0, 'votos por el servidor: no se guarda nada por voto: ' + writes);
+  for (let k = 0; k < PHONE_RATE + 20; k++) await R0.webSocketMessage(anon, JSON.stringify({ type: 'vote', pollId: 'p1', voter: 'x', answer: k % 3 }));
+  await wait();
+  ok(pres.ups().filter(x => x[0] === cidOf(anon) && x[1].type === 'vote').length <= PHONE_RATE, 'votos por el servidor: un móvil que manda sin parar, cortado');
+  // Down to some: only those.
+  await B.webSocketMessage(pres, JSON.stringify({ t: 'to', l: [[cidOf(ana1), { type: 'ok', pollId: 'p1' }], [cidOf(anon), { type: 'stars', stars: 2 }], ['99.zz', { type: 'ok' }], ['nada', { type: 'ok' }]] })); await wait(30);
+  ok(ana1.of('ok').length === 1 && anon.of('stars')[0]?.stars === 2 && !late.of('ok').length && !anon.of('ok').length, 'votos por el servidor: lo de cada móvil, solo a ese');
+  // While the presenter reconnects, what comes waits.
+  pres.closed = true; await R5.webSocketMessage(late, JSON.stringify({ type: 'vote', pollId: 'p1', voter: 'tarde-1', answer: 1 })); await wait();
+  const pres2 = sock(); await B.join(pres2, true, meta);
+  ok(pres2.ups().some(x => x[1].voter === 'tarde-1'), 'votos por el servidor: lo que llega mientras quien presenta se reconecta, no se pierde');
+  // A phone that goes: said.
+  anon.closed = true; await R0.webSocketClose(anon); await wait();
+  ok(pres2.ups().some(x => x[0] === cidOf(anon) && x[1].type === '_close'), 'votos por el servidor: y quién se va');
+  // A broadcast room doesn't take any of this.
+  ok((await R0.fromPresenter.call(Object.assign(Object.create(Broadcast.prototype), { ctx: { storage: fakeStorage() }, env }), { t: 'all', d: {} })) === undefined, 'votos por el servidor: una emisión no reparte votos');
+  await B.webSocketMessage(pres2, JSON.stringify({ t: 'end' })); await wait(30);
+  ok(ana1.closed && late.closed && !(await B.ctx.storage.get('meta')), 'votos por el servidor: al terminar, los móviles fuera y la sala borrada');
+  env.LIVE = realLive;
+}
+
 // ---- Single sign-on with a team's own identity provider (sso.js) ----
 {
   const ISS = 'https://idp.escuela-sso.example', DOM = 'escuela-sso.example', realF = env.FETCH;
@@ -2778,6 +2892,13 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     r = await cb();
     ok(r.headers.get('Location') === SITE + '/app/?sso=ok' && /rv_session=/.test(r.headers.get('Set-Cookie') || ''), 'SSO: entra, con su sesión');
     ok(tokenBody.get('client_secret') === 'sec' && Buffer.from(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(tokenBody.get('code_verifier')))).toString('base64url') === challenge, 'SSO: el código se canjea con el secreto y el verificador PKCE');
+    // «Inicia sesión para votar» (vote.html): back to that poll; never to anywhere else.
+    for (const [next, want] of [['/app/vote?r=abcdefghijklmnopq', SITE + '/app/vote?r=abcdefghijklmnopq'], ['/app/vote.html?doc=abcdefghijklmnop&poll=p1', SITE + '/app/vote.html?doc=abcdefghijklmnop&poll=p1'],
+      ['https://malo.example/app/vote?r=x', SITE + '/app/?sso=ok'], ['//malo.example/app/vote?r=x', SITE + '/app/?sso=ok'], ['/app/?x=1', SITE + '/app/?sso=ok']]) {
+      const l1 = new URL((await worker.fetch(new Request(`${SITE}/api/sso/start?` + new URLSearchParams({ email: 'ana@' + DOM, terms: TERMS, lang: 'es', next })), env)).headers.get('Location'));
+      claims = { ...claims, nonce: l1.searchParams.get('nonce') };
+      ok((await cb(l1.searchParams.get('state'))).headers.get('Location') === want, 'SSO: después vuelve a ' + want + ' (pedido: ' + next + ')');
+    }
     const ck = (r.headers.get('Set-Cookie') || '').split(';')[0];
     const me = await (await req('GET', '/api/me', { headers: { Cookie: ck } })).json();
     ok(me.email === 'ana@' + DOM && me.name === 'Ana SSO' && me.plan === 'pro' && me.team?.name === 'Escuela SSO', 'SSO: su cuenta, ya en el equipo (Pro)');
@@ -2860,6 +2981,101 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   ok((await (await T(own, `/team/assets/${aid}`)).json()).data === png, 'imágenes del equipo: se insertan');
   ok((await T(out, '/team/assets')).status === 404, 'imágenes del equipo: quien no es del equipo, no');
   ok((await T(own, `/team/assets/${aid}/delete`, {})).status === 200 && !(await (await T(mem, '/team/assets')).json()).assets.length, 'imágenes del equipo: la administración las quita');
+}
+
+// ---- Many at once (local stress tests, 2026-10-11): sign-ups and the shared objects; the API's changes to one deck ----
+{
+  // Their own world: new accounts made on the spot (tok-p<name>), the rest as above.
+  const env2 = { ...Object.fromEntries(Object.entries(env).filter(([, v]) => typeof v === 'string')), EMAIL: env.EMAIL };
+  env2.FETCH = async (u, init) => { const t = String(u).startsWith('https://oauth2.googleapis.com/tokeninfo') && new URL(u).searchParams.get('access_token');
+    return typeof t === 'string' && t.startsWith('tok-p') ? Response.json({ aud: CID, sub: 's-' + t.slice(5), email: t.slice(5) + '@prisa.example', email_verified: 'true', expires_in: 3000 }) : env.FETCH(u, init); };
+  const calls = {};   // (requests to each shared object, by its op)
+  const counted = (ns, name) => ({ ...ns, get: id => { const o = ns.get(id); return { fetch: (u, init) => { const op = new URL(u instanceof Request ? u.url : u).pathname.split('/').pop(); calls[name + ' ' + op] = (calls[name + ' ' + op] || 0) + 1; return o.fetch(u, init); } }; } });
+  for (const [b, C] of [['ACCOUNTS', Account], ['BUDGET', Budget], ['DOCS', CloudDoc], ['TEAMS', Team], ['LIMITS', Limits], ['DIRECTORY', Directory], ['AUDIT', Audit], ['TICKETS', Tickets]]) env2[b] = namespace(C, env2);
+  env2.FINANCE = counted(namespace(Finance, env2), 'finance'); env2.SCHEDULE = counted(namespace(Schedule, env2), 'schedule'); env2.DIRECTORY = counted(env2.DIRECTORY, 'directory');
+  const P = (method, path, { body, headers = {}, origin = SITE } = {}) => worker.fetch(new Request(SITE + path, { method, headers: { Origin: origin, 'Content-Type': 'application/json', ...headers }, ...(body !== undefined && { body: JSON.stringify(body) }) }), env2);
+  const today = new Date().toISOString().slice(0, 10), FS = () => env2.FINANCE.inst.get('global').ctx.storage.m, D = () => FS().get('d:' + today) || {};
+  // A new account: one request to Finance (its three events together), one to the schedule (its two notices), one to the directory.
+  let r = await P('POST', '/api/login', { body: { accessToken: 'tok-puno', terms: TERMS } });
+  ok(r.status === 200 && calls['finance record'] === 1 && calls['schedule add'] === 1 && calls['directory upsert'] === 1 && !calls['finance active'],
+    'muchas a la vez: una cuenta nueva, una sola petición a Finance, una a la agenda y una al directorio: ' + JSON.stringify(calls));
+  ok(D()['users.new'] === 1 && D()['cr.in.trial'] === 50 && D()['act.dau'] === 1 && D()['act.mau'] === 1 && FS().get('seq') === 2, 'muchas a la vez: con sus tres apuntes (alta, regalo, activa): ' + JSON.stringify(D()));
+  const sched = env2.SCHEDULE.inst.get('global').ctx.storage.m;
+  ok([...sched].filter(([k]) => k.startsWith('d:')).flatMap(([, v]) => v).filter(x => x.sub === 's-uno').map(x => x.kind).sort().join() === 'credits,idle', 'muchas a la vez: y sus dos avisos en la agenda');
+  // 60 at once: every figure exact (each one counted once), nothing lost.
+  await Promise.all(Array.from({ length: 60 }, (_, i) => P('POST', '/api/login', { body: { accessToken: 'tok-pm' + i, terms: TERMS } })));
+  const events = [...FS()].filter(([k]) => k.startsWith('e:')).map(([, v]) => v);
+  ok(D()['users.new'] === 61 && D()['cr.in.trial'] === 61 * 50 && D()['act.dau'] === 61 && events.filter(e => e.kind === 'signup').length === 61 && events.filter(e => e.kind === 'credits').length === 61
+    && FS().get('seq') === 122 && new Set(events.map(e => e.sub)).size === 61, 'muchas a la vez: 60 altas a la vez, cada cifra exacta: ' + JSON.stringify(D()));
+  ok(calls['finance record'] === 61, 'muchas a la vez: una petición a Finance por alta: ' + calls['finance record']);
+  // The answer doesn't wait for them: with Finance stuck, signing in still answers; what it had is sent after, once.
+  { let open; const gate = new Promise(res => (open = res)), F = env2.FINANCE, raw = (C, e) => { const inst = new Map(); return { inst, idFromName: x => x, get: id => { if (!inst.has(id)) inst.set(id, new C({ storage: fakeStorage() }, e)); const o = inst.get(id); return { fetch: (u, init) => o.fetch(u instanceof Request ? u : new Request(u, init)) }; } }; };
+    const env3 = { ...env2 }; env3.ACCOUNTS = raw(Account, env3); env3.FINANCE = { ...F, get: id => ({ fetch: async (u, init) => { await gate; return F.get(id).fetch(u, init); } }) };
+    const t = await Promise.race([worker.fetch(new Request(SITE + '/api/login', { method: 'POST', headers: { Origin: SITE, 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: 'tok-pespera', terms: TERMS }) }), env3).then(x => x.status), new Promise(res => setTimeout(() => res('esperando'), 300))]);
+    ok(t === 200 && D()['users.new'] === 61, 'muchas a la vez: entrar no espera a Finance (lo suyo va después): ' + t);
+    open(); await env3.ACCOUNTS.inst.get('u:s-espera').flushing;
+    ok(D()['users.new'] === 62 && D()['cr.in.trial'] === 62 * 50, 'muchas a la vez: y llega después, una vez'); }
+  // One account's AI requests at once: its credits and the business's figures, exact.
+  { aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'hola' } }], usage: { cost: 0.01, prompt_tokens: 100, completion_tokens: 50 } } });
+    const c = (await P('POST', '/api/login', { body: { accessToken: 'tok-pia', terms: TERMS } })).headers.get('Set-Cookie').split(';')[0], before = D()['cr.used'] || 0, n0 = D()['ai.n'] || 0;
+    const rs = await Promise.all(Array.from({ length: 6 }, () => P('POST', '/api/ai/chat', { headers: { Cookie: c }, body: { messages: [{ role: 'user', content: 'hola' }] } })));
+    const st = env2.ACCOUNTS.inst.get('u:s-ia').ctx.storage.m, charged = st.get('ledger').filter(x => x.reason === 'ai').reduce((t, x) => t - x.delta, 0);
+    ok(rs.every(x => x.status === 200) && charged > 0 && st.get('credits') === 50 - charged && D()['ai.n'] - n0 === 6 && D()['cr.used'] - before === charged,
+      `muchas a la vez: 6 peticiones de IA a la vez, créditos exactos (${charged} cobrados, quedan ${st.get('credits')}) y los mismos en las cuentas del negocio`); }
+  // Finance, several events in one request: each counted once (a Stripe event twice: once), in one write.
+  { const fin = env2.FINANCE.inst.get('global'), st = fin.ctx.storage; let puts = 0; const p0 = st.put; st.put = async (k, v) => { puts++; return p0(k, v); };
+    const pay = { kind: 'payment', product: 'pro-month', cur: 'eur', gross: 1000, tax: 0, fee: 30, net: 970, sub: 's-uno', ref: 'evt_lote1' };
+    const j = await (await fin.fetch(new Request('https://fin/record', { method: 'POST', body: JSON.stringify({ events: [pay, { ...pay }, { kind: 'ai', feature: 'assistant', usd: 0.5, credits: 3, sub: 's-uno' }, { kind: 'active', mau: false }, { kind: 'nada' }] }) }))).json();
+    st.put = p0;
+    ok(j.ok && j.n === 2 && puts === 1 && D()['pay.eur.gross'] === 1000 && D()['pay.n'] === 1 && FS().get('k:evt_lote1'), 'Finance: varios apuntes en una petición, una escritura; el mismo pago dos veces cuenta una: ' + JSON.stringify(j) + ' puts ' + puts); }
+
+  // The API: many changes to one presentation at once — each one kept, written together, in order.
+  const c = (await P('POST', '/api/login', { body: { accessToken: 'tok-papi', terms: TERMS } })).headers.get('Set-Cookie').split(';')[0];
+  const key = (await (await P('POST', '/api/keys', { headers: { Cookie: c }, body: { name: 'carga' } })).json()).key, K = { Authorization: 'Bearer ' + key };
+  const did = (await (await P('POST', '/api/v1/decks', { headers: K, body: { name: 'Carga', slides: [{ kind: 'title', title: 'Inicio' }] } })).json()).id;
+  const doc = () => env2.DOCS.inst.get('doc:' + did), DS = () => doc().ctx.storage.m;
+  for (const k in calls) delete calls[k];
+  env2.ACCOUNTS = counted(env2.ACCOUNTS, 'account');
+  const rs = await Promise.all(Array.from({ length: 30 }, (_, i) => P('POST', `/api/v1/decks/${did}/slides`, { headers: K, body: { slides: [{ kind: 'bullets', title: 'Carga ' + i, bullets: ['a'] }] } })));
+  const added = (await Promise.all(rs.map(x => x.json()))).flatMap(x => x.added || []);
+  const deck = (await (await P('GET', `/api/v1/decks/${did}`, { headers: K })).json()).deck;
+  ok(rs.every(x => x.status === 200) && added.length === 30 && deck.slides.length === 31 && added.every(id => deck.slides.some(s => s.id === id)), 'API a la vez: 30 diapositivas añadidas a la vez, todas guardadas');
+  ok(calls['account docs-locked'] < 10 && calls['account docs-touch'] < 10 && !calls['account me'], `API a la vez: escritas juntas (la cuenta, preguntada ${calls['account docs-locked']} veces, avisada ${calls['account docs-touch']}; antes, 60 y 30) y sin pedir «me»`);
+  { const again = new CloudDoc({ storage: doc().ctx.storage }, env2), d2 = (await again.load()).deck;     // (as stored: the object, woken again)
+    const canon = x => JSON.stringify(Object.keys(x).sort().map(k => [k, x[k]]));
+    ok(canon(d2) === canon(doc().doc.deck) && again.doc.meta.rev === 31, 'API a la vez: lo guardado es lo que tenía en memoria (31 cambios: rev 31)');
+    const list = (await (await P('GET', '/api/v1/decks', { headers: K })).json()).decks.find(x => x.id === did);
+    ok(list.slides === 31, 'API a la vez: y la lista de su dueño, al día: ' + list.slides); }
+  // A change rewrites the slides it reached, not the rest (each compared in JSON before).
+  { const st = doc().ctx.storage; let keys = []; const p0 = st.put; st.put = async (k, v) => { keys.push(...(typeof k === 'object' ? Object.keys(k) : [k])); return p0(k, v); };
+    await P('POST', `/api/v1/decks/${did}/slides/${added[5]}`, { headers: K, body: { notes: 'Nota nueva' } }); st.put = p0;
+    const slideKeys = keys.filter(k => k.startsWith('slide:'));
+    ok(slideKeys.length && slideKeys.every(k => k.startsWith(`slide:${added[5]}:`)) && keys.length <= 6, 'API a la vez: un cambio escribe su diapositiva, no las demás: ' + keys.join(' ')); }
+  // The log of recent changes, in pieces: 'since' as before, and an old document's whole log moved into them.
+  { let j = await (await P('GET', `/api/docs/${did}/since?rev=29`, { headers: { Cookie: c } })).json();
+    ok(j.rev === 32 && j.ops.length >= 3 && !j.deck, 'registro por trozos: «lo que cambió desde» sigue igual');
+    ok(!DS().has('log') && [...DS().keys()].filter(k => k.startsWith('log:')).length === 2, 'registro por trozos: 32 cambios, dos trozos (de 20)');
+    const ops = i => P('POST', `/api/docs/${did}/ops`, { headers: { Cookie: c }, body: { ops: [{ p: ['slides', added[0], 'notes'], v: 'n' + i }] } });
+    for (let i = 0; i < 200; i++) await ops(i);
+    const pieces = [...DS().keys()].filter(k => k.startsWith('log:'));
+    j = await (await P('GET', `/api/docs/${did}/since?rev=5`, { headers: { Cookie: c } })).json();
+    ok(pieces.length <= 10 && j.deck && (await (await P('GET', `/api/docs/${did}/since?rev=230`, { headers: { Cookie: c } })).json()).ops.length === 2, 'registro por trozos: se van los más viejos, enteros (' + pieces.length + ' trozos); de muy atrás, el documento entero');
+    for (const k of pieces) DS().delete(k);
+    DS().set('log', [{ rev: 231, ops: [{ p: ['name'], v: 'x' }] }, { rev: 232, ops: [{ p: ['name'], v: 'Carga' }] }]); doc().log = null;
+    j = await (await P('GET', `/api/docs/${did}/since?rev=230`, { headers: { Cookie: c } })).json();
+    ok(j.ops?.length === 2, 'registro por trozos: el de antes, entero, se sigue leyendo');
+    await ops('x');
+    j = await (await P('GET', `/api/docs/${did}/since?rev=230`, { headers: { Cookie: c } })).json();
+    ok(!DS().has('log') && DS().has('log:000000000') && j.ops?.length === 3, 'registro por trozos: y con el siguiente cambio pasa a trozos'); }
+  // Changes that wait together: each answered on its own; a refused one (too large) leaves the others as they were.
+  { const st = fakeStorage(), d = new CloudDoc({ storage: st }, { MAX_MB: '0.01' }), who = { sub: 'dueña' };
+    const send = (op, body) => d.fetch(new Request('https://doc/' + op, { method: 'POST', body: JSON.stringify({ who, ...body }) }));
+    await send('init', { owner: 'dueña', ownerEmail: 'd@x.example', deck: { name: 'G', slides: [{ id: 's1', blocks: [] }] } });
+    const rs = await Promise.all([send('ops', { ops: [{ p: ['slides', 's1', 'notes'], v: 'uno' }] }), send('ops', { ops: [{ p: ['slides', 's1', 'big'], v: 'x'.repeat(20000) }] }),
+      send('ops', { ops: [{ p: ['slides', 's2'], v: { id: 's2', blocks: [] } }] }), send('change', { action: 'deleteSlides', args: { slides: ['nada'] } }), send('ops', { ops: [{ p: ['name'], v: 'G2' }], who: { sub: 'otra' } })]);
+    const js = await Promise.all(rs.map(x => x.json())), again = new CloudDoc({ storage: st }, {}), d2 = (await again.load()).deck;
+    ok(rs.map(x => x.status).join() === '200,413,200,404,403' && js[0].rev === 2 && js[2].rev === 3 && js[0].stale && !js[2].stale, 'juntos: cada cambio con su respuesta y su rev (el último avisa a la lista): ' + rs.map(x => x.status).join());
+    ok(d2.slides.length === 2 && d2.slides[0].notes === 'uno' && !d2.slides[0].big && d2.name === 'G' && again.doc.meta.rev === 3, 'juntos: el que no cabe no se guarda; los demás, sí'); }
 }
 
 console.log(fails ? `API FAIL ${n - fails}/${n}` : `API OK ${n}/${n}`);

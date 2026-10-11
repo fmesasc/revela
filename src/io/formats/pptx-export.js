@@ -17,7 +17,7 @@ import { opacityOf } from '../../core/model.js';
 import { wordartSize } from '../../render/textfit.js';
 import { shownRows } from '../../core/formulas.js';
 import { lockSVG } from '../../render/svg.js';
-import { chartSVG, chartSeries, histogramBins, bubblePoints, scatterSeries, pieColours, iconSVG, inkSVG, timerSVG, shapeTextStyle } from '../../render/svg.js';
+import { chartSVG, chartSeries, histogramBins, bubblePoints, scatterSeries, pieColours, iconSVG, inkSVG, timerSVG, shapeTextStyle, cellBg } from '../../render/svg.js';
 import { blockImage, magnifyImage } from '../export/images.js';
 import { magGeometry, viewOf, underArea, targetImage, imageCrop } from '../../features/document/magnify.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../features/document/master.js';
@@ -33,6 +33,9 @@ const IN = px => +(px / 96).toFixed(3);
 const DASH = { dash: 'dash', dot: 'sysDot', dashDot: 'dashDot' };
 const dashOf = d => (DASH[d] ? { dashType: DASH[d] } : {});                 // 96 dpi → inches
 const hex = c => (String(c || '').match(/^#?([0-9a-fA-F]{6})/) || [])[1] || null;
+// A cell's shading as PowerPoint wants it (RRGGBB), from any way render/svg.js cellBg lets through.
+const cellHex = c => { const m = String(c).match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i), n = String(c).match(/^rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)/i);
+  return m ? (m[1] + m[1] + m[2] + m[2] + m[3] + m[3]).toUpperCase() : n ? n.slice(1).map(v => Math.min(255, +v).toString(16).padStart(2, '0')).join('').toUpperCase() : hex(c); };
 const plain = html => { const d = document.createElement('div'); d.innerHTML = html || ''; return d.textContent || ''; };
 const slug = s => (String(s || '').trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'presentacion');
 
@@ -170,9 +173,11 @@ async function naturalSizes(deck) {
   // (Pictures, by their id; a diagram's pictures, by their address.)
   const imgs = all.filter(b => b.type === 'image' && b.src).map(b => [b.id, b.src])
     .concat(all.filter(b => b.type === 'diagram').flatMap(b => (b.pictures || []).filter(p => p?.src).map(p => [p.src, p.src])));
-  await Promise.all(imgs.map(([key, src]) => new Promise(res => {
-    const i = new Image(); i.onload = () => { if (i.naturalWidth) picSizes.set(key, [i.naturalWidth, i.naturalHeight]); res(); }; i.onerror = res; i.src = src;
-  })));
+  // (Each picture decoded once, however many times it is used: a logo on every slide is one.)
+  const sizes = new Map(), sizeOf = src => sizes.get(src) || sizes.set(src, new Promise(res => {
+    const i = new Image(); i.onload = () => res(i.naturalWidth ? [i.naturalWidth, i.naturalHeight] : null); i.onerror = () => res(null); i.src = src;
+  })).get(src);
+  await Promise.all(imgs.map(async ([key, src]) => { const n = await sizeOf(src); if (n) picSizes.set(key, n); }));
 }
 
 // The language of a text's runs (<a:rPr lang>): PowerPoint checks its spelling in it, and screen readers read it so
@@ -298,6 +303,12 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
         if (head) { o.bold = true; if (hex(b.headBg)) o.fill = { color: hex(b.headBg) }; if (hex(b.headFg)) o.color = hex(b.headFg); }
         else if (b.banded && data % 2 === 0) o.fill = { color: hex(b.band) || '7F7F7F', transparency: Math.round((1 - (b.bandAlpha ?? 0.18)) * 100) };
         if (b.firstCol && j === 0) o.bold = true;
+        // The cell's own shading wins over the style's (as on the slide); «Sin relleno» is no fill at all — the table
+        // goes out without a PowerPoint table style (<a:tblPr/>), so a cell without a:solidFill is see-through. (A
+        // colour written otherwise — #abc, rgb() — goes as the same colour in RRGGBB.)
+        const own = cellBg(b, r, j);
+        if (own === 'none') delete o.fill;
+        else if (own) { const h = cellHex(own); if (h) o.fill = { color: h }; }
         if (Object.keys(o).length) cell.options = o;
         return cell;
       }).filter(Boolean));
@@ -454,30 +465,59 @@ function addPlaceholderText(slide, s, b, p) {
 
 let exportDeck = null;                                  // (the deck being exported: its theme colours)
 let exportBack = '';                                    // (and the slide's background, for the words of a diagram)
-export async function buildPptx(deck = state.deck) {
-  exportDeck = deck;
-  await Promise.all([loadScript(PPTXGEN, 'PptxGenJS'), naturalSizes(deck)]);
-  const pptx = new window.PptxGenJS();
+// Long exports must leave the interface free: after ~30 ms of work in a row, a turn for the page (a click, a
+// repaint of the progress note). (scheduler.yield where there is one; otherwise a message, unthrottled unlike setTimeout.)
+let ranSince = 0;
+async function breathe() {
+  if (performance.now() - ranSince < 30) return;
+  await (globalThis.scheduler?.yield ? scheduler.yield() : new Promise(r => { const c = new MessageChannel(); c.port1.onmessage = () => r(); c.port2.postMessage(0); }));
+  ranSince = performance.now();
+}
+// progress({ step: 'pictures', done, of } | { step: 'slides', slide, of } | { step: 'zip', percent }): how far it is
+// (300 slides take a while). done/of: objects looked at to draw as pictures.
+export async function buildPptx(deck = state.deck, { progress = null } = {}) {
+  exportDeck = deck; ranSince = performance.now();
+  await Promise.all([loadScript(JSZIP, 'JSZip').then(() => loadScript(PPTXGEN, 'PptxGenJS')), naturalSizes(deck)]);   // (PPTXGEN needs JSZip: vendor.js)
+  const pptx = new window.PptxGenJS(), media = new Map();
+  pptx.rvMedia = media;                                    // (its pictures' stand-ins: see standIn)
   const { w, h } = deck.size;
   pptx.defineLayout({ name: 'REVELA', width: IN(w), height: IN(h) });
   pptx.layout = 'REVELA';
-  // Objects PowerPoint can't draw natively become pictures.
-  const raster = new Map();
-  for (const s of [deck.master || { blocks: [] }, ...deck.slides]) for (const b of s.blocks) {
-    try {
-      if (b.type === 'icon') raster.set(b.id, await svgToPNG(iconSVG(b), b.w, b.h));
-      else if (b.type === 'ink') raster.set(b.id, await svgToPNG(inkSVG(b), b.w, b.h));
-      else if (b.type === 'timer') raster.set(b.id, await svgToPNG(timerSVG(b), b.w, b.h));
-      else if (b.type === 'lock') raster.set(b.id, await svgToPNG(lockSVG(b), b.w, b.h));      // (a picture: PowerPoint has no locks; its hint, the alt text)
-      else if (b.type === 'chart' && ['map', 'waterfall', 'funnel', 'treemap'].includes(b.chartType)) raster.set(b.id, await svgToPNG(chartSVG(b), b.w, b.h));      // (PowerPoint's own maps can't be written here)
-      else if (b.type === 'file' && b.poster) raster.set(b.id, b.poster);          // (a PDF's page; the file itself stays in Revela)
-      else if (b.type === 'model' && b.poster) raster.set(b.id, await posterPNG(b.poster, b.w, b.h));
-      else if (b.type === 'math' || b.type === 'poll' || b.type === 'figindex' || b.type === 'file' || b.type === 'map') { const img = await blockImage(b, s, deck); if (img) raster.set(b.id, img); }
-      else if (b.type === 'magnify' && !magCrop(b, slideBlocks(s, deck))) { const img = await magnifyImage(b, s, deck); if (img) raster.set(b.id, img); }
-    } catch {}
-  }
+  // Objects PowerPoint can't draw natively become pictures. The same picture is made once (the same icon, ink or
+  // equation, by what it draws at its size): drawing one, an equation above all (html2canvas), is the slow part.
+  const raster = new Map(), made = new Map();
+  const once = (key, make) => (key == null ? make() : made.get(key) || made.set(key, make()).get(key));
+  const svgPNG = (svg, b) => once(`svg ${b.w}x${b.h} ${svg}`, () => svgToPNG(svg, b.w, b.h));
+  // (An equation's picture depends on its own properties and the deck's colours and font, not on where it is.)
+  const mathKey = b => { const { id, x, y, rotation, animation, anims, alt, ...look } = b; return 'math ' + JSON.stringify(look); };
+  const picture = (b, s) => {
+    if (b.type === 'icon') return svgPNG(iconSVG(b), b);
+    if (b.type === 'ink') return svgPNG(inkSVG(b), b);
+    if (b.type === 'timer') return svgPNG(timerSVG(b), b);
+    if (b.type === 'lock') return svgPNG(lockSVG(b), b);      // (a picture: PowerPoint has no locks; its hint, the alt text)
+    if (b.type === 'chart' && ['map', 'waterfall', 'funnel', 'treemap'].includes(b.chartType)) return svgPNG(chartSVG(b), b);      // (PowerPoint's own maps can't be written here)
+    if (b.type === 'file' && b.poster) return b.poster;          // (a PDF's page; the file itself stays in Revela)
+    if (b.type === 'model' && b.poster) return once(`model ${b.w}x${b.h} ${b.poster}`, () => posterPNG(b.poster, b.w, b.h));
+    // (Only equations are shared: a poll's, an index's or a map's picture depends on more than the object.)
+    if (b.type === 'math' || b.type === 'poll' || b.type === 'figindex' || b.type === 'file' || b.type === 'map') return once(b.type === 'math' ? mathKey(b) : null, () => blockImage(b, s, deck));
+    if (b.type === 'magnify' && !magCrop(b, slideBlocks(s, deck))) return magnifyImage(b, s, deck);
+    return null;
+  };
+  // A few at a time: most of a picture's time is html2canvas waiting (its copy of the page loading, the fonts), and
+  // those waits overlap.
+  const jobs = [deck.master || { blocks: [] }, ...deck.slides].flatMap(s => s.blocks.map(b => [b, s]));
+  let next = 0, done = 0;
+  const worker = async () => {
+    while (next < jobs.length) {
+      const [b, s] = jobs[next++];
+      try { const img = await picture(b, s); if (img) raster.set(b.id, img); } catch {}
+      progress?.({ step: 'pictures', done: ++done, of: jobs.length }); await breathe();
+    }
+  };
+  await Promise.all(Array.from({ length: 4 }, worker));
   const masters = defineMasters(pptx, deck);
-  for (const s of deck.slides) {
+  for (const [k, s] of deck.slides.entries()) {
+    progress?.({ step: 'slides', slide: k + 1, of: deck.slides.length }); await breathe();
     // (A slide that hides the master's objects: on its own, or PowerPoint's layout would show them.)
     const m = s.hideMaster ? null : masters.get(s.layoutId) || masters.get(NO_LAYOUT);
     const slide = m ? pptx.addSlide({ masterName: m.name }) : pptx.addSlide();
@@ -485,17 +525,47 @@ export async function buildPptx(deck = state.deck) {
     if (s.hidden) slide.hidden = true;                     // kept, hidden (like PowerPoint)
     const bg = hex(s.background);
     if (bg) slide.background = { color: bg };
-    else if (/url\((data:[^)]+)\)/.test(s.background || '')) slide.background = { data: RegExp.$1 };
+    else if (/url\((data:[^)]+)\)/.test(s.background || '')) slide.background = { data: standIn(RegExp.$1, media) };
     if (s.notes) slide.addNotes(s.notes);
     const all = [...masterBlocksFor(s, deck), ...s.blocks.map(b => styled(b, s, deck))], byId = new Map(all.map(b => [b.id, b]));
     for (const b of all) {
       if (isEmptyPlaceholder(b) || m?.inMaster.has(b.id)) continue;          // drawn by its PowerPoint layout
       const ph = m && placeholderOf(s, b, m);
-      if (ph) { addPlaceholderText(named(slide, 'rv-' + b.id), s, b, ph); continue; }
-      addBlock(named(slide, 'rv-' + b.id, b), b, pptx, raster, byId, linkFor(b, deck.slides.indexOf(s), deck));
+      if (ph) { addPlaceholderText(named(slide, 'rv-' + b.id, null, media), s, b, ph); continue; }
+      addBlock(named(slide, 'rv-' + b.id, b, media), b, pptx, raster, byId, linkFor(b, k, deck));
     }
   }
   return pptx;
+}
+
+// Pictures go to PptxGenJS as stand-ins: the same kind of data address with a few bytes that name the picture
+// («rv-media:N;»). PptxGenJS decodes every picture's base64 in one go when it writes (~1 s of a frozen page with 15 MB
+// of photos) and writes one copy per use (a logo on 300 slides, 300 copies). The real bytes are put in afterwards
+// (fillMedia), each picture once, all its uses pointing at it. (SVG stays as it is: PptxGenJS draws a PNG of it.)
+function standIn(src, media) {
+  const m = /^data:(image\/(?:png|jpe?g|gif|webp|bmp));base64,/i.exec(src || ''); if (!m) return src;
+  let n = media.get(src); if (n == null) media.set(src, n = media.size);
+  return `data:${m[1]};base64,${btoa(`rv-media:${n};`)}`;
+}
+const fromBase64 = b64 => { try { if (Uint8Array.fromBase64) return Uint8Array.fromBase64(b64.replace(/\s+/g, '')); } catch {}
+  const s = atob(b64), out = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i); return out; };
+async function fillMedia(zip, media) {
+  if (!media?.size) return;
+  const srcs = [...media.keys()], first = new Map(), alias = new Map(), tag = /^rv-media:(\d+);$/;
+  for (const f of zip.file(/^ppt\/media\/[^/]+\.(png|jpe?g|gif|webp|bmp)$/i)) {
+    const bytes = await f.async('uint8array'); if (bytes.length > 32) continue;
+    const n = tag.exec(String.fromCharCode(...bytes))?.[1]; if (n == null) continue;
+    const name = f.name.slice('ppt/media/'.length);
+    if (first.has(n)) { alias.set(name, first.get(n)); zip.remove(f.name); continue; }
+    first.set(n, name); zip.file(f.name, fromBase64(srcs[n].slice(srcs[n].indexOf(',') + 1)), { binary: true });
+    await breathe();
+  }
+  if (!alias.size) return;
+  for (const f of zip.file(/\.rels$/)) {
+    const x = await f.async('string'); if (!x.includes('media/')) continue;
+    const y = x.replace(/(Target="[^"]*media\/)([^"]+)"/g, (m, pre, n) => `${pre}${alias.get(n) || n}"`);
+    if (y !== x) zip.file(f.name, y);
+  }
 }
 
 // An object's link, as PowerPoint takes it: a web address, or a slide number (1…).
@@ -505,8 +575,8 @@ function linkFor(b, i, deck) {
   return to >= 1 && to <= n ? { slide: to } : null;
 }
 // Every object gets the name rv-<block id> (PowerPoint's selection pane shows
-// it), so transitions and animations can point at it afterwards.
-const named = (slide, name, b = null) => new Proxy(slide, {
+// it), so transitions and animations can point at it afterwards. Its pictures go as stand-ins (standIn).
+const named = (slide, name, b = null, media = null) => new Proxy(slide, {
   get(t, k) {
     const f = t[k];
     if (typeof f !== 'function') return f;
@@ -514,6 +584,7 @@ const named = (slide, name, b = null) => new Proxy(slide, {
     return (...args) => {
       const i = args.length - 1;
       if (args[i] && typeof args[i] === 'object' && !Array.isArray(args[i])) args[i] = { ...args[i], objectName: args[i].objectName || name, ...(b?.shadow && k !== 'addTable' && k !== 'addChart' && { shadow: pptShadow(b.shadow) }) };
+      if (k === 'addImage' && media && args[i]?.data) args[i].data = standIn(args[i].data, media);
       return f.apply(t, args);
     };
   },
@@ -663,17 +734,19 @@ function timingXML(s, spids, deck) {
     + `<p:nextCondLst><p:cond evt="onNext" delay="0"><p:tgtEl><p:sldTgt/></p:tgtEl></p:cond></p:nextCondLst></p:seq>`
     + `</p:childTnLst></p:cTn></p:par></p:tnLst></p:timing>`;
 }
-async function addMotion(blob, deck) {
+async function addMotion(blob, deck, progress = null, media = null) {
   const JSZip = await loadScript(JSZIP, 'JSZip');
   const zip = await JSZip.loadAsync(blob);
   await writeTheme(zip, deck);                            // (the deck's theme instead of PptxGenJS's Office one)
   for (let i = 0; i < deck.slides.length; i++) {
+    await breathe();
     const f = zip.file(`ppt/slides/slide${i + 1}.xml`); if (!f) continue;
     let xml = await f.async('string');
     const spids = new Map([...xml.matchAll(/<p:cNvPr id="(\d+)" name="rv-([^"]+)"/g)].map(m => [m[2], m[1]]));
     const extra = transitionXML(deck.slides[i], deck) + timingXML(deck.slides[i], spids, deck);
     // Pictures cropped (filled, or with their edges trimmed): PowerPoint's srcRect.
     for (const [id, c] of picCrops) {
+      if (!spids.has(id)) continue;                         // (another slide's: not searched for through this one's XML)
       const at = xml.indexOf(`name="rv-${id}"`); if (at < 0) continue;
       const st = xml.indexOf('<a:stretch>', at); if (st < 0) continue;
       const k = v => Math.round(Math.max(0, v) * 100000);
@@ -702,9 +775,14 @@ async function addMotion(blob, deck) {
     zip.file(`ppt/slides/slide${i + 1}.xml`, xml);
   }
   await addComments(zip, deck);
-  return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+  await fillMedia(zip, media);
+  // The XML deflated (to about a fifth); pictures, videos and the charts' workbooks stored as they are: they are
+  // compressed already, and deflating them again costs time for nothing. (PptxGenJS wrote it all stored, so nothing
+  // is decompressed or compressed twice.)
+  for (const f of Object.values(zip.files)) if (!f.dir) f.options.compression = /\.(xml|rels)$/.test(f.name) ? 'DEFLATE' : 'STORE';
+  return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', compression: 'STORE' },
+    m => progress?.({ step: 'zip', percent: Math.round(m.percent) }));
 }
-
 // Comments, in PowerPoint's classic comment format (PowerPoint and LibreOffice
 // read it): one per comment, at its object's place. That format has no threads,
 // tasks or "resolved": they are written as text (commentText, in comments.js)
@@ -741,15 +819,19 @@ async function addComments(zip, deck) {
   zip.file(pr, px.replace('</Relationships>', `<Relationship Id="rIdRvCmA" Type="${REL}/commentAuthors" Target="commentAuthors.xml"/></Relationships>`));
 }
 
-export async function buildPptxBlob(deck = state.deck) {
-  const pptx = await buildPptx(deck);
-  return addMotion(await pptx.write({ outputType: 'blob' }), deck);
+// progress: as buildPptx's.
+export async function buildPptxBlob(deck = state.deck, { progress = null } = {}) {
+  const pptx = await buildPptx(deck, { progress });
+  return addMotion(await pptx.write({ outputType: 'arraybuffer', compression: false }), deck, progress, pptx.rvMedia);
 }
 
-// True once downloaded; false if it failed (the user is told why).
-export async function exportPPTX() {
+// True once downloaded; false if it failed (the user is told why). say(text): how far it is, in words.
+export async function exportPPTX({ say = null } = {}) {
+  const progress = say && (p => say(p.step === 'zip' ? t('Guardando el archivo… {p} %').replace('{p}', p.percent)
+    : p.step === 'pictures' ? t('Dibujando las imágenes… {p} %').replace('{p}', Math.round(100 * p.done / p.of))
+    : t('Diapositiva {i} de {n}').replace('{i}', p.slide).replace('{n}', p.of)));
   try {
-    download(await buildPptxBlob(), slug(state.deck.name) + '.pptx');
+    download(await buildPptxBlob(state.deck, { progress }), slug(state.deck.name) + '.pptx');
     return true;
   } catch (e) { alertUser(t('No se pudo exportar a PowerPoint: ') + (e.message || e)); return false; }
 }

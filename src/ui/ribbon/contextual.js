@@ -86,6 +86,14 @@ function puppetControls(b) {
       btn('picture_in_picture', 'Mostrar mi vídeo en pequeño', () => setPuppet(b, 'preview', !p.preview), !!p.preview, 'puppet-preview')] : []),
     btn(trying ? 'stop_circle' : 'play_circle', trying ? 'Detener' : 'Probar con la cámara', () => tryPuppet(b), trying, 'puppet-try')];
 }
+// The cells' shading: the colour picker every colour in the editor uses (the theme's colours offered in it), «Sin
+// relleno» and «Del estilo». (Their colour, pressed or mixed, is that of the cells picked.)
+function cellShading(b) {
+  const f = blocks.cellFillOf(b), mixed = f === null;
+  return [['color', 'format_color_fill', 'Sombreado de celda', /^#[0-9a-f]{6}$/i.test(f || '') ? f : '#ffffff', v => blocks.setCellFill(v), mixed],
+    btn('format_color_reset', 'Sin relleno', () => blocks.setCellFill('none'), f === 'none' ? true : mixed ? MIXED : false),
+    btn('restart_alt', 'Del estilo', () => blocks.setCellFill(''))];
+}
 // Text round it (PowerPoint's "Wrap text: Square"): the text boxes it overlaps leave it a gap.
 const wrapBtn = b => btn('wrap_text', 'Texto alrededor', () => set(b, x => { if (x.wrap) delete x.wrap; else x.wrap = true; }), !!b.wrap);
 
@@ -201,6 +209,9 @@ function groupsFor(b) {
     ['Filas y columnas', [btn('table_rows', 'Añadir fila', () => blocks.tableAddRow()), btn('view_column', 'Añadir columna', () => blocks.tableAddCol()),
       btn('remove', 'Quitar fila', () => blocks.tableDelRow()), btn('remove', 'Quitar columna', () => blocks.tableDelCol())]],
     ['Estilo', [btn('title', 'Encabezado', () => blocks.tableToggleHeader(), !!b.header), btn('palette', 'Estilo de tabla', () => openTableStyle(b)), btn('bar_chart', 'Crear gráfico', () => blocks.chartFromTable())]],
+    // PowerPoint's Table Design ▸ Shading: the cells picked (the one being written in, or a block dragged across),
+    // else the whole table. Their own colour wins over the style's header and bands; «Del estilo» gives those back.
+    ['Sombreado', cellShading(b)],
     ['Cálculos', [btn('functions', 'Fila de totales', () => blocks.tableAddTotal()), btn('help', 'Fórmulas', () => formulaHelp())]]);
   else if (b.type === 'diagram') G.push(
     ['Diagrama', [['select', 'Diseño', DIAGRAM_LAYOUTS.flatMap(([, l]) => l), b.layout || 'process', v => blocks.setDiagram(b.id, { layout: v })],
@@ -389,8 +400,10 @@ export function renderContextual() {
   if (tab.textContent !== title) tab.textContent = title;
   if (opened) tab.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });   // (with its name, so all of it shows)
   const names = b?.type === 'model' ? clipsOf(b) : [];
-  // (Moving or resizing it doesn't change its options: no rebuild while nudging.)
-  const sig = shortSig([list.map(x => x.id), list.length > 1 && list.map(x => [x.fill, x.stroke, x.strokeWidth, x.dash, !!x.shadow, x.groupId]), b && { ...b, x: 0, y: 0, w: 0, h: 0 }, names, b && styled(b, currentSlide()).fontSize, b?.type === 'camera' && cameraLive(), b?.type === 'model' && puppetTrying(), b?.type === 'magnify' && Math.round(mag.zoomOf(b) * 10)]);
+  // (Moving or resizing it doesn't change its options: no rebuild while nudging. Nor what a table's cells say — only
+  // how many there are —: leaving a cell for the ribbon saves its text, and a rebuild then would take away the colour
+  // picker being opened.)
+  const sig = shortSig([list.map(x => x.id), list.length > 1 && list.map(x => [x.fill, x.stroke, x.strokeWidth, x.dash, !!x.shadow, x.groupId]), b && { ...b, x: 0, y: 0, w: 0, h: 0, ...(b.type === 'table' && { rows: b.rows.length + 'x' + (b.rows[0]?.length || 0) }) }, names, b && styled(b, currentSlide()).fontSize, b?.type === 'camera' && cameraLive(), b?.type === 'model' && puppetTrying(), b?.type === 'magnify' && Math.round(mag.zoomOf(b) * 10), b?.type === 'table' && blocks.hasTableCells(b) && state.ui.tableCells]);
   if (sig === lastSig) return;
   lastSig = sig;
   const groups = b ? groupsFor(b) : groupsForMany(list);

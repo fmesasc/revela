@@ -49,6 +49,7 @@ import { initBusy } from '../../ui/shell/busy.js';
 import { initErrorReports } from '../../ui/shell/errors.js';
 import { openingScreen, whileOpening } from '../../ui/shell/opening.js';
 import { mountStage } from '../../ui/shell/stage.js';
+import * as update from '../../ui/shell/update.js';
 import * as palette from '../../ui/shell/palette.js';
 import { initDraw } from '../../ui/shell/draw.js';
 import { initI18n, t } from '../../i18n/index.js';
@@ -385,6 +386,8 @@ if (!testing) handleOpenWith();
 if (!testing) finishOpenRouterLogin().then(ok => { if (ok) { alertDialog(t('IA conectada con OpenRouter.')); reopenCreateDeck(); } })
   .catch(e => alertDialog(t('No se pudo conectar con OpenRouter: ') + e.message));
 
+// A newer build published while this tab was open: a bar offers to reload, after saving (ui/shell/update.js).
+if (!testing) update.initUpdateCheck();
 // Offline support (PWA). Not for the test harness nor file:// pages.
 if (!testing && 'serviceWorker' in navigator && location.protocol !== 'file:')
   navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -12,6 +12,12 @@ import { QRCODE, PEERJS } from '../../core/vendor.js';
 // Live polls: host a PeerJS peer, show the QR on every poll, tally votes and
 // repaint the results as they arrive; the current slide's poll is sent to the
 // phones. Loaded only when the deck has polls.
+// Presenting from the editor with an account (window.parent.__revelaVoteRoom: ui/shell/present.js), the phones come
+// through Revela's server instead (server/cloudflare/broadcast.js, a vote room): PeerJS's one WebRTC connection per
+// phone into this browser stops at ~500 (Chrome's limit), the server's relays take thousands. The same messages either
+// way — each phone is still a «connection» c here, with c.send — so the polls and activities don't know which it is;
+// only what goes to every phone is sent once (sendAll), and what comes from many arrives in batches, counted and
+// drawn once per batch. Without an account, or from an exported file, PeerJS as before: no server, no account.
 // classroom: the audience also sees the slides on their devices, at the
 // presenter's pace (the current slide's markup, fragments as shown, with the
 // page's styles, drawn without scripts on the phone); a corner badge with the
@@ -26,12 +32,12 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
  var render=${pollResultsHTML.toString()};
  var tallyVotes=tally, totals=${quizTotals.toString()};         // (quizTotals counts with tallyVotes)
  var started={},revealed={},timer=null;
- var VOTE=${JSON.stringify(VOTE_URL)}, ACC=${JSON.stringify(accents)}, LBL=${jsData(labels)}, votes={}, conns=[], peer=null, code='';
+ var VOTE=${JSON.stringify(VOTE_URL)}, ACC=${JSON.stringify(accents)}, LBL=${jsData(labels)}, votes={}, conns=[], peer=null, code='', NET=null, BATCH=null;
  var AB='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
  function all(){return [].slice.call(document.querySelectorAll('.rv-poll'));}
  function def(el){try{return JSON.parse(el.getAttribute('data-poll'));}catch(e){return null;}}
  function load(id){try{return JSON.parse(localStorage.getItem('revela.poll.'+id))||{};}catch(e){return {};}}
- function store(id){try{localStorage.setItem('revela.poll.'+id,JSON.stringify(kept(id)));}catch(e){}}
+ function store(id){if(BATCH){BATCH.st[id]=1;return;}try{localStorage.setItem('revela.poll.'+id,JSON.stringify(kept(id)));}catch(e){}}
  // Voice answers: all of them while presenting, but only the newest kept in this browser — up to AUDKEEP characters, some
  // ten clips of 30 s — since localStorage holds some 5 MB for the whole site and a full one keeps nothing more.
  var AUDKEEP=1200000;
@@ -95,15 +101,23 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
   var el=all().filter(function(e){var q=def(e);return q&&q.pollId===p.pollId;})[0];if(el)paint(el);if(left(p)<=0&&!waiting(p))reveal(p);}
  function current(){var s=Reveal.getCurrentSlide(),el=s&&s.querySelector('.rv-poll');var p=el&&def(el);if(!p)return null;var act=ACT.indexOf(p.kind)>=0;
   return {pollId:p.pollId,kind:p.kind,question:p.question,options:act?[]:p.options,pub:act?publicActivity(p):null,time:p.time,left:p.kind==='quiz'?left(p):null,revealed:!!revealed[p.pollId],
-   mode:p.mode,teams:TEAMS.length&&GR.indexOf(p.kind)>=0?TEAMS:undefined,min:p.min,max:p.max,step:p.step,unit:p.unit,images:p.kind==='image'?p.images:undefined,image:p.kind==='point'||p.kind==='draw'?p.image:undefined};}
+   mode:p.mode,teams:TEAMS.length&&GR.indexOf(p.kind)>=0?TEAMS:undefined,min:p.min,max:p.max,step:p.step,unit:p.unit,images:p.kind==='image'?p.images:undefined,image:p.kind==='point'||p.kind==='draw'?p.image:undefined,login:p.login&&NET?true:undefined};}
  function send(c,m){try{if(c.open)c.send(m);}catch(e){}}
- // (After each answer: its stars to the phone, and the leaderboards up to date.)
- function starsTo(c,who){all().forEach(function(e){var q=def(e);if(q&&q.kind==='board')paint(e);});var s=starsOf()[who];if(s)send(c,{type:'stars',stars:s.stars,level:s.level});}
+ // The same to every phone: once through the server (keep: also to whoever joins later — the server sends it then),
+ // or to each connection.
+ function sendAll(m,keep){if(NET){NET.out({t:'all',d:m,keep:keep});return;}conns.forEach(function(c){send(c,m);});}
+ // (After each answer: its stars to the phone, and the leaderboards up to date. In a batch: once, at its end.)
+ function boards(){all().forEach(function(e){var q=def(e);if(q&&q.kind==='board')paint(e);});}
+ function starsTo(c,who){if(BATCH){BATCH.stars.push([c,who]);return;}boards();var s=starsOf()[who];if(s)send(c,{type:'stars',stars:s.stars,level:s.level});}
+ function redraw(el){if(BATCH)BATCH.el.push(el);else paint(el);}
  function qaList(p){var r=tally(p,votes[p.pollId]||(votes[p.pollId]=load(p.pollId)));return (r.questions||[]).map(function(q){return {id:q.id,text:q.text,up:q.up};});}
- function broadcastQA(p){var cur=current();if(!cur||cur.pollId!==p.pollId)return;conns.forEach(function(c){send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});}
+ function broadcastQA(p){if(BATCH){BATCH.qa[p.pollId]=p;return;}var cur=current();if(!cur||cur.pollId!==p.pollId)return;sendAll({type:'qa',pollId:p.pollId,list:qaList(p)},'qa');}
  function broadcast(){var p=current();
   // A quiz starts the first time its slide is shown (one already played, with answers saved, is shown solved).
   if(p&&p.kind==='quiz'&&!started[p.pollId]){if(Object.keys(V(p.pollId)).length)revealed[p.pollId]=true;else{started[p.pollId]=Date.now();p.left=left(p);if(!timer)timer=setInterval(tick,250);}}
+  // (Through the server: once for all, then again to those with accommodations — their own time, one option fewer.)
+  if(NET){sendAll({type:'poll',poll:p},'poll');sendAll(p&&p.kind==='qa'?{type:'qa',pollId:p.pollId,list:qaList(p)}:{type:'qa',pollId:null,list:[]},'qa');
+   if(p&&p.kind==='quiz')conns.forEach(function(c){if(ad(c.voter))send(c,{type:'poll',poll:forPhone(p,c)});});return;}
   conns.forEach(function(c){send(c,{type:'poll',poll:forPhone(p,c)});if(p&&p.kind==='qa')send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});}
  function js(src){return new Promise(function(ok,ko){var s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=ko;document.head.appendChild(s);});}
  function clean(p,a){if(p.kind==='word')return String(a||'').slice(0,60);
@@ -114,32 +128,71 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
   if(p.kind==='point'){var px=+(a&&a.x),py=+(a&&a.y);return isFinite(px)&&isFinite(py)&&px>=0&&px<=100&&py>=0&&py<=100?{x:Math.round(px*10)/10,y:Math.round(py*10)/10}:null;}
   if(p.kind==='rank'){var L=p.options.length,o=(Array.isArray(a)?a:[]).map(Number),seen={};if(o.length!==L)return null;for(var i=0;i<L;i++){if(!(o[i]>=0&&o[i]<L)||seen[o[i]])return null;seen[o[i]]=1;}return o;}if(p.kind==='multi')return (Array.isArray(a)?a:[]).map(Number).filter(function(x){return x>=0&&x<p.options.length;}).slice(0,20);
   var n=+a;return p.kind==='rating'?(n>=1&&n<=5?Math.round(n):null):(n>=0&&n<p.options.length?n:null);}
+ // The code and the QR on every poll (and the classroom's corner), once the phones can come in.
+ function ready(url){badge(url);all().forEach(function(el){el.querySelector('.rv-poll-code').textContent=code;
+    el.querySelector('.rv-poll-url').textContent=url.replace(/^https?:\\/\\//,'').replace(/\\?.*$/,'');
+    if(window.QRCode)QRCode.toCanvas(el.querySelector('canvas'),url,{width:220,margin:1},function(){});});}
  function start(tries){code='';for(var i=0;i<5;i++)code+=AB[Math.floor(Math.random()*AB.length)];
   peer=new Peer('revela-vote-'+code);
-  peer.on('open',function(){var url=VOTE+'?c='+code;badge(url);all().forEach(function(el){el.querySelector('.rv-poll-code').textContent=code;
-    el.querySelector('.rv-poll-url').textContent=url.replace(/^https?:\\/\\//,'').replace(/\\?.*$/,'');
-    if(window.QRCode)QRCode.toCanvas(el.querySelector('canvas'),url,{width:220,margin:1},function(){});});});
+  peer.on('open',function(){ready(VOTE+'?c='+code);});
   peer.on('connection',function(c){conns.push(c);
     c.on('open',function(){if(CLASS){send(c,{type:'css',css:css()});send(c,slideMsg());}var p=current();send(c,{type:'poll',poll:forPhone(p,c)});if(p&&p.kind==='qa')send(c,{type:'qa',pollId:p.pollId,list:qaList(p)});});
-    c.on('data',function(d){if(d&&d.type==='lang'){c.lang=/^[a-z]{2}$/.test(d.lang||'')?d.lang:null;return;}
+    c.on('data',function(d){onMsg(c,d);});
+    c.on('close',function(){conns=conns.filter(function(x){return x!==c;});});});
+  peer.on('error',function(e){if(e.type==='unavailable-id'&&tries<5){peer.destroy();start(tries+1);}});}
+ // What a phone says (the same over PeerJS or through the server).
+ function onMsg(c,d){if(d&&d.type==='lang'){c.lang=/^[a-z]{2}$/.test(d.lang||'')?d.lang:null;return;}
       if(d&&d.type==='hi'){c.voter=String(d.voter||'').slice(0,40);c.name=String(d.name||'').trim().slice(0,24);
         var aa=ad(c.voter);if(aa){send(c,{type:'adapt',read:!!aa.read,big:!!aa.big,noRank:!!aa.noRank,time:aa.time||1,fewer:!!aa.fewer});var cp=current();if(cp&&cp.kind==='quiz')send(c,{type:'poll',poll:forPhone(cp,c)});}
         if(TEAMS.indexOf(d.team)>=0&&c.voter){teamOf[c.voter]=d.team;keepTeams();all().forEach(function(e){var q=def(e);if(q&&q.kind==='board')paint(e);});}return;}if(!d||d.type!=='vote')return;var el=all().filter(function(e){var p=def(e);return p&&p.pollId===d.pollId;})[0];if(!el)return;
       var p=def(el),who=String(d.voter).slice(0,40),V=votes[p.pollId]||(votes[p.pollId]=load(p.pollId));
+      // «Exigir iniciar sesión para votar»: only answers the server marks as from an account (acct: never from a phone,
+      // server/cloudflare/broadcast.js), its voter that account's — one per person; the others are asked to sign in.
+      if(p.login&&NET&&!d.acct){send(c,{type:'login',pollId:p.pollId});return;}
       if(p.kind==='qa'){var a=d.answer||{};
         if(a.ask){var txt=String(a.ask).trim().slice(0,200);if(!txt)return;var n=Object.keys(V).filter(function(k){return V[k].by===who;}).length;if(n>=5)return;
           var id='q:'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);V[id]={t:txt,by:who,time:Date.now(),up:{}};if(p.moderate)V[id].hold=1;}
         else if(a.up&&V[a.up]){if(V[a.up].up[who])delete V[a.up].up[who];else V[a.up].up[who]=1;}else return;
-        store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId,held:!!(p.moderate&&a.ask)});broadcastQA(p);modPaint();return;}
+        store(p.pollId);redraw(el);send(c,{type:'ok',pollId:p.pollId,held:!!(p.moderate&&a.ask)});broadcastQA(p);if(BATCH)BATCH.mod=1;else modPaint();return;}
       c.voter=who;
       if(p.kind==='quiz'){if(revealed[p.pollId]||!started[p.pollId]||V[who])return;var q=clean(p,d.answer);if(q===null)return;
-        V[who]={a:q,t:Date.now()-started[p.pollId],n:String(d.name||'').slice(0,24)};if(p.mode==='confidence')V[who].s=!!d.sure;if((ad(who)||{}).time>1)V[who].x=ad(who).time;store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});starsTo(c,who);return;}
+        V[who]={a:q,t:Date.now()-started[p.pollId],n:String(d.name||'').slice(0,24)};if(p.mode==='confidence')V[who].s=!!d.sure;if((ad(who)||{}).time>1)V[who].x=ad(who).time;store(p.pollId);redraw(el);send(c,{type:'ok',pollId:p.pollId});starsTo(c,who);return;}
       if(ACT.indexOf(p.kind)>=0){if(revealed[p.pollId]||V[who])return;var arr=(Array.isArray(d.answer)?d.answer:[]).slice(0,40).map(function(x){return String(x==null?'':x).slice(0,100);});
-        V[who]={a:arr,n:String(d.name||'').slice(0,24)};store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});starsTo(c,who);return;}
+        V[who]={a:arr,n:String(d.name||'').slice(0,24)};store(p.pollId);redraw(el);send(c,{type:'ok',pollId:p.pollId});starsTo(c,who);return;}
       var a2=clean(p,d.answer);if(a2===null||a2==='')return;V[who]=a2;
-      store(p.pollId);paint(el);send(c,{type:'ok',pollId:p.pollId});starsTo(c,who);});
-    c.on('close',function(){conns=conns.filter(function(x){return x!==c;});});});
-  peer.on('error',function(e){if(e.type==='unavailable-id'&&tries<5){peer.destroy();start(tries+1);}});}
+      store(p.pollId);redraw(el);send(c,{type:'ok',pollId:p.pollId});starsTo(c,who);}
+ // Through the server: the room (its WebSocket, with the presenter's token) and its code. What comes up arrives in
+ // batches — [phone, message], and _open/_close as phones come and go —: each message as one from PeerJS, then what
+ // it changed saved, drawn and told once (with thousands of phones, once per answer was what didn't keep up). What
+ // goes to some phones goes together every TO_MS, in pieces of at most TO_MAX characters.
+ var TO_MS=60,TO_MAX=200000;
+ function phone(cid){for(var i=0;i<conns.length;i++)if(conns[i].cid===cid)return conns[i];var c={cid:cid,open:true,send:function(m){NET.to(cid,m);}};conns.push(c);return c;}
+ function batch(l){BATCH={st:{},el:[],stars:[],qa:{},mod:0};var B=BATCH;
+  try{l.forEach(function(x){var cid=String(x[0]),m=x[1];if(!m)return;
+   if(m.type==='_close'){conns=conns.filter(function(c){return c.cid!==cid;});return;}
+   var c=phone(cid);if(m.type!=='_open')try{onMsg(c,m);}catch(e){}});}
+  finally{BATCH=null;}
+  for(var id in B.st)store(id);
+  var seen=[];B.el.forEach(function(el){if(seen.indexOf(el)<0){seen.push(el);paint(el);}});
+  if(B.stars.length){boards();var st=starsOf();B.stars.forEach(function(x){var s=st[x[1]];if(s)send(x[0],{type:'stars',stars:s.stars,level:s.level});});}
+  for(var q in B.qa)broadcastQA(B.qa[q]);if(B.mod)modPaint();}
+ function startServer(info,fallback){var ws=null,tries=0,queue=[],tq=[],tt=null,ended=false,opened=false;code=info.code||'';
+  NET={out:function(o){var s=JSON.stringify(o);if(ws&&ws.readyState===1)ws.send(s);else queue.push(s);},
+   to:function(cid,m){tq.push([cid,m]);if(!tt)tt=setTimeout(flush,TO_MS);}};
+  function flush(){tt=null;var part=[],n=0;tq.forEach(function(x){var k=JSON.stringify(x).length;if(n+k>TO_MAX&&part.length){NET.out({t:'to',l:part});part=[];n=0;}part.push(x);n+=k;});if(part.length)NET.out({t:'to',l:part});tq=[];}
+  function open(){ws=info.open?info.open():new WebSocket(info.ws);   // (open: a socket of whoever offers the room — the tests)
+   ws.onopen=function(){var first=!opened;opened=true;tries=0;queue.splice(0).forEach(function(s){ws.send(s);});
+    if(first){if(CLASS){sendAll({type:'css',css:css()},'css');sendAll(slideMsg(),'slide');}broadcast();ready(info.url||VOTE+'?r='+info.room);}};
+   ws.onmessage=function(e){var m;try{m=JSON.parse(e.data);}catch(x){return;}if(m.t==='up'&&Array.isArray(m.l))batch(m.l);else if(m.t==='end')ended=true;};
+   ws.onclose=function(){if(ended)return;if(!opened&&fallback){NET=null;fallback();return;}if(tries++<30)setTimeout(open,Math.min(15000,500*tries));};}
+  open();
+  // (Leaving the presentation: the room ends, and every phone hears it.)
+  window.addEventListener('pagehide',function(){ended=true;try{if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'end'}));}catch(e){}});}
+ // The server's room when the editor offers one (an account), else PeerJS.
+ function begin(){var VR=null;try{VR=window.parent!==window&&window.parent.__revelaVoteRoom;}catch(e){}
+  var peerjs=function(){js(${JSON.stringify(PEERJS)}).then(function(){start(0);});};
+  if(typeof VR!=='function'){peerjs();return;}
+  Promise.resolve().then(VR).then(function(info){if(info&&(info.ws||info.open))startServer(info,peerjs);else peerjs();},peerjs);}
  all().forEach(paint);
  // Someone at random (ClassPoint's name picker): among the phones connected with a name — or those who answered with one —,
  // a quick roulette and the name, big; their phone is told. N or the right-click menu.
@@ -223,7 +276,7 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
   else if(e.key==='Escape'){var b=document.getElementById('rv-pick')||document.getElementById('rv-grade')||document.getElementById('rv-wheel');if(b){b.remove();e.stopImmediatePropagation();}}},true);
  // A click on a quiz shows its answer at once.
  document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('.rv-poll');var p=el&&def(el);if(p&&((p.kind==='quiz'&&started[p.pollId])||ACT.indexOf(p.kind)>=0)){e.stopPropagation();if(revealed[p.pollId]&&ACT.indexOf(p.kind)>=0)return;reveal(p);}},true);
- js(${JSON.stringify(QRCODE)}).catch(function(){}).then(function(){return js(${JSON.stringify(PEERJS)});}).then(function(){start(0);});
+ js(${JSON.stringify(QRCODE)}).catch(function(){}).then(begin);
  Reveal.on('slidechanged',broadcast);
  Reveal.on('slidechanged',function(ev){stopClip();races(ev.currentSlide);});
  if(Reveal.isReady())races(Reveal.getCurrentSlide());else Reveal.on('ready',function(){races(Reveal.getCurrentSlide());});
@@ -239,7 +292,7 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
   var ta=document.createElement('textarea'),html=s?s.outerHTML.replace(/ data-poll="([^"]*)"/g,function(m,v){ta.innerHTML=v;var p;try{p=JSON.parse(ta.value);}catch(e){return ' data-poll="{}"';}
    return ' data-poll="'+JSON.stringify(bare(p)).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')+'"';}):'';
   return {type:'slide',html:html,bg:bg?bg.outerHTML:'',w:cfg.width,h:cfg.height,cls:document.querySelector('.reveal').className,n:Reveal.getSlidePastCount()+1,of:Reveal.getTotalSlides()};}
- function pushSlide(){if(!CLASS)return;var m=slideMsg();conns.forEach(function(c){send(c,m);});}
+ function pushSlide(){if(!CLASS)return;sendAll(slideMsg(),'slide');}
  function badge(url){if(!CLASS)return;var b=document.getElementById('rv-class');if(!b){b=document.createElement('div');b.id='rv-class';
    b.style.cssText='position:fixed;right:12px;bottom:12px;z-index:40;background:#fff;color:#223;border-radius:10px;padding:8px 10px;font:600 14px system-ui,sans-serif;text-align:center;box-shadow:0 4px 20px #0005';
    b.innerHTML='<canvas style="display:block;width:120px;height:120px;margin:0 auto 4px"></canvas><div>'+url.replace(/^https?:\\/\\//,'').replace(/\\?.*$/,'')+'</div><div>C\u00f3digo <b style="letter-spacing:2px">'+code+'</b></div>';
@@ -250,7 +303,7 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
  var TR=null;try{TR=window.parent!==window&&window.parent.__revelaTranslate;}catch(e){}
  var trOk=null;
  window.addEventListener('rv-caption',function(e){var d=e.detail||{};if(!d.text)return;
-  conns.forEach(function(c){send(c,{type:'caption',text:d.text,final:!!d.final,lang:d.lang});});
+  sendAll({type:'caption',text:d.text,final:!!d.final,lang:d.lang});
   if(!d.final||!TR)return;var want={};conns.forEach(function(c){if(c.lang)want[c.lang]=1;});var ls=Object.keys(want).slice(0,5);if(!ls.length)return;
   if(trOk===null)trOk=confirm('El p\u00fablico pide los subt\u00edtulos traducidos ('+ls.join(', ')+'). \u00bfTraducirlos con tu IA? Cada frase gasta un poco de cr\u00e9dito.');
   if(!trOk)return;

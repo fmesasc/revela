@@ -139,6 +139,8 @@ export function swapPalette(key, deck, custom = null) {
   const blocks = list => { for (const b of list || []) {
     for (const k of COLOUR_PROPS) if (typeof b[k] === 'string') b[k] = swap(b[k]);
     if (b.type === 'text' && b.html) b.html = swap(b.html);
+    // (A table's cell shading in a theme colour follows the theme too, as its header and bands do.)
+    if (b.cellBg && typeof b.cellBg === 'object') for (const k of Object.keys(b.cellBg)) if (typeof b.cellBg[k] === 'string') b.cellBg[k] = swap(b.cellBg[k]);
   } };
   for (const s of deck.slides) { if (s.background) s.background = swap(s.background); blocks(s.blocks); }
   // The masters and layouts: their backgrounds, objects and text styles.

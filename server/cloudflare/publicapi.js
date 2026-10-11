@@ -43,11 +43,10 @@
 //   POST /api/oauth/approve            { req } (session) → { redirect }   (a one-time code, 5 minutes, PKCE S256)
 //   POST /api/oauth/token              authorization_code (+ code_verifier) | refresh_token → { access_token, refresh_token, … }
 
-import { handleDocs } from './docs.js';
-import { acct, call } from './api.js';
+import { handleDocs, editDeck } from './docs.js';
+import { acct, call, FEATURES } from './api.js';
 import { enc, b64url, unb64, random, sha256, hmac } from './util.js';
-import { diff } from '../../src/features/live/collabsync.js';
-import { deckFromSpecs, slidesFromSpecs, respecSlide, deckOutline, outlineText, markdownSpecs, cleanSpec, SPEC_DOC, KINDS, DESIGNS, DESIGN_DOC, MAX_SLIDES } from '../../src/features/ai/specdeck.js';
+import { deckFromSpecs, deckOutline, outlineText, markdownSpecs, SPEC_DOC, KINDS, DESIGNS, DESIGN_DOC, MAX_SLIDES } from '../../src/features/ai/specdeck.js';
 import { PHOTO_PROVIDERS, stockUsed } from './stock.js';
 import { APP_VERSION } from '../../src/core/config.js';
 
@@ -88,11 +87,14 @@ export async function keyOp(acc, op, a) {
       await acc.put({ apiKeys: live });
       return { id, secret, ...(refresh && { refresh }) };
     }
-    case 'key-check': {                                 // { secret } → { ok, id, kind }
+    case 'key-check': {                                 // { secret } → { ok, id, kind, email, who: { name, plan, features } }
       const h = await sha256(a.secret || ''), v = live[h];
       if (!v || (v.expires && v.expires < now)) return { ok: false };
       if (now - (v.last || 0) > 36e5) { live[h] = { ...v, last: now }; await acc.put({ apiKeys: live }); }   // (at most once an hour)
-      return { ok: true, id: v.id, kind: v.kind, email: (await acc.get('profile', {})).email || '', ...((await acc.get('blocked', null)) && { blocked: true }) };
+      // (who: what handleV1 and handleMcp need of the account, here — it used to be one more request to it ('me') for
+      // every call to the API, and 'me' does more: the month's credits, the directory…)
+      const prof = await acc.get('profile', {}), plan = (await acc.isPro()) ? 'pro' : 'free';
+      return { ok: true, id: v.id, kind: v.kind, email: prof.email || '', who: { name: prof.name || null, plan, features: FEATURES[plan] }, ...((await acc.get('blocked', null)) && { blocked: true }) };
     }
     case 'key-refresh': {                               // { secret (the refresh one) } → { id, secret, refresh } (both new)
       const r = await sha256(a.secret || ''), e = Object.entries(live).find(([, v]) => v.refresh === r && v.refreshUntil > now);
@@ -158,15 +160,12 @@ async function readDeck(ctx, id) {
   const r = await docs(ctx, '/docs/' + deckId(id));
   return { deck: r.deck, role: r.role, name: r.name };
 }
-// A change: the deck read, changed by `fn` on a copy, and only what changed sent (as the app's own edits: docs.js ops,
-// checked against the role there).
-async function change(ctx, id, fn) {
-  const { deck, role } = await readDeck(ctx, id);
-  if (!['edit', 'owner'].includes(role)) fail(403, 'forbidden');
-  const next = structuredClone(deck), out = await fn(next);
-  const ops = diff(deck, next);
-  if (ops.length) await docs(ctx, `/docs/${id}/ops`, 'POST', { ops });
-  return out;
+// A change (deckedit.js EDITS[action]): made by the document itself, on its latest deck, with the role of whoever the
+// key belongs to (docs.js editDeck: checked there as the app's own edits are).
+async function change(ctx, id, action, args) {
+  const r = await editDeck(ctx.env, ctx.who, deckId(id), action, args);
+  if (r.status >= 400) fail(r.status, r.data?.error || 'error', r.data);
+  return r.data;
 }
 // The specs sent: a list of slides, or Markdown.
 function specsOf(a) {
@@ -189,23 +188,6 @@ async function findPictures(ctx, specs) {
     } catch {}
   }));
 }
-const position = (p, n) => (Number.isInteger(+p) && +p >= 1 ? Math.min(n, +p - 1) : n);
-// Every text in a deck (objects' HTML, tables' cells, notes), for find-and-replace: only text between tags.
-function replaceIn(deck, find, rep) {
-  let n = 0;
-  const swap = html => String(html).replace(/(^|>)([^<]*)/g, (m, a, t) => { const parts = t.split(find); n += parts.length - 1; return a + parts.join(rep); });
-  const escd = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const f0 = find; find = escd(f0); rep = escd(rep);
-  for (const s of deck.slides || []) {
-    for (const b of s.blocks || []) {
-      if (typeof b.html === 'string') b.html = swap(b.html);
-      if (Array.isArray(b.rows)) b.rows = b.rows.map(r => r.map(c => (typeof c === 'string' ? swap(c) : c && typeof c.html === 'string' ? { ...c, html: swap(c.html) } : c)));
-    }
-    if (typeof s.notes === 'string' && s.notes.includes(f0)) { n += s.notes.split(f0).length - 1; s.notes = s.notes.split(f0).join(rep.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&')); }
-  }
-  return n;
-}
-
 export const ACTIONS = {
   async me(ctx) {
     const p = await call(acct(ctx.env, ctx.me.sub), 'me');
@@ -232,37 +214,18 @@ export const ACTIONS = {
   async addSlides(ctx, a = {}) {
     const specs = specsOf(a); if (!specs.length) fail(400, 'no slides');
     await findPictures(ctx, specs);
-    return change(ctx, a.id, deck => {
-      const at = position(a.position, deck.slides.length), made = slidesFromSpecs(deck, specs, at);
-      const sec = deck.slides[at - 1]?.sectionId || null; made.forEach(s => (s.sectionId = sec));
-      deck.slides.splice(at, 0, ...made);
-      return { added: made.map(s => s.id) };
-    });
+    return change(ctx, a.id, 'addSlides', { specs, position: a.position });
   },
   async updateSlide(ctx, a = {}) {
     if (a.spec) await findPictures(ctx, [a.spec]);
-    return change(ctx, a.id, deck => {
-      const s = (deck.slides || []).find(x => x.id === a.slide); if (!s) fail(404, 'no such slide');
-      if (a.spec) { if (!cleanSpec(a.spec)) fail(400, 'bad spec'); respecSlide(deck, s, a.spec); }
-      if (typeof a.notes === 'string') s.notes = a.notes.slice(0, 20000);
-      if (typeof a.hidden === 'boolean') s.hidden = a.hidden;
-      if (a.position != null) { const i = deck.slides.indexOf(s); deck.slides.splice(i, 1); deck.slides.splice(position(a.position, deck.slides.length), 0, s); }
-      return { ok: true };
-    });
+    return change(ctx, a.id, 'updateSlide', { slide: str(a.slide), spec: a.spec, notes: a.notes, hidden: a.hidden, position: a.position });
   },
   async deleteSlides(ctx, a = {}) {
-    const ids = (Array.isArray(a.slides) ? a.slides : [a.slide]).map(str);
-    return change(ctx, a.id, deck => {
-      const keep = deck.slides.filter(s => !ids.includes(s.id));
-      if (keep.length === deck.slides.length) fail(404, 'no such slide');
-      if (!keep.length) fail(400, 'a deck keeps one slide at least');
-      deck.slides = keep;
-      return { ok: true, slides: keep.length };
-    });
+    return change(ctx, a.id, 'deleteSlides', { slides: (Array.isArray(a.slides) ? a.slides : [a.slide]).map(str) });
   },
   async replace(ctx, a = {}) {
     const find = str(a.find); if (!find) fail(400, 'find is empty');
-    return change(ctx, a.id, deck => ({ changed: replaceIn(deck, find, str(a.replace)) }));
+    return change(ctx, a.id, 'replace', { find, replace: str(a.replace) });
   },
   async rename(ctx, a = {}) {
     const name = str(a.name).trim().slice(0, 200); if (!name) fail(400, 'no name');
@@ -281,7 +244,7 @@ export const ACTIONS = {
 
 // ---- REST ------------------------------------------------------------------------------------------------
 export async function handleV1(path, req, body, url, env, me, json) {
-  const prof = await call(acct(env, me.sub), 'me');
+  const prof = me.who ? { email: me.email, ...me.who } : await call(acct(env, me.sub), 'me');
   const ctx = { env, me, who: { sub: me.sub, email: prof.email, name: prof.name, plan: prof.plan, features: prof.features } };
   const GET = req.method === 'GET', POST = req.method === 'POST', q = Object.fromEntries(url.searchParams);
   const route = () => {
@@ -371,7 +334,7 @@ async function rpc(ctx, m) {
 export async function handleMcp(req, env, me, body, json) {
   if (req.method === 'GET') return json({ error: 'no server-sent events: POST JSON-RPC' }, 405, { Allow: 'POST' });
   if (req.method === 'DELETE') return new Response(null, { status: 204 });
-  const prof = await call(acct(env, me.sub), 'me');
+  const prof = me.who ? { email: me.email, ...me.who } : await call(acct(env, me.sub), 'me');
   const ctx = { env, me, who: { sub: me.sub, email: prof.email, name: prof.name, plan: prof.plan, features: prof.features } };
   if (Array.isArray(body)) {
     const out = (await Promise.all(body.slice(0, 20).map(m => rpc(ctx, m)))).filter(Boolean);

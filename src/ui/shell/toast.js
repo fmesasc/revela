@@ -28,10 +28,11 @@ export function toast(msg, { busy = false, error = false, ms = 5000, action = nu
 
 // A slow task with a busy note while it runs and another when it is done (none
 // if it returns false: it said why itself, or was cancelled).
+// The task is given say(text): how far it is, shown after the busy message.
 export async function withProgress(busyMsg, task, doneMsg) {
-  const note = toast(busyMsg, { busy: true });
+  const note = toast(busyMsg, { busy: true }), label = note.el.lastChild;
   try {
-    const r = await task();
+    const r = await task(text => { label.textContent = text ? `${busyMsg} ${text}` : busyMsg; });
     note.close();
     if (r !== false && doneMsg) toast(doneMsg);
     return r;

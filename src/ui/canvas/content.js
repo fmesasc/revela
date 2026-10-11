@@ -20,7 +20,7 @@ import { borderCSS, tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig,
 import { collectFigures, captionLine, figIndexTitle } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t, currentLang } from '../../i18n/index.js';
-import { setEmbedDisplay } from '../../features/document/blocks.js';
+import { setEmbedDisplay, setTableCells, hasTableCells, tableCellKeys } from '../../features/document/blocks.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { cameraView } from './cameraview.js';
 import { pollEditorHTML, savedVotes } from '../../features/live/poll.js';
@@ -394,6 +394,13 @@ export function fillTable(t, b) {
       if (sp.cs > 1) td.colSpan = sp.cs; if (sp.rs > 1) td.rowSpan = sp.rs;
     });
   });
+  markTableCells(t, b);
+}
+// The cells picked in it, tinted when they are several (as in PowerPoint; the one with the caret alone isn't). A
+// class, not a background: the cells' own shading — what is being chosen — stays in sight under the tint.
+export function markTableCells(t, b) {
+  const keys = hasTableCells(b) ? new Set(tableCellKeys(b)) : null, many = !!keys && keys.size > 1;
+  t.querySelectorAll('td').forEach(td => td.classList.toggle('cell-sel', many && keys.has(td.dataset.r + ',' + td.dataset.c)));
 }
 // The formulas' results again, in every cell but the one being written in.
 function refreshFormulas(t, b) {
@@ -406,7 +413,33 @@ function refreshFormulas(t, b) {
   });
 }
 // Cells edit on double‑click (like text boxes); Esc / clicking away saves.
+// Which cells a command (Sombreado…) acts on, as in PowerPoint: while writing, the one with the caret, or a block of
+// them dragged across or Shift+clicked; a right click in a cell, that cell (or the block it is in); a click on the
+// table not being written in, the table as a whole. (Kept when the caret leaves for the ribbon: that is where the
+// command is.) Whole rows and columns: dragged across, from the first cell to the last.
 export function setupTable(el, b) {
+  const cellOf = e => { const td = e.target.closest?.('td[data-r]'); return td && el.contains(td) ? [+td.dataset.r, +td.dataset.c, td] : null; };
+  const pick = (...rc) => { setTableCells(b.id, ...rc); commit(() => {}, { history: false }); };   // (redrawn: the tint, the ribbon's colour)
+  let anchor = null, dragging = false;
+  const inPicked = at => { const s = state.ui.tableCells; return hasTableCells(b) && at[0] >= s.r1 && at[0] <= s.r2 && at[1] >= s.c1 && at[1] <= s.c2; };
+  el.addEventListener('mousedown', e => {
+    const at = cellOf(e);
+    if (e.button === 2) { if (at && !inPicked(at)) { anchor = at; setTableCells(b.id, at[0], at[1]); } return; }   // (the menu opens next)
+    if (!el.classList.contains('editing')) { if (e.button === 0) { anchor = null; setTableCells(null); } return; }
+    if (!at || e.button !== 0) return;
+    if (e.shiftKey && anchor) { e.preventDefault(); pick(anchor[0], anchor[1], at[0], at[1]); return; }
+    anchor = at; dragging = true; pick(at[0], at[1]);
+  });
+  el.addEventListener('mouseover', e => {
+    if (!dragging || !(e.buttons & 1)) { dragging = false; return; }
+    const at = cellOf(e), s = state.ui.tableCells; if (!at || !anchor || !s) return;
+    if (s.r1 === Math.min(anchor[0], at[0]) && s.r2 === Math.max(anchor[0], at[0]) && s.c1 === Math.min(anchor[1], at[1]) && s.c2 === Math.max(anchor[1], at[1])) return;
+    if (at[2] !== anchor[2]) window.getSelection()?.removeAllRanges();   // (across cells: cells, not their words)
+    pick(anchor[0], anchor[1], at[0], at[1]);
+  });
+  el.addEventListener('mouseup', () => { dragging = false; });
+  // (The caret moved to another cell with the keyboard — Tab, arrows —: that cell.)
+  el.addEventListener('focusin', e => { const at = cellOf(e); if (at && !dragging && el.classList.contains('editing') && !inPicked(at)) { anchor = at; pick(at[0], at[1]); } });
   el.addEventListener('dblclick', e => {
     if (!e.target.closest('td')) return;
     el.classList.add('editing');

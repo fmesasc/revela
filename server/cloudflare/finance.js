@@ -1,7 +1,7 @@
 // Business accounting (the admin's «Negocio» page): every economic event, in one Durable Object
 // (Finance). Internal business data: only the protected admin API (admin.js) reads it.
 //
-// What is recorded (record(env, event), never throws, nothing if FINANCE isn't bound):
+// What is recorded (record(env, event or [events]), never throws, nothing if FINANCE isn't bound):
 //   ai        { feature, model, tin, tout, usd (provider's cost), credits (charged), sub, blenderSecs?, blenderUsd? }
 //             — every AI request through Revela's key (api.js chat/image/speech, model3d.js rounds, admin.js
 //             ticket suggestions), feature from AI_FEATURES (the client tags it; anything else is 'other')
@@ -16,7 +16,13 @@
 //   signup    { sub }                                                 — a new account
 //   trial     { stage: start | convert | cancel, subscription, product, sub, ref }   — Pro's free trial (api.js): each stage
 //             counted once per subscription ('tr:'), a cancel only before a conversion
-// Plus, without a raw event, the daily active counter (active(): from Account.seen, once a day per account).
+// Plus, without a raw event, the daily active counter ({ kind: 'active', mau }: from Account.seen, once a day per
+// account; the op 'active' still takes it alone, as before the lists).
+// Several events in one call (record(env, [events])): one request, one write. An account's events of one request (a
+// new account brings 'signup', its welcome 'credits' and 'active') come so, after its answer (api.js Account.flush):
+// this is one object for everyone, and one call each instead of three kept a burst of sign-ups waiting in its queue
+// (local test, 2026-10-11: 100 new accounts at once, 8.1 s before, ~3 s now; see docs/NUBE.md). Not split per account:
+// the day's sums, subscriptions, promotion codes and Stripe events already seen must be together for the figures to add up.
 // Stripe's test mode (api.js stripeConf): payment, refund, sub-end and credits events may carry test: true. They are
 // kept (raw, and counted apart as 'test.*' in the day's sums, subscriptions as 'ts:') but never enter revenue, fees,
 // net, MRR, churn, conversion, per-account figures or the accountant's CSV; summarize() reports them under 'test'.
@@ -64,14 +70,11 @@ export function financeSettings(env) {
 }
 const stub = env => env.FINANCE.get(env.FINANCE.idFromName('global'));
 const ask = async (env, op, body) => (await stub(env).fetch('https://fin/' + op, { method: 'POST', body: JSON.stringify(body || {}) })).json();
-// An economic event (see above). Never throws: accounting must not break what it records.
+// An economic event, or several (see above). Never throws: accounting must not break what it records.
 export async function record(env, ev) {
-  if (!env.FINANCE) return false;
-  try { return !!(await ask(env, 'record', ev)).ok; } catch (e) { console.log('finance', e?.message); return false; }
-}
-export async function active(env, { mau }) {
-  if (!env.FINANCE) return;
-  try { await ask(env, 'active', { mau: !!mau }); } catch {}
+  const list = [].concat(ev ?? []).filter(Boolean);
+  if (!env.FINANCE || !list.length) return false;
+  try { return !!(await ask(env, 'record', list.length === 1 ? list[0] : { events: list })).ok; } catch (e) { console.log('finance', e?.message); return false; }
 }
 export const financeCall = ask;
 
@@ -137,56 +140,13 @@ export class Finance {
   async handle(req) {
     const op = new URL(req.url).pathname.split('/').pop(), a = await req.json().catch(() => ({})), st = this.ctx.storage, s = financeSettings(this.env);
     const J = (o, status = 200) => Response.json(o, { status });
-    if (op === 'record') {
-      const e = clean(a, s); if (!e) return J({ ok: false }, 400);
-      if (MONEY.includes(e.kind) && e.ref) { if (await st.get('k:' + e.ref)) return J({ ok: true, duplicate: true }); await st.put('k:' + e.ref, e.at); }
-      const day = dayOf(e.at), month = day.slice(0, 7), put = {};
-      // Free trials: each stage once per subscription; a cancel only while not converted (else it's an ordinary churn).
-      if (e.kind === 'trial') {
-        const k = (e.test ? 'trt:' : 'tr:') + e.subscription, old = (await st.get(k)) || {};
-        const counts = e.stage === 'start' ? !old.start : !old.convert && !old.cancel;
-        if (!counts) return J({ ok: true, duplicate: true });
-        e.counted = true; put[k] = { ...old, [e.stage]: e.at };
-        const ck = e.test ? 'trialsTest' : 'trials', c = (await st.get(ck)) || {}; c[e.stage] = (c[e.stage] || 0) + 1; put[ck] = c;
-      }
-      // Promotion codes: their uses ever, and by whom (the admin's «Promociones»; per-customer limits are checked there).
-      if (e.kind === 'payment' && e.promo) {
-        const k = (e.test ? 'pct:' : 'pc:') + e.promo, x = (await st.get(k)) || { n: 0, money: {}, users: {} }, m = x.money[e.cur] ||= { disc: 0, gross: 0 };
-        x.n++; m.disc += e.discount || 0; m.gross += e.gross || 0; if (e.sub) x.users[e.sub] = (x.users[e.sub] || 0) + 1;
-        put[k] = x;
-      }
-      // Subscriptions: started with their first payment, ended when Stripe deletes them.
-      const sk = (e.test ? 'ts:' : 's:') + e.subscription;  // (test-mode subscriptions apart: never in MRR or churn)
-      if (e.kind === 'payment' && e.subscription) {
-        const k = sk, old = await st.get(k), months = Math.max(1, Math.round(e.months || 1));
-        put[k] = { id: e.subscription, sub: e.sub || old?.sub || null, product: e.product || old?.product || null, cur: e.cur, monthly: Math.round((e.gross - (e.tax || 0)) / months),
-          start: old?.start || e.at, periodEnd: Math.max(old?.periodEnd || 0, e.at + months * 31 * DAY), end: null };
-        if (!old) e.newSub = true;
-      }
-      if (e.kind === 'sub-end' && e.subscription) {
-        const k = sk, old = await st.get(k);
-        if (old && !old.end) { put[k] = { ...old, end: e.at }; e.counted = true; e.product ??= old.product; e.sub ??= old.sub; }
-      }
-      // Per account and month: what its AI cost, and what it paid.
-      if (e.sub && !e.test && ['ai', 'payment', 'refund'].includes(e.kind)) {
-        const k = `u:${month}|${e.sub}`, u = (await st.get(k)) || { usd: 0, cr: 0, n: 0, rev: {} };
-        if (e.kind === 'ai') { u.usd = r6(u.usd + (e.usd || 0) + (e.blenderUsd || 0)); u.cr += e.credits || 0; u.n++; }
-        if (e.kind === 'payment') u.rev[e.cur] = (u.rev[e.cur] || 0) + (e.gross - (e.tax || 0));
-        if (e.kind === 'refund') u.rev[e.cur] = (u.rev[e.cur] || 0) - e.amount;
-        put[k] = u;
-      }
-      const seq = ((await st.get('seq')) || 0) + 1;
-      put.seq = seq; put['d:' + day] = bump((await st.get('d:' + day)) || {}, e);
-      put[`${MONEY.includes(e.kind) ? 'p' : 'e'}:${tsKey(e.at)}:${String(seq).padStart(9, '0')}`] = e;
-      await st.put(put);
-      await this.prune();
-      return J({ ok: true });
+    if (op === 'record') {                                // one event, or { events: [...] } (and { kind: 'active', mau } among them)
+      const list = Array.isArray(a.events) ? a.events.slice(0, 50) : [a];
+      if (!Array.isArray(a.events) && a.kind !== 'active' && !clean(a, s)) return J({ ok: false }, 400);
+      const r = await this.record(list, s);
+      return J(Array.isArray(a.events) ? { ok: true, n: r.n } : r.duplicate ? { ok: true, duplicate: true } : { ok: true });
     }
-    if (op === 'active') {                                // one account used today (and, mau, the first time this month)
-      const k = 'd:' + dayOf(Date.now()), t = (await st.get(k)) || {};
-      t['act.dau'] = (t['act.dau'] || 0) + 1; if (a.mau) t['act.mau'] = (t['act.mau'] || 0) + 1;
-      await st.put(k, t); return J({ ok: true });
-    }
+    if (op === 'active') { await this.record([{ kind: 'active', mau: !!a.mau }], s); return J({ ok: true }); }   // (from before the lists)
     if (op === 'events') {                                // { cursor, limit, kind } → { events, cursor }  (newest first; raw + money)
       const limit = Math.min(200, Math.max(1, +a.limit || 50)), kind = KINDS.includes(a.kind) ? a.kind : null, cur = /^\d{15}:\d{9}$/.test(a.cursor || '') ? a.cursor : null;
       const got = [];
@@ -230,12 +190,77 @@ export class Finance {
     }
     return J({ error: 'unknown' }, 404);
   }
+  // The events, in order, in one write: every key they touch read once (a list's events often share their day, their
+  // account's month, 'seq'), changed in memory and written together — one put of up to 128 keys, several put without an
+  // await between them: Durable Objects write those at once, all or nothing. 'seq' and when it last pruned are kept in
+  // memory too (requests here go one at a time, and only this object writes them). → { n: recorded, duplicate }
+  async record(list, s) {
+    const st = this.ctx.storage, got = new Map(), put = {};
+    const get = async k => { if (!got.has(k)) got.set(k, await st.get(k)); return got.get(k); };
+    const set = (k, v) => { got.set(k, v); put[k] = v; };
+    this.seq ??= (await st.get('seq')) || 0;
+    let n = 0, duplicate = false;
+    for (const a of list) {
+      if (a?.kind === 'active') {                          // one account used today (and, mau, the first time this month)
+        const k = 'd:' + dayOf(Date.now()), t = (await get(k)) || {};
+        t['act.dau'] = (t['act.dau'] || 0) + 1; if (a.mau) t['act.mau'] = (t['act.mau'] || 0) + 1;
+        set(k, t); continue;
+      }
+      const e = a && clean(a, s); if (!e) continue;
+      if (MONEY.includes(e.kind) && e.ref) { if (await get('k:' + e.ref)) { duplicate = true; continue; } set('k:' + e.ref, e.at); }
+      const day = dayOf(e.at), month = day.slice(0, 7);
+      // Free trials: each stage once per subscription; a cancel only while not converted (else it's an ordinary churn).
+      if (e.kind === 'trial') {
+        const k = (e.test ? 'trt:' : 'tr:') + e.subscription, old = (await get(k)) || {};
+        const counts = e.stage === 'start' ? !old.start : !old.convert && !old.cancel;
+        if (!counts) { duplicate = true; continue; }
+        e.counted = true; set(k, { ...old, [e.stage]: e.at });
+        const ck = e.test ? 'trialsTest' : 'trials', c = { ...((await get(ck)) || {}) }; c[e.stage] = (c[e.stage] || 0) + 1; set(ck, c);
+      }
+      // Promotion codes: their uses ever, and by whom (the admin's «Promociones»; per-customer limits are checked there).
+      if (e.kind === 'payment' && e.promo) {
+        const k = (e.test ? 'pct:' : 'pc:') + e.promo, x = (await get(k)) || { n: 0, money: {}, users: {} }, m = x.money[e.cur] ||= { disc: 0, gross: 0 };
+        x.n++; m.disc += e.discount || 0; m.gross += e.gross || 0; if (e.sub) x.users[e.sub] = (x.users[e.sub] || 0) + 1;
+        set(k, x);
+      }
+      // Subscriptions: started with their first payment, ended when Stripe deletes them.
+      const sk = (e.test ? 'ts:' : 's:') + e.subscription;  // (test-mode subscriptions apart: never in MRR or churn)
+      if (e.kind === 'payment' && e.subscription) {
+        const old = await get(sk), months = Math.max(1, Math.round(e.months || 1));
+        set(sk, { id: e.subscription, sub: e.sub || old?.sub || null, product: e.product || old?.product || null, cur: e.cur, monthly: Math.round((e.gross - (e.tax || 0)) / months),
+          start: old?.start || e.at, periodEnd: Math.max(old?.periodEnd || 0, e.at + months * 31 * DAY), end: null });
+        if (!old) e.newSub = true;
+      }
+      if (e.kind === 'sub-end' && e.subscription) {
+        const old = await get(sk);
+        if (old && !old.end) { set(sk, { ...old, end: e.at }); e.counted = true; e.product ??= old.product; e.sub ??= old.sub; }
+      }
+      // Per account and month: what its AI cost, and what it paid.
+      if (e.sub && !e.test && ['ai', 'payment', 'refund'].includes(e.kind)) {
+        const k = `u:${month}|${e.sub}`, u = (await get(k)) || { usd: 0, cr: 0, n: 0, rev: {} };
+        if (e.kind === 'ai') { u.usd = r6(u.usd + (e.usd || 0) + (e.blenderUsd || 0)); u.cr += e.credits || 0; u.n++; }
+        if (e.kind === 'payment') u.rev[e.cur] = (u.rev[e.cur] || 0) + (e.gross - (e.tax || 0));
+        if (e.kind === 'refund') u.rev[e.cur] = (u.rev[e.cur] || 0) - e.amount;
+        set(k, u);
+      }
+      const seq = ++this.seq;
+      set('seq', seq); set('d:' + day, bump((await get('d:' + day)) || {}, e));
+      set(`${MONEY.includes(e.kind) ? 'p' : 'e'}:${tsKey(e.at)}:${String(seq).padStart(9, '0')}`, e);
+      n++;
+    }
+    const keys = Object.keys(put);
+    try { await Promise.all(Array.from({ length: Math.ceil(keys.length / 128) }, (_, i) => st.put(Object.fromEntries(keys.slice(i * 128, i * 128 + 128).map(k => [k, put[k]]))))); }
+    catch (err) { this.seq = null; throw err; }            // (read again from storage next time)
+    if (n) await this.prune();
+    return { n, duplicate };
+  }
   // Raw events older than RAW_DAYS go (their day's sums stay); at most once an hour, a batch at a time.
   async prune() {
-    const st = this.ctx.storage, now = Date.now(); if (now - ((await st.get('pruned')) || 0) < 3600e3) return;
+    const st = this.ctx.storage, now = Date.now();
+    this.pruned ??= (await st.get('pruned')) || 0; if (now - this.pruned < 3600e3) return;
     const old = [...(await st.list({ prefix: 'e:', end: 'e:' + tsKey(now - RAW_DAYS * DAY), limit: 1000 })).keys()];
     for (let i = 0; i < old.length; i += 128) await st.delete(old.slice(i, i + 128));
-    await st.put('pruned', now);
+    await st.put('pruned', now); this.pruned = now;
   }
 }
 

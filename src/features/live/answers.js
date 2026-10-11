@@ -11,6 +11,7 @@ export function publicPoll(b) {
   if (b.kind === 'number') { p.min = b.min; p.max = b.max; p.step = b.step; p.unit = b.unit; }
   if (b.kind === 'image') p.images = b.images || [];
   if (b.kind === 'point') p.image = b.image || '';
+  if (b.login) p.login = true;                         // (one vote per person: the phone asks to sign in first)
   return p;
 }
 

@@ -12,6 +12,16 @@
 import { plainText } from './text.js';
 
 export const isFormula = cell => /^\s*=/.test(plainText(cell));
+// A real formula, not just a text that starts with «=» («= 52 años: la rueda calendárica», «= 8 sílabas»): after the
+// «=», only what a formula is made of (see tokens) — numbers, operators, brackets — and, as words, only the functions
+// and directions below or cell references (B2, AA10). What translates the examples (tplang.js) and the AI's
+// translation skip only these: the rest is a text to translate.
+export function isSheetFormula(cell) {
+  const s = plainText(cell);
+  if (!/^=/.test(s)) return false;
+  try { const t = tokens(s.slice(1)); return t.length > 0 && t.every(x => !x.w || FN[x.w] || DIR[x.w] || /^[A-Z]{1,3}\d+$/.test(x.w)); }
+  catch { return false; }
+}
 
 const FN = { SUMA: 'SUM', SUM: 'SUM', PROMEDIO: 'AVG', MEDIA: 'AVG', AVERAGE: 'AVG', MIN: 'MIN', MAX: 'MAX', CONTAR: 'COUNT', COUNT: 'COUNT',
   PRODUCTO: 'PRODUCT', PRODUCT: 'PRODUCT', REDONDEAR: 'ROUND', ROUND: 'ROUND', ABS: 'ABS' };

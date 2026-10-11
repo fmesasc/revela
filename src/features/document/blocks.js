@@ -4,7 +4,7 @@ import { shrinkImage } from './imgshrink.js';
 import { diagramLayout, DIAGRAM_SAMPLES, DEFAULT_DIAGRAM_TEXT } from '../../render/diagrams.js';
 import { cellNumber } from '../../core/formulas.js';
 import { plainText, esc } from '../../core/text.js';
-import { state, commit, currentSlide, selectedBlock,
+import { state, commit, subscribe, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, setSelection, setMulti } from '../../core/store.js';
 import { DEFAULT_SHADOW } from '../../render/svg.js';
 import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock, figindexBlock, slideRefBlock } from '../../core/model.js';
@@ -586,6 +586,11 @@ function clampMerges(b) {
   b.merges = (b.merges || []).map(m => ({ ...m, rs: Math.min(m.rs, R - m.r), cs: Math.min(m.cs, C - m.c) }))
     .filter(m => m.r < R && m.c < C && (m.rs > 1 || m.cs > 1));
   if (!b.merges.length) delete b.merges;
+  // (A removed row's or column's shading goes with it: else adding one back would bring the old colour.)
+  if (b.cellBg) {
+    for (const k of Object.keys(b.cellBg)) { const [r, c] = k.split(',').map(Number); if (!(r < R && c < C)) delete b.cellBg[k]; }
+    if (!Object.keys(b.cellBg).length) delete b.cellBg;
+  }
 }
 export const mergeAt = (b, r, c) => (b.merges || []).find(m => r >= m.r && r < m.r + m.rs && c >= m.c && c < m.c + m.cs);
 // Merge the cell at (r,c) (or the merge containing it) with its right / lower neighbour.
@@ -628,6 +633,40 @@ export const tableToggleHeader = () => withTable(b => { b.header = !b.header; })
 // Table style: a preset (colours from the palette) and/or the option toggles.
 export const setTableStyle = props => withTable(b => {
   for (const [k, v] of Object.entries(props)) { if (v === '' || v == null || v === false) delete b[k]; else b[k] = v; }
+});
+
+// ---- Cell shading (PowerPoint's Table Design ▸ Shading) ----------------------------------------------------------
+// The cells picked inside a table: state.ui.tableCells = { id, r1, c1, r2, c2 } (a rectangle, set by the canvas while
+// writing in it — the cell with the caret, or several dragged or Shift+clicked across, ui/canvas/content.js). It is
+// the screen's, not the document's (not saved, not undone), and only means something while that table is selected.
+export function setTableCells(id, r1, c1, r2 = r1, c2 = c1) {
+  state.ui.tableCells = id ? { id, r1: Math.min(r1, r2), c1: Math.min(c1, c2), r2: Math.max(r1, r2), c2: Math.max(c1, c2) } : null;
+}
+// (Another object selected — by a click, the selection pane, Tab… —: the cells picked in the table no longer count.)
+subscribe(() => { const s = state.ui.tableCells; if (s && state.ui.selection !== s.id) state.ui.tableCells = null; });
+// Whether some cells are picked in this table (else a command acts on all of it).
+export const hasTableCells = b => !!b && state.ui.tableCells?.id === b.id && state.ui.selection === b.id;
+// The cells a table command acts on, as "r,c" keys: the ones picked in it, else — the table selected as a whole, as
+// in PowerPoint — every cell. A merged cell counts once, by its top-left cell (the one drawn and stored).
+export function tableCellKeys(b) {
+  const R = b.rows.length, C = b.rows[0]?.length || 0, s = hasTableCells(b) ? state.ui.tableCells : { r1: 0, c1: 0, r2: R - 1, c2: C - 1 };
+  const keys = new Set();
+  for (let r = Math.max(0, s.r1); r <= Math.min(R - 1, s.r2); r++) for (let c = Math.max(0, s.c1); c <= Math.min(C - 1, s.c2); c++) {
+    const m = mergeAt(b, r, c); keys.add(m ? `${m.r},${m.c}` : `${r},${c}`);
+  }
+  return [...keys];
+}
+// Their own colour: a colour, 'none' («Sin relleno»: not even the style's) or '' (the style's); null when they differ.
+export function cellFillOf(b) {
+  const vals = new Set(tableCellKeys(b).map(k => b.cellBg?.[k] || ''));
+  return vals.size === 1 ? [...vals][0] : vals.size ? null : '';
+}
+// Shade them: a colour, 'none', or ''/null to give them back the table style's (header, bands or nothing). Kept in
+// b.cellBg — the same field a PowerPoint's cell fill is imported into, so both draw, save and export alike.
+export const setCellFill = color => withTable(b => {
+  const bg = { ...(b.cellBg || {}) };
+  for (const k of tableCellKeys(b)) { if (color) bg[k] = color; else delete bg[k]; }
+  if (Object.keys(bg).length) b.cellBg = bg; else delete b.cellBg;
 });
 
 // A new shape takes the theme's first accent, with an outline a shade darker (as PowerPoint does).

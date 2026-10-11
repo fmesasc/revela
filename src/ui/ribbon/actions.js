@@ -154,7 +154,7 @@ export const ACTIONS = {
   'import-questions': () => import('../dialogs/questions.js').then(m => m.openQuestionImport()),
   'export-questions': () => import('../dialogs/questions.js').then(m => m.openQuestionExport()),
   'export-study': () => import('../dialogs/questions.js').then(m => m.openStudyExport()),
-  'export-pptx': () => withProgress(t('Creando el archivo de PowerPoint…'), exportPPTX, t('PowerPoint descargado.')),
+  'export-pptx': () => withProgress(t('Creando el archivo de PowerPoint…'), say => exportPPTX({ say }), t('PowerPoint descargado.')),
   // (The file itself, made here; printing — or the browser's «Save as PDF», with selectable text — is «Imprimir».)
   'export-pdf': () => openPdfDialog(),
   'print': () => exportPDF(msg => toast(msg, { ms: 9000 })),

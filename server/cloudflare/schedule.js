@@ -20,12 +20,16 @@ export class Schedule {
   async handle(req) {
     const op = new URL(req.url).pathname.split('/').pop(), a = await req.json(), st = this.ctx.storage;
     const days = (await st.get('days')) || [];
-    if (op === 'add') {                                   // { day, sub, kind, ref } (the same entry twice: once)
-      if (!/^\d{4}-\d\d-\d\d$/.test(a.day || '') || !a.sub || !a.kind) return Response.json({ error: 'bad request' }, { status: 400 });
-      const key = 'd:' + a.day, list = (await st.get(key)) || [], ref = String(a.ref ?? '');
-      if (!list.some(x => x.sub === a.sub && x.kind === a.kind && x.ref === ref)) list.push({ sub: a.sub, kind: a.kind, ref });
-      if (!days.includes(a.day)) { days.push(a.day); days.sort(); }
-      await st.put({ [key]: list, days }); return Response.json({ ok: true });
+    if (op === 'add') {                                   // { day, sub, kind, ref } or { items: [them] } (the same entry twice: once)
+      const items = (Array.isArray(a.items) ? a.items.slice(0, 50) : [a]).filter(x => /^\d{4}-\d\d-\d\d$/.test(x?.day || '') && x.sub && x.kind);
+      if (!items.length) return Response.json({ error: 'bad request' }, { status: 400 });
+      const put = {};
+      for (const x of items) {
+        const key = 'd:' + x.day, list = put[key] ||= (await st.get(key)) || [], ref = String(x.ref ?? '');
+        if (!list.some(y => y.sub === x.sub && y.kind === x.kind && y.ref === ref)) list.push({ sub: x.sub, kind: x.kind, ref });
+        if (!days.includes(x.day)) { days.push(x.day); days.sort(); }
+      }
+      await st.put({ ...put, days }); return Response.json({ ok: true });
     }
     if (op === 'next') {                                  // { upTo } → the first pending day up to then, and its entries
       const day = days[0]; if (!day || day > a.upTo) return Response.json({ day: null, items: [] });
@@ -41,10 +45,11 @@ export class Schedule {
 }
 
 // From an Account: look again on that day (never before tomorrow: today's are being run, or done).
-export async function scheduleAt(env, ts, sub, kind, ref) {
-  if (!env.SCHEDULE || !sub) return;
-  const day = dayOf(Math.max(ts, Date.now() + DAY));
-  await env.SCHEDULE.get(env.SCHEDULE.idFromName('global')).fetch('https://sched/add', { method: 'POST', body: JSON.stringify({ day, sub, kind, ref }) });
+export const scheduleItem = (ts, sub, kind, ref) => ({ day: dayOf(Math.max(ts, Date.now() + DAY)), sub, kind, ref });
+// Sent in one request (an account's of one request, after its answer: api.js Account.flush — a new account brings two).
+export async function scheduleAll(env, items) {
+  items = items.filter(x => x?.sub); if (!env.SCHEDULE || !items.length) return;
+  await env.SCHEDULE.get(env.SCHEDULE.idFromName('global')).fetch('https://sched/add', { method: 'POST', body: JSON.stringify(items.length === 1 ? items[0] : { items }) });
 }
 
 // The daily run: every day due (also missed ones), each entry asked to its account.

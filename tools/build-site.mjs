@@ -6,6 +6,7 @@
 //   dist/en/, fr/…   the site in each other language (tools/site-i18n.mjs, site/i18n/)
 //   dist/app/        the app, exactly as GitHub Pages serves it, marked as the
 //                    official edition (<meta name="revela-edition" content="cloud">)
+//   …/version.json   beside the web app's index.html: which build it is (buildId; ui/shell/update.js offers to reload)
 //
 //   node tools/build-site.mjs [out]              → the site (default: dist)
 //   node tools/build-site.mjs out --app-only     → only the app, marked "desktop" (the desktop app)
@@ -46,10 +47,34 @@ function copyApp(to) {
   }
 }
 
+// Which build of the app this is: a fingerprint of its files' contents (not the version number, which only goes up when
+// production is published — test.revelaslides.com gets several deploys with the same one —, nor the commit, which also
+// changes when only the website or the server does). Written twice: in index.html (<meta name="revela-build">, what the
+// open tab was loaded with) and in version.json beside it (what the server has now). The app compares them now and then
+// (ui/shell/update.js) and offers to reload when they differ: a tab left open on a phone kept old code for days.
+export function buildId(dir) {
+  const h = createHash('sha256');
+  const walk = d => { for (const e of readdirSync(d, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
+    const f = join(d, e.name), rel = f.slice(dir.length + 1);
+    if (e.isDirectory()) walk(f); else if (rel !== 'version.json') h.update(rel + '\0').update(readFileSync(f)).update('\0');
+  } };
+  walk(dir);
+  return h.digest('hex').slice(0, 16);
+}
+function stampBuild(dir) {
+  const id = buildId(dir), version = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
+  writeFileSync(join(dir, 'version.json'), JSON.stringify({ build: id, version }) + '\n');
+  const index = join(dir, 'index.html');
+  writeFileSync(index, readFileSync(index, 'utf8').replace('<head>', `<head>\n  <meta name="revela-build" content="${id}">`));
+  return id;
+}
+
 export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = false } = {}) {
   rmSync(out, { recursive: true, force: true });
-  if (open) { copyApp(out); return out; }    // (GitHub Pages: the app and its legal pages, not the site nor the repository's other files)
-  if (appOnly) { copyApp(out); markEdition(join(out, 'index.html'), 'desktop'); return out; }   // (the desktop app: an account on the official server)
+  if (open) { copyApp(out); stampBuild(out); return out; }    // (GitHub Pages: the app and its legal pages, not the site nor the repository's other files)
+  // (The desktop app: an account on the official server. No build stamp: it has its own updater — desktop.js —, and
+  // a bar saying «reload» there would only reload the same files it was installed with.)
+  if (appOnly) { copyApp(out); markEdition(join(out, 'index.html'), 'desktop'); return out; }
   // The site's own pages and files.
   ensureSite();
   // (Not its translations, nor its repository's own files: .git, .github, README, its tools.)
@@ -62,6 +87,7 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = 
   for (const l of ['', ...SITE_LANGS.slice(1)]) for (const d of ['', ...subs]) if (existsSync(join(out, l, d))) await inlineIcons(join(out, l, d));
   // The app under /app/, marked as the official edition.
   copyApp(join(out, 'app'));
+  stampBuild(join(out, 'app'));
   markEdition(join(out, 'app', 'index.html'), 'cloud');
   // Privacy and terms at the top too (Google's consent screen links them), with their style.
   for (const f of ['privacy.html', 'terms.html', 'legal.html', 'dpa.html', 'legal.css', 'legal.js']) cpSync(join(ROOT, f), join(out, f));

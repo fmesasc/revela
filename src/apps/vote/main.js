@@ -1,10 +1,14 @@
 // Audience voting page: connects to the presentation's peer
 // ("revela-vote-CODE") and answers the poll on the current slide.
+// vote.html?r=<room> (or its 5 letters typed): a presentation whose phones go through Revela's server (presenting from
+// the editor with an account: server/cloudflare/broadcast.js), the same messages over a WebSocket. A poll there may ask
+// to sign in (poll.login: one vote per person) — the server, not this page, says whose account it is.
 // vote.html?doc=<id>&poll=<pollId>: a poll opened to be answered later, without anyone presenting (Revela's cloud keeps
 // the answers: server/cloudflare/docs.js; the editor brings them into its results).
 
 import { PEERJS, loadScript } from '../../core/vendor.js';
 import { peerOptions } from '../../core/ice.js';
+import { GOOGLE } from '../../core/config.js';
 import { readingItems, readingHTML } from '../../io/runtime/reading.js';
 import { activityGame, GAME_WORDS } from '../../io/runtime/games.js';
 
@@ -12,23 +16,87 @@ const $ = s => document.querySelector(s);
 const show = id => ['join', 'poll', 'wait'].forEach(x => { $('#' + x).hidden = x !== id; });
 const voter = (() => { try { let v = localStorage.getItem('revela.voter'); if (!v) { v = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('revela.voter', v); } return v; } catch { return Math.random().toString(36).slice(2); } })();
 let conn = null, poll = null, answer = null;
+let authed = false, room = null, laterAt = null;     // (through the server: signed in or not; the room; a poll by link)
 
 const loadPeer = () => loadScript(PEERJS, 'Peer');
 
 async function join(code) {
   code = code.trim().toUpperCase(); if (code.length !== 5) { $('#err').textContent = 'El código tiene 5 caracteres.'; return; }
   $('#go').disabled = true; $('#err').textContent = ''; $('#status').textContent = 'Conectando…';
+  // (A room on Revela's server first; if the code isn't one, the presentation's own peer, browser to browser.)
+  const r = await fetch('/api/vote/code/' + encodeURIComponent(code), { credentials: 'omit', signal: AbortSignal.timeout?.(5000) }).then(x => (x.ok ? x.json() : null)).catch(() => null);
+  if (r?.room) { joinRoom(r.room); return; }
   try { await loadPeer(); } catch { $('#err').textContent = 'No se pudo cargar la conexión.'; $('#go').disabled = false; return; }
   const me = new window.Peer(await peerOptions());
   me.on('open', () => {
     conn = me.connect('revela-vote-' + code, { reliable: true });
-    conn.on('open', () => { $('#status').textContent = 'Conectado'; $('#status').classList.add('on'); show('wait');
-      let tm = ''; try { tm = sessionStorage.getItem('revela.team') || ''; } catch {}
-      conn.send({ type: 'hi', voter, name: nick(), ...(tm && { team: tm }) }); });     // (the name, for «someone at random», and the team: optional)
+    conn.on('open', connected);
     conn.on('data', onData);
     conn.on('close', () => { $('#status').textContent = 'Desconectado'; $('#status').classList.remove('on'); });
   });
   me.on('error', e => { $('#err').textContent = e.type === 'peer-unavailable' ? 'No hay ninguna presentación con ese código.' : 'Error de conexión.'; $('#go').disabled = false; $('#status').textContent = 'Sin conectar'; });
+}
+
+function connected() {
+  $('#status').textContent = 'Conectado'; $('#status').classList.add('on'); if (!poll) show('wait');
+  let tm = ''; try { tm = sessionStorage.getItem('revela.team') || ''; } catch {}
+  conn.send({ type: 'hi', voter, name: nick(), ...(tm && { team: tm }) });      // (the name, for «someone at random», and the team: optional)
+}
+// Through Revela's server: a WebSocket to the room (with this site's session, when there is one), connected again if it
+// drops — a phone's network comes and goes; the presentation keeps its answers.
+let tries = 0, ended = false;
+function joinRoom(r) {
+  room = r; $('#go').disabled = true; $('#status').textContent = 'Conectando…';
+  const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/api/vote/' + encodeURIComponent(r));
+  const c = { open: false, send: m => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); }, ws };
+  conn = c; let was = false;
+  ws.onopen = () => { was = true; tries = 0; c.open = true; connected(); };
+  ws.onmessage = e => { let d; try { d = JSON.parse(e.data); } catch { return; }
+    if (d.type === 'auth') { authed = !!d.on; return; }
+    if (d.t === 'end') { ended = true; poll = null; show('wait'); $('#wait').querySelector('h1').textContent = 'La presentación ha terminado'; return; }
+    onData(d); };
+  ws.onclose = () => { c.open = false; $('#status').textContent = 'Desconectado'; $('#status').classList.remove('on');
+    if (conn !== c || ended) return;
+    if (!was && !tries) { $('#err').textContent = 'No hay ninguna presentación con ese código.'; $('#go').disabled = false; show('join'); }
+    if (tries++ < 8) setTimeout(() => { if (conn === c) joinRoom(r); }, Math.min(10000, 800 * tries)); };
+}
+
+// «Inicia sesión para votar»: a poll that counts one vote per person. With Google here (its window, then the session
+// cookie), or the account of one's school (its own sign-in, which comes back to this poll); then in again with it.
+// Whoever presents never sees who it is (server/cloudflare/util.js voterOf).
+function askLogin() {
+  show('poll'); $('#send').hidden = true; $('#done').hidden = true; if (poll) $('#q').textContent = poll.question;
+  const box = $('#answers'); box.innerHTML = '';
+  const err = el('div', { className: 'err' }), terms = el('input', { type: 'checkbox' }), mail = el('input', { type: 'text', placeholder: 'tu.nombre@tucentro.es', autocomplete: 'email' });
+  mail.setAttribute('aria-label', 'Correo de tu centro');
+  const legal = el('label', { style: 'display:flex;gap:8px;align-items:flex-start;font-size:14px;color:var(--txt2)' }, terms,
+    el('span', {}, 'Si es tu primera vez en Revela: acepto las ', el('a', { href: '/terms.html', target: '_blank', textContent: 'condiciones' }), ' y la ', el('a', { href: '/privacy.html', target: '_blank', textContent: 'política de privacidad' }), ', y tengo 14 años o más.'));
+  const version = async () => (await import('../../io/cloud/account.js')).TERMS_VERSION;
+  box.append(el('p', { textContent: 'Esta votación pide iniciar sesión, para que cada persona vote una sola vez. Quien presenta no verá tu nombre ni tu correo.' }),
+    el('button', { type: 'button', textContent: 'Iniciar sesión con Google', onclick: async () => {
+      err.textContent = '';
+      try { await googleLogin(terms.checked ? await version() : null); afterLogin(); }
+      catch (e) { err.textContent = e.message === 'TERMS' ? 'Es tu primera vez en Revela: marca la casilla de las condiciones.' : e.message === 'CANCELLED' ? '' : 'No se pudo iniciar sesión.'; } } }),
+    el('details', {}, el('summary', { textContent: 'Con la cuenta de tu centro', style: 'cursor:pointer;color:var(--txt2)' }), mail,
+      el('button', { type: 'button', textContent: 'Continuar', style: 'margin-top:8px;width:100%', onclick: async () => {
+        if (!/@/.test(mail.value)) { err.textContent = 'Escribe el correo de tu centro.'; return; }
+        const next = '/app/vote?' + (room ? 'r=' + encodeURIComponent(room) : `doc=${encodeURIComponent(laterAt.doc)}&poll=${encodeURIComponent(laterAt.pid)}`);
+        location.href = '/api/sso/start?' + new URLSearchParams({ email: mail.value.trim(), lang: document.documentElement.lang || 'es', next, ...(terms.checked && { terms: await version() }) }); } })),
+    legal, err);
+}
+async function googleLogin(terms) {
+  const GIS = 'https://accounts.google.com/gsi/client';
+  if (!window.google?.accounts?.oauth2) await new Promise((ok, ko) => { const s = document.createElement('script'); s.src = GIS; s.onload = ok; s.onerror = ko; document.head.append(s); });
+  const token = await new Promise((ok, ko) => window.google.accounts.oauth2.initTokenClient({ client_id: GOOGLE.clientId, scope: 'openid email profile',
+    callback: r => (r.access_token ? ok(r.access_token) : ko(new Error('CANCELLED'))), error_callback: () => ko(new Error('CANCELLED')) }).requestAccessToken({ prompt: '' }));
+  const r = await fetch('/api/login', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: token, lang: document.documentElement.lang || 'es', ...(terms && { terms }) }) });
+  if (r.status === 400 && (await r.json().catch(() => ({}))).error === 'terms') throw new Error('TERMS');
+  if (!r.ok) throw new Error('LOGIN');
+}
+// Signed in: the room again, now with the session (the server sends the current poll once more); or the poll by link.
+function afterLogin() {
+  if (laterAt) { answerLater(laterAt.doc, laterAt.pid); return; }
+  const old = conn; poll = null; conn = null; try { old?.ws?.close(); } catch {} tries = 0; joinRoom(room);
 }
 
 const myUps = new Set();
@@ -185,6 +253,7 @@ function onData(d) {
     const box = $('#answers'); box.querySelector('.fb')?.remove();
     box.append(el('div', { className: 'quiz-res fb', style: `background:${d.score >= 5 ? '#26890c' : '#b07d00'}` }, el('b', { textContent: `${d.score}/10` }), String(d.text || ''))); return; }
   if (d?.type === 'adapt') { setAdapt(d); return; }
+  if (d?.type === 'login') { if (poll?.pollId === d.pollId) askLogin(); return; }   // (the presentation asks: sign in to vote)
   if (d?.type === 'picked') { const p = $('#picked'); p.hidden = false; navigator.vibrate?.(200); setTimeout(() => { p.hidden = true; }, 8000); return; }
   if (d?.type === 'caption') { onCaption(d); return; }
   if (d?.type === 'css') { styles = String(d.css || ''); return; }
@@ -197,6 +266,7 @@ function onData(d) {
   if (!d.poll) { poll = null; show('wait'); return; }
   if (poll?.pollId === d.poll.pollId && !(d.poll.adapted && answer == null)) return;   // same question: keep the choice (unless made to measure, unanswered)
   poll = d.poll; answer = poll.kind === 'multi' ? [] : null;
+  if (poll.login && !authed) { askLogin(); return; }
   $('#q').textContent = poll.question; $('#done').hidden = true; show('poll');
   if (Array.isArray(poll.teams) && poll.teams.length) chooseTeam(poll.teams, () => { $('#send').hidden = false; renderAnswers(); }); else renderAnswers();
   if (adapt.read) readAloud();
@@ -451,20 +521,22 @@ $('#send').addEventListener('click', () => {
 });
 $('#go').addEventListener('click', () => join($('#code').value));
 $('#code').addEventListener('keydown', e => { if (e.key === 'Enter') join($('#code').value); });
-const pre = new URLSearchParams(location.search).get('c');
-if (pre) { $('#code').value = pre; join(pre); }
+const pre = new URLSearchParams(location.search).get('c'), preRoom = new URLSearchParams(location.search).get('r');
+if (/^[\w-]{16,24}$/.test(preRoom || '')) joinRoom(preRoom);
+else if (pre) { $('#code').value = pre; join(pre); }
 // Answered later, by a link: the poll from the cloud, the answer back to it (changeable while it stays open).
 const later = new URLSearchParams(location.search);
 if (later.get('doc') && later.get('poll')) answerLater(later.get('doc'), later.get('poll'));
 async function answerLater(doc, pid) {
   const url = `/api/docs/${encodeURIComponent(doc)}/poll/${encodeURIComponent(pid)}`;
-  $('#status').textContent = 'Cargando…';
+  $('#status').textContent = 'Cargando…'; laterAt = { doc, pid };
   try {
-    const r = await fetch(url, { credentials: 'omit' }); if (!r.ok) throw new Error(r.status);
-    const d = await r.json();
+    // (With this site's session: a poll that asks to sign in takes the vote from the account, not from voter.)
+    const r = await fetch(url, { credentials: 'include' }); if (!r.ok) throw new Error(r.status);
+    const d = await r.json(); authed = !!d.signed; poll = null;
     conn = { open: true, send: m => { if (m.type !== 'vote') return;
-      fetch(url, { method: 'POST', credentials: 'omit', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voter, answer: m.answer }) })
-        .then(x => (x.ok ? onData({ type: 'ok', pollId: pid }) : Promise.reject(x.status)))
+      fetch(url, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voter, answer: m.answer }) })
+        .then(x => (x.ok ? onData({ type: 'ok', pollId: pid }) : x.status === 401 ? (authed = false, askLogin()) : Promise.reject(x.status)))
         .catch(() => alert('No se pudo enviar. Inténtalo de nuevo.')); } };
     $('#status').textContent = d.name || 'Revela'; $('#status').classList.add('on');
     onData({ type: 'poll', poll: d.poll });

@@ -237,6 +237,57 @@ con la primera factura pagada. «Mi cuenta» muestra «Prueba Pro 7 días gratis
 durante la prueba, hasta cuándo dura. Por qué así: el dueño ajusta las ofertas sin tocar código ni
 Cloudflare, y Stripe sigue siendo quien cobra y aplica los descuentos.
 
+**Votos del público por el servidor** (`broadcast.js`, salas de votos; `io/runtime/scripts.js`). Los
+móviles votaban solo de navegador a navegador (PeerJS): una conexión WebRTC por móvil hasta el
+navegador de quien presenta, y Chrome no pasa de unas 500 (prueba de carga del 2026-10-09). Ahora, al
+presentar desde el editor **con una cuenta**, la presentación pide una sala (`POST /api/vote`, que cuenta
+como una sala del día) y los móviles entran por el servidor, con los mismos mensajes que por PeerJS: las
+repetidoras de la emisión en directo (`sala~0…15`) reciben a los móviles, juntan lo que dicen en lotes
+(`UP_MS`, 100 ms) y la sala se los pasa a quien presenta; lo que va a todos (la votación de la
+diapositiva, la del aula, sus estilos) sale una vez y se guarda para quien llegue tarde, y lo de cada
+móvil sale junto cada 60 ms. Quien presenta sigue decidiendo todo (qué cuenta, puntos, estrellas);
+el servidor no guarda nada por voto. Por qué siempre con cuenta y no «cuando haya muchos móviles»: no
+se sabe de antemano cuántos van a entrar, y pasar a mitad de clase de un camino a otro obligaría a
+reconectar a todos; además, por el servidor no hace falta TURN cuando la red del centro no deja
+WebRTC, y es la única forma de saber quién vota. Sin cuenta, o con la presentación exportada a un
+archivo, PeerJS como siempre: sin servidor y sin cuenta.
+
+- *Coste en el plan gratuito* (100 000 peticiones a Durable Objects al día; los mensajes de WebSocket
+  que llegan cuentan 1/20 de petición, los que salen no cuentan). Cada voto: 1/20 de petición (el
+  mensaje del móvil) más su parte de una petición por repetidora y lote, hacia arriba y hacia abajo.
+  Medido en local (`wrangler dev --local`, 2026-10-11): 500 móviles, 61 peticiones entre objetos + 500
+  mensajes (≈0,17 peticiones por voto); 2000 móviles, 47 + 1999 mensajes (≈0,07); 5000 móviles, 140 +
+  5003 mensajes (≈0,08). Entrar cuesta una petición del Worker y una o dos a objetos por móvil (una más si tiene sesión: comprobarla). Para que
+  una clase no reparta lo de todos entre 16 repetidoras, los primeros 300 móviles van a la `~0`
+  (`FIRST_RELAY`): con 50 móviles, 16 repetidoras gastaban ~1,6 peticiones por voto. Almacenamiento:
+  nada por voto (la sala guarda la última votación enviada, para los que entran tarde).
+- *Medido en local*: 10 000 móviles conectados; la votación les llega a todos en 0,7 s como mucho;
+  quien presenta recibe los 10 000 votos en 3,3 s, en 25 mensajes, y cada móvil su «recibido» en
+  menos de 3 s. En el navegador de quien presenta, 5000 votos en un lote se cuentan, guardan y dibujan
+  en ~0,1 s; de uno en uno (como llegaban por PeerJS), 7,2 s.
+
+**Exigir iniciar sesión para votar** (opción de cada votación o actividad: «Quién puede votar»). Sin
+ella, un voto por dispositivo: el votante es un id aleatorio guardado en el navegador del móvil, y otro
+navegador, una ventana privada o un id inventado votan otra vez. Con ella: un voto por persona. Solo
+por el servidor (PeerJS no puede comprobar identidades): el Worker mira la sesión del móvil (Google o el
+SSO del centro, `/api/sso/start?next=` vuelve a la votación) y la repetidora sustituye el votante por
+`voterOf(cuenta, quien presenta)` (`util.js`): un HMAC con un secreto del servidor, el mismo en todas las
+votaciones de esa persona que presenta (sus adaptaciones y notas la siguen) y distinto para cualquier
+otra; ni el correo ni la cuenta se pueden sacar de él. El móvil no puede fingirlo (`acct` lo pone solo
+el servidor). Sin sesión, la presentación le pide iniciarla. En el editor la opción está desactivada sin
+cuenta, con la explicación. La votación por enlace (`vote.html?doc&poll`) hace lo mismo en `docs.js`.
+
+**Votación por enlace, por trozos** (`docs.js`). Las respuestas de una votación abierta por enlace se
+guardaban en un solo objeto que se reescribía entero con cada respuesta: 1,2 MB con 5000 respuestas
+abiertas, cada respuesta más lenta que la anterior (de 380 a 1070 ms, 66 por segundo, en local) y sin
+poder pasar de unas 8000 (2 MB, el límite de un valor). Ahora van en 64 trozos (`pvb:<votación>:<n>`,
+el trozo según el votante): cada respuesta reescribe solo el suyo (≈18 KB con 5000 respuestas abiertas,
+≈75 KB con 20 000) y «Traer las respuestas» lee los 64. Una fila escrita por respuesta, como antes (lo
+que cuenta el plan gratuito), no una clave por respuesta: así leerlas todas son 64 filas, no miles. El
+límite sube de 5000 a 20 000 votantes. Medido en local (50 a la vez): 5000 abiertas, 138 por segundo y
+sin crecer (p50 ≈340–400 ms con 50 en cola); 20 000 abiertas, todas guardadas, «Traer» en 146 ms. Las
+guardadas a la antigua se siguen leyendo y pasan a trozos con la siguiente respuesta.
+
 ## Modelos 3D con IA
 
 «Insertar ▸ Crear 3D con IA» (solo en las ediciones con cuenta): la persona describe un objeto
@@ -435,6 +486,41 @@ privado aparte (un proyecto de Cloudflare Pages servido en admin.revelaslides.co
   frente a los fijos y el presupuesto de IA del mes. También `…/finance/events` (eventos sueltos),
   `…/finance/export.csv` (para la gestoría: `;`, coma decimal, UTF-8) y `…/finance/entries` (los apuntes a mano).
   Las cifras por persona solo se ven en la administración protegida.
+
+**Altas y objetos compartidos** (`api.js` `Account.fetch`/`flush`, `finance.js`, `schedule.js`). `Finance`,
+la agenda (`Schedule`) y el directorio de la administración son un objeto para todos, y atienden una
+petición detrás de otra. Una cuenta nueva les hacía seis peticiones mientras la persona esperaba: tres a
+`Finance` (el alta, el regalo de créditos y «activa hoy»), dos a la agenda (el aviso de caducidad de esos
+créditos y el de cuenta sin usar) y una al directorio. Ninguna hace falta para contestar: son las cifras
+del negocio y avisos para otro día. Ahora cada cuenta junta lo que una petición tiene para ellos y lo
+manda **después de contestar**, una petición a cada uno (`Finance` acepta una lista de apuntes y los
+escribe en una sola escritura; la agenda, una lista de avisos), en orden y una sola vez; una cuenta que se
+borra espera antes a lo que aún iba de camino. Si falla, se apunta en el registro y se pierde, como
+antes (`record()` nunca lanzaba). Lo que es dinero o créditos de verdad no cambia: el saldo, los lotes
+y los cobros de IA siguen en el objeto de cada cuenta, una petición detrás de otra; los pagos de Stripe
+siguen apuntándose al momento y una sola vez. No se ha troceado `Finance` por cuenta: sus sumas del día,
+las suscripciones, los códigos promocionales y los eventos de Stripe ya vistos tienen que estar juntos
+para que las cifras cuadren, trocearlo obligaría a leer todos los trozos en cada informe (filas leídas
+en el plan gratuito) y a migrar lo guardado; con una petición por alta, un solo objeto da de sobra.
+Medido en local (`wrangler dev --local`, directo a workerd, 2026-10-11): 100 altas a la vez, de 8,1 s a
+2,9–3,7 s; 200, de 16,2 s a 8,5–8,9 s; todas bien y cada cifra exacta (`tests/server-api.mjs`, «muchas a
+la vez»).
+
+**Cambios por la API a una misma presentación** (`publicapi.js`, `deckedit.js`, `docs.js` `CloudDoc`).
+Cada cambio por la API leía la presentación entera desde su objeto, la cambiaba en el Worker y mandaba
+las operaciones; el objeto releía y reescribía entero el registro de cambios recientes (hasta 1,5 MB),
+comparaba en JSON cada diapositiva para ver cuáles guardar y preguntaba dos veces a la cuenta de su
+dueño; además la cuenta contestaba un «me» completo en cada llamada. Ahora el cambio lo hace el propio
+objeto sobre su presentación en memoria (op `change`: el mismo cambio, comprobado con el rol de la
+clave como los de la aplicación); los cambios que esperan en su cola se aplican uno a uno, cada uno con
+su respuesta y su versión, y se escriben juntos: una escritura, una pregunta a la cuenta y un aviso a la
+lista de su dueño por grupo; solo se escriben las diapositivas que tocan las operaciones; y el registro
+va en trozos de 20 cambios (`log:<n>`: cada cambio reescribe el último trozo; los viejos se van enteros;
+el de antes, `log`, pasa a trozos con el siguiente cambio). Uno que no cabe (demasiado grande o sin
+espacio) se rechaza solo a él y los demás del grupo se guardan. Medido en local, como arriba: 50 a la
+vez, de 22–26 ms por cambio a 5–8 ms; de uno en uno, de 54–61 ms a 35–39 ms (con 20 y con 280
+diapositivas). Nota para repetirlo: el proxy de `wrangler dev` corta conexiones («Network connection
+lost») cuando workerd va saturado; directo al puerto de workerd no pasa.
 
 ## Qué impide saltarse las restricciones
 

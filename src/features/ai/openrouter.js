@@ -7,7 +7,7 @@
 // challenge; they come back with ?code=…, which we exchange for a key that is
 // stored only in this browser.
 
-import { isFormula } from '../../core/formulas.js';
+import { isSheetFormula } from '../../core/formulas.js';
 import { esc, plainText } from '../../core/text.js';
 import { state, commit, currentSlide, selectedBlock } from '../../core/store.js';
 import { uid } from '../../core/model.js';
@@ -291,8 +291,10 @@ function placeImage(img, prompt, aspect) {
 // ---- Translate the whole deck, or adapt it to a reading level ------------------------
 // Text boxes (keeping their HTML formatting), table cells and speaker notes,
 // one request per slide; applied at the end as a single undo step.
-export const translateDeck = (targetLang, onProgress) => rewriteTexts(`Translate every value of this JSON object into ${targetLang}. Keep the keys, keep all HTML tags and attributes exactly, translate only the human text. Answer only the JSON object.`,
-  { feature: 'translate' }, onProgress);
+// (Also the words inside equations — \text{alquiler} —, which stayed in the original language: each one a value of its
+// own, as plain text, put back into the LaTeX escaped — tplang.js translateLatex, the templates' translation.)
+export const translateDeck = (targetLang, onProgress) => rewriteTexts(`Translate every value of this JSON object into ${targetLang}. Keep the keys, keep all HTML tags and attributes exactly, translate only the human text. Values whose key has "|math|" are words inside an equation: answer them as short plain text, no HTML or LaTeX. Answer only the JSON object.`,
+  { feature: 'translate', math: true }, onProgress);
 
 // A multilingual presentation's table (features/document/languages.js): its texts that have no translation yet in
 // one language, translated in batches. → { text: translation }. (Whatever the model leaves out stays to do.)
@@ -328,14 +330,17 @@ export function levelDeck(level, { only = null, slides = null } = {}, onProgress
   { feature: 'rewrite', notes: false, only, slides }, onProgress);
 }
 
-async function rewriteTexts(system, { feature, notes = true, only = null, slides: which = null }, onProgress) {
+async function rewriteTexts(system, { feature, notes = true, math = false, only = null, slides: which = null }, onProgress) {
   const out = new Map(), slides = which || state.deck.slides, keep = id => !only || only.includes(id);
+  // (Loaded here, not imported above: the server uses this file — fromspec.js — and has no use for the templates' code.)
+  const { mathTexts, translateLatex } = math ? await import('../content/tplang.js') : {};
   for (let i = 0; i < slides.length; i++) {
     const s = slides[i], items = {};
     for (const b of s.blocks) {
       if (!keep(b.id)) continue;
       if (b.type === 'text' && plain(b.html)) items[b.id] = b.html;
-      if (b.type === 'table') b.rows.forEach((row, r) => row.forEach((c, k) => { if (plain(c) && !isFormula(c)) items[`${b.id}|${r}|${k}`] = c; }));
+      if (b.type === 'table') b.rows.forEach((row, r) => row.forEach((c, k) => { if (plain(c) && !isSheetFormula(c)) items[`${b.id}|${r}|${k}`] = c; }));
+      if (math && b.type === 'math') mathTexts(b.latex).forEach((tx, k) => { items[`${b.id}|math|${k}`] = tx; });
     }
     if (notes && !only && s.notes?.trim()) items[`notes|${s.id}`] = s.notes;
     if (!Object.keys(items).length) { onProgress?.((i + 1) / slides.length); continue; }
@@ -353,6 +358,10 @@ async function rewriteTexts(system, { feature, notes = true, only = null, slides
       for (const b of s.blocks) {
         if (b.type === 'text' && out.has(b.id)) b.html = out.get(b.id);
         if (b.type === 'table') b.rows.forEach((row, r) => row.forEach((_, k) => { const key = `${b.id}|${r}|${k}`; if (out.has(key)) row[k] = out.get(key); }));
+        if (math && b.type === 'math') {
+          const dict = {}; mathTexts(b.latex).forEach((tx, k) => { const key = `${b.id}|math|${k}`; if (out.has(key)) dict[tx] = out.get(key); });
+          if (Object.keys(dict).length) b.latex = translateLatex(b.latex, dict);
+        }
       }
     }
   });

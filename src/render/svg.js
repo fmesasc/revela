@@ -63,7 +63,12 @@ export function tableSpan(b) {
   };
 }
 export const tableColsHTML = b => (b.colW ? `<colgroup>${b.colW.map(w => `<col style="width:${(100 * w / b.colW.reduce((a, x) => a + x, 0)).toFixed(3)}%">`).join('')}</colgroup>` : '');
-export const cellBg = (b, r, c) => b.cellBg?.[`${r},${c}`] || '';
+// A cell's own shading (b.cellBg = { "r,c": colour }, the top-left cell of a merge; Tabla ▸ Sombreado or a
+// PowerPoint's a:tcPr fill): it goes inline on the cell, so it wins over the table style's header and bands, as in
+// PowerPoint. 'none' is «Sin relleno»: no colour even where the style would put one. Only a colour or 'none' gets
+// through — it is written into a style attribute, and a file could bring anything.
+const CELL_BG = /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\)|none)$/i;
+export const cellBg = (b, r, c) => { const v = b.cellBg?.[`${r},${c}`]; return typeof v === 'string' && CELL_BG.test(v.trim()) ? v.trim() : ''; };
 export function tableRowsHTML(b, cellStyle = '') {
   const span = tableSpan(b);
   return tableColsHTML(b) + shownRows(b).map((row, r) => `<tr${b.rowH?.[r] ? ` style="height:${b.rowH[r]}px"` : ''}>${row.map((cell, c) => {

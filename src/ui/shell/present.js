@@ -3,7 +3,7 @@ import { deckIn } from '../../features/document/languages.js';
 import { slidePaths } from '../../features/document/captions.js';
 import { session } from '../../core/session.js';
 import { buildHTML } from '../../io/formats/html.js';
-import { attachLive } from './broadcast.js';
+import { attachLive, voteRoom } from './broadcast.js';
 import { t } from '../../i18n/index.js';
 import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
 
@@ -20,11 +20,14 @@ import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
 // io/runtime/selfpaced.js); answer(pollId, answer) → Promise<{ score, sent }> marks
 // them elsewhere (the server, for a learning platform), else they're marked here.
 // lang: in another language of a multilingual presentation (features/document/languages.js).
-export function present({ rehearse = false, fullscreen = true, onEnd = null, onRehearsal = null, fromCurrent = false, selfPaced = false, answer = null, live = null, lang = null } = {}) {
+export function present({ rehearse = false, fullscreen = true, onEnd = null, onRehearsal = null, fromCurrent = false, selfPaced = false, answer = null, live = null, lang = null, votes = undefined } = {}) {
   const startAt = fromCurrent ? slidePaths(state.deck).get(state.ui.slideIndex) : null;
   const deck0 = lang ? deckIn(state.deck, lang) : state.deck;
   const deck = rehearse ? { ...deck0, slides: deck0.slides.map(s => ({ ...s, autoSlide: 0 })) } : deck0;
   window.__revelaAnswer = selfPaced && answer ? answer : undefined;
+  // (Its polls through Revela's server when signed in: thousands of phones, and one vote per person when a poll asks.)
+  // (votes: how the polls get their room instead — the tests' own.)
+  window.__revelaVoteRoom = selfPaced ? undefined : votes ?? voteRoom();
   const url = URL.createObjectURL(new Blob([buildHTML(deck, { inApp: true, selfPaced })], { type: 'text/html' }));
 
   const opener = document.activeElement;                  // (where the focus goes back to)
@@ -59,7 +62,7 @@ export function present({ rehearse = false, fullscreen = true, onEnd = null, onR
   session.present = { frame, overlay, rehearse, times, lap, current: () => cur };
   const notifySlide = () => window.dispatchEvent(new CustomEvent('revela:present-slide'));
   const end = () => {
-    clearInterval(hook); stopLive?.();
+    clearInterval(hook); stopLive?.(); window.__revelaVoteRoom = undefined;
     if (rehearse) { clearInterval(tick); lap(cur); (onRehearsal || offerRehearsal)(times); }
     onEnd?.();
     document.removeEventListener('fullscreenchange', onFs);

@@ -9,6 +9,7 @@
 
 import { styled } from '../document/master.js';
 import { linesAt } from '../../render/textfit.js';
+import { isSheetFormula } from '../../core/formulas.js';
 
 export const TEMPLATE_LANGS = ['en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'];
 export const templateLang = lang => (TEMPLATE_LANGS.includes(lang) ? lang : null);
@@ -17,9 +18,71 @@ export const RTL_LANGS = ['ar'];
 
 // Where an example's texts are: these properties of the deck, its slides, layouts and
 // objects (text, notes, table cells, chart labels and titles, poll questions and options,
-// diagram outlines, pictures' descriptions…). Not code, equations, formulas nor credits.
+// diagram outlines, pictures' descriptions…). Not code, formulas nor credits; of an equation, only the words
+// inside it (mathTexts, below).
 export const TEXT_KEYS = new Set(['html', 'notes', 'name', 'rows', 'label', 'alt', 'options', 'question', 'text', 'seriesName', 'yTitle', 'xTitle', 'endText']);
-const isText = v => typeof v === 'string' && /\p{L}/u.test(v.replace(/<[^>]*>/g, '')) && !/^\s*=/.test(v) && !/^(data:|https?:|assets\/)/.test(v);
+// (A table's formula — =SUMA(ARRIBA), =B2*C2 — is not a text; a text that only starts with «=» — «= 52 años: la rueda
+// calendárica», under a sum — is: core/formulas.js isSheetFormula tells them apart.)
+const isText = v => typeof v === 'string' && /\p{L}/u.test(v.replace(/<[^>]*>/g, '')) && !isSheetFormula(v) && !/^(data:|https?:|assets\/)/.test(v);
+
+// The words inside an equation (an object's `latex`): what \text{…}, \textrm{…}, \mbox{…}, \mathrm{…}… hold —
+// «E = \dfrac{\text{alquiler}}{\text{ingresos netos}}» — are text too, and were left in Spanish in every language.
+// Each one is a text of its own (its content, without LaTeX's escapes: «eFG%»), so the same table translates it;
+// the symbols, variables and the rest of the formula are not touched. Only plain words: a content with commands
+// or groups inside (\text{$x$ veces}, \mathrm{CO_2}) stays as it is, and so does one without two letters together
+// (\text{m} after a number, \text{m/s}, \mathrm{C}, \text{–}) — units and symbols; «km», «min»… are texts
+// (they read the same in most languages, and «lpm» doesn't: «bpm»).
+const MATH_TEXT = /\\(text(?:rm|it|bf|sf|up|normal)?|mbox|mathrm|operatorname)\s*\{/g;
+function mathPieces(latex) {
+  const out = [];
+  if (typeof latex !== 'string' || !latex.includes('\\')) return out;
+  for (const m of latex.matchAll(MATH_TEXT)) {
+    const from = m.index + m[0].length; let i = from, depth = 1;
+    for (; i < latex.length && depth; i++) { if (latex[i] === '\\') i++; else if (latex[i] === '{') depth++; else if (latex[i] === '}') depth--; }
+    if (depth) continue;
+    const raw = latex.slice(from, i - 1);
+    // (escapes of LaTeX's special characters are fine; any other command, group, $, ^, _ or ~: not plain words)
+    if (/\\(?![%&$#_{}])|(?<!\\)[{}$^_~]/.test(raw)) continue;
+    const text = raw.replace(/\\([%&$#_{}])/g, '$1').replace(BIDI_ISOLATES, '');      // (and without the isolates added below)
+    if (!/\p{L}\.?\p{L}/u.test(text)) continue;                  // (two letters together, or an abbreviation: «م.م.أ»)
+    out.push({ start: m.index, from, to: i - 1, cmd: m[1], text: text.trim(), lead: text.match(/^\s*/)[0], trail: text.match(/\s*$/)[0] });
+  }
+  return out;
+}
+const BIDI_ISOLATES = /[\u2066-\u2069]/g, RTL_LETTER = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+// The texts inside an equation, in order.
+export const mathTexts = latex => mathPieces(latex).map(p => p.text);
+// A translation back into LaTeX: its special characters escaped (text mode), and as plain text — a table's
+// translations are HTML (an «&amp;» there is an «&» here).
+const TEX_ESC = { '\\': '\\textbackslash{}', '~': '\\textasciitilde{}', '^': '\\textasciicircum{}', '&': '\\&', '%': '\\%', '$': '\\$', '#': '\\#', '_': '\\_', '{': '\\{', '}': '\\}' };
+const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39': "'" };
+const plainOf = s => String(s).replace(/<[^>]*>/g, '').replace(/&(amp|lt|gt|quot|apos|nbsp|#39);/g, (m, e) => ENTITIES[e]);
+export const texEscape = s => s.replace(/[\\~^&%$#_{}]/g, c => TEX_ESC[c]);
+// The equation with its texts in another language (those the table has). \mathrm and \operatorname are math mode:
+// spaces vanish there and accents or Arabic letters are not math, so a translation that isn't a plain Latin
+// abbreviation («mcm» → «lcm» stays \mathrm) goes in text mode instead — \textrm, upright like \mathrm (and as an
+// operator, \mathop{\textrm{…}}, for \operatorname).
+// (Arabic, and any right-to-left translation: the equation keeps reading from left to right — its variables and
+// numbers are Latin, as in most Arabic school books from secondary on — and the Arabic words, inside their \text{},
+// are drawn joined and from right to left by the browser. But KaTeX's spans don't isolate them: the numbers and
+// brackets after them were taken as part of the Arabic and reordered — «18 980 \text{أيام} \textrm{م.م.أ}(2,3)»
+// came out «18 980 (3 ,2)م.م.أ أيام» —, and a Latin word inside an Arabic phrase landed at the wrong end. So each
+// such translation goes between U+2067 and U+2069 (right-to-left isolate … pop): a piece of its own, read from
+// right to left inside, a neutral block for the formula around it. Checked with KaTeX in Chrome: tmp/shot.sh
+// data_city --lang ar.)
+export function translateLatex(latex, dict) {
+  let out = latex;
+  for (const p of mathPieces(latex).reverse()) {
+    if (!p.text || !dict || !Object.hasOwn(dict, p.text)) continue;
+    const tr = plainOf(dict[p.text]).trim();
+    if (!tr || tr === p.text) continue;
+    const body = p.lead + (RTL_LETTER.test(tr) ? '\u2067' + texEscape(tr) + '\u2069' : texEscape(tr)) + p.trail;
+    let piece = latex.slice(p.start, p.from) + body + '}';
+    if ((p.cmd === 'mathrm' || p.cmd === 'operatorname') && !/^[A-Za-z0-9./]+$/.test(tr)) piece = p.cmd === 'mathrm' ? `\\textrm{${body}}` : `\\mathop{\\textrm{${body}}}`;
+    out = out.slice(0, p.start) + piece + out.slice(p.to + 1);
+  }
+  return out;
+}
 
 // Every text of a deck, once each, in order.
 export function textsOf(deck) {
@@ -28,6 +91,7 @@ export function textsOf(deck) {
     if (Array.isArray(o)) o.forEach(v => walk(v, k));
     else if (o && typeof o === 'object') for (const [kk, v] of Object.entries(o)) walk(v, kk);
     else if (TEXT_KEYS.has(k) && isText(o)) out.add(o);
+    else if (k === 'latex') for (const t of mathTexts(o)) out.add(t);
   };
   walk(deck, '');
   return [...out];
@@ -44,7 +108,10 @@ export function translateDeck(deck, dict, { rtl = false } = {}) {
   const walk = o => {
     if (Array.isArray(o)) o.forEach(walk);
     else if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) {
-      if (typeof v === 'string') { if (TEXT_KEYS.has(k) && isText(v) && Object.hasOwn(dict, v)) { if (k === 'html') was.set(o, v); o[k] = dict[v]; } }
+      if (typeof v === 'string') {
+        if (TEXT_KEYS.has(k) && isText(v) && Object.hasOwn(dict, v)) { if (k === 'html') was.set(o, v); o[k] = dict[v]; }
+        else if (k === 'latex') o[k] = translateLatex(v, dict);           // (the words inside an equation)
+      }
       else if (Array.isArray(v) && TEXT_KEYS.has(k)) translateList(v, dict);
       else walk(v);
     }

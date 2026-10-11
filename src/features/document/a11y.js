@@ -6,6 +6,7 @@ import { plainText } from '../../core/text.js';
 import { state } from '../../core/store.js';
 import { styled, layoutBackground } from './master.js';
 import { currentPalette, deckFg } from '../design/palettes.js';
+import { tableSpan, cellBg } from '../../render/svg.js';
 
 
 function rgb(c) {
@@ -62,6 +63,33 @@ const styledOf = (deck, s, b) => { try { return styled(b, s, deck) || b; } catch
 const textBase = (deck, s, b) => b.color || (!deck.palette && THEME_FG[deck.theme]) || styledOf(deck, s, b).color || deckFg(deck);
 const textSize = (deck, s, b) => +styledOf(deck, s, b).fontSize || b.fontSize || 40;
 
+// A table's cells with a shading of their own in a solid colour (Tabla ▸ Sombreado, or a PowerPoint's): [r, c, colour,
+// ink, need]. Their words are read against that colour, whatever is behind the table: the colour may be dark under the
+// deck's light text, or the other way round. Ink: the header's own text colour in the header row, else the table's,
+// else the deck's (as drawn: render/svg.js tableVars); need: WCAG's 4.5:1 below 24 px, 3:1 from there.
+// ('none' and cells without their own colour are left out: the table style's header and bands, as before.)
+function shadedCells(deck, b) {
+  if (!b.cellBg || !Array.isArray(b.rows)) return [];
+  const span = tableSpan(b), base = /^#[0-9a-f]{3,8}$/i.test(b.color || '') ? b.color : (!deck.palette && THEME_FG[deck.theme]) || deckFg(deck);
+  const need = (+b.fontSize || 16) >= 24 ? 3 : 4.5, out = [];
+  b.rows.forEach((row, r) => row.forEach((html, c) => {
+    const bg = cellBg(b, r, c);
+    if (!rgb(bg) || !span(r, c) || !plain(html)) return;
+    out.push([r, c, bg, b.header && r === 0 && rgb(b.headFg) ? b.headFg : base, need]);
+  }));
+  return out;
+}
+// The worst contrast of a table's shaded cells (null: none to judge).
+function worstCell(deck, b) {
+  const cs = shadedCells(deck, b); if (!cs.length) return null;
+  let worst = null;
+  for (const [r, c, bg, ink, need] of cs) {
+    const ratio = Math.min(...textColours(b.rows[r][c], ink).map(x => contrast(x, bg) ?? 21));
+    if (!worst || ratio / need < worst.ratio / worst.need) worst = { ratio, need };
+  }
+  return worst;
+}
+
 // Objects that need a text alternative (unless marked decorative).
 const NEEDS_ALT = { image: 'Imagen sin texto alternativo', chart: 'Gráfico sin texto alternativo',
   model: 'Modelo 3D sin texto alternativo', video: 'Vídeo sin texto alternativo', icon: 'Icono sin texto alternativo' };
@@ -98,6 +126,7 @@ export function checkAccessibility(deck = state.deck) {
     for (const b of bs) {
       if (NEEDS_ALT[b.type] && !b.decorative && !(b.alt || '').trim()) add('alt', i, NEEDS_ALT[b.type], b.id);
       if (b.type === 'table' && !b.header) add('tablehead', i, 'Tabla sin fila de encabezado', b.id);
+      if (b.type === 'table') { const w = worstCell(deck, b); if (w && w.ratio < w.need) add('contrast', i, 'Contraste de texto bajo en celdas de la tabla', b.id, w.ratio.toFixed(1) + ':1'); }
       const back = b.type === 'text' && plain(b.html) && !b.wordart ? textBack(deck, s, b) : null;
       if (back) {
         const fg = textColours(b.html, textBase(deck, s, b));
@@ -121,7 +150,9 @@ export function readableColour(c, back, need = 4.5) {
 }
 // Give a text box's colours enough contrast against what's behind it. true if something changed.
 export function fixContrast(deck, slideIndex, blockId) {
-  const s = deck.slides[slideIndex], b = s?.blocks.find(x => x.id === blockId); if (!b || b.type !== 'text') return false;
+  const s = deck.slides[slideIndex], b = s?.blocks.find(x => x.id === blockId);
+  if (b?.type === 'table') return fixCellContrast(deck, b);
+  if (!b || b.type !== 'text') return false;
   const back = textBack(deck, s, b); if (!back) return false;
   const need = textSize(deck, s, b) >= 24 ? 3 : 4.5;
   let changed = false;
@@ -136,6 +167,30 @@ export function fixContrast(deck, slideIndex, blockId) {
   if (changed) b.html = d.innerHTML;
   const base = textBase(deck, s, b);
   if ((contrast(base, back) ?? 21) < need) { b.color = readableColour(base, back, need); changed = true; }
+  return changed;
+}
+
+// The same for a table's shaded cells: the cell's own colour runs, then the text without one (wrapped in a run of the
+// readable colour: the table's colour is every cell's, and the other cells may read well with it). The shading is the
+// author's choice and stays.
+function fixCellContrast(deck, b) {
+  let changed = false;
+  for (const [r, c, bg, ink, need] of shadedCells(deck, b)) {
+    const d = new DOMParser().parseFromString(b.rows[r][c] || '', 'text/html').body;
+    let cell = false;
+    d.querySelectorAll('[style*="color"], font[color]').forEach(el => {
+      const col = el.getAttribute('color') || el.style.color;
+      if (!col || !el.textContent.trim() || (contrast(col, bg) ?? 21) >= need) return;
+      const n = readableColour(col, bg, need);
+      if (el.getAttribute('color')) el.setAttribute('color', n); else el.style.color = n;
+      cell = true;
+    });
+    if ((contrast(ink, bg) ?? 21) < need && textColours(d.innerHTML, null).includes(null)) {
+      const span = d.ownerDocument.createElement('span'); span.style.color = readableColour(ink, bg, need);
+      span.append(...d.childNodes); d.append(span); cell = true;
+    }
+    if (cell) { b.rows[r][c] = d.innerHTML; changed = true; }
+  }
   return changed;
 }
 

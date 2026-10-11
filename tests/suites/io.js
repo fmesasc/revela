@@ -68,6 +68,46 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/<draw:path[^>]*svg:d="M0 0 L5000 0 L5000 10000 L10000 10000"/.test(c), 'en OpenDocument: su trazado');
   });
 
+  // Speed (300 slides took ~32 s, and up to 2.5 min with equations: io/formats/pptx-export.js, io/export/images.js):
+  // each picture once in the file, the XML deflated and the pictures stored, the JSZip that doesn't wait a timer
+  // per 16 KB, how far it is said as it goes, and a generous time limit (it takes ~1 s here) so a slowdown shows.
+  await test('PowerPoint grande: cada foto una vez, XML comprimido, progreso y a tiempo', async () => {
+    reset(); const W = frame.contentWindow, M = R.model;
+    const pic = (type, color, n) => { const c = D.createElement('canvas'); c.width = n; c.height = n; const x = c.getContext('2d');
+      x.fillStyle = color; x.fillRect(0, 0, n, n); x.fillStyle = '#fff'; x.fillRect(n / 4, n / 4, n / 2, n / 3); return c.toDataURL(type, 0.9); };
+    const logo = pic('image/png', '#e53935', 64), photos = ['#3f6497', '#2e7d32', '#6a1b9a'].map(c => pic('image/jpeg', c, 400));
+    const d = M.emptyDeck(); d.slides = [];
+    for (let i = 0; i < 60; i++) {
+      const s = M.blankSlide(); s.notes = 'n' + i;
+      s.blocks.push(M.textBlock({ html: `<b>Diapositiva ${i + 1}</b>` }), { id: M.uid(), type: 'image', src: logo, x: 1180, y: 620, w: 80, h: 80, rotation: 0, animation: null });
+      if (i % 3 === 0) s.blocks.push({ id: M.uid(), type: 'image', src: photos[i % 3 === 0 ? (i / 3) % 3 : 0], x: 600, y: 100, w: 500, h: 400, rotation: 0, animation: null, fit: 'cover' });
+      if (i % 3 === 1) s.blocks.push(M.mathBlock({ latex: i % 2 ? 'a^2+b^2=c^2' : `x_{${i}}=\\frac{${i}}{2}` }), { id: M.uid(), type: 'icon', icon: 'star', color: '#ffffff', x: 100, y: 400, w: 120, h: 120, rotation: 0, animation: null });
+      if (i % 3 === 2) s.blocks.push(M.chartBlock(), M.tableBlock({ x: 100, y: 450, rows: [['a', 'b'], ['1', '2']] }));
+      d.slides.push(s);
+    }
+    const steps = [], t0 = performance.now();
+    const blob = await R.pptx.buildPptxBlob(d, { progress: p => steps.push(p) }), ms = performance.now() - t0;
+    eq(W.JSZip.version, '3.10.1', 'el JSZip de la exportación (no el que trae PptxGenJS dentro)');
+    assert(ms < 20000, `a tiempo: ${Math.round(ms)} ms`);
+    const zip = await W.JSZip.loadAsync(blob), names = Object.keys(zip.files);
+    const media = names.filter(n => /^ppt\/media\/./.test(n));
+    // (Logo, three photos, the icon, the repeated equation and ten others: no copies.)
+    assert(media.length <= 16, 'cada foto una sola vez: ' + media.length + ' archivos');
+    const jpgs = await Promise.all(media.filter(n => /\.jpe?g$/.test(n)).map(n => zip.file(n).async('base64')));
+    eq(jpgs.sort().join(), photos.map(p => p.split(',')[1]).sort().join(), 'las fotos, con sus bytes de verdad');
+    for (const r of names.filter(n => /^ppt\/slides\/_rels\/.*\.rels$/.test(n))) {
+      const x = await zip.file(r).async('string');
+      for (const [, t] of x.matchAll(/Target="\.\.\/media\/([^"]+)"/g)) assert(zip.file('ppt/media/' + t), `${r}: ${t} existe`);
+    }
+    const s1 = await zip.file('ppt/slides/_rels/slide1.xml.rels').async('string'), s60 = await zip.file('ppt/slides/_rels/slide60.xml.rels').async('string');
+    eq(/media\/([^"]+\.png)"/.exec(s1)[1], /media\/([^"]+\.png)"/.exec(s60)[1], 'el logo de la primera y la última: el mismo archivo');
+    const methods = n => zip.files[n]._data.compression.magic;           // (\x08\x00 deflate, \x00\x00 stored)
+    eq(methods('ppt/slides/slide1.xml'), '\x08\x00', 'XML comprimido'); eq(methods(media[0]), '\x00\x00', 'imágenes guardadas tal cual');
+    assert(steps.some(p => p.step === 'pictures') && steps.filter(p => p.step === 'slides').length === 60 && steps.at(-1)?.step === 'zip' && steps.at(-1).percent === 100, 'progreso: imágenes, diapositivas, archivo');
+    const back = await R.pptxImport.importPPTX(new W.File([blob], 'grande.pptx'));
+    eq(back.slides.length, 60, 'se vuelve a abrir'); assert(back.slides[0].blocks.some(b => b.type === 'image' && /^data:image\/png/.test(b.src)), 'con su logo');
+  });
+
   await test('modelo 3D con su imagen (portada): en las miniaturas y en PowerPoint', async () => {
     reset(); const W = frame.contentWindow;
     const c = D.createElement('canvas'); c.width = c.height = 8; c.getContext('2d').fillRect(2, 2, 4, 4); const poster = c.toDataURL('image/png');

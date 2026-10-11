@@ -1369,4 +1369,65 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(SS.agoText(Date.now() - 7000), 'hace 7 s');
     ss.classList.add('failed'); SS.refreshSaveState(); assert(!ss.querySelector('time.ss-ago'), 'sin guardar: no dice cuándo'); ss.classList.remove('failed');
   });
+
+  await test('versión nueva: si el servidor tiene otra compilación, una barra ofrece recargar (tras guardar); descartada, no vuelve para esa misma', async () => {
+    const W = frame.contentWindow, U = await W.eval("import('/src/ui/shell/update.js')");
+    const KEY = 'revela.update.dismissed'; W.sessionStorage.removeItem(KEY);
+    const asked = [];
+    const answer = (body, ok = true) => (url, opts) => { asked.push([url, opts]); return Promise.resolve({ ok, json: () => Promise.resolve(body) }); };
+    const bar = () => D.getElementById('update-bar');
+    // The server's build: from version.json beside the page, never from a cache; anything odd is no answer.
+    eq(await U.serverBuild(answer({ build: 'abcdef0123456789' })), 'abcdef0123456789');
+    assert(/\/version\.json\?t=\d+$/.test(asked[0][0]) && asked[0][1].cache === 'no-store', 'version.json, sin caché: ' + asked[0][0]);
+    eq(await U.serverBuild(answer({ build: '<b>x</b>' })), '', 'lo que no es una compilación no cuenta');
+    eq(await U.serverBuild(answer({}, false)), '', 'un 404: nada');
+    eq(await U.serverBuild(() => Promise.reject(new TypeError('offline'))), '', 'sin conexión: nada, y nada se dice');
+    // Not stamped (the desktop app, a copy from the repository, these tests): never asked.
+    eq(U.loadedBuild(D), '', 'esta página de pruebas no lleva sello');
+    asked.length = 0; eq(await U.checkForUpdate({ fetcher: answer({ build: 'aaaaaaaaaaaaaaaa' }), loaded: '' }), ''); eq(asked.length, 0, 'sin sello, ni pregunta');
+    // The same build: nothing.
+    eq(await U.checkForUpdate({ fetcher: answer({ build: 'aaaaaaaaaaaaaaaa' }), loaded: 'aaaaaaaaaaaaaaaa' }), ''); assert(!bar(), 'la misma: sin barra');
+    // Another one: the bar, in Spanish, with «Recargar»; reloading saves first.
+    let reloads = 0, saves = 0;
+    const save = () => { saves++; return Promise.resolve([]); }, reload = () => { reloads++; };
+    eq(await U.checkForUpdate({ fetcher: answer({ build: 'bbbbbbbbbbbbbbbb' }), loaded: 'aaaaaaaaaaaaaaaa', reload, save }), 'bbbbbbbbbbbbbbbb');
+    assert(bar(), 'otra: la barra'); assert(/versión nueva/.test(bar().textContent), bar().textContent);
+    eq(bar().querySelector('.notice-go').textContent, 'Recargar');
+    bar().querySelector('.notice-go').click(); await sleep(30);
+    eq(saves, 1, 'guarda antes'); eq(reloads, 1, 'y recarga');
+    // Something couldn't be saved: it says where, and only reloads if told to.
+    bar().remove();
+    let left = ['Google Drive'];
+    await U.checkForUpdate({ fetcher: answer({ build: 'bbbbbbbbbbbbbbbb' }), loaded: 'aaaaaaaaaaaaaaaa', reload, save: () => Promise.resolve(left) });
+    const go = bar().querySelector('.notice-go'); go.click(); await sleep(30);
+    let dlg = D.querySelector('.modal-backdrop .dlg-msg'); assert(dlg && /Google Drive/.test(dlg.textContent), 'avisa de lo que falta: ' + dlg?.textContent);
+    D.querySelector('.modal-backdrop .dlg-cancel').click(); await sleep(20);
+    eq(reloads, 1, '«Ahora no»: no recarga'); eq(go.textContent, 'Recargar', 'y el botón vuelve'); assert(!go.disabled);
+    go.click(); await sleep(30); D.querySelector('.modal-backdrop .dlg-ok').click(); await sleep(20);
+    eq(reloads, 2, '«Recargar igualmente»: recarga');
+    // Closed with ✕: not again for that build in this tab (sessionStorage); a newer one, yes.
+    bar().querySelector('.notice-x').click(); assert(!bar(), 'cerrada');
+    eq(W.sessionStorage.getItem(KEY), 'bbbbbbbbbbbbbbbb', 'recordada para esta pestaña');
+    eq(await U.checkForUpdate({ fetcher: answer({ build: 'bbbbbbbbbbbbbbbb' }), loaded: 'aaaaaaaaaaaaaaaa', reload, save }), ''); assert(!bar(), 'la misma: no vuelve');
+    eq(await U.checkForUpdate({ fetcher: answer({ build: 'cccccccccccccccc' }), loaded: 'aaaaaaaaaaaaaaaa', reload, save }), 'cccccccccccccccc'); assert(bar(), 'otra más nueva: sí');
+    bar().remove();
+    // Never over a presentation on screen.
+    R.session.present = {};
+    try { await U.checkForUpdate({ fetcher: answer({ build: 'dddddddddddddddd' }), loaded: 'aaaaaaaaaaaaaaaa', reload, save }); assert(!bar(), 'presentando: aún no'); }
+    finally { R.session.present = null; }
+    W.sessionStorage.setItem(KEY, 'dddddddddddddddd');      // (its retry, in 30 s, finds it dismissed)
+    // Where changes are still missing, from what each place says.
+    const P = (o = {}) => ({ cloud: null, drive: null, driveStatus: 'idle', onedrive: null, onedriveStatus: 'idle', savedHere: true, ...o });
+    eq(U.unsavedPlaces(P()).join(), '', 'todo guardado');
+    eq(U.unsavedPlaces(P({ savedHere: false })).join(), 'este navegador', 'el navegador no pudo guardarla y no hay otro sitio');
+    eq(U.unsavedPlaces(P({ savedHere: false, drive: { dirty: false } })).join(), '', 'pero está en Drive');
+    eq(U.unsavedPlaces(P({ drive: { dirty: true } })).join(), 'Google Drive');
+    eq(U.unsavedPlaces(P({ drive: { dirty: false }, driveStatus: 'saving' })).join(), 'Google Drive', 'aún subiendo');
+    eq(U.unsavedPlaces(P({ cloud: { role: 'owner', status: 'offline' } })).join(), 'Nube de Revela');
+    eq(U.unsavedPlaces(P({ cloud: { role: 'owner', status: 'saved' } })).join(), '');
+    eq(U.unsavedPlaces(P({ cloud: { role: 'view', status: 'pending' } })).join(), '', 'solo para ver: nada que guardar');
+    eq(U.unsavedPlaces(P({ onedrive: { dirty: false }, onedriveStatus: 'pending' })).join(), 'OneDrive');
+    // The real save, with nothing linked: this browser's copy, and nothing left.
+    eq((await U.saveEverything({ wait: 3000 })).join(), '', 'guardado en este navegador');
+  });
 }

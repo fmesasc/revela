@@ -36,7 +36,7 @@ import { cameraLive, setCameraLive, setCameraBackground } from '../canvas/camera
 import { puppetTrying, tryPuppet, togglePuppet } from '../canvas/puppetview.js';
 import { openCameraEffects } from '../dialogs/media.js';
 import { spellAt, spellMenu } from './spellcheck.js';
-import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
+import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle, openCellShading } from '../dialogs/object.js';
 
 let menuEl, menuOpenedAt = 0;
 // The live camera's background, straight from the menu.
@@ -306,6 +306,8 @@ function forBlock(b, cell = null) {
       ['Quitar columna', () => blocks.tableDelCol()],
       [b.header ? 'Quitar fila de encabezado' : 'Fila de encabezado', () => blocks.tableToggleHeader()],
       ['Estilo de tabla…', () => openTableStyle(b)],
+      // (The cell right-clicked — or the block of them it is in —; on the table's frame, all of it: blocks.tableCellKeys.)
+      [cell || blocks.hasTableCells(b) ? 'Sombreado de celda…' : 'Sombreado de la tabla…', () => openCellShading(b)],
       ['Crear gráfico con estos datos', () => blocks.chartFromTable()],
       null);
     if (cell) {

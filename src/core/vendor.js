@@ -10,7 +10,10 @@ export const KATEX = NPM + 'katex@0.16.11/dist';
 export const MODEL_VIEWER = NPM + '@google/model-viewer@3.5.0/dist/model-viewer.min.js';
 export const HTML2CANVAS = NPM + 'html2canvas@1.4.1/dist/html2canvas.min.js';
 export const JSZIP = NPM + 'jszip@3.10.1/dist/jszip.min.js';
-export const PPTXGEN = NPM + 'pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
+// PptxGenJS without its bundled JSZip (load JSZIP first: it takes window.JSZip). The bundle's, 3.5, waits for a timer
+// (≥ 4 ms) after every 16 KB, its setImmediate shim having found none — 20 MB took 5.4 s, writing a 300-slide .pptx
+// ~20 s of waiting —, and it replaced window.JSZip for everything else. 3.10.1 writes those 20 MB in 0.2 s.
+export const PPTXGEN = NPM + 'pptxgenjs@3.12.0/dist/pptxgen.min.js';
 export const PEERJS = NPM + 'peerjs@1.5.4/dist/peerjs.min.js';
 export const QRCODE = NPM + 'qrcode@1.5.1/build/qrcode.min.js';
 // 360° photos (equirectangular) walked through while presenting: Pannellum (MIT). + '.js' / '.css'.

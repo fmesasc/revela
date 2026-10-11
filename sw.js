@@ -30,6 +30,9 @@ self.addEventListener('fetch', e => {
   if (url.origin === location.origin) {
     if (!url.href.startsWith(self.registration.scope) || url.pathname.startsWith('/api/')) return;   // (the app's files only)
     if (url.searchParams.has('test') || url.pathname.includes('/tests/')) return;   // never cache the test harness
+    // (Which build the server has — ui/shell/update.js —: always the network's answer, never a copy kept here, and
+    // offline simply no answer; each check asks with a different ?t=, which would pile up copies in the cache.)
+    if (url.pathname.endsWith('/version.json')) return;
     // (cache: 'no-cache' — always asks the server whether there's a newer version (a cheap 304 if not):
     // the browser's own HTTP cache kept old code for hours after a deploy.)
     // (The page is told while one of its own scripts or styles is on its way — a module loaded when a feature is

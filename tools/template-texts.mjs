@@ -5,6 +5,8 @@
 //   node tools/template-texts.mjs --out DIR --missing LANG  → only the ones LANG lacks
 //   node tools/template-texts.mjs --check        → exits with 1 if a language lacks a text (tests/run.sh)
 // The translations are templates/i18n/<lang>/<file>.js: `export default { "Spanish": "translation", … }`.
+// Also the words inside equations (\text{alquiler}, \mathrm{mcm}…: tplang.js mathTexts), each one a text of its own,
+// as plain text: no HTML, and no LaTeX escapes — translateDeck escapes them when it puts them back into the formula.
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
