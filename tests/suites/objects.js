@@ -3416,16 +3416,31 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   // place search answers from here.
   const mapStub = `(function(){var W=window;function M(o){var t=this;t.o=o;t.c=o.center;t.z=o.zoom;t.p=o.pitch||0;t.b=o.bearing||0;t.h={};t.src={};t.lay={};t.flights=[];
     t.cv=document.createElement('canvas');t.cv.width=Math.max(16,o.container.clientWidth||100);t.cv.height=Math.max(9,o.container.clientHeight||60);o.container.appendChild(t.cv);
-    t.keyboard={disable:function(){t.noKeys=true;}};(W.__maps=W.__maps||[]).push(t);t.style={tileManagers:{v:new TM('vector',512),r:new TM('raster',256),g:new TM('geojson',512)}};
+    t.keyboard={disable:function(){t.noKeys=true;}};(W.__maps=W.__maps||[]).push(t);t.style={tileManagers:{v:new TM('vector',512),r:new TM('raster',256),g:new TM('geojson',512)},_layers:{a:{source:'v',isHidden:function(){return false;}},b:{source:'r',isHidden:function(){return false;}}}};
     setTimeout(function(){t.fire('style.load');t.fire('load');t.fire('idle');},10);}
-  function Id(oz,w,z,x,y){this.overscaledZ=oz;this.wrap=w;this.canonical={z:z,x:x,y:y};}Id.prototype.scaledTo=function(z){return new Id(z,this.wrap,z,this.canonical.x>>(this.canonical.z-z),this.canonical.y>>(this.canonical.z-z));};
-  function TM(type,size){this.src={type:type,tileSize:size,minzoom:0,maxzoom:14};}TM.prototype={getSource:function(){return this.src;},_updateRetainedTiles:function(ideal){this.got=ideal;return{};}};W.__TileId=Id;
+  function Id(oz,w,z,x,y){this.overscaledZ=oz;this.wrap=w;this.canonical={z:z,x:x,y:y};this.key=[oz,w,z,x,y].join('/');}
+  Id.prototype={constructor:Id,scaledTo:function(z){return new Id(z,this.wrap,z,this.canonical.x>>(this.canonical.z-z),this.canonical.y>>(this.canonical.z-z));},
+    wrapped:function(){return new Id(this.overscaledZ,0,this.canonical.z,this.canonical.x,this.canonical.y);},overscaleFactor:function(){return 1;}};
+  function Tile(id,size,has){this.tileID=id;this.state=has?'loaded':'loading';}Tile.prototype={constructor:Tile,hasData:function(){return this.state==='loaded';},getExpiryTimeout:function(){}};
+  function TM(type,size){this.src=this._source={type:type,tileSize:size,minzoom:0,maxzoom:14};this.loads=[];this.transform={};var z0=new Id(0,0,0,0,0);
+    this._inViewTiles={m:{},getAllTiles:function(){var m=this.m;return Object.keys(m).map(function(k){return m[k];});},getTileById:function(k){return this.m[k]||null;}};this._inViewTiles.m[z0.key]=new Tile(z0,size,true);
+    this._outOfViewCache={data:{},order:[],max:10,has:function(id){return id.wrapped().key in this.data;},add:function(id,v){var k=id.wrapped().key;this.data[k]=v;this.order.push(k);this.setMaxSize(this.max);return this;},
+      setMaxSize:function(n){this.max=n;while(this.order.length>n)delete this.data[this.order.shift()];return this;}};}
+  TM.prototype={getSource:function(){return this.src;},updateCacheSize:function(){this._outOfViewCache.setMaxSize(10);},_unloadTile:function(){},
+    _updateRetainedTiles:function(ideal){var v=this._inViewTiles.m;this.got=ideal;ideal.forEach(function(id){if(!v[id.key])v[id.key]=new Tile(id,512,true);});return{};},
+    update:function(tr){var z=Math.max(0,Math.min(14,Math.floor(tr.zoom))),n=1<<z,x=Math.floor((tr.center[0]+180)/360*n),y=Math.floor((90-tr.center[1])/180*n);
+      this.transform=tr;this._updateRetainedTiles([new Id(z,0,z,(x%n+n)%n,Math.max(0,Math.min(n-1,y)))]);},
+    _loadTile:function(tile){var t=this;t.loads.push(tile.tileID.key);return new Promise(function(ok){(function w(){if(W.__slowTiles&&Date.now()<W.__slowTiles)return setTimeout(w,30);tile.state='loaded';setTimeout(ok,5);})();});}};
+  W.__TileId=Id;
   M.prototype={on:function(e,f){(this.h[e]=this.h[e]||[]).push(f);return this;},once:function(e,f){var t=this,g=function(){t.h[e]=t.h[e].filter(function(x){return x!==g;});f();};return this.on(e,g);},
     fire:function(e){(this.h[e]||[]).slice().forEach(function(f){f();});},off:function(e,f){this.h[e]=(this.h[e]||[]).filter(function(x){return x!==f;});return this;},
     areTilesLoaded:function(){var t=this;if(W.__slowTiles&&Date.now()<W.__slowTiles){setTimeout(function(){t.fire('render');},50);return false;}return true;},isMoving:function(){return false;},setProjection:function(p){this.proj=p.type;},setSky:function(){},setTerrain:function(x){this.terrain=x;},
     getStyle:function(){return{layers:[]};},setLayoutProperty:function(){},setPaintProperty:function(){},getSource:function(id){return this.src[id];},
     addSource:function(id,s){var t=this;t.src[id]=Object.assign({},s,{setData:function(d){t.src[id].data=d;}});},getLayer:function(id){return this.lay[id];},addLayer:function(l){this.lay[l.id]=l;},
-    flyTo:function(o){this.flights.push(Object.assign({at:Date.now()},o));this.jumpTo(o);},jumpTo:function(o){(this.moves=this.moves||[]).push(o.center);this.c=o.center;this.z=o.zoom;this.p=o.pitch;this.b=o.bearing;},stop:function(){},
+    flyTo:function(o){this.flights.push(Object.assign({at:Date.now()},o));
+      if(Object.prototype.hasOwnProperty.call(this,'_ease')){var k=o.easing(1),c=this.c,z=this.z;this.jumpTo({center:[c[0]+(o.center[0]-c[0])*k,c[1]+(o.center[1]-c[1])*k],zoom:z+(o.zoom-z)*k-6*Math.sin(Math.PI*k),pitch:o.pitch,bearing:o.bearing});}
+      else this.jumpTo(o);},
+    get transform(){return{zoom:this.z,center:this.c};},jumpTo:function(o){(this.moves=this.moves||[]).push(o.center);this.c=o.center;this.z=o.zoom;this.p=o.pitch;this.b=o.bearing;},stop:function(){},
     getCenter:function(){return{lng:this.c[0],lat:this.c[1]};},getZoom:function(){return this.z;},getPitch:function(){return this.p;},getBearing:function(){return this.b;},
     project:function(){return{x:40,y:20};},getCanvas:function(){return this.cv;},triggerRepaint:function(){var t=this;setTimeout(function(){t.fire('render');t.fire('idle');},5);},resize:function(){},setPixelRatio:function(){},
     remove:function(){this.removed=true;},setStyle:function(s){var t=this;t.o.style=s;setTimeout(function(){t.fire('style.load');},5);}};
@@ -3587,49 +3602,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     });
   });
 
-  // Warming the way of each flight (io/runtime/geomap.js, warm()): a hidden map of the same size goes along it ahead
-  // of time, so its tiles are in the browser's cache when the map flies.
-  const hiddenMaps = W => (W.__maps || []).filter(x => x.o.interactive === false && x.o.attributionControl === false);
-  const FAR = [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 9, pitch: 40 }, { name: 'Tokio', lon: 139.69, lat: 35.69, zoom: 9 }, { name: 'Yokohama', lon: 139.64, lat: 35.44, zoom: 10 },
-    { name: 'Nueva York', lon: -74, lat: 40.71, zoom: 9, pitch: 50 }, { name: 'Río', lon: -43.17, lat: -22.9, zoom: 9 }];
-
-  await test('mapa: cada vuelo se precarga antes en un mapa oculto (el siguiente primero, de grueso a fino) y se suelta al acabar', async () => {
+  // The flight ahead (io/runtime/geomap.js, fetchAhead()): its tiles worked out frame by frame and fetched into the
+  // map's own memory before the click; and a floor of the whole world under every map (floor()).
+  const FAR = [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 9, pitch: 40 }, { name: 'Tokio', lon: 139.69, lat: 35.69, zoom: 9 }, { name: 'Yokohama', lon: 139.64, lat: 35.44, zoom: 10 }];
+  await test('mapa: el vuelo siguiente se trae antes a la memoria del mapa (sin que se mueva nada); un clic antes espera; un suelo del mundo siempre', async () => {
     reset(); const { G, W } = await mapSetup(); R.slides.addSlide('blank'); await sleep(10);
-    const b = G.addMap({ route: 'line', stops: FAR.slice(0, 3) });
-    G.setMap(b.id, { stops: b.stops, flyMs: 400 });
-    const html = R.io.buildHTML(R.state.deck, { inApp: true }), S = await W.eval("import('/src/core/vendor.js')");
-    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
-    try {
-      f.srcdoc = html.split(JSON.stringify(S.MAPLIBRE)).join(JSON.stringify('data:text/javascript;charset=utf-8,' + encodeURIComponent(mapStub) + '%2F%2F'));
-      for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
-      const F = f.contentWindow, el = F.document.querySelector('[data-geomap]');
-      // On the slide before: the map's first view and its flights, warmed on a hidden map of its size.
-      for (let k = 0; k < 60 && !hiddenMaps(F).length; k++) await sleep(50);
-      const hm = hiddenMaps(F)[0]; assert(hm, 'un mapa oculto para precargar, desde la diapositiva anterior');
-      const box = hm.o.container;
-      eq(box.style.visibility, 'hidden', 'oculto…'); assert(box.style.display !== 'none' && box.clientWidth === el.clientWidth && box.clientHeight === el.clientHeight, '…pero con el tamaño del mapa (para que pida lo mismo)');
-      eq(hm.o.interactive, false); assert(!el._rvm, 'el mapa de verdad, aún sin montar');
-      for (let k = 0; k < 100 && !hm.removed; k++) await sleep(50);
-      assert(hm.removed && !box.isConnected, 'terminado, el mapa oculto se quita (no gasta un contexto WebGL)');
-      eq(String(hm.moves[0]), String([-3.7, 40.4]), 'primero, la vista de la primera parada');
-      assert(hm.flights.length >= 4 && hm.flights.every(x => x.duration === 1 && x.essential === true && x.curve === 1.42 && typeof x.easing === 'function'), 'cada punto, con el mismo flyTo (1 ms)');
-      const to = x => String(x.center), legA = hm.flights.filter(x => to(x) === String([139.69, 35.69])), legB = hm.flights.filter(x => to(x) === String([139.64, 35.44]));
-      assert(legA.length && legB.length && hm.flights.indexOf(legA.at(-1)) < hm.flights.indexOf(legB[0]), 'los vuelos en orden: el siguiente primero');
-      assert(legA.length > legB.length * 2, `más puntos en un vuelo largo (${legA.length}) que en uno corto (${legB.length})`);
-      const fr = legA.map(x => x.easing(0)), n = fr.length + 1;
-      assert(fr.every(v => v > 0 && v < 1) && new Set(fr).size === fr.length, 'cada punto, una fracción distinta del camino: ' + fr.map(v => v.toFixed(2)));
-      assert(fr[0] >= 0.5 && Math.abs(fr[0] * n - Math.round(fr[0] * n)) < 1e-9, 'de grueso a fino: primero el más lejano a mitad, ' + fr.slice(0, 4).map(v => v.toFixed(2)));
-      // Arriving: the live map, and nothing warmed again (it was all done); a click flies with the tiles there.
-      const before = hiddenMaps(F).length;
-      F.Reveal.slide(1); for (let k = 0; k < 60 && !el.classList.contains('rvm-on'); k++) await sleep(50);
-      await sleep(250); eq(hiddenMaps(F).length, before, 'lo ya precargado no se vuelve a pedir');
-      F.Reveal.next(); await sleep(100); eq(el._rvm.cur, 1, 'y el vuelo, como siempre');
-    } finally { f.remove(); }
-  });
-
-  await test('mapa: el vuelo siguiente se ensaya en el propio mapa, tapado por su imagen; un clic antes espera; un suelo del mundo siempre en memoria', async () => {
-    reset(); const { G, W } = await mapSetup(); R.slides.addSlide('blank'); await sleep(10);
-    const b = G.addMap({ route: 'line', stops: FAR.slice(0, 3) });
+    const b = G.addMap({ route: 'line', stops: FAR });
     G.setMap(b.id, { stops: b.stops, flyMs: 400 });
     const html = R.io.buildHTML(R.state.deck, { inApp: true }), S = await W.eval("import('/src/core/vendor.js')");
     const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
@@ -3637,68 +3615,95 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       f.srcdoc = html.split(JSON.stringify(S.MAPLIBRE)).join(JSON.stringify('data:text/javascript;charset=utf-8,' + encodeURIComponent(mapStub) + '%2F%2F'));
       for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
       const F = f.contentWindow, RV = F.Reveal, el = F.document.querySelector('[data-geomap]');
-      RV.slide(1); for (let k = 0; k < 60 && !el.classList.contains('rvm-on'); k++) await sleep(50);
-      const map = el._rvm.map, live = el.querySelector('.rvm-live');
+      // On the slide before, the map is started already, and its first flight fetched.
+      for (let k = 0; k < 60 && !el.classList.contains('rvm-on'); k++) await sleep(50);
+      assert(el._rvm && el.classList.contains('rvm-on'), 'el mapa de la diapositiva siguiente, ya cargado antes de llegar');
+      eq(F.__maps.length, 1, 'un solo mapa: ni mapas ocultos ni copias');
+      const map = el._rvm.map, tm = map.style.tileManagers;
+      for (let k = 0; k < 60 && !tm.v.loads.length; k++) await sleep(50);
+      await sleep(200);
+      const zs = tm.v.loads.map(k => +k.split('/')[0]);
+      assert(tm.v.loads.length >= 4 && Math.min(...zs) < 9, 'las teselas del vuelo a Tokio, también las de alejarse: ' + tm.v.loads.join(' '));
+      assert(Object.keys(tm.v._outOfViewCache.data).length >= tm.v.loads.length && tm.v._outOfViewCache.max >= tm.v.loads.length, 'guardadas en su memoria, con sitio para ellas');
+      assert(tm.v.loads.every(k => !tm.v._inViewTiles.m[k]), 'sin ponerlas en la vista');
+      assert(!tm.g._rvFloor && !tm.g.loads.length, 'las capas propias (la línea, los nombres) no');
+      eq(String(map.c), String([-3.7, 40.4]), 'el mapa sigue donde estaba'); assert(!map.flights.some(x => x.duration > 1), 'sin volar');
       // The floor: with the tiles a view needs, the whole world at its coarsest, three copies side by side.
-      const tm = map.style.tileManagers, Id = F.__TileId;
+      const Id = F.__TileId;
       tm.v._updateRetainedTiles([new Id(9, 0, 9, 250, 190)], 9); tm.r._updateRetainedTiles([new Id(9, 0, 9, 250, 190)], 9);
-      eq(tm.v.got.length, 1 + 3 * (1 + 4), 'calles (teselas de 512): zoom 0 y 1, por triplicado');
-      eq(tm.r.got.length, 1 + 3 * (1 + 4 + 16), 'imágenes (teselas de 256): hasta zoom 2');
+      eq(tm.v.got.length, 1 + 3 * (1 + 4), 'suelo de calles (teselas de 512): zoom 0 y 1, por triplicado');
+      eq(tm.r.got.length, 1 + 3 * (1 + 4 + 16), 'de imágenes (teselas de 256): hasta zoom 2');
       eq([...new Set(tm.r.got.slice(1).map(x => x.wrap))].join(), '-1,0,1', 'tres copias del mundo (para cruzar la línea de cambio de fecha)');
-      assert(tm.r.got.slice(1).every(x => x.canonical.z <= 2 && x.overscaledZ === x.canonical.z), 'solo las más bastas');
-      assert(!tm.g._rvFloor, 'las capas propias (la línea, los nombres) no');
-      // After arriving, the next flight rehearsed on this map, under a still of it.
-      for (let k = 0; k < 80 && !el.querySelector('.rvm-cover'); k++) await sleep(25);
-      const cover = el.querySelector('.rvm-cover');
-      assert(cover && cover.querySelector('canvas') && live.style.visibility === 'hidden', 'ensayando: una imagen fija del mapa lo tapa');
-      eq([el._rvm.view().lon, el._rvm.view().lat].join(), '-3.7,40.4', 'y «la vista actual» sigue siendo la de la parada');
-      for (let k = 0; k < 120 && el.querySelector('.rvm-cover'); k++) await sleep(25);
-      assert(!el.querySelector('.rvm-cover') && live.style.visibility === '', 'terminado, se quita');
-      const rehearsal = map.flights.filter(x => x.duration === 1);
-      assert(rehearsal.length >= 4 && rehearsal.every(x => String(x.center) === String([139.69, 35.69]) && x.easing(0) > 0 && x.easing(0) < 1), 'por los puntos del vuelo siguiente (a Tokio): ' + rehearsal.length);
-      eq(String(map.c), String([-3.7, 40.4]), 'y de vuelta a la parada');
-      // A click: it flies at once (the flight is ready).
-      const n0 = map.flights.length; RV.next(); await sleep(30);
-      eq(map.flights.length, n0 + 1, 'un clic: vuela en el acto, sin ensayar otra vez'); eq(map.flights.at(-1).duration, 400);
-      assert(!el.querySelector('.rvm-wait'), 'sin esperas');
-      // A click before the next one is ready: it waits (with a small sign), then flies.
-      await sleep(500); F.__slowTiles = Date.now() + 1500; const n1 = map.flights.length;
-      RV.next(); await sleep(450);
+      // Arriving and clicking: it flies at once, and on landing the room is given back and the next flight fetched.
+      RV.slide(1); await sleep(100);
+      const n0 = tm.v.loads.length; RV.next(); await sleep(60);
+      const real = () => map.flights.filter(x => x.duration > 1);
+      eq(real().length, 1, 'un clic: vuela en el acto'); eq(String(real()[0].center), String([139.69, 35.69])); assert(!el.querySelector('.rvm-wait'), 'sin esperas');
+      for (let k = 0; k < 40 && tm.v.loads.length === n0; k++) await sleep(50);
+      assert(tm.v.loads.length > n0, 'aterrizado: el vuelo siguiente (a Yokohama), a por sus teselas');
+      // A click before they are in: it waits (a small sign), then flies.
+      await sleep(300); RV.prev(); await sleep(600); F.__slowTiles = Date.now() + 1500;
+      const r0 = real().length; RV.next(); await sleep(500);
       assert(el.querySelector('.rvm-wait') && el.getAttribute('aria-busy') === 'true', 'si aún no está listo, una señal discreta…');
-      assert(!map.flights.slice(n1).some(x => x.duration > 1), '…y aún no vuela');
-      for (let k = 0; k < 120 && !map.flights.slice(n1).some(x => x.duration > 1); k++) await sleep(50);
-      const after = map.flights.slice(n1), real = after.findIndex(x => x.duration > 1);
-      assert(real > 0 && after.slice(0, real).every(x => x.duration === 1) && after.slice(real + 1).every(x => x.duration !== 1 || x.at > after[real].at), 'vuela cuando el ensayo ha terminado: ' + JSON.stringify(after.map(x => [x.duration, x.at - after[0].at])));
-      eq(String(after[real].center), String([139.64, 35.44])); assert(!el.querySelector('.rvm-wait'), 'y la señal se va');
+      eq(real().length, r0, '…y aún no vuela');
+      for (let k = 0; k < 80 && real().length === r0; k++) await sleep(50);
+      eq(real().length, r0 + 1, 'vuela cuando han llegado'); assert(!el.querySelector('.rvm-wait'), 'y la señal se va');
     } finally { f.remove(); }
   });
 
-  await test('mapa: la precarga espera mientras el mapa vuela, se cancela al cerrar y no gasta datos con «Ahorro de datos»', async () => {
-    reset(); const { G, W } = await mapSetup();
-    const M = await W.eval("import('/src/ui/dialogs/geomap.js')");
-    const b = G.addMap({ stops: FAR }); G.setMap(b.id, { stops: b.stops });
-    W.__maps = [];
-    M.openMapEditor(slide().blocks.find(x => x.id === b.id));
-    for (let k = 0; k < 60 && !hiddenMaps(W).some(x => x.flights.length); k++) await sleep(20);
-    assert(hiddenMaps(W).some(x => x.flights.length), 'en el diálogo, al cargar el mapa, empieza a precargar');
-    // A flight on the live map (the stop's «Ver en el mapa», 1.2 s): nothing warmed meanwhile.
-    const t0 = Date.now(); D.querySelector('#map-modal .gm-stop[data-i="3"] [data-a="fly"]').click();
-    await sleep(3000);
-    const during = hiddenMaps(W).flatMap(x => x.flights).filter(x => x.at > t0 + 40 && x.at < t0 + 1200);
-    eq(during.length, 0, 'mientras vuela el mapa de verdad, la precarga espera');
-    assert(hiddenMaps(W).flatMap(x => x.flights).some(x => x.at >= t0 + 1200), 'y sigue al aterrizar');
-    // Closing the dialog: the warming stops, the hidden map goes.
-    D.querySelector('#map-modal .gm-cancel').click(); const t1 = Date.now(); await sleep(150);
-    assert(hiddenMaps(W).every(x => x.removed && !x.o.container.isConnected), 'al cerrar, el mapa oculto se quita');
-    eq(hiddenMaps(W).flatMap(x => x.flights).filter(x => x.at > t1 + 20).length, 0, 'y no se mueve más');
-    // On a connection that asks to save data: no warming at all.
-    W.__maps = [];
-    Object.defineProperty(W.navigator, 'connection', { configurable: true, value: { saveData: true } });
-    try {
-      M.openMapEditor(slide().blocks.find(x => x.id === b.id)); await sleep(400);
-      assert(W.__maps.length >= 1 && !hiddenMaps(W).length, 'con «Ahorro de datos», sin precarga');
-      D.querySelector('#map-modal .gm-cancel').click();
-    } finally { delete W.navigator.connection; }
+  await test('mapa: uno que cubre la diapositiva llega a los bordes de una pantalla de otra proporción (y los demás no)', async () => {
+    reset(); const { G, W } = await mapSetup(); R.slides.addSlide('blank'); await sleep(10);
+    const { w: SW, h: SH } = R.state.deck.size;
+    const stops = [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 6 }, { name: 'Roma', lon: 12.5, lat: 41.9, zoom: 6 }];
+    const full = G.addMap({ x: 0, y: 0, w: SW, h: SH, stops });
+    const S = await W.eval("import('/src/core/vendor.js')");
+    const play = async (vw, vh, run) => {
+      const html = R.io.buildHTML(R.state.deck, { inApp: true });
+      const f = D.createElement('iframe'); f.style.cssText = `position:fixed;left:0;top:0;width:${vw}px;height:${vh}px;visibility:hidden;border:0`; D.body.appendChild(f);
+      try {
+        f.srcdoc = html.split(JSON.stringify(S.MAPLIBRE)).join(JSON.stringify('data:text/javascript;charset=utf-8,' + encodeURIComponent(mapStub) + '%2F%2F'));
+        for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
+        const F = f.contentWindow; F.Reveal.slide(1); const el = F.document.querySelector('[data-geomap]');
+        for (let k = 0; k < 60 && !el.classList.contains('rvm-on'); k++) await sleep(50);
+        await sleep(100); await run(F, el);
+      } finally { f.remove(); }
+    };
+    assert(/data-prevent-swipe data-bleed/.test(R.io.buildHTML(R.state.deck, { inApp: true })), 'marcado como mapa a sangre');
+    // A 16:10 screen: bands above and below the 16:9 slide, the map goes on into them, the same view in the middle.
+    await play(1280, 800, async (F, el) => {
+      const box = el.querySelector('.rvm-live'), k = F.Reveal.getScale(), extra = Math.round((800 / k - SH) / 2);
+      assert(extra > 10, 'hay franjas: ' + extra);
+      eq(box.style.top, -extra + 'px', 'el mapa sube hasta el borde de la pantalla…'); eq(box.style.height, `calc(100% + ${2 * extra}px)`, '…y baja otro tanto');
+      eq(box.style.left, '0px', 'a lo ancho, no le falta nada'); eq(el.style.overflow, 'visible');
+      eq(el.style.getPropertyValue('--rvm-b'), extra + 'px', 'los créditos, en la esquina real de la pantalla');
+      eq(el._rvm.map.z, 6, 'el mismo zoom: lo de más es más mapa alrededor'); eq(String(el._rvm.map.c), String([-3.7, 40.4]), 'y el mismo centro');
+      assert(el.querySelector('.rvm-note') && !el.querySelector('.rvm-note').style.top, 'la nota, dentro de la diapositiva');
+    });
+    // A phone held upright: reveal.js reads the slides one after the other (its scroll view); the map stays in its box.
+    await play(390, 844, async (F, el) => {
+      assert(F.Reveal.isScrollView && F.Reveal.isScrollView(), 'en el móvil vertical, la vista con desplazamiento');
+      eq(el.querySelector('.rvm-live').style.top, '0px', 'ahí el mapa se queda en su caja'); eq(el.style.overflow, 'hidden');
+    });
+    // The same proportion as the slide: nothing changes.
+    await play(1280, 720, async (F, el) => { eq(el.querySelector('.rvm-live').style.top, '0px', '16:9 en 16:9: igual que antes'); eq(el.style.overflow, 'hidden'); });
+    // A map that doesn't cover the slide stays in its box; and with black bands chosen, none goes past the slide.
+    G.setMap(full.id, { stops }); Object.assign(R.state.deck.slides[1].blocks.find(b => b.id === full.id), { x: 100, w: SW - 200 });
+    assert(!/data-prevent-swipe data-bleed/.test(R.io.buildHTML(R.state.deck, { inApp: true })), 'un mapa que no la cubre, no');
+    await play(1280, 800, async (F, el) => { eq(el.querySelector('.rvm-live').style.top, '0px', 'se queda en su caja'); });
+    Object.assign(R.state.deck.slides[1].blocks.find(b => b.id === full.id), { x: 0, w: SW }); R.state.deck.reveal = { fit: 'bands' };
+    await play(1280, 800, async (F, el) => { eq(el.querySelector('.rvm-live').style.top, '0px', 'con franjas negras elegidas, tampoco'); });
+    // «Adaptar a la pantalla» on a wider screen: the slide takes its proportion, the map stretches with it, and its
+    // stops keep their zoom (the same area, more of it at the sides — not zoomed in to fill the width).
+    R.state.deck.reveal = { fit: 'adapt' };
+    await play(Math.round(SW * 4 / 3), SH, async (F, el) => {
+      for (let k = 0; k < 40 && el.clientWidth < SW * 1.2; k++) await sleep(50);
+      assert(el.clientWidth > SW * 1.2, 'el mapa se estira con la diapositiva: ' + el.clientWidth);
+      F.Reveal.next(); const real = () => el._rvm.map.flights.filter(x => x.duration > 1);
+      for (let k = 0; k < 60 && !real().length; k++) await sleep(50);
+      const fl = real().at(-1);
+      eq(fl && fl.zoom, 6, 'y vuela a Roma con su zoom de siempre');
+    });
+    delete R.state.deck.reveal;
   });
 
   await test('mapa: PDF, imágenes, PowerPoint y miniaturas usan la imagen de su primera parada', async () => {
