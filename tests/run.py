@@ -63,6 +63,51 @@ def touch_checks(send, recv, port):
     check(ev("(()=>{const R=window.__revela,c=document.querySelector('#navigator .thumb[data-index=\"1\"] .thumb-check');return R.state.ui.slidePick&&R.store.slideSelCount()===2&&!!c&&getComputedStyle(c).display!=='none'&&!!document.querySelector('.nav-pick')})()"),
       'pulsación larga en una miniatura: elegir varias diapositivas con casillas')
     ev("document.querySelector('.nav-pick .np-done')?.click();document.getElementById('context-menu').hidden=true;1"); time.sleep(0.2)
+    # A held finger opens Revela's menu, never the system's selection, magnifier or callout; the system's
+    # only on text being edited (ui/shell/contextmenu.js, initLongPress). (Headless Chrome fires no
+    # `contextmenu` for a long press, as iOS: Android's is played below with a synthetic one.)
+    def fingers(kind, pts=()): recv(send('Input.dispatchTouchEvent', sid, type=kind, touchPoints=[{'x': x, 'y': y, 'id': i} for i, (x, y) in enumerate(pts)]))
+    menu_open = "!document.getElementById('context-menu').hidden"
+    hide_menu = "document.getElementById('context-menu').hidden=true;getSelection().removeAllRanges();1"
+    ev("(()=>{document.activeElement?.blur?.();const R=window.__revela;R.slides.goToSlide(0);R.store.currentSlide().blocks.splice(2);R.store.commit(()=>R.store.setSelection(null),{history:false});R.render();return 1})()"); time.sleep(0.3)
+    gap = _j.loads(ev("(()=>{const st=document.getElementById('stage'),s=st.getBoundingClientRect();for(let y=s.bottom-6;y>s.top;y-=8)for(let x=s.left+6;x<s.right;x+=8){const e=document.elementFromPoint(x,y);if(e&&st.contains(e)&&!e.closest('.block'))return JSON.stringify({x,y})}return 'null'})()"))
+    fingers('touchStart', [(gap['x'], gap['y'])]); time.sleep(1.5); fingers('touchEnd'); time.sleep(0.3)
+    items = ev("[...document.querySelectorAll('#context-menu .ctx-item')].map(x=>x.textContent).join('|')") or ''
+    check(ev(menu_open) and 'Nuevo cuadro de texto' in items and ev("getSelection().toString()===''"),
+          'pulsación larga en el hueco de la diapositiva: su menú, y sigue abierto al levantar el dedo tras 1,5 s')
+    ev(hide_menu)
+    check(ev("(()=>{const r=document.querySelector('#stage .block .rich');return document.documentElement.classList.contains('touch-ui')&&getComputedStyle(document.body).userSelect==='none'&&getComputedStyle(r).userSelect==='none'&&getComputedStyle(document.getElementById('notes')).userSelect==='text'})()"),
+          'con el dedo, la página no se selecciona (sí las notas)')
+    r = rect(sel); x0 = ev("window.__revela.store.currentSlide().blocks[1].x")
+    fingers('touchStart', [(r['x'], r['y']), (r['x'] + 60, r['y'] + 40)]); time.sleep(0.8); fingers('touchEnd'); time.sleep(0.3)
+    check(not ev(menu_open), 'dos dedos quietos (pellizco) no abren el menú')
+    ev(hide_menu); r = rect(sel); x0 = ev("window.__revela.store.currentSlide().blocks[1].x")
+    fingers('touchStart', [(r['x'], r['y'])]); time.sleep(0.15)
+    for i in range(1, 9): fingers('touchMove', [(r['x'] + i * 5, r['y'])]); time.sleep(0.02)
+    time.sleep(0.8); fingers('touchEnd'); time.sleep(0.3)
+    check(not ev(menu_open) and ev("window.__revela.store.currentSlide().blocks[1].x") > x0, 'arrastrar y quedarse quieto mueve el objeto sin abrir el menú')
+    ev(hide_menu)
+    # Android: its own `contextmenu` (a PointerEvent from a finger) opens ours at once, and only once.
+    r = rect(sel); fingers('touchStart', [(r['x'], r['y'])]); time.sleep(0.15)
+    android = ev(f"(()=>{{const e=new PointerEvent('contextmenu',{{bubbles:true,cancelable:true,pointerType:'touch',clientX:{r['x']},clientY:{r['y']}}});document.elementFromPoint({r['x']},{r['y']}).dispatchEvent(e);const m=document.getElementById('context-menu');window.__first=m.firstChild;return e.defaultPrevented&&!m.hidden}})()")
+    time.sleep(0.7); fingers('touchEnd'); time.sleep(0.3)
+    check(android and ev("document.getElementById('context-menu').firstChild===window.__first&&" + menu_open), 'Android: su contextmenu de dedo abre el menú de Revela al momento y una sola vez')
+    ev(hide_menu)
+    # The ribbon has no menu (as with a right click): nothing, not the system's either; a field keeps the system's.
+    b = rect('#ribbon [data-tab=insert]'); fingers('touchStart', [(b['x'], b['y'])]); time.sleep(0.9); fingers('touchEnd'); time.sleep(0.3)
+    prevented = ev("(()=>{const f=(el)=>{const e=new PointerEvent('contextmenu',{bubbles:true,cancelable:true,pointerType:'touch'});el.dispatchEvent(e);return e.defaultPrevented};return [f(document.querySelector('#ribbon [data-tab=insert]')),f(document.getElementById('notes'))].join()})()")
+    check(not ev(menu_open) and prevented == 'true,false', 'pulsación larga en la cinta: ni menú ni el del sistema; en las notas, el del sistema (' + str(prevented) + ')')
+    drags = ev("(()=>{const f=el=>{const e=new DragEvent('dragstart',{bubbles:true,cancelable:true});el.dispatchEvent(e);return e.defaultPrevented},i=document.createElement('img');document.getElementById('statusbar').appendChild(i);const out=[f(i),f(document.querySelector('#navigator .thumb'))].join();i.remove();return out})()")
+    check(drags == 'true,false', 'con el dedo no se arrastran imágenes fuera; las miniaturas sí se reordenan (' + str(drags) + ')')
+    # Editing text: the system's selection and menu, not Revela's.
+    tid0 = ev("window.__revela.store.currentSlide().blocks[0].id"); t0 = rect(f'#stage .block[data-id="{tid0}"]')
+    for _ in range(2): touch('touchStart', t0['x'], t0['y']); touch('touchEnd'); time.sleep(0.12)
+    time.sleep(0.3)
+    t0 = _j.loads(ev("(()=>{const r=document.querySelector('#stage .block.editing .rich'),b=r.getBoundingClientRect();for(let x=b.left+4;x<b.right;x+=6){const y=b.top+b.height/2;if(r.contains(document.elementFromPoint(x,y)))return JSON.stringify({x,y})}return 'null'})()") or 'null') or {'x': 0, 'y': 0}
+    fingers('touchStart', [(t0['x'], t0['y'])]); time.sleep(0.9); fingers('touchEnd'); time.sleep(0.3)
+    native = ev(f"(()=>{{const r=document.querySelector('#stage .block.editing .rich');if(!r)return 'sin edición';const e=new PointerEvent('contextmenu',{{bubbles:true,cancelable:true,pointerType:'touch'}});r.dispatchEvent(e);return [getComputedStyle(r).userSelect,e.defaultPrevented,!document.getElementById('context-menu').hidden].join()}})()")
+    check(native == 'text,false,false', 'editando texto, la pulsación larga es la del sistema (selección, Copiar/Pegar) (' + str(native) + ')')
+    ev("document.activeElement?.blur?.();" + hide_menu)
     # Turned on its side: the slide is fitted and seen whole; the title bar fits upright too.
     ev("document.activeElement?.blur?.();1")
     fits = "(()=>{const w=document.getElementById('canvas-wrap').getBoundingClientRect(),s=document.getElementById('stage').getBoundingClientRect();return s.width>100&&s.left>=w.left-1&&s.right<=w.right+1&&s.top>=w.top-1&&s.bottom<=w.bottom+1})()"
@@ -564,7 +609,7 @@ def main():
         touch_fail = touch_checks(send, recv, port) if out.startswith('REVELATEST PASS') else []
         if touch_fail:
             print('REVELATEST FAIL touch'); print('\n'.join(touch_fail)); return 1
-        if out.startswith('REVELATEST PASS'): out += ' + táctil 16/16'
+        if out.startswith('REVELATEST PASS'): out += ' + táctil 24/24'
         math_fail = math_keyboard_check(send, recv, port) if out.startswith('REVELATEST PASS') else []
         if math_fail:
             print('REVELATEST FAIL ecuación'); print('\n'.join(math_fail)); return 1

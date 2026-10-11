@@ -26,7 +26,16 @@
 /* No native text selection / long‑press callout on the app chrome or objects,
    so a long‑press opens our menu instead. Editable areas keep selection. */
 #ribbon,#statusbar,#navigator,.titlebar,.block{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-.block .rich[contenteditable="true"],#notes,.doc-name,input,textarea,math-field{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+/* On a touch screen (html.touch-ui, set by ui/shell/contextmenu.js from the last pointer
+   used), the whole page: a held finger anywhere — the slide around the objects, panes,
+   dialogs, images — opens Revela's menu or nothing, never the system's selection,
+   magnifier or callout. With a mouse, text in dialogs can still be selected. */
+html.touch-ui body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html.touch-ui img{-webkit-user-drag:none}
+/* Text being edited keeps the system's selection and menu (Copy, Paste, select a word):
+   a text box or table cell in edit, the notes, fields. (Said outright, also for iOS,
+   where an editable inside user-select:none may refuse the caret.) */
+[contenteditable="true"],[contenteditable=""],#notes,input,textarea,math-field{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
   font-size:13px;color:var(--txt);background:var(--bg)}
 body{display:flex;flex-direction:column;overflow:hidden}

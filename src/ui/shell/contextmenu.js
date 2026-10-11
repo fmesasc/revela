@@ -87,30 +87,89 @@ export function initContextMenu() {
     }
     open(x, y, [['Nueva diapositiva', () => addSlide()]]);
   };
-  // (A touch long press is handled below, as on iOS, which fires no `contextmenu`.)
-  nav.addEventListener('contextmenu', e => { e.preventDefault(); if (e.pointerType !== 'touch') openNavMenu(e.clientX, e.clientY, e.target); });
+  // (A touch long press is handled by initLongPress, below: iOS fires no `contextmenu`.)
+  nav.addEventListener('contextmenu', e => { e.preventDefault(); openNavMenu(e.clientX, e.clientY, e.target); });
 
-  // Touch: a long‑press opens the same menu (iOS doesn't fire `contextmenu`, and
-  // it also avoids the native text‑selection popup taking over).
-  longPress(stage, openStageMenu);
-  longPress(nav, openNavMenu);
+  initLongPress([[stage, openStageMenu], [nav, openNavMenu]]);
 }
 
-function longPress(el, handler) {
-  let timer, sx = 0, sy = 0, tgt = null, fired = false;
-  const cancel = () => clearTimeout(timer);
-  el.addEventListener('touchstart', e => {
-    if (e.touches.length !== 1) return;
-    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; tgt = t.target; fired = false;
-    timer = setTimeout(() => { fired = true; menuOpenedAt = Date.now(); handler(sx, sy, document.elementFromPoint(sx, sy) || tgt, true); }, 500);
-  }, { passive: true });
-  el.addEventListener('touchmove', e => {
-    const t = e.touches[0]; if (t && (Math.abs(t.clientX - sx) > 12 || Math.abs(t.clientY - sy) > 12)) cancel();
-  }, { passive: true });
-  // Lifting the finger after a long press must not "click" (that would close
-  // the menu it just opened, or act on what's under it).
-  el.addEventListener('touchend', e => { cancel(); if (fired) { e.preventDefault(); fired = false; } });
-  el.addEventListener('touchcancel', cancel);
+// ---- touch: a long press is the right click ---------------------------------
+// On a phone or tablet, holding a finger down must open Revela's own menu, not the
+// system's: no text selection with its magnifier, no iOS callout (Copy, Share, Look
+// up), no dragging an image out, no Android "download image". The system's way is
+// kept only where text is being edited (a text box or table cell in edit, the notes,
+// fields of dialogs), where selecting words and Copy/Paste are what one wants.
+// - iOS Safari never fires `contextmenu` for a long press, so a timer of our own
+//   (pointer events: 500 ms, still within 10 px; a second finger — a pinch —, a
+//   scroll or the browser taking over the gesture, `pointercancel`, call it off).
+// - Chrome on Android does fire `contextmenu` (as the timer runs): it is turned into
+//   the same menu at once, and only once.
+// - The CSS (html.touch-ui in ui/styles/tokens.css) keeps the system from selecting
+//   and from its callout while the finger is down, which no event can stop on iOS.
+// - The finger lifted after the menu opened must not "click": that would close the
+//   menu or act on what is under it.
+// Elsewhere (ribbon, title bar, panes) there is no menu, as with a right click on a
+// computer: the long press just does nothing. The presentation runs in its own frame
+// (ui/shell/present.js) and keeps the browser's behaviour.
+export const LONG_PRESS_MS = 500, LONG_PRESS_SLOP = 10;
+const TEXT_INPUT = /^(text|search|url|tel|email|password|number|date|datetime-local|month|time|week)$/;
+// Where the system's selection and menu belong: text being edited.
+export function editingText(el) {
+  el = el?.nodeType === 1 ? el : el?.parentElement;
+  if (!el) return false;
+  if (el.closest('textarea, math-field')) return true;
+  const inp = el.closest('input'); if (inp) return TEXT_INPUT.test(inp.type || 'text');
+  return !!el.closest('[contenteditable]')?.isContentEditable;
+}
+
+function initLongPress(routes) {
+  const root = document.documentElement;
+  // (The class follows the last pointer used: with a mouse, text in dialogs can be selected as always.)
+  if (matchMedia('(hover: none) and (pointer: coarse)').matches) root.classList.add('touch-ui');
+  const down = new Set();           // touch pointers down now (two or more: a pinch)
+  let press = null, firedAt = 0, lastTouch = 0;
+  const cancel = () => { if (press) clearTimeout(press.timer); press = null; };
+  const fire = () => {
+    const p = press; cancel(); if (!p) return;
+    firedAt = Date.now(); menuOpenedAt = firedAt;
+    const at = document.elementFromPoint(p.x, p.y) || p.target, route = routes.find(([el]) => el.contains(at));
+    if (route) route[1](p.x, p.y, at, true);
+  };
+  addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'touch') { root.classList.remove('touch-ui'); return; }
+    root.classList.add('touch-ui'); lastTouch = Date.now(); firedAt = 0;
+    down.add(e.pointerId);
+    if (down.size > 1 || editingText(e.target) || e.target.closest?.('#context-menu, .modal-backdrop')) return cancel();
+    cancel();
+    press = { id: e.pointerId, x: e.clientX, y: e.clientY, target: e.target, timer: setTimeout(fire, LONG_PRESS_MS) };
+  }, true);
+  addEventListener('pointermove', e => {
+    if (press?.id === e.pointerId && Math.hypot(e.clientX - press.x, e.clientY - press.y) > LONG_PRESS_SLOP) cancel();
+  }, true);
+  const up = e => { down.delete(e.pointerId); if (press?.id === e.pointerId) cancel(); };
+  addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
+  addEventListener('scroll', cancel, true);
+  // Android's own long press: ours instead (now, if the timer hasn't fired yet), and the system's
+  // only on text being edited — then the stage's handler must not open ours on top of it.
+  addEventListener('contextmenu', e => {
+    const touch = e.pointerType === 'touch' || (root.classList.contains('touch-ui') && Date.now() - lastTouch < 2000);
+    if (!touch) return;
+    e.stopImmediatePropagation();
+    if (editingText(e.target)) return;
+    e.preventDefault();
+    if (press) fire();
+  }, true);
+  // Dragging an image or a link out of the page with a held finger; the app's own
+  // drag and drop (draggable="true": reordering thumbnails) goes on.
+  addEventListener('dragstart', e => {
+    if (root.classList.contains('touch-ui') && Date.now() - lastTouch < 2000 && !e.target.closest?.('[draggable="true"]')) e.preventDefault();
+  }, true);
+  // The finger lifted after the menu opened: no mouse events nor click from it.
+  addEventListener('touchend', e => { if (firedAt) e.preventDefault(); }, { capture: true, passive: false });
+  addEventListener('click', e => {
+    if (firedAt && Date.now() - firedAt < 5000) { e.preventDefault(); e.stopImmediatePropagation(); }
+    firedAt = 0;
+  }, true);
 }
 
 // Several selected: what can be done to all of them, with how many.
