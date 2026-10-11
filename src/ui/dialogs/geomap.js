@@ -216,14 +216,15 @@ export function openMapEditor(b0, { isNew = false } = {}) {
     } catch { box.innerHTML = `<p class="host-help">${t('No se pudo buscar: comprueba la conexión.')}</p>`; }
   });
 
-  // Trying the trip here: every stop, one after the other.
+  // Trying the trip here: every stop, one after the other. (Each flight once it has landed: it may wait for its
+  // tiles first — io/runtime/geomap.js, rehearse().)
   let playing = 0;
   q('.gm-play').addEventListener('click', async () => {
     if (playing) { playing = 0; return; }
     if (d.stops.length < 2) { status(t('Añade al menos dos paradas.')); return; }
     const me = playing = Date.now(); q('.gm-play span').textContent = t('Detener'); q('.gm-play .ms').textContent = 'stop_circle';
     ctl.update(G.mapConfig(draft(), lang())); ctl.go(0, false);
-    for (let i = 1; i < d.stops.length && playing === me; i++) { await new Promise(r => setTimeout(r, 900)); if (playing !== me) break; ctl.go(i, true, flyMs); await new Promise(r => setTimeout(r, flyMs)); }
+    for (let i = 1; i < d.stops.length && playing === me; i++) { await new Promise(r => setTimeout(r, 900)); if (playing !== me) break; await ctl.go(i, true, flyMs); }
     if (playing === me) playing = 0;
     q('.gm-play span').textContent = t('Probar el recorrido'); q('.gm-play .ms').textContent = 'play_circle';
   });

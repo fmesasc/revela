@@ -31,6 +31,8 @@ export function geoMapRuntime(lib, rtl, words) {
     + 'text-align:start;font:400 16px/1.35 system-ui,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.3);opacity:0;transform:translateY(-8px);transition:opacity .4s,transform .4s;pointer-events:none;z-index:2}'
     + '.rvm-note.rvm-show{opacity:1;transform:none}.rvm-note b{display:block;font-size:18px;margin-bottom:2px}'
     + '.rvm-off{position:absolute;right:8px;top:8px;padding:3px 9px;border-radius:10px;background:rgba(20,24,30,.72);color:#fff;font:12px/1.3 system-ui,sans-serif;z-index:3;pointer-events:none}'
+    + '.rvm-wait{position:absolute;left:10px;bottom:10px;width:18px;height:18px;border-radius:50%;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;'
+    + 'box-shadow:0 0 4px rgba(0,0,0,.4);animation:rvmSpin .9s linear infinite;z-index:3;pointer-events:none}@keyframes rvmSpin{to{transform:rotate(360deg)}}'
     + '@media (prefers-reduced-motion:reduce){.rvm-ic,.rvm-note,.rvm-live{transition:none}.rvm-in-drop,.rvm-in-grow{animation:none}}';
   function styles() {
     if (document.getElementById('rvm-css')) return;
@@ -52,7 +54,7 @@ export function geoMapRuntime(lib, rtl, words) {
       // street map flying Madrid → Rome → Tokyo → New York still lacked 29 % of its tiles at each frame; with two
       // workers 8 %, with four 6 % (2026-10-11). Two to four, by the processors there are; before its first map.)
       if (!ml.__rvWorkers && ml.setWorkerCount && ml.getWorkerCount && ml.getWorkerCount() < 2) {
-        ml.__rvWorkers = 1; try { ml.setWorkerCount(Math.max(2, Math.min(4, Math.floor((navigator.hardwareConcurrency || 4) / 2)))); } catch (e) {}
+        ml.__rvWorkers = 1; try { ml.setWorkerCount(small ? 2 : Math.max(2, Math.min(4, Math.floor((navigator.hardwareConcurrency || 4) / 2)))); } catch (e) {}
       }
       // (Arabic place names need their letters joined and laid right to left: MapLibre's plugin, once, when used.)
       if (cfg && cfg.lang === 'ar' && rtl && ml.getRTLTextPluginStatus && ml.getRTLTextPluginStatus() === 'unavailable') { try { ml.setRTLTextPlugin(rtl, true); } catch (e) {} }
@@ -67,9 +69,52 @@ export function geoMapRuntime(lib, rtl, words) {
       if (tf && /"name/.test(JSON.stringify(tf)) && !/"ref"/.test(JSON.stringify(tf))) try { m.setLayoutProperty(l.id, 'text-field', name); } catch (e) {}
     });
   }
+  // Room in the map's memory for the tiles of the next flight, rehearsed (see rehearse()): MapLibre keeps the tiles
+  // that leave the view up to so many views' worth (5 by default, for zooming in and out where one is). One flight
+  // across the world, a quarter screenful at a time, is some 330 tiles of imagery and 100 of streets in a 960 × 540
+  // map; the flight itself puts the tiles it leaves in the same memory, so twice that: 40 views (800 and 360). Last
+  // in, first out: the flights before are let go. Measured, the whole browser grew some 170 MB from 5 to 40; with
+  // 20, the tiles of a flight were pushed out before their turn (9 % of them blurred). On a phone or a computer
+  // with little memory, 20, two workers and no hidden map (warm()): a little blur, still never an empty background.
+  var small = !!((navigator.deviceMemory && navigator.deviceMemory <= 4) || (window.matchMedia && matchMedia('(pointer: coarse)').matches));
+  var CACHE_LEVELS = small ? 20 : 40;
   var reduced = function () { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); };
   var ease = function (f) { return f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2; };
   function esc(x) { return String(x).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  // ── A floor under every map: the whole world at its coarsest — 1024 pixels round, zoom 1 of tiles of 512, zoom 2
+  // of 256 — always held by the map, for each of its sources, so that wherever a flight is and whatever tile it
+  // still lacks, MapLibre has something of the place to show, blurred, and never the empty background. (MapLibre
+  // stands in for a missing tile only a coarser one it holds in view: one it has let go, even still in memory, it
+  // doesn't take back for a tile that is loading — MapLibre 5.24, TileManager._updateRetainedTiles —, and in a
+  // flight across the world it holds none of the places it passes over.) So these few tiles are asked for along
+  // with the ones the view needs, at every frame: loaded once, kept, drawn under the others — where those are there
+  // they cover them, and the tiles are drawn clipped to their own square. Three copies of the world side by side,
+  // for a view across the date line (the globe, too, counts them so: measured). Uses MapLibre's inner workings
+  // (its version is fixed in core/vendor.js): if they change, the map works as before, without its floor. Measured,
+  // 2026-10-11: the stops look the same to the pixel with and without it.
+  function floor(m) {
+    var tms = (m.style && m.style.tileManagers) || {};
+    Object.keys(tms).forEach(function (id) {
+      var tm = tms[id], src = tm.getSource && tm.getSource(), orig = tm._updateRetainedTiles;
+      if (tm._rvFloor || typeof orig !== 'function' || !src || !/^(vector|raster|raster-dem)$/.test(src.type)) return;
+      tm._rvFloor = 1;
+      var pinned = null;
+      tm._updateRetainedTiles = function (ideal, zoom) {
+        if (ideal.length && ideal[0] && ideal[0].constructor && ideal[0].scaledTo) {
+          if (!pinned) {
+            var Id = ideal[0].constructor, top = Math.max(src.minzoom || 0, Math.min(src.maxzoom == null ? 22 : src.maxzoom, (src.tileSize || 512) >= 512 ? 1 : 2));
+            pinned = [];
+            [-1, 0, 1].forEach(function (w) {
+              for (var z = src.minzoom || 0; z <= top; z++) for (var x = 0; x < 1 << z; x++) for (var y = 0; y < 1 << z; y++) pinned.push(new Id(z, w, z, x, y));
+            });
+          }
+          ideal = ideal.concat(pinned);
+        }
+        return orig.call(this, ideal, zoom);
+      };
+    });
+  }
 
   // ── Warming the way. A flight (flyTo: out, across and back in, in a few seconds) needs at each frame the tiles of
   // places and zoom levels the map hasn't shown yet: asked for only then, they come too late — and MapLibre cancels
@@ -81,17 +126,18 @@ export function geoMapRuntime(lib, rtl, words) {
   // the ones after it, then those before (going back flies the same way); a map on the slide after the current one
   // gets its first view and flights too, the map on screen going first. One hidden map for the whole page, one trip
   // at a time (each map is a WebGL context, and browsers allow only so many), waiting while a map flies (it would
-  // compete for the network and the workers), stopped when its map goes, removed when nothing is left. Not on a
-  // connection that asks to save data, nor without one, nor in the speaker view's previews (the presentation itself
-  // warms the same cache). Measured (2026-10-11, Madrid → Rome → Tokyo → New York → Rio, tilted, with relief, the
-  // browser's cache empty): frames of a flight with a hole in them, street map from 68 % to 20 %, satellite from 99 %
-  // to about 5 % (with the blurred Earth under it: features/content/geomap.js). What is left is the map itself
-  // reading the tiles in time, not the network: more points to warm brought nothing.
-  var warming = null, warmQueue = [], warmed = {}, hid = null, flyingUntil = 0;
+  // compete for the network and the workers, as does the map on screen rehearsing its next flight: rehearse()),
+  // stopped when its map goes, removed when nothing is left. Not on a connection that asks to save data, nor
+  // without one, nor on a phone or a computer with little memory (CACHE_LEVELS), nor in the speaker view's previews
+  // (the presentation itself warms the same cache). Alone, it was not enough (2026-10-11): with every tile in the
+  // browser's cache, a flight still showed holes in a fifth of its frames — the map itself reading the tiles in
+  // time, not the network —; what makes the flight whole is the map on screen holding them (floor(), rehearse()).
+  // This makes rehearsing quicker: the network is done with.
+  var warming = null, warmQueue = [], warmed = {}, hid = null, flyingUntil = 0, rehearsing = 0;
   var later = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
   function canWarm() {
     var cn = navigator.connection;
-    return navigator.onLine !== false && !(cn && cn.saveData) && !/[?&]receiver\b/.test(location.search);
+    return !small && navigator.onLine !== false && !(cn && cn.saveData) && !/[?&]receiver\b/.test(location.search);
   }
   // owner: the live map (or, for a map not started yet, its element); from: the stop it is at; first: before the others.
   function warm(owner, el, cfg, from, first) {
@@ -118,10 +164,10 @@ export function geoMapRuntime(lib, rtl, words) {
     trip(w).then(fin, fin);
   }
   function release() { if (hid) { try { hid.map.remove(); } catch (e) {} hid.box.remove(); hid = null; } }
-  // How many points of a flight to stop at: one every half screenful of its way. (Its length, S, as MapLibre's flyTo
-  // works it out — van Wijk and Nuij's optimal path —, which moves at an even pace for the eye along it: points
-  // evenly spread on it, as the easing below gives, are as far apart on screen, low or high.)
-  function points(a, b, span, rho) {
+  // How many points of a flight to stop at: one every `step` screenfuls of its way. (Its length, S, as MapLibre's
+  // flyTo works it out — van Wijk and Nuij's optimal path —, which moves at an even pace for the eye along it:
+  // points evenly spread on it, as the easing below gives, are as far apart on screen, low or high.)
+  function points(a, b, span, rho, step) {
     var px = function (c, lon) { var s = 512 * Math.pow(2, a.z), la = Math.max(-85, Math.min(85, c[1])) * Math.PI / 180;
       return [(lon + 180) / 360 * s, (Math.PI - Math.log(Math.tan(Math.PI / 4 + la / 2))) / (2 * Math.PI) * s]; };
     var dl = b.c[0] - a.c[0]; while (dl > 180) dl -= 360; while (dl < -180) dl += 360;
@@ -129,7 +175,7 @@ export function geoMapRuntime(lib, rtl, words) {
     var w0 = span, w1 = span / Math.pow(2, b.z - a.z), r2 = rho * rho;
     var r = function (end) { var x = (w1 * w1 - w0 * w0 + (end ? -1 : 1) * r2 * r2 * u1 * u1) / (2 * (end ? w1 : w0) * r2 * u1); return Math.log(Math.sqrt(x * x + 1) - x); };
     var S = u1 < 1e-6 ? Math.abs(Math.log(w1 / w0)) / rho : (r(true) - r(false)) / rho;
-    return Math.max(2, Math.min(40, Math.ceil((isFinite(S) ? S : 2) / 0.5)));
+    return Math.max(2, Math.min(80, Math.ceil((isFinite(S) ? S : 2) / step)));
   }
   // The hidden map: the size of the one shown, its style, projection, relief and language — so it asks for the very
   // same tiles and letters. (One pixel per pixel: which tiles a view needs doesn't depend on the screen's density.)
@@ -152,6 +198,16 @@ export function geoMapRuntime(lib, rtl, words) {
     h.ready = new Promise(function (ok, ko) { var t = setTimeout(ko, 20000); m.once('load', function () { clearTimeout(t); ok(m); }); });
     return h.ready;
   }
+  // Until every tile the view asks for is in (loaded, or failed), twice running — the relief, once in, can ask for
+  // more —; at most `max` ms. (Not 'idle': that waits for the names to fade in too, a third of a second at each point.)
+  function loaded(m, max) {
+    return new Promise(function (ok) {
+      var seen = 0, t = setTimeout(end, max);
+      function check() { if (!m.areTilesLoaded()) { seen = 0; return; } if (++seen >= 2) end(); else m.triggerRepaint(); }
+      function end() { clearTimeout(t); m.off('render', check); ok(); }
+      m.on('render', check); m.triggerRepaint();
+    });
+  }
   var STOP = {};
   function trip(w) {
     var cfg = w.cfg, el = w.el, n = cfg.stops.length, still = reduced();
@@ -164,7 +220,7 @@ export function geoMapRuntime(lib, rtl, words) {
     for (j = 1; j <= w.from && j < n; j++) todo.push([j - 1, j]);
     todo = todo.map(function (x) {
       var a = x[0] === null ? null : cfg.stops[x[0]], b = cfg.stops[x[1]];
-      return { a: a && cam(a), b: cam(b), n: a && !still ? points({ c: a.c, z: a.z + zk }, { c: b.c, z: b.z + zk }, Math.max(W, H), cfg.curve || 1.42) : 1,
+      return { a: a && cam(a), b: cam(b), n: a && !still ? points({ c: a.c, z: a.z + zk }, { c: b.c, z: b.z + zk }, Math.max(W, H), cfg.curve || 1.42, 0.5) : 1,
         key: base + JSON.stringify([a && cam(a), cam(b), cfg.curve, still]) };
     }).filter(function (x) { return !warmed[x.key]; });
     // (Its points from coarse to fine — the middle, the quarters, the eighths… —: a presenter who clicks before a
@@ -181,6 +237,7 @@ export function geoMapRuntime(lib, rtl, words) {
       if (w.dead) return Promise.reject(STOP);
       var wait = flyingUntil - Date.now();
       if (wait > 0) return later(wait + 100).then(calm);
+      if (rehearsing) return later(500).then(calm);                   // (the map on screen rehearsing: it goes first)
       if (document.hidden) return later(1000).then(calm);
       return Promise.resolve();
     };
@@ -191,7 +248,7 @@ export function geoMapRuntime(lib, rtl, words) {
       return calm().then(function () {
         if (!leg.a) m.jumpTo(leg.b);
         else { m.jumpTo(leg.a); if (f < 1) m.flyTo(Object.assign({}, leg.b, { duration: 1, curve: cfg.curve || 1.42, essential: true, easing: function () { return f; } })); else m.jumpTo(leg.b); }
-        return new Promise(function (ok) { var t = setTimeout(ok, 8000); m.once('idle', function () { clearTimeout(t); ok(); }); m.triggerRepaint(); });
+        return loaded(m, 8000);
       });
     };
     var i = 0, k = 1;
@@ -295,6 +352,9 @@ export function geoMapRuntime(lib, rtl, words) {
         'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0] }); } catch (e) {}
       if (cf.dem) try { if (!m.getSource('rv-dem')) m.addSource('rv-dem', cf.dem); m.setTerrain({ source: 'rv-dem', exaggeration: 1.3 }); } catch (e) {}
       localNames(m, cf.lang);
+      // (Raster tiles cross-fade with the coarser ones under them, which fades those out — the floor too: shown at once.)
+      (m.getStyle().layers || []).forEach(function (l) { if (l.type === 'raster') try { m.setPaintProperty(l.id, 'raster-fade-duration', 0); } catch (e) {} });
+      if (!opts.capture) floor(m);
       if (!m.getSource('rv-route')) m.addSource('rv-route', { type: 'geojson', data: geo(c.cur) });
       if (!m.getSource('rv-room')) m.addSource('rv-room', { type: 'geojson', data: spots(c.cur) });
       if (!m.getLayer('rv-room')) try { m.addLayer({ id: 'rv-room', type: 'symbol', source: 'rv-room', layout: { 'text-field': ['get', 't'], 'text-font': ['Noto Sans Bold'], 'text-size': 17,
@@ -308,11 +368,12 @@ export function geoMapRuntime(lib, rtl, words) {
     c.ready = load(cfg).then(function (ml) {
       if (c.dead) return c;
       var m = c.map = new ml.Map({ container: box, style: cfg.style, center: s0.c, zoom: s0.z + zk(), pitch: s0.p, bearing: s0.b, maxPitch: 85,
-        interactive: opts.interactive !== false, attributionControl: { compact: true }, pixelRatio: pr(), fadeDuration: opts.capture ? 0 : 300,
+        interactive: opts.interactive !== false, attributionControl: { compact: true }, pixelRatio: pr(), fadeDuration: opts.capture ? 0 : 300, maxTileCacheZoomLevels: CACHE_LEVELS,
         canvasContextAttributes: { antialias: true, preserveDrawingBuffer: !!opts.capture } });
       if (!opts.keyboard && m.keyboard) m.keyboard.disable();            // (the arrows are the presentation's)
       m.on('style.load', dress);
       if (opts.onMove) m.on('moveend', function () { opts.onMove(c.view()); });
+      m.on('moveend', function (e) { if (e && e.originalEvent && c.warms && c.settled) ahead(); });   // (moved by hand)
       markers(ml);
       return new Promise(function (ok) {
         var done = false, t = setTimeout(function () { if (!done) offline(true); }, navigator.onLine === false ? 0 : 12000);
@@ -322,38 +383,146 @@ export function geoMapRuntime(lib, rtl, words) {
           var at = box.querySelector('.maplibregl-ctrl-attrib'); if (at) at.classList.remove('maplibregl-compact-show');
           credit.hidden = !cfg.short; ok(c);
           // (Its first view loaded, the way ahead is warmed: see warm().)
-          m.once('idle', function () { c.settled = true; if (c.warms && !c.dead) warm(c, el, cfg, c.cur, true); });
+          m.once('idle', function () { c.settled = true; if (c.warms && !c.dead) { warm(c, el, cfg, c.cur, true); ahead(); } });
         });
         m.on('error', function () { if (!done && navigator.onLine === false) offline(true); });
       });
     }, function () { offline(true); return c; });
     shot(0);
+    // ── The next flight, rehearsed on this very map. The floor (floor()) keeps a flight from ever crossing an empty
+    // background, but where the map lacks the tiles it shows that floor, blurred, and that is what a flight looked
+    // like moving away (Francisco, 2026-10-11). A map shows sharp only the tiles it holds itself — maps can't share
+    // them —, so after arriving at a stop, while the presenter talks, the map on screen goes along the next flight
+    // at points of it (as warm() does on the hidden map: the same flyTo over 1 ms, eased to each point) and waits at
+    // each until all is loaded; then back to where it was. Meanwhile a still of it covers it — its picture and its
+    // markers as they were, the note and the credits over it as ever —: nothing is seen to move. The tiles stay in
+    // its memory (maxTileCacheZoomLevels, below: room for one flight), and in the flight MapLibre takes them from
+    // there at once. A click before the rehearsal is done waits for it (a small sign says so; at most 20 s, then it
+    // flies anyway, over the floor).
+    var reh = null, done = {};
+    var camNow = function () { var m = c.map, p = m.getCenter(); return { center: [p.lng, p.lat], zoom: m.getZoom(), pitch: m.getPitch(), bearing: m.getBearing() }; };
+    var camKey = function (a) { return [a.center[0], a.center[1], a.zoom, a.pitch, a.bearing].map(function (v) { return Math.round(v * 1e4) / 1e4; }).join(','); };
+    var rehearses = function () { return c.warms && !reduced() && navigator.onLine !== false; };
+    function sign(on) {
+      var n = el.querySelector(':scope > .rvm-wait');
+      if (on && !n) { n = document.createElement('div'); n.className = 'rvm-wait'; n.setAttribute('aria-hidden', 'true'); el.appendChild(n); el.setAttribute('aria-busy', 'true'); }
+      if (!on && n) { n.remove(); el.removeAttribute('aria-busy'); }
+    }
+    // The still: the map's own picture of this moment (read as it is drawn: its buffer isn't kept) and, over it, a
+    // copy of everything else in its box — markers, the credits' ⓘ — where they are.
+    function still() {
+      var m = c.map;
+      return new Promise(function (ok) {
+        m.once('render', function () {
+          var src = m.getCanvas(), cv = document.createElement('canvas'), cover = box.cloneNode(true), old = cover.querySelector('canvas');
+          cv.width = src.width; cv.height = src.height; cv.className = src.className; cv.style.cssText = src.style.cssText;
+          try { cv.getContext('2d').drawImage(src, 0, 0); } catch (e) {}
+          if (old) old.parentNode.replaceChild(cv, old);
+          cover.classList.add('rvm-cover'); cover.removeAttribute('id');
+          box.after(cover); box.style.visibility = 'hidden';
+          ok(cover);
+        });
+        m.triggerRepaint();
+      });
+    }
+    var settle = function (m, ms) { return new Promise(function (ok) { var t = setTimeout(ok, ms); m.once('idle', function () { clearTimeout(t); ok(); }); m.triggerRepaint(); }); };
+    // Rehearse the flight from where the map is to `to`. → a promise, when it is done (or given up).
+    function rehearse(to) {
+      var m = c.map, from = camNow(), key = camKey(from) + '>' + camKey(to);
+      if (done[key]) return Promise.resolve();
+      if (reh && reh.key === key) return reh.done;
+      stopRehearsal();
+      var r = reh = { key: key, from: from, dead: false }, n = points({ c: from.center, z: from.zoom }, { c: to.center, z: to.zoom }, Math.max(el.clientWidth || cfg.w, el.clientHeight || cfg.h), cfg.curve || 1.42, 0.25);
+      var order = [], seen = {}, p = 1; while (p * 2 <= n) p *= 2;
+      for (; p >= 1; p /= 2) for (var i = p; i <= n; i += p) if (!seen[i]) { seen[i] = 1; order.push(i); }
+      rehearsing++;
+      r.done = still().then(function (cover) {
+        r.cover = cover;
+        var j = 0;
+        var next = function () {
+          if (r.dead || j >= order.length) return;
+          var f = order[j++] / n;
+          m.jumpTo(from);
+          if (f < 1) m.flyTo(Object.assign({}, to, { duration: 1, curve: cfg.curve || 1.42, essential: true, easing: function () { return f; } })); else m.jumpTo(to);
+          return loaded(m, 8000).then(next);
+        };
+        return next();
+      }).then(function () { if (!r.dead) { done = {}; done[key] = 1; } return endRehearsal(r); });
+      return r.done;
+    }
+    // Back where it was, and the still taken away once the map is drawn there again (the same picture: unnoticed).
+    function endRehearsal(r) {
+      if (r.ended) return r.ended;
+      var m = c.map;
+      if (m) { m.stop(); m.jumpTo(r.from); }
+      r.ended = (m && !c.dead ? settle(m, 3000) : Promise.resolve()).then(function () {
+        box.style.visibility = ''; if (r.cover) r.cover.remove();
+        if (reh === r) reh = null;
+        rehearsing--;
+      });
+      return r.ended;
+    }
+    function stopRehearsal() { var r = reh; if (r) { r.dead = true; return endRehearsal(r); } return Promise.resolve(); }
+    // After arriving (and the marker's fall), the next flight. (A moment later, so the still doesn't freeze it.)
+    // (Moved by hand meanwhile: from there, once it is left still.)
+    function ahead() {
+      clearTimeout(c.at);
+      c.at = setTimeout(function () {
+        var m = c.map, s = cfg.stops[c.cur + 1];
+        if (c.dead || !m || !s || !rehearses() || reh) return;
+        if (m.isMoving()) return ahead();
+        rehearse({ center: s.c, zoom: s.z + zk(), pitch: s.p || 0, bearing: s.b || 0 });
+      }, 1500);
+    }
     // Go to stop k: flying (dur ms; the line to it drawn on the way, if it is the next one), or at once.
+    // → a promise, once there.
     c.go = function (k, animate, dur) {
       k = Math.max(0, Math.min(cfg.stops.length - 1, k | 0));
       var prev = c.cur, me = ++c.token; c.cur = k; shot(k);
-      var m = c.map, s = cfg.stops[k]; if (!m || !s || !el.classList.contains('rvm-on')) { showNote(k, true); return; }
+      var m = c.map, s = cfg.stops[k]; if (!m || !s || !el.classList.contains('rvm-on')) { showNote(k, true); return Promise.resolve(); }
       var to = { center: s.c, zoom: s.z + zk(), pitch: s.p || 0, bearing: s.b || 0 };
       dur = dur || 3000;
-      if (animate && !reduced()) flyingUntil = Math.max(flyingUntil, Date.now() + dur + 400);
-      if (c.warms && c.settled) warm(c, el, cfg, k, true);           // (from here on: the next flight is now another)
       c.arriving = false;
-      if (!animate || reduced()) { m.stop(); m.jumpTo(to); paint(k); showNote(k, true); return; }
+      if (!animate || reduced()) {
+        sign(false);
+        var jump = function () {
+          if (me !== c.token) return;
+          m.stop(); m.jumpTo(to); paint(k); showNote(k, true);
+          if (c.warms && c.settled) { warm(c, el, cfg, k, true); ahead(); }
+        };
+        if (!reh) { jump(); return Promise.resolve(); }                // (at once, as the pictures expect: capture())
+        return stopRehearsal().then(jump);
+      }
       c.arriving = true;
       showNote(k, false); paint(k === prev + 1 ? prev : k);
-      m.flyTo(Object.assign(to, { duration: dur, curve: cfg.curve || 1.42 }));
-      var t0 = performance.now();
-      (function step() {
+      // (A click while it flies: on from where it is, at once — over the floor where it must.)
+      var waited = rehearses() && (reh || !m.isMoving()) ? (reh && reh.key.split('>')[1] !== camKey(to) ? stopRehearsal() : Promise.resolve()).then(function () {
         if (me !== c.token) return;
-        var f = Math.min(1, (performance.now() - t0) / dur);
-        if (k === prev + 1) paint(k, ease(f) || 0.001);
-        if (f < 1) requestAnimationFrame(step); else { paint(k); showNote(k, true); }
-      })();
+        var t = setTimeout(function () { if (me === c.token) sign(true); }, 250);
+        return Promise.race([rehearse(to), later(20000)]).then(function () { clearTimeout(t); return stopRehearsal(); });
+      }) : Promise.resolve();
+      return waited.then(function () {
+        if (me !== c.token) return;
+        sign(false);
+        flyingUntil = Math.max(flyingUntil, Date.now() + dur + 400);
+        if (c.warms && c.settled) warm(c, el, cfg, k, true);         // (from here on: the next flight is now another)
+        c.flight = Date.now();
+        m.flyTo(Object.assign(to, { duration: dur, curve: cfg.curve || 1.42 }));
+        var t0 = performance.now();
+        return new Promise(function (ok) {
+          (function step() {
+            if (me !== c.token) return ok();
+            var f = Math.min(1, (performance.now() - t0) / dur);
+            if (k === prev + 1) paint(k, ease(f) || 0.001);
+            if (f < 1) requestAnimationFrame(step); else { paint(k); showNote(k, true); ok(); if (c.warms) m.once('idle', ahead); }
+          })();
+        });
+      });
     };
     // Where the map is looking now, in the block's terms (for «Usar la vista actual»).
     c.view = function () {
-      var m = c.map; if (!m) return null; var p = m.getCenter();
-      return { lon: +p.lng.toFixed(5), lat: +p.lat.toFixed(5), zoom: +(m.getZoom() - zk()).toFixed(2), pitch: +m.getPitch().toFixed(1), bearing: +m.getBearing().toFixed(1) };
+      var m = c.map; if (!m) return null; var v = reh ? reh.from : camNow();          // (rehearsing: where it is seen to be)
+      return { lon: +v.center[0].toFixed(5), lat: +v.center[1].toFixed(5), zoom: +(v.zoom - zk()).toFixed(2), pitch: +v.pitch.toFixed(1), bearing: +v.bearing.toFixed(1) };
     };
     // New settings (the dialog, as they are edited): a new style if the look changed, else the line and the markers.
     c.update = function (next) {
@@ -362,6 +531,8 @@ export function geoMapRuntime(lib, rtl, words) {
       c.cur = Math.min(c.cur, Math.max(0, cfg.stops.length - 1));
       if (!c.map) return;
       // (Edited in the dialog: what was being warmed is no longer the trip; warmed again once the edits pause.)
+      if (reh) stopRehearsal();
+      done = {};
       if (c.warms && c.settled) { unwarm(c); clearTimeout(c.wt); c.wt = setTimeout(function () { if (!c.dead) warm(c, el, cfg, c.cur, true); }, 1500); }
       if (restyle) { try { c.map.setTerrain(null); } catch (e) {} c.map.setStyle(cfg.style, { diff: false }); }
       else try { if (c.map.getLayer('rv-route')) c.map.setPaintProperty('rv-route', 'line-color', cfg.color); } catch (e) {}
@@ -430,7 +601,8 @@ export function geoMapRuntime(lib, rtl, words) {
     };
     c.resize = function () { if (c.map) { try { c.map.setPixelRatio(pr()); } catch (e) {} c.map.resize(); } };
     c.destroy = function () {
-      c.dead = true; c.token++; mounted = mounted.filter(function (x) { return x !== c; }); clearTimeout(c.wt); unwarm(c);
+      c.dead = true; c.token++; mounted = mounted.filter(function (x) { return x !== c; }); clearTimeout(c.wt); clearTimeout(c.at); unwarm(c);
+      if (reh) { reh.dead = true; if (!reh.ended) rehearsing--; reh.ended = Promise.resolve(); if (reh.cover) reh.cover.remove(); reh = null; }
       if (c.map) try { c.map.remove(); } catch (e) {}
       box.remove(); note.remove(); credit.remove(); el.classList.remove('rvm-on', 'rvm-offline'); var n = el.querySelector(':scope > .rvm-off'); if (n) n.remove();
       el._rvm = null;

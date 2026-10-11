@@ -246,18 +246,10 @@ function imageryStyle(b) {
       paint: { 'line-color': 'rgba(255,255,255,.6)', 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 0.6, 8, 1.6], 'line-dasharray': [3, 2] } },
     label('rv-village', 'village', 11, 24, 12), label('rv-town', 'town', 8, 24, 13), label('rv-city', 'city', 4, 24, ['interpolate', ['linear'], ['zoom'], 4, 12, 10, 17]),
     label('rv-state', 'state', 5, 8, 12), label('rv-country', 'country', 1, 7, ['interpolate', ['linear'], ['zoom'], 1, 11, 6, 16])];
-  // (Under the imagery, the same imagery at most at zoom 2 — a handful of tiles for the whole view, at any zoom —:
-  // where a flight from stop to stop gets ahead of the tiles, the Earth is there, blurred, rather than an empty
-  // background. MapLibre only stands in a coarser tile it already holds, and in a flight it holds none of the places
-  // it passes over; these it holds all the time. The imagery is opaque: with its own tiles there, it doesn't show.
-  // Measured, 2026-10-11, Madrid → Rome → Tokyo → New York with the tiles warmed: frames of a flight with a hole in
-  // them, from a quarter to about one in twenty; zoom 3 here left one in thirteen.) The street map can't have one:
-  // its land is its background, so anything under it would show through.
   return { version: 8, glyphs: MAP_SOURCES.glyphs,
-    sources: { lo: { type: 'raster', tiles: [MAP_SOURCES.imagery], tileSize: 256, maxzoom: 2 }, sat: { type: 'raster', tiles: [MAP_SOURCES.imagery], tileSize: 256, maxzoom: 14, attribution: CREDIT_EOX },
+    sources: { sat: { type: 'raster', tiles: [MAP_SOURCES.imagery], tileSize: 256, maxzoom: 14, attribution: CREDIT_EOX },
       ...(names.length && { ofm: { type: 'vector', url: MAP_SOURCES.vector, attribution: CREDIT_OSM } }) },
-    layers: [{ id: 'rv-bg', type: 'background', paint: { 'background-color': '#0b1d33' } }, { id: 'rv-lo', type: 'raster', source: 'lo', paint: { 'raster-fade-duration': 0 } },
-      { id: 'rv-sat', type: 'raster', source: 'sat' }, ...names] };
+    layers: [{ id: 'rv-bg', type: 'background', paint: { 'background-color': '#0b1d33' } }, { id: 'rv-sat', type: 'raster', source: 'sat' }, ...names] };
 }
 // What the presentation's map needs (io/runtime/geomap.js): all of it data, the stops and their lines already
 // worked out. lang: the deck's language (the place names in it, where the map has them).
