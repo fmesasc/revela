@@ -2770,15 +2770,17 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   // moment later, never after a slide change that came behind it.
   { const pushes = [], wrap = R => { const f = R.pushed.bind(R); R.pushed = m => { pushes.push(m.t); return f(m); }; return f; };
     const f0 = wrap(R0), f3 = wrap(R3);
+    // (Polled, not a fixed 10 ms: the pushes to the relays are fetches, and a busy CI machine took longer than that.)
+    const settle = async (want, ms = 2000) => { for (const end = Date.now() + ms; pushes.filter(t => t === 'ptr').length < want && Date.now() < end;) await new Promise(r => setTimeout(r, 5)); };
     for (let k = 1; k <= 3; k++) await B.webSocketMessage(pres, JSON.stringify({ t: 'ptr', x: k / 10, y: 0.5 }));
-    await new Promise(r => setTimeout(r, 10));
+    await settle(6);
     ok(pushes.filter(t => t === 'ptr').length === 6, 'emisión: con poco público, cada posición del puntero a cada repetidora (nada retenido): ' + pushes.join());
     B.counts = { 0: 1500, 3: 1500 }; pushes.length = 0; const gap = 1500 / 5 * 0.8;
     await new Promise(r => setTimeout(r, gap + 10));
     for (let k = 1; k <= 5; k++) await B.webSocketMessage(pres, JSON.stringify({ t: 'ptr', x: k / 10, y: 0.5 }));
-    await new Promise(r => setTimeout(r, 10));
+    await settle(2, gap / 2);
     ok(pushes.filter(t => t === 'ptr').length === 2, 'emisión: con 1500 en cada repetidora, cinco posiciones seguidas → una petición por repetidora, no cinco: ' + pushes.join());
-    await new Promise(r => setTimeout(r, gap + 30));
+    await new Promise(r => setTimeout(r, gap)); await settle(4);
     ok(pushes.filter(t => t === 'ptr').length === 4 && R0.ptrLast?.x === 0.5, 'emisión: y enseguida la última posición, a cada repetidora');
     pushes.length = 0; await new Promise(r => setTimeout(r, gap + 10));
     await B.webSocketMessage(pres, JSON.stringify({ t: 'ptr', x: 0.7, y: 0.5 })); await B.webSocketMessage(pres, JSON.stringify({ t: 'ptr', x: 0.8, y: 0.5 }));

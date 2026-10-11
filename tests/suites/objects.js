@@ -1204,7 +1204,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.slides.addSlide('blank'); await sleep(10); const [a, b] = R.state.deck.slides;
     SL.setSlideStatus([a.id], 'review'); SL.setSlideOwner([a.id, b.id], 'Ana Gil'); SL.setSlideStatus([b.id], 'inventado'); await sleep(30);
     eq(a.status + '|' + a.owner, 'review|Ana Gil', 'guardado'); assert(!b.status && b.owner === 'Ana Gil', 'solo estados conocidos');
-    const w = D.querySelector('#slide-nav .thumb .thumb-work') || D.querySelector('.thumb .thumb-work');
+    // (Polled: the thumbnails are redrawn a moment later, and on a busy CI machine 30 ms wasn't always enough.)
+    const work = () => D.querySelector('#slide-nav .thumb .thumb-work') || D.querySelector('.thumb .thumb-work');
+    for (let i = 0; i < 150 && !(work() && /AG/.test(work().textContent)); i++) await sleep(20);
+    const w = work();
     assert(w && /AG/.test(w.textContent) && /Para revisar/.test(w.title) && /Ana Gil/.test(w.title), 'en su miniatura: el estado y sus iniciales');
     assert(!/Para revisar|Ana Gil/.test(R.io.buildHTML()), 'nunca en la presentación');
     SL.setSlideStatus([a.id], null); SL.setSlideOwner([a.id], ''); assert(!a.status && !a.owner, 'se quita');
@@ -3702,7 +3705,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); const { G, W } = await mapSetup();
     const cv = D.createElement('canvas'); cv.width = 64; cv.height = 36; const g = cv.getContext('2d'); g.fillStyle = '#ff0000'; g.fillRect(0, 0, 64, 36);
     const b = G.addMap({ x: 0, y: 0, w: 1280, h: 720, stops: [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 5, shot: cv.toDataURL('image/jpeg', 1) }, { name: 'Roma', lon: 12.5, lat: 41.9, zoom: 6 }] });
-    R.render(); await sleep(30);
+    R.render();
+    // (Polled: the thumbnails are drawn a moment later; 30 ms fixed wasn't always enough on a busy CI machine.)
+    for (let i = 0; i < 150 && !D.querySelector('#navigator .map-shot, .thumb .map-shot'); i++) await sleep(20);
     assert(D.querySelector('#navigator .map-shot, .thumb .map-shot'), 'en la miniatura');
     const I = await W.eval("import('/src/io/export/images.js')");
     const blob = await I.slideImageBlob(slide(), 'png'), bmp = await createImageBitmap(blob), c2 = D.createElement('canvas'); c2.width = bmp.width; c2.height = bmp.height;
