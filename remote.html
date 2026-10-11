@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="robots" content="noindex">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- (iPhone/iPad: no zoom into a field when it's tapped; a pinch still zooms — see index.html.) -->
+  <script>if (/iP(hone|ad|od)/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) document.querySelector('meta[name=viewport]').content = 'width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1';</script>
   <meta name="theme-color" content="#11151c">
   <title>Revela · Mando</title>
   <!-- Its own app: «Add to Home Screen» from here installs the remote (no browser bars), not the editor. -->

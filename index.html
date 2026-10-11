@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="robots" content="noindex">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- iPhone and iPad: Safari zooms into a field with letters under 16 px when it's tapped (the search of «Recursos»,
+       a dialog's fields…) and the page stays zoomed in. maximum-scale=1 stops that zoom only: on iOS a pinch still
+       zooms. (Not elsewhere: Android would also lose the pinch.) -->
+  <script>if (/iP(hone|ad|od)/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) document.querySelector('meta[name=viewport]').content = 'width=device-width, initial-scale=1, maximum-scale=1';</script>
   <!-- Google Search Console: proves this site belongs to the owner of Revela's Google Cloud project -->
   <meta name="google-site-verification" content="5cTb26K500eoXxskdB-_vOjLC-GAlqlyjPqd-CyCV9Q" />
   <title>Revela</title>
