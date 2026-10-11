@@ -673,5 +673,14 @@ export default {
  "Cuenta atrás de quince minutos para escribir una fábula propia. El zorro espera en el prado. Lee después dos o tres en voz alta.": "Aftelklok van vijftien minuten om een eigen fabel te schrijven. De vos wacht in de wei. Lees er daarna twee of drie hardop.",
  "Ahora, tu fábula": "Nu jouw fabel",
  "<ul><li>Elige dos animales y un problema</li><li>Planteamiento, nudo y desenlace en diez líneas</li><li>Termina con una moraleja en una frase</li></ul>": "<ul><li>Kies twee dieren en een probleem</li><li>Begin, midden en slot in tien regels</li><li>Sluit af met een moraal in één zin</li></ul>",
- "¡Que hablen los animales!": "Laat de dieren praten!"
+ "¡Que hablen los animales!": "Laat de dieren praten!",
+ "sustantivo abstracto": "abstract naamwoord",
+ "matiz": "nuance",
+ "métrico": "metrisch",
+ "fonético": "fonetisch",
+ "si acaba en aguda": "eindigt op aguda",
+ "si acaba en llana": "eindigt op llana",
+ "si acaba en esdrújula": "eindigt op esdrújula",
+ "= <b style=\"color:#ffc857\">8 sílabas</b> · octosílabo": "= <b style=\"color:#ffc857\">8 lettergrepen</b> · achtlettergrepig",
+ "= <b style=\"color:#ff5fa2\">10 sílabas</b> · decasílabo": "= <b style=\"color:#ff5fa2\">10 lettergrepen</b> · tienlettergrepig"
 };

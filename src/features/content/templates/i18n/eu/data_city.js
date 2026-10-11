@@ -669,5 +669,8 @@ export default {
  "Anillo con un color propio por porción y la leyenda con porcentajes. El camión 3D se balancea al llegar (Modelo 3D ▸ Al entrar ▸ Balanceo).": "Eraztuna, zati bakoitzak bere kolorea duela eta legenda ehunekoekin. 3D kamioia kulunkatu egiten da iristean (3D eredua ▸ Sartzean ▸ Kulunka).",
  "Portada: el título es Text Art de estilo neón con color propio y la onda son 40 barras con degradado de color que crecen solas, en cascada, al llegar.": "Azala: izenburua kolore propioko neoi-estiloko Text Art da eta uhina gradientedun 40 barrak osatzen dute, iristean bakarrik hazten direnak, ur-jauzi gisa.",
  "Clic: las cifras caen una tras otra y luego el paseante 3D camina por el paseo (Modelo 3D ▸ Mientras se mueve, con una trayectoria). Datos inventados.": "Klik: zifrak bata bestearen atzetik erortzen dira eta gero 3D oinezkoa pasealekuan zehar ibiltzen da (3D eredua ▸ Mugitzen den bitartean, ibilbide batekin). Datu asmatuak.",
- "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "Amaiera izotz-estiloko Text Art-ekin. 3D botilak (Microsoft, CC0) ez du krediturik behar."
+ "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "Amaiera izotz-estiloko Text Art-ekin. 3D botilak (Microsoft, CC0) ez du krediturik behar.",
+ "alquiler": "alokairua",
+ "ingresos netos": "diru-sarrera garbiak",
+ "fija": "finkoa"
 };

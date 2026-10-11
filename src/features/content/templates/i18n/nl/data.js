@@ -626,5 +626,7 @@ export default {
  "<div><b style=\"font-size:28px\">Contactos de marketing: 95 %</b><br><span style=\"color:#6b7785\">Decisión:</span> Pasar 20.000 € de ferias a anuncios en buscadores</div>": "<div><b style=\"font-size:28px\">Marketingcontacten: 95 %</b><br><span style=\"color:#6b7785\">Beslissing:</span> 20.000 € van beurzen naar zoekadvertenties verschuiven</div>",
  "Votación en directo con resultado en gráfico circular: el comité vota desde el móvil y se ve al momento.": "Live peiling met resultaat in een cirkeldiagram: het comité stemt vanaf de telefoon en het resultaat is meteen te zien.",
  "¿Cuál debe ser la prioridad del cuarto trimestre?": "Wat moet de prioriteit van het vierde kwartaal zijn?",
- "Plazo de entrega": "Levertijd"
+ "Plazo de entrega": "Levertijd",
+ "compras": "aankopen",
+ "visitas": "bezoeken"
 };

@@ -683,5 +683,9 @@ export default {
  "Mira. Cuenta.": "Look. Count.",
  "Mira. Cuenta. Borra.": "Look. Count. Erase.",
  "Mira. Cuenta. Borra. Vuelve a mirar.": "Look. Count. Erase. Look again.",
- "«el charco guarda el cielo»": "“the puddle holds the heaven”"
+ "«el charco guarda el cielo»": "“the puddle holds the heaven”",
+ "bono": "bonus",
+ "dificultad": "difficulty",
+ "huella por uso": "footprint per use",
+ "desarrollo": "rollout"
 };

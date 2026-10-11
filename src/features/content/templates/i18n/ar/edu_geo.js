@@ -621,5 +621,6 @@ export default {
  "Cierre con aplausos. Tarea: traer de casa algo (una foto, un objeto, una postal) que venga de otro continente.": "ختام بالتصفيق. واجب: إحضار شيء من البيت (صورة أو غرض أو بطاقة بريدية) يأتي من قارة أخرى.",
  "¡Buen viaje, exploradores!": "رحلة سعيدة أيها المستكشفون!",
  "<b>agua subterránea (acuífero)</b>": "<b>مياه جوفية (خزان جوفي)</b>",
- "<b>roca impermeable</b>": "<b>صخر غير منفذ</b>"
+ "<b>roca impermeable</b>": "<b>صخر غير منفذ</b>",
+ "min": "min"
 };

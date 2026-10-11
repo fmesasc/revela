@@ -637,5 +637,16 @@ export default {
  "Sretan put!": "Sretan put!",
  "«¡Buen viaje!» · Embarque en el puerto de Split el sábado a las 17:00": "«Goede reis!» · Inschepen in de haven van Split op zaterdag om 17:00",
  "Zarpamos en…": "We varen uit over…",
- "¡Larga amarras!": "Los de trossen!"
+ "¡Larga amarras!": "Los de trossen!",
+ "km/h": "km/h",
+ "kg": "kg",
+ "km": "km",
+ "mochila": "rugzak",
+ "tuyo": "jij",
+ "máx.": "max.",
+ "agua (L)": "water (L)",
+ "horas de pedaleo": "uren fietsen",
+ "nudo": "knoop",
+ "milla/h": "zeemijl/u",
+ "milla": "zeemijl"
 };

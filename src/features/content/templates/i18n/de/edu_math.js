@@ -561,5 +561,14 @@ export default {
  "Taller: tu propia tesela": "Werkstatt: deine eigene Kachel",
  "Dibuja un cuadrado\nRecorta un trozo de un lado\nPégalo en el lado opuesto\nCalca la pieza muchas veces": "Zeichne ein Quadrat\nSchneide ein Stück von einer Seite ab\nKlebe es an die gegenüberliegende Seite\nPause das Teil viele Male ab",
  "¡A pegar!": "Auf ans Kleben!",
- "Cartulina, tijeras y celo": "Karton, Schere und Klebeband"
+ "Cartulina, tijeras y celo": "Karton, Schere und Klebeband",
+ "casos favorables": "günstige Fälle",
+ "casos posibles": "mögliche Fälle",
+ "dos caras": "zweimal Kopf",
+ "una de cada": "je einmal",
+ "cm": "cm",
+ "de": "von",
+ "dato": "Wert",
+ "Me": "Me",
+ "Empieza a": "Start bei"
 };

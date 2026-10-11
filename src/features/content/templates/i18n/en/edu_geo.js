@@ -621,5 +621,6 @@ export default {
  "¡Buen viaje, exploradores!": "Have a great trip, explorers!",
  "Cierre con el salvavidas y su texto en círculo (Cuadro de texto ▸ Efectos de texto ▸ Curvar texto). Enlaza con la desembocadura de los ríos: deltas y estuarios.": "Wrap-up with the lifebuoy and its text in a circle (Text box ▸ Text effects ▸ Curve text). Link to river mouths: deltas and estuaries.",
  "<b>agua subterránea (acuífero)</b>": "<b>groundwater (aquifer)</b>",
- "<b>roca impermeable</b>": "<b>impermeable rock</b>"
+ "<b>roca impermeable</b>": "<b>impermeable rock</b>",
+ "min": "min"
 };

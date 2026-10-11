@@ -571,5 +571,10 @@ export default {
  "Cerebelo": "Zerebeloa",
  "Transición «Diamante». Cerrar con la idea de plasticidad: aprender es cambiar el cerebro.": "«Erronboa» trantsizioa. Amaitu plastikotasunaren ideiarekin: ikastea garuna aldatzea da.",
  "Tu cerebro acaba de cambiar": "Zure garuna aldatu berri da",
- "Cada cosa que aprendes refuerza unas conexiones y debilita otras: plasticidad": "Ikasten duzun gauza bakoitzak konexio batzuk indartzen ditu eta beste batzuk ahultzen: plastikotasuna"
+ "Cada cosa que aprendes refuerza unas conexiones y debilita otras: plasticidad": "Ikasten duzun gauza bakoitzak konexio batzuk indartzen ditu eta beste batzuk ahultzen: plastikotasuna",
+ "min": "min",
+ "ms": "ms",
+ "NDVI": "NDVI",
+ "cte": "kte.",
+ "energía": "energia"
 };

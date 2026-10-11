@@ -621,5 +621,6 @@ export default {
  "¡Buen viaje, exploradores!": "Bon voyage, explorateurs !",
  "Cierre con el salvavidas y su texto en círculo (Cuadro de texto ▸ Efectos de texto ▸ Curvar texto). Enlaza con la desembocadura de los ríos: deltas y estuarios.": "Conclusion avec la bouée et son texte en cercle (Zone de texte ▸ Effets de texte ▸ Courber le texte). Fais le lien avec l'embouchure des fleuves : deltas et estuaires.",
  "<b>agua subterránea (acuífero)</b>": "<b>eau souterraine (aquifère)</b>",
- "<b>roca impermeable</b>": "<b>roche imperméable</b>"
+ "<b>roca impermeable</b>": "<b>roche imperméable</b>",
+ "min": "min"
 };

@@ -571,5 +571,10 @@ export default {
  "Cerebelo": "Cerebellum",
  "Transición «Diamante». Cerrar con la idea de plasticidad: aprender es cambiar el cerebro.": "“Diamond” transition. Close with the idea of plasticity: learning means changing the brain.",
  "Tu cerebro acaba de cambiar": "Your brain has just changed",
- "Cada cosa que aprendes refuerza unas conexiones y debilita otras: plasticidad": "Everything you learn strengthens some connections and weakens others: plasticity"
+ "Cada cosa que aprendes refuerza unas conexiones y debilita otras: plasticidad": "Everything you learn strengthens some connections and weakens others: plasticity",
+ "min": "min",
+ "ms": "ms",
+ "NDVI": "NDVI",
+ "cte": "const.",
+ "energía": "energy"
 };

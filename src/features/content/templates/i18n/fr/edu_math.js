@@ -561,5 +561,14 @@ export default {
  "Taller: tu propia tesela": "Atelier : votre propre pavé",
  "Dibuja un cuadrado\nRecorta un trozo de un lado\nPégalo en el lado opuesto\nCalca la pieza muchas veces": "Dessinez un carré\nDécoupez un morceau d'un côté\nCollez-le sur le côté opposé\nDécalquez la pièce de nombreuses fois",
  "¡A pegar!": "À vos colles !",
- "Cartulina, tijeras y celo": "Bristol, ciseaux et ruban adhésif"
+ "Cartulina, tijeras y celo": "Bristol, ciseaux et ruban adhésif",
+ "casos favorables": "cas favorables",
+ "casos posibles": "cas possibles",
+ "dos caras": "deux faces",
+ "una de cada": "un de chaque",
+ "cm": "cm",
+ "de": "de",
+ "dato": "valeur",
+ "Me": "Me",
+ "Empieza a": "Départ à"
 };

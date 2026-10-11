@@ -572,5 +572,11 @@ export default {
  "Cierre: las notas aparecen solas una tras otra. Mañana, a contar minutos.": "Tancament: les notes apareixen soles una darrere l'altra. Demà, a comptar minuts.",
  "¡Muévete!": "Mou-te!",
  "Cada minuto suma": "Cada minut suma",
- "Mejor con amigos": "Millor amb amics"
+ "Mejor con amigos": "Millor amb amics",
+ "lpm": "bpm",
+ "latidos en": "batecs en",
+ "edad": "edat",
+ "salida": "sortida",
+ "mochila": "motxilla",
+ "del peso": "del pes"
 };

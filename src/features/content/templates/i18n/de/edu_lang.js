@@ -673,5 +673,14 @@ export default {
  "Cuenta atrás de quince minutos para escribir una fábula propia. El zorro espera en el prado. Lee después dos o tres en voz alta.": "Fünfzehn-Minuten-Countdown, um eine eigene Fabel zu schreiben. Der Fuchs wartet auf der Wiese. Danach zwei, drei vorlesen.",
  "Ahora, tu fábula": "Jetzt deine Fabel",
  "<ul><li>Elige dos animales y un problema</li><li>Planteamiento, nudo y desenlace en diez líneas</li><li>Termina con una moraleja en una frase</li></ul>": "<ul><li>Wähle zwei Tiere und ein Problem</li><li>Ausgangslage, Konflikt und Lösung in zehn Zeilen</li><li>Schließe mit einer Moral in einem Satz</li></ul>",
- "¡Que hablen los animales!": "Lass die Tiere sprechen!"
+ "¡Que hablen los animales!": "Lass die Tiere sprechen!",
+ "sustantivo abstracto": "abstraktes Nomen",
+ "matiz": "Nuance",
+ "métrico": "metrisch",
+ "fonético": "phonetisch",
+ "si acaba en aguda": "endet auf Aguda",
+ "si acaba en llana": "endet auf Llana",
+ "si acaba en esdrújula": "endet auf Esdrújula",
+ "= <b style=\"color:#ffc857\">8 sílabas</b> · octosílabo": "= <b style=\"color:#ffc857\">8 Silben</b> · Achtsilbler",
+ "= <b style=\"color:#ff5fa2\">10 sílabas</b> · decasílabo": "= <b style=\"color:#ff5fa2\">10 Silben</b> · Zehnsilbler"
 };

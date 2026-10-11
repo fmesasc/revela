@@ -673,5 +673,14 @@ export default {
  "Cuenta atrás de quince minutos para escribir una fábula propia. El zorro espera en el prado. Lee después dos o tres en voz alta.": "Compte à rebours de quinze minutes pour écrire sa propre fable. Le renard attend dans le pré. Lisez-en ensuite deux ou trois à voix haute.",
  "Ahora, tu fábula": "À toi, ta fable",
  "<ul><li>Elige dos animales y un problema</li><li>Planteamiento, nudo y desenlace en diez líneas</li><li>Termina con una moraleja en una frase</li></ul>": "<ul><li>Choisis deux animaux et un problème</li><li>Situation, nœud et dénouement en dix lignes</li><li>Termine par une morale en une phrase</li></ul>",
- "¡Que hablen los animales!": "Que les animaux parlent !"
+ "¡Que hablen los animales!": "Que les animaux parlent !",
+ "sustantivo abstracto": "nom abstrait",
+ "matiz": "nuance",
+ "métrico": "métrique",
+ "fonético": "phonétique",
+ "si acaba en aguda": "si finit en aguda",
+ "si acaba en llana": "si finit en llana",
+ "si acaba en esdrújula": "si finit en esdrújula",
+ "= <b style=\"color:#ffc857\">8 sílabas</b> · octosílabo": "= <b style=\"color:#ffc857\">8 syllabes</b> · octosyllabe",
+ "= <b style=\"color:#ff5fa2\">10 sílabas</b> · decasílabo": "= <b style=\"color:#ff5fa2\">10 syllabes</b> · décasyllabe"
 };

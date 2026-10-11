@@ -669,5 +669,8 @@ export default {
  "Anillo con un color propio por porción y la leyenda con porcentajes. El camión 3D se balancea al llegar (Modelo 3D ▸ Al entrar ▸ Balanceo).": "حلقة بلون خاص لكل جزء ومفتاح بالنسب المئوية. تتأرجح الشاحنة ثلاثية الأبعاد عند الظهور (نموذج ثلاثي الأبعاد ▸ عند الدخول ▸ تأرجح).",
  "Portada: el título es Text Art de estilo neón con color propio y la onda son 40 barras con degradado de color que crecen solas, en cascada, al llegar.": "الغلاف: العنوان Text Art بأسلوب النيون بلون خاص، والموجة 40 شريطًا بتدرّج لوني تنمو وحدها متتالية كالشلال عند الظهور.",
  "Clic: las cifras caen una tras otra y luego el paseante 3D camina por el paseo (Modelo 3D ▸ Mientras se mueve, con una trayectoria). Datos inventados.": "نقرة: تتساقط الأرقام واحدًا تلو الآخر ثم يمشي المتنزّه ثلاثي الأبعاد على الكورنيش (نموذج ثلاثي الأبعاد ▸ أثناء التحرك، مع مسار). بيانات متخيَّلة.",
- "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "الختام بـText Art بأسلوب جليدي. الزجاجة ثلاثية الأبعاد (Microsoft، CC0) لا تحتاج إلى إسناد."
+ "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "الختام بـText Art بأسلوب جليدي. الزجاجة ثلاثية الأبعاد (Microsoft، CC0) لا تحتاج إلى إسناد.",
+ "alquiler": "الإيجار",
+ "ingresos netos": "صافي الدخل",
+ "fija": "ثابتة"
 };

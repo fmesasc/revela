@@ -608,5 +608,7 @@ export default {
  "Buscamos 1 M€": "Cerchiamo 1 M€",
  "para abrir cocina en Madrid y entregar en 24 h en toda la península.": "per aprire una cucina a Madrid e consegnare in 24 h in tutta la penisola.",
  "Paula Riera y Nico Ferrer · guau@hocico.example": "Paula Riera e Nico Ferrer · guau@hocico.example",
- "Modelos 3D: Zorro — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)": "Modelli 3D: Volpe — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)"
+ "Modelos 3D: Zorro — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)": "Modelli 3D: Volpe — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)",
+ "mes": "mese",
+ "peso": "peso"
 };

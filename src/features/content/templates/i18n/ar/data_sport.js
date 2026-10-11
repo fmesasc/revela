@@ -715,5 +715,9 @@ export default {
  "<b style=\"color:#2f5d8a\">½ ρ CdA v³</b><br>el aire: poco a 19 km/h": "<b style=\"color:#2f5d8a\">½ ρ CdA v³</b><br>الهواء: قليل عند 19 كم/س",
  "C₇: carga de los últimos 7 días · C̄₂₈: media semanal de los últimos 28 días": "C₇: حمل آخر 7 أيام · C̄₂₈: المتوسط الأسبوعي لآخر 28 يومًا",
  "RPE: esfuerzo que siente la jugadora, de 1 a 10, al acabar cada sesión · t: minutos": "RPE: الجهد الذي تشعر به اللاعبة، من 1 إلى 10، بعد كل حصة · t: الدقائق",
- "<b>a</b>: tiros de campo anotados · <b>a₃</b>: triples anotados · <b>n</b>: tiros intentados": "<b>a</b>: تسديدات ميدانية ناجحة · <b>a₃</b>: ثلاثيات ناجحة · <b>n</b>: محاولات التسديد"
+ "<b>a</b>: tiros de campo anotados · <b>a₃</b>: triples anotados · <b>n</b>: tiros intentados": "<b>a</b>: تسديدات ميدانية ناجحة · <b>a₃</b>: ثلاثيات ناجحة · <b>n</b>: محاولات التسديد",
+ "ms": "ms",
+ "SR": "SR",
+ "DPS": "DPS",
+ "eFG%": "eFG%"
 };

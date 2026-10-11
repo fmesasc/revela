@@ -561,5 +561,14 @@ export default {
  "Taller: tu propia tesela": "Laboratorio: la tua tessera",
  "Dibuja un cuadrado\nRecorta un trozo de un lado\nPégalo en el lado opuesto\nCalca la pieza muchas veces": "Disegna un quadrato\nRitaglia un pezzo da un lato\nIncollalo sul lato opposto\nRicalca il pezzo molte volte",
  "¡A pegar!": "Si incolla!",
- "Cartulina, tijeras y celo": "Cartoncino, forbici e nastro adesivo"
+ "Cartulina, tijeras y celo": "Cartoncino, forbici e nastro adesivo",
+ "casos favorables": "casi favorevoli",
+ "casos posibles": "casi possibili",
+ "dos caras": "due teste",
+ "una de cada": "una per tipo",
+ "cm": "cm",
+ "de": "di",
+ "dato": "dato",
+ "Me": "Me",
+ "Empieza a": "Parte da"
 };

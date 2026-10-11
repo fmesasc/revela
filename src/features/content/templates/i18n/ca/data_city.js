@@ -669,5 +669,8 @@ export default {
  "Anillo con un color propio por porción y la leyenda con porcentajes. El camión 3D se balancea al llegar (Modelo 3D ▸ Al entrar ▸ Balanceo).": "Anell amb un color propi per porció i la llegenda amb percentatges. El camió 3D es balanceja en arribar (Model 3D ▸ En entrar ▸ Balanceig).",
  "Portada: el título es Text Art de estilo neón con color propio y la onda son 40 barras con degradado de color que crecen solas, en cascada, al llegar.": "Portada: el títol és Text Art d'estil neó amb color propi i l'ona són 40 barres amb degradat de color que creixen soles, en cascada, en arribar.",
  "Clic: las cifras caen una tras otra y luego el paseante 3D camina por el paseo (Modelo 3D ▸ Mientras se mueve, con una trayectoria). Datos inventados.": "Clic: les xifres cauen una darrere l'altra i després el vianant 3D camina pel passeig (Model 3D ▸ Mentre es mou, amb una trajectòria). Dades inventades.",
- "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "Tancament amb Text Art d'estil glaçat. L'ampolla 3D (Microsoft, CC0) no necessita crèdit."
+ "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "Tancament amb Text Art d'estil glaçat. L'ampolla 3D (Microsoft, CC0) no necessita crèdit.",
+ "alquiler": "lloguer",
+ "ingresos netos": "ingressos nets",
+ "fija": "fixa"
 };

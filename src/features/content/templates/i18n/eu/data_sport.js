@@ -715,5 +715,9 @@ export default {
  "<b style=\"color:#2f5d8a\">½ ρ CdA v³</b><br>el aire: poco a 19 km/h": "<b style=\"color:#2f5d8a\">½ ρ CdA v³</b><br>airea: gutxi 19 km/h-an",
  "C₇: carga de los últimos 7 días · C̄₂₈: media semanal de los últimos 28 días": "C₇: azken 7 egunetako karga · C̄₂₈: azken 28 egunetako asteko batez bestekoa",
  "RPE: esfuerzo que siente la jugadora, de 1 a 10, al acabar cada sesión · t: minutos": "RPE: jokalariak sentitzen duen ahalegina, 1etik 10era, saio bakoitzaren amaieran · t: minutuak",
- "<b>a</b>: tiros de campo anotados · <b>a₃</b>: triples anotados · <b>n</b>: tiros intentados": "<b>a</b>: sartutako zelai-jaurtiketak · <b>a₃</b>: sartutako hirukoak · <b>n</b>: saiatutako jaurtiketak"
+ "<b>a</b>: tiros de campo anotados · <b>a₃</b>: triples anotados · <b>n</b>: tiros intentados": "<b>a</b>: sartutako zelai-jaurtiketak · <b>a₃</b>: sartutako hirukoak · <b>n</b>: saiatutako jaurtiketak",
+ "ms": "ms",
+ "SR": "SR",
+ "DPS": "DPS",
+ "eFG%": "eFG%"
 };

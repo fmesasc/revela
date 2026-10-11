@@ -715,5 +715,9 @@ export default {
  "<b style=\"color:#2f5d8a\">½ ρ CdA v³</b><br>el aire: poco a 19 km/h": "<b style=\"color:#2f5d8a\">½ ρ CdA v³</b><br>the air: little at 19 km/h",
  "C₇: carga de los últimos 7 días · C̄₂₈: media semanal de los últimos 28 días": "C₇: load over the last 7 days · C̄₂₈: weekly average over the last 28 days",
  "RPE: esfuerzo que siente la jugadora, de 1 a 10, al acabar cada sesión · t: minutos": "RPE: how hard the player felt it, from 1 to 10, after each session · t: minutes",
- "<b>a</b>: tiros de campo anotados · <b>a₃</b>: triples anotados · <b>n</b>: tiros intentados": "<b>a</b>: field goals made · <b>a₃</b>: threes made · <b>n</b>: shots attempted"
+ "<b>a</b>: tiros de campo anotados · <b>a₃</b>: triples anotados · <b>n</b>: tiros intentados": "<b>a</b>: field goals made · <b>a₃</b>: threes made · <b>n</b>: shots attempted",
+ "ms": "ms",
+ "SR": "SR",
+ "DPS": "DPS",
+ "eFG%": "eFG%"
 };

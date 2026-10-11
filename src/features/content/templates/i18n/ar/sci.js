@@ -571,5 +571,10 @@ export default {
  "Cerebelo": "المخيخ",
  "Transición «Diamante». Cerrar con la idea de plasticidad: aprender es cambiar el cerebro.": "انتقال «ماسة». اختم بفكرة اللدونة: التعلم يغيّر الدماغ.",
  "Tu cerebro acaba de cambiar": "دماغك تغيّر للتو",
- "Cada cosa que aprendes refuerza unas conexiones y debilita otras: plasticidad": "كل ما تتعلمه يقوّي وصلات ويُضعف أخرى: إنها اللدونة"
+ "Cada cosa que aprendes refuerza unas conexiones y debilita otras: plasticidad": "كل ما تتعلمه يقوّي وصلات ويُضعف أخرى: إنها اللدونة",
+ "min": "min",
+ "ms": "ms",
+ "NDVI": "NDVI",
+ "cte": "ثابت",
+ "energía": "طاقة"
 };

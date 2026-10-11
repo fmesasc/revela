@@ -571,5 +571,10 @@ export default {
  "Cerebelo": "Kleinhirn",
  "Transición «Diamante». Cerrar con la idea de plasticidad: aprender es cambiar el cerebro.": "Übergang „Diamant“. Mit der Idee der Plastizität schließen: Lernen heißt, das Gehirn zu verändern.",
  "Tu cerebro acaba de cambiar": "Dein Gehirn hat sich gerade verändert",
- "Cada cosa que aprendes refuerza unas conexiones y debilita otras: plasticidad": "Alles, was du lernst, stärkt manche Verbindungen und schwächt andere: Plastizität"
+ "Cada cosa que aprendes refuerza unas conexiones y debilita otras: plasticidad": "Alles, was du lernst, stärkt manche Verbindungen und schwächt andere: Plastizität",
+ "min": "min",
+ "ms": "ms",
+ "NDVI": "NDVI",
+ "cte": "konst.",
+ "energía": "Energie"
 };

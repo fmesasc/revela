@@ -561,5 +561,14 @@ export default {
  "Taller: tu propia tesela": "Tailerra: zure tesela propioa",
  "Dibuja un cuadrado\nRecorta un trozo de un lado\nPégalo en el lado opuesto\nCalca la pieza muchas veces": "Marraztu karratu bat\nMoztu alde bateko zati bat\nItsatsi aurkako aldean\nKopiatu pieza askotan",
  "¡A pegar!": "Itsastera!",
- "Cartulina, tijeras y celo": "Kartulina, guraizeak eta zinta"
+ "Cartulina, tijeras y celo": "Kartulina, guraizeak eta zinta",
+ "casos favorables": "kasu aldekoak",
+ "casos posibles": "kasu posibleak",
+ "dos caras": "bi aurpegi",
+ "una de cada": "bat eta bat",
+ "cm": "cm",
+ "de": "×",
+ "dato": "datua",
+ "Me": "Me",
+ "Empieza a": "Hasiera:"
 };

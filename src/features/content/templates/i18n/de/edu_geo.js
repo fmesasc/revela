@@ -621,5 +621,6 @@ export default {
  "Cierre con aplausos. Tarea: traer de casa algo (una foto, un objeto, una postal) que venga de otro continente.": "Abschluss mit Applaus. Hausaufgabe: etwas von zu Hause mitbringen (ein Foto, einen Gegenstand, eine Postkarte), das von einem anderen Kontinent kommt.",
  "¡Buen viaje, exploradores!": "Gute Reise, ihr Entdecker!",
  "<b>agua subterránea (acuífero)</b>": "<b>Grundwasser (Grundwasserleiter)</b>",
- "<b>roca impermeable</b>": "<b>undurchlässiges Gestein</b>"
+ "<b>roca impermeable</b>": "<b>undurchlässiges Gestein</b>",
+ "min": "min"
 };

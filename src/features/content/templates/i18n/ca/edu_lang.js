@@ -673,5 +673,14 @@ export default {
  "Cuenta atrás de quince minutos para escribir una fábula propia. El zorro espera en el prado. Lee después dos o tres en voz alta.": "Compte enrere de quinze minuts per escriure una faula pròpia. La guineu espera al prat. Després, llegiu-ne dues o tres en veu alta.",
  "Ahora, tu fábula": "Ara, la teva faula",
  "<ul><li>Elige dos animales y un problema</li><li>Planteamiento, nudo y desenlace en diez líneas</li><li>Termina con una moraleja en una frase</li></ul>": "<ul><li>Tria dos animals i un problema</li><li>Plantejament, nus i desenllaç en deu línies</li><li>Acaba amb una moralitat en una frase</li></ul>",
- "¡Que hablen los animales!": "Que parlin els animals!"
+ "¡Que hablen los animales!": "Que parlin els animals!",
+ "sustantivo abstracto": "substantiu abstracte",
+ "matiz": "matís",
+ "métrico": "mètric",
+ "fonético": "fonètic",
+ "si acaba en aguda": "si acaba en aguda",
+ "si acaba en llana": "si acaba en plana",
+ "si acaba en esdrújula": "si acaba en esdrúixola",
+ "= <b style=\"color:#ffc857\">8 sílabas</b> · octosílabo": "= <b style=\"color:#ffc857\">8 síl·labes</b> · octosíl·lab",
+ "= <b style=\"color:#ff5fa2\">10 sílabas</b> · decasílabo": "= <b style=\"color:#ff5fa2\">10 síl·labes</b> · decasíl·lab"
 };

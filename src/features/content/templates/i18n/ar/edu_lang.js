@@ -673,5 +673,14 @@ export default {
  "Cuenta atrás de quince minutos para escribir una fábula propia. El zorro espera en el prado. Lee después dos o tres en voz alta.": "عد تنازلي لخمس عشرة دقيقة لكتابة خرافة خاصة. الثعلب ينتظر في المرج. اقرأ بعدها اثنتين أو ثلاثًا بصوت عالٍ.",
  "Ahora, tu fábula": "والآن، خرافتك",
  "<ul><li>Elige dos animales y un problema</li><li>Planteamiento, nudo y desenlace en diez líneas</li><li>Termina con una moraleja en una frase</li></ul>": "<ul><li>اختر حيوانين ومشكلة</li><li>البداية والعقدة والحل في عشرة أسطر</li><li>اختم بعبرة في جملة واحدة</li></ul>",
- "¡Que hablen los animales!": "دع الحيوانات تتكلم!"
+ "¡Que hablen los animales!": "دع الحيوانات تتكلم!",
+ "sustantivo abstracto": "اسم مجرد",
+ "matiz": "فارق دقيق",
+ "métrico": "العروضي",
+ "fonético": "الصوتي",
+ "si acaba en aguda": "إذا انتهى بكلمة aguda",
+ "si acaba en llana": "إذا انتهى بكلمة llana",
+ "si acaba en esdrújula": "إذا انتهى بكلمة esdrújula",
+ "= <b style=\"color:#ffc857\">8 sílabas</b> · octosílabo": "= <b style=\"color:#ffc857\">8 مقاطع</b> · ثماني المقاطع",
+ "= <b style=\"color:#ff5fa2\">10 sílabas</b> · decasílabo": "= <b style=\"color:#ff5fa2\">10 مقاطع</b> · عشاري المقاطع"
 };

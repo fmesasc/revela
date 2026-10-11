@@ -583,5 +583,13 @@ export default {
  "Internet": "Internet",
  "El móvil": "O móbil",
  "La inteligencia artificial": "A intelixencia artificial",
- "Las redes sociales": "As redes sociais"
+ "Las redes sociales": "As redes sociais",
+ "millones de m": "millóns de m",
+ "pendiente": "pendente",
+ "km": "km",
+ "cm": "cm",
+ "días": "días",
+ "km/día": "km/día",
+ "mcm": "mcm",
+ "= <b>52 años</b>: la «rueda calendárica», como nuestro siglo.": "= <b>52 anos</b>: a «roda calendárica», coma o noso século."
 };

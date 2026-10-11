@@ -626,5 +626,7 @@ export default {
  "<div><b style=\"font-size:28px\">Contactos de marketing: 95 %</b><br><span style=\"color:#6b7785\">Decisión:</span> Pasar 20.000 € de ferias a anuncios en buscadores</div>": "<div><b style=\"font-size:28px\">Marketineko kontaktuak: % 95</b><br><span style=\"color:#6b7785\">Erabakia:</span> 20.000 € azoketatik bilatzaileetako iragarkietara pasatu</div>",
  "Votación en directo con resultado en gráfico circular: el comité vota desde el móvil y se ve al momento.": "Zuzeneko bozketa, emaitza grafiko zirkularrean: batzordeak mugikorretik bozkatzen du eta berehala ikusten da.",
  "¿Cuál debe ser la prioridad del cuarto trimestre?": "Zein izan behar da laugarren hiruhilekoko lehentasuna?",
- "Plazo de entrega": "Entrega-epea"
+ "Plazo de entrega": "Entrega-epea",
+ "compras": "erosketak",
+ "visitas": "bisitak"
 };

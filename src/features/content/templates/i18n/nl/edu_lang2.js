@@ -792,5 +792,12 @@ export default {
  "Obrigados!": "Obrigados!",
  "Despedida sobre un fondo de azulejos. La tarea es breve y oral: un audio o un vídeo de 30 segundos con las fórmulas del chat. Las palabras y frases en portugués van en cursiva o en su propio azulejo: no se traducen.": "Afscheid op een tegelachtergrond. De opdracht is kort en mondeling: een audio- of video-opname van 30 seconden met de zinnen uit de chat. De Portugese woorden en zinnen staan cursief of op een eigen tegel: ze worden niet vertaald.",
  "<span lang=\"pt\" translate=\"no\">Até à próxima!</span>": "<span lang=\"pt\" translate=\"no\">Até à próxima!</span>",
- "¡Hasta la próxima! Para casa: grábate presentándote en portugués en menos de 30 segundos.": "Tot de volgende keer! Huiswerk: neem jezelf op terwijl je je in minder dan 30 seconden in het Portugees voorstelt."
+ "¡Hasta la próxima! Para casa: grábate presentándote en portugués en menos de 30 segundos.": "Tot de volgende keer! Huiswerk: neem jezelf op terwijl je je in minder dan 30 seconden in het Portugees voorstelt.",
+ "passato prossimo": "passato prossimo",
+ "avere / essere": "avere / essere",
+ "participio": "participio",
+ "subject": "subject",
+ "past participle": "past participle",
+ "(or irregular past)": "(or irregular past)",
+ "= <b style=\"color:#ffe600\">rendirse, dejar de</b>": "= <b style=\"color:#ffe600\">opgeven, stoppen met</b>"
 };

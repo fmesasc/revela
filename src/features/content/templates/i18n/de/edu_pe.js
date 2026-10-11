@@ -572,5 +572,11 @@ export default {
  "Cierre: las notas aparecen solas una tras otra. Mañana, a contar minutos.": "Abschluss: Die Zettel erscheinen von selbst nacheinander. Ab morgen: Minuten zählen.",
  "¡Muévete!": "Beweg dich!",
  "Cada minuto suma": "Jede Minute zählt",
- "Mejor con amigos": "Mit Freunden besser"
+ "Mejor con amigos": "Mit Freunden besser",
+ "lpm": "S/min",
+ "latidos en": "Schläge in",
+ "edad": "Alter",
+ "salida": "Abwurf",
+ "mochila": "Rucksack",
+ "del peso": "des Gewichts"
 };

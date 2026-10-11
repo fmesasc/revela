@@ -638,5 +638,7 @@ export default {
  "Por casualidad, sin relación con la sequía": "Por casualidade, sen relación coa seca",
  "Cierre. Tarea: buscar otro ejemplo de selección natural observado en poco tiempo (las polillas de los abedules, las bacterias resistentes a los antibióticos).": "Peche. Tarefa: buscar outro exemplo de selección natural observado en pouco tempo (as avelaíñas dos bidueiros, as bacterias resistentes aos antibióticos).",
  "La evolución no es un plan:<br>es un filtro.": "A evolución non é un plan:<br>é un filtro.",
- "Cada generación pasa por él… y lo que pasa, se hereda.": "Cada xeración pasa por el… e o que pasa, hérdase."
+ "Cada generación pasa por él… y lo que pasa, se hereda.": "Cada xeración pasa por el… e o que pasa, hérdase.",
+ "clorofila": "clorofila",
+ "luz": "luz"
 };

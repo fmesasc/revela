@@ -681,5 +681,9 @@ export default {
  "Dos sondas que salen del sistema solar llevan grabado este mapa: el periodo de cada púlsar, en binario, en su línea. Quien lo encuentre podrá saber de dónde vienen.": "مسباران يغادران المجموعة الشمسية يحملان هذه الخريطة محفورة: دورة كل نجم نابض، بالنظام الثنائي، على خطّه. من يعثر عليها سيعرف من أين أتيا.",
  "Cierre: una línea casi plana que se traza sola y un único pulso, el último. Pide al grupo que busque grabaciones de púlsares convertidas en sonido.": "الختام: خط شبه مستوٍ يُرسم وحده ونبضة واحدة، الأخيرة. اطلب من المجموعة البحث عن تسجيلات لنجوم نابضة محوّلة إلى صوت.",
  "FIN DE LA SEÑAL": "نهاية الإشارة",
- "Próxima sesión: las ráfagas rápidas de radio, un misterio de milisegundos": "الجلسة القادمة: الدفقات الراديوية السريعة، لغز من ملّي‑ثوانٍ"
+ "Próxima sesión: las ráfagas rápidas de radio, un misterio de milisegundos": "الجلسة القادمة: الدفقات الراديوية السريعة، لغز من ملّي‑ثوانٍ",
+ "años": "سنة",
+ "luz": "الضوء",
+ "He": "He",
+ "MeV": "MeV"
 };

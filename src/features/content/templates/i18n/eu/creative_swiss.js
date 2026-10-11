@@ -731,5 +731,9 @@ export default {
  "<b style=\"font-size:32px\">Jueves 14</b><br>17:00 — 21:00": "<b style=\"font-size:32px\">Osteguna, 14</b><br>17:00 — 21:00",
  "<b style=\"font-size:32px\">Polideportivo Sur</b><br>Avenida del Parque 3": "<b style=\"font-size:32px\">Hegoaldeko Kiroldegia</b><br>Parke etorbidea 3",
  "<b style=\"font-size:32px\">Gracias</b><br>por cada gota": "<b style=\"font-size:32px\">Eskerrik asko</b><br>tanta bakoitzagatik",
- "Dona sangre": "Eman odola"
+ "Dona sangre": "Eman odola",
+ "coste": "kostua",
+ "lectores": "irakurle",
+ "px": "px",
+ "Hz": "Hz"
 };

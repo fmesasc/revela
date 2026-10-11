@@ -638,5 +638,7 @@ export default {
  "Por casualidad, sin relación con la sequía": "By chance, unrelated to the drought",
  "Cierre. Tarea: buscar otro ejemplo de selección natural observado en poco tiempo (las polillas de los abedules, las bacterias resistentes a los antibióticos).": "Wrap-up. Homework: find another example of natural selection observed over a short time (peppered moths on birch trees, antibiotic-resistant bacteria).",
  "La evolución no es un plan:<br>es un filtro.": "Evolution isn't a plan:<br>it's a filter.",
- "Cada generación pasa por él… y lo que pasa, se hereda.": "Each generation goes through it… and what passes, is inherited."
+ "Cada generación pasa por él… y lo que pasa, se hereda.": "Each generation goes through it… and what passes, is inherited.",
+ "clorofila": "chlorophyll",
+ "luz": "light"
 };

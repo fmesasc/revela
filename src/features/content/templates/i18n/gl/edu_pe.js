@@ -572,5 +572,11 @@ export default {
  "Cierre: las notas aparecen solas una tras otra. Mañana, a contar minutos.": "Peche: as notas aparecen soas unha tras outra. Mañá, a contar minutos.",
  "¡Muévete!": "Móvete!",
  "Cada minuto suma": "Cada minuto suma",
- "Mejor con amigos": "Mellor con amigos"
+ "Mejor con amigos": "Mellor con amigos",
+ "lpm": "lpm",
+ "latidos en": "latexos en",
+ "edad": "idade",
+ "salida": "saída",
+ "mochila": "mochila",
+ "del peso": "do peso"
 };

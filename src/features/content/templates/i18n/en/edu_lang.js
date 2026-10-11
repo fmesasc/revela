@@ -673,5 +673,14 @@ export default {
  "Ahora, tu fábula": "Now, your fable",
  "<ul><li>Elige dos animales y un problema</li><li>Planteamiento, nudo y desenlace en diez líneas</li><li>Termina con una moraleja en una frase</li></ul>": "<ul><li>Choose two animals and a problem</li><li>Opening, complication and resolution in ten lines</li><li>End with a one-sentence moral</li></ul>",
  "¡Que hablen los animales!": "Let the animals talk!",
- "La balanza se balancea con un clic (énfasis «Balanceo») y luego aparecen los tres grandes temas. Debate: ¿nuestro carácter es destino o elección?": "The scales sway with a click («Swing» emphasis) and then the three great themes appear. Debate: is our character fate or choice?"
+ "La balanza se balancea con un clic (énfasis «Balanceo») y luego aparecen los tres grandes temas. Debate: ¿nuestro carácter es destino o elección?": "The scales sway with a click («Swing» emphasis) and then the three great themes appear. Debate: is our character fate or choice?",
+ "sustantivo abstracto": "abstract noun",
+ "matiz": "nuance",
+ "métrico": "metrical",
+ "fonético": "phonetic",
+ "si acaba en aguda": "if it ends in an aguda",
+ "si acaba en llana": "if it ends in a llana",
+ "si acaba en esdrújula": "if it ends in an esdrújula",
+ "= <b style=\"color:#ffc857\">8 sílabas</b> · octosílabo": "= <b style=\"color:#ffc857\">8 syllables</b> · octosyllable",
+ "= <b style=\"color:#ff5fa2\">10 sílabas</b> · decasílabo": "= <b style=\"color:#ff5fa2\">10 syllables</b> · decasyllable"
 };

@@ -675,5 +675,8 @@ export default {
  "Anillo con un color propio por porción y la leyenda con porcentajes. El camión 3D se balancea al llegar (Modelo 3D ▸ Al entrar ▸ Balanceo).": "Doughnut with its own colour per slice and a legend with percentages. The 3D truck sways as it appears (3D model ▸ On entering ▸ Swing).",
  "Portada: el título es Text Art de estilo neón con color propio y la onda son 40 barras con degradado de color que crecen solas, en cascada, al llegar.": "Cover: the title is neon-style Text Art with a custom colour, and the wave is 40 gradient bars that grow by themselves, in a cascade, as the slide appears.",
  "Clic: las cifras caen una tras otra y luego el paseante 3D camina por el paseo (Modelo 3D ▸ Mientras se mueve, con una trayectoria). Datos inventados.": "Click: the figures drop in one after another and then the 3D walker strolls along the promenade (3D model ▸ While moving, with a motion path). Made-up data.",
- "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "Closing with ice-style Text Art. The 3D bottle (Microsoft, CC0) needs no credit."
+ "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "Closing with ice-style Text Art. The 3D bottle (Microsoft, CC0) needs no credit.",
+ "alquiler": "rent",
+ "ingresos netos": "net income",
+ "fija": "fixed"
 };

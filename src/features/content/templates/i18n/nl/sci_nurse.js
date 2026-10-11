@@ -651,5 +651,10 @@ export default {
  "Llevarla a su médico mañana": "Morgen naar de huisarts brengen",
  "Cierre al atardecer: degradado vertical y un sol que se pone (elipse con degradado radial que asoma por abajo). Los tres iconos resumen el mensaje.": "Afsluiting bij zonsondergang: verticaal verloop en een ondergaande zon (ellips met radiaal verloop die onderaan piept). De drie pictogrammen vatten de boodschap samen.",
  "Agua, sombra<br>y una llamada": "Water, schaduw<br>en een telefoontje",
- "El calor mata en silencio: pregunta hoy por tus mayores.": "Hitte doodt in stilte: informeer vandaag nog naar je ouderen."
+ "El calor mata en silencio: pregunta hoy por tus mayores.": "Hitte doodt in stilte: informeer vandaag nog naar je ouderen.",
+ "gotas/min": "druppels/min",
+ "mL": "mL",
+ "min": "min",
+ "expuestos": "blootgesteld",
+ "no expuestos": "niet-blootgesteld"
 };

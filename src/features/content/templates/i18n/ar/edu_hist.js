@@ -583,5 +583,13 @@ export default {
  "Internet": "الإنترنت",
  "El móvil": "الهاتف المحمول",
  "La inteligencia artificial": "الذكاء الاصطناعي",
- "Las redes sociales": "وسائل التواصل الاجتماعي"
+ "Las redes sociales": "وسائل التواصل الاجتماعي",
+ "millones de m": "مليون m",
+ "pendiente": "الميل",
+ "km": "km",
+ "cm": "cm",
+ "días": "أيام",
+ "km/día": "km/يوم",
+ "mcm": "م.م.أ",
+ "= <b>52 años</b>: la «rueda calendárica», como nuestro siglo.": "= <b>52 عامًا</b>: «العجلة التقويمية»، مثل قرننا."
 };

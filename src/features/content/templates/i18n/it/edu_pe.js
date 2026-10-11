@@ -572,5 +572,11 @@ export default {
  "Cierre: las notas aparecen solas una tras otra. Mañana, a contar minutos.": "Chiusura: i foglietti appaiono da soli uno dopo l'altro. Da domani, a contare i minuti.",
  "¡Muévete!": "Muoviti!",
  "Cada minuto suma": "Ogni minuto conta",
- "Mejor con amigos": "Meglio con gli amici"
+ "Mejor con amigos": "Meglio con gli amici",
+ "lpm": "bpm",
+ "latidos en": "battiti in",
+ "edad": "età",
+ "salida": "rilascio",
+ "mochila": "zaino",
+ "del peso": "del peso"
 };

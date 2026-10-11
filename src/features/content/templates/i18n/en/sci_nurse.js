@@ -651,5 +651,10 @@ export default {
  "Llevarla a su médico mañana": "Take her to her doctor tomorrow",
  "Cierre al atardecer: degradado vertical y un sol que se pone (elipse con degradado radial que asoma por abajo). Los tres iconos resumen el mensaje.": "Closing at sunset: vertical gradient and a setting sun (radial-gradient ellipse peeking up from below). The three icons sum up the message.",
  "Agua, sombra<br>y una llamada": "Water, shade<br>and a phone call",
- "El calor mata en silencio: pregunta hoy por tus mayores.": "Heat kills silently: check on your older relatives and neighbours today."
+ "El calor mata en silencio: pregunta hoy por tus mayores.": "Heat kills silently: check on your older relatives and neighbours today.",
+ "gotas/min": "drops/min",
+ "mL": "mL",
+ "min": "min",
+ "expuestos": "exposed",
+ "no expuestos": "unexposed"
 };

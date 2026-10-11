@@ -651,5 +651,10 @@ export default {
  "Llevarla a su médico mañana": "آخذها إلى طبيبها غدًا",
  "Cierre al atardecer: degradado vertical y un sol que se pone (elipse con degradado radial que asoma por abajo). Los tres iconos resumen el mensaje.": "الختام عند الغروب: تدرج عمودي وشمس تغيب (شكل بيضوي بتدرج شعاعي يطل من الأسفل). الأيقونات الثلاث تلخص الرسالة.",
  "Agua, sombra<br>y una llamada": "ماء وظل<br>ومكالمة",
- "El calor mata en silencio: pregunta hoy por tus mayores.": "الحر يقتل بصمت: اسأل اليوم عن كبار السن من حولك."
+ "El calor mata en silencio: pregunta hoy por tus mayores.": "الحر يقتل بصمت: اسأل اليوم عن كبار السن من حولك.",
+ "gotas/min": "قطرة/د",
+ "mL": "mL",
+ "min": "min",
+ "expuestos": "المعرّضين",
+ "no expuestos": "غير المعرّضين"
 };

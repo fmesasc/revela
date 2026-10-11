@@ -621,5 +621,6 @@ export default {
  "Cierre con aplausos. Tarea: traer de casa algo (una foto, un objeto, una postal) que venga de otro continente.": "Chiusura con applausi. Compito: portare da casa qualcosa (una foto, un oggetto, una cartolina) che venga da un altro continente.",
  "¡Buen viaje, exploradores!": "Buon viaggio, esploratori!",
  "<b>agua subterránea (acuífero)</b>": "<b>acqua sotterranea (falda)</b>",
- "<b>roca impermeable</b>": "<b>roccia impermeabile</b>"
+ "<b>roca impermeable</b>": "<b>roccia impermeabile</b>",
+ "min": "min"
 };

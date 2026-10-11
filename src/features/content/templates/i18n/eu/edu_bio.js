@@ -638,5 +638,7 @@ export default {
  "Por casualidad, sin relación con la sequía": "Kasualitatez, lehortearekin zerikusirik gabe",
  "Cierre. Tarea: buscar otro ejemplo de selección natural observado en poco tiempo (las polillas de los abedules, las bacterias resistentes a los antibióticos).": "Itxiera. Etxerako lana: denbora gutxian ikusitako hautespen naturalaren beste adibide bat bilatu (urkietako sitsak, antibiotikoekiko bakterio erresistenteak).",
  "La evolución no es un plan:<br>es un filtro.": "Eboluzioa ez da plan bat:<br>iragazki bat da.",
- "Cada generación pasa por él… y lo que pasa, se hereda.": "Belaunaldi bakoitza hortik igarotzen da… eta igarotzen dena heredatu egiten da."
+ "Cada generación pasa por él… y lo que pasa, se hereda.": "Belaunaldi bakoitza hortik igarotzen da… eta igarotzen dena heredatu egiten da.",
+ "clorofila": "klorofila",
+ "luz": "argia"
 };

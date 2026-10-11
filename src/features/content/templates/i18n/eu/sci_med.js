@@ -632,5 +632,11 @@ export default {
  "¿Qué palabra asocias con el buen uso de los antibióticos?": "Zer hitz lotzen duzu antibiotikoen erabilera egokiarekin?",
  "Cierre sobre una placa en penumbra. Mensaje de salud pública, sin recomendaciones individuales.": "Amaiera itzal-argitan dagoen plaka baten gainean. Osasun publikoko mezua, gomendio indibidualik gabe.",
  "Solo cuando hacen falta,<br>como se indican": "Behar direnean bakarrik,<br>agindu bezala",
- "Información general con fines docentes. Los antibióticos solo con prescripción.": "Informazio orokorra, irakaskuntzarako. Antibiotikoak preskripzioarekin bakarrik."
+ "Información general con fines docentes. Los antibióticos solo con prescripción.": "Informazio orokorra, irakaskuntzarako. Antibiotikoak preskripzioarekin bakarrik.",
+ "FC": "BM",
+ "lpm": "bpm",
+ "cuadritos R–R": "laukitxoak R–R",
+ "Dosis": "Dosia",
+ "mL/min": "mL/min",
+ "HbA1c": "HbA1c"
 };

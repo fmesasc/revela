@@ -561,5 +561,14 @@ export default {
  "Taller: tu propia tesela": "Taller: a túa propia tesela",
  "Dibuja un cuadrado\nRecorta un trozo de un lado\nPégalo en el lado opuesto\nCalca la pieza muchas veces": "Debuxa un cadrado\nRecorta un anaco dun lado\nPégao no lado oposto\nCalca a peza moitas veces",
  "¡A pegar!": "A pegar!",
- "Cartulina, tijeras y celo": "Cartolina, tesoiras e celo"
+ "Cartulina, tijeras y celo": "Cartolina, tesoiras e celo",
+ "casos favorables": "casos favorables",
+ "casos posibles": "casos posibles",
+ "dos caras": "dúas caras",
+ "una de cada": "unha de cada",
+ "cm": "cm",
+ "de": "de",
+ "dato": "dato",
+ "Me": "Me",
+ "Empieza a": "Comeza a"
 };

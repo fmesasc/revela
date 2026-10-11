@@ -561,5 +561,14 @@ export default {
  "Taller: tu propia tesela": "Workshop: your own tile",
  "Dibuja un cuadrado\nRecorta un trozo de un lado\nPégalo en el lado opuesto\nCalca la pieza muchas veces": "Draw a square\nCut a piece off one side\nStick it on the opposite side\nTrace the piece many times",
  "¡A pegar!": "Get sticking!",
- "Cartulina, tijeras y celo": "Card, scissors and sticky tape"
+ "Cartulina, tijeras y celo": "Card, scissors and sticky tape",
+ "casos favorables": "favourable outcomes",
+ "casos posibles": "possible outcomes",
+ "dos caras": "two heads",
+ "una de cada": "one of each",
+ "cm": "cm",
+ "de": "of",
+ "dato": "value",
+ "Me": "Me",
+ "Empieza a": "Starts at"
 };

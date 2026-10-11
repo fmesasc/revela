@@ -621,5 +621,6 @@ export default {
  "Cierre con aplausos. Tarea: traer de casa algo (una foto, un objeto, una postal) que venga de otro continente.": "Itxiera txaloekin. Etxerako lana: beste kontinente batetik datorren zerbait ekarri etxetik (argazki bat, objektu bat, postal bat).",
  "¡Buen viaje, exploradores!": "Bidaia ona, esploratzaileak!",
  "<b>agua subterránea (acuífero)</b>": "<b>lurpeko ura (akuiferoa)</b>",
- "<b>roca impermeable</b>": "<b>harri iragazgaitza</b>"
+ "<b>roca impermeable</b>": "<b>harri iragazgaitza</b>",
+ "min": "min"
 };

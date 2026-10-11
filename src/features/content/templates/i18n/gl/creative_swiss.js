@@ -731,5 +731,9 @@ export default {
  "<b style=\"font-size:32px\">Jueves 14</b><br>17:00 — 21:00": "<b style=\"font-size:32px\">Xoves 14</b><br>17:00 — 21:00",
  "<b style=\"font-size:32px\">Polideportivo Sur</b><br>Avenida del Parque 3": "<b style=\"font-size:32px\">Polideportivo Sur</b><br>Avenida do Parque 3",
  "<b style=\"font-size:32px\">Gracias</b><br>por cada gota": "<b style=\"font-size:32px\">Grazas</b><br>por cada pinga",
- "Dona sangre": "Doa sangue"
+ "Dona sangre": "Doa sangue",
+ "coste": "custo",
+ "lectores": "lectores",
+ "px": "px",
+ "Hz": "Hz"
 };

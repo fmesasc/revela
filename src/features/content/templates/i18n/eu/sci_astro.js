@@ -681,5 +681,9 @@ export default {
  "Dos sondas que salen del sistema solar llevan grabado este mapa: el periodo de cada púlsar, en binario, en su línea. Quien lo encuentre podrá saber de dónde vienen.": "Eguzki-sistematik irteten ari diren bi zundek mapa hau daramate grabatuta: pulsar bakoitzaren periodoa, bitarrean, bere lerroan. Aurkitzen duenak jakin ahal izango du nondik datozen.",
  "Cierre: una línea casi plana que se traza sola y un único pulso, el último. Pide al grupo que busque grabaciones de púlsares convertidas en sonido.": "Amaiera: berez trazatzen den lerro ia lau bat eta pultsu bakar bat, azkena. Eskatu taldeari soinu bihurtutako pulsarren grabazioak bilatzeko.",
  "FIN DE LA SEÑAL": "SEINALEAREN AMAIERA",
- "Próxima sesión: las ráfagas rápidas de radio, un misterio de milisegundos": "Hurrengo saioa: irrati-zaparrada azkarrak, milisegundoetako misterio bat"
+ "Próxima sesión: las ráfagas rápidas de radio, un misterio de milisegundos": "Hurrengo saioa: irrati-zaparrada azkarrak, milisegundoetako misterio bat",
+ "años": "urte",
+ "luz": "argia",
+ "He": "He",
+ "MeV": "MeV"
 };

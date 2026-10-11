@@ -572,5 +572,11 @@ export default {
  "Cierre: las notas aparecen solas una tras otra. Mañana, a contar minutos.": "To close: the notes appear by themselves one after another. Tomorrow, start counting minutes.",
  "¡Muévete!": "Get moving!",
  "Cada minuto suma": "Every minute counts",
- "Mejor con amigos": "Better with friends"
+ "Mejor con amigos": "Better with friends",
+ "lpm": "bpm",
+ "latidos en": "beats in",
+ "edad": "age",
+ "salida": "release",
+ "mochila": "backpack",
+ "del peso": "of body weight"
 };

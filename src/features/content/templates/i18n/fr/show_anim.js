@@ -683,5 +683,9 @@ export default {
  "Mira. Cuenta.": "Regarde. Compte.",
  "Mira. Cuenta. Borra.": "Regarde. Compte. Efface.",
  "Mira. Cuenta. Borra. Vuelve a mirar.": "Regarde. Compte. Efface. Regarde encore.",
- "«el charco guarda el cielo»": "« le bassin garde le ciel »"
+ "«el charco guarda el cielo»": "« le bassin garde le ciel »",
+ "bono": "bonus",
+ "dificultad": "difficulté",
+ "huella por uso": "empreinte par usage",
+ "desarrollo": "développement"
 };

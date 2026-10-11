@@ -683,5 +683,9 @@ export default {
  "Mira. Cuenta.": "Schau. Zähle.",
  "Mira. Cuenta. Borra.": "Schau. Zähle. Streiche.",
  "Mira. Cuenta. Borra. Vuelve a mirar.": "Schau. Zähle. Streiche. Schau nochmal.",
- "«el charco guarda el cielo»": "„ein Teich hält ein Stück Himmel“"
+ "«el charco guarda el cielo»": "„ein Teich hält ein Stück Himmel“",
+ "bono": "Bonus",
+ "dificultad": "Schwierigkeit",
+ "huella por uso": "Fußabdruck je Nutzung",
+ "desarrollo": "Entfaltung"
 };

@@ -571,5 +571,10 @@ export default {
  "Cerebelo": "Cerebel",
  "Transición «Diamante». Cerrar con la idea de plasticidad: aprender es cambiar el cerebro.": "Transició «Diamant». Tancar amb la idea de plasticitat: aprendre és canviar el cervell.",
  "Tu cerebro acaba de cambiar": "El teu cervell acaba de canviar",
- "Cada cosa que aprendes refuerza unas conexiones y debilita otras: plasticidad": "Cada cosa que aprens reforça unes connexions i n'afebleix d'altres: plasticitat"
+ "Cada cosa que aprendes refuerza unas conexiones y debilita otras: plasticidad": "Cada cosa que aprens reforça unes connexions i n'afebleix d'altres: plasticitat",
+ "min": "min",
+ "ms": "ms",
+ "NDVI": "NDVI",
+ "cte": "cst.",
+ "energía": "energia"
 };

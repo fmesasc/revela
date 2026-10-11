@@ -683,5 +683,9 @@ export default {
  "Mira. Cuenta.": "Kijk. Tel.",
  "Mira. Cuenta. Borra.": "Kijk. Tel. Schrap.",
  "Mira. Cuenta. Borra. Vuelve a mirar.": "Kijk. Tel. Schrap. Kijk opnieuw.",
- "«el charco guarda el cielo»": "‘de plas bewaart de hemel’"
+ "«el charco guarda el cielo»": "‘de plas bewaart de hemel’",
+ "bono": "bonus",
+ "dificultad": "moeilijkheid",
+ "huella por uso": "voetafdruk per gebruik",
+ "desarrollo": "verzet"
 };

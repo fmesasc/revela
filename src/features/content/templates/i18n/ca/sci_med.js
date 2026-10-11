@@ -632,5 +632,11 @@ export default {
  "¿Qué palabra asocias con el buen uso de los antibióticos?": "Quina paraula associes al bon ús dels antibiòtics?",
  "Cierre sobre una placa en penumbra. Mensaje de salud pública, sin recomendaciones individuales.": "Tancament sobre una placa en penombra. Missatge de salut pública, sense recomanacions individuals.",
  "Solo cuando hacen falta,<br>como se indican": "Només quan calen,<br>com s'indiquen",
- "Información general con fines docentes. Los antibióticos solo con prescripción.": "Informació general amb finalitats docents. Els antibiòtics només amb prescripció."
+ "Información general con fines docentes. Los antibióticos solo con prescripción.": "Informació general amb finalitats docents. Els antibiòtics només amb prescripció.",
+ "FC": "FC",
+ "lpm": "bpm",
+ "cuadritos R–R": "quadrets R–R",
+ "Dosis": "Dosi",
+ "mL/min": "mL/min",
+ "HbA1c": "HbA1c"
 };

@@ -561,5 +561,14 @@ export default {
  "Taller: tu propia tesela": "ورشة: بلاطتك الخاصة",
  "Dibuja un cuadrado\nRecorta un trozo de un lado\nPégalo en el lado opuesto\nCalca la pieza muchas veces": "ارسم مربعًا\nاقطع جزءًا من أحد أضلاعه\nألصقه على الضلع المقابل\nاشفّ القطعة مرات كثيرة",
  "¡A pegar!": "هيا نلصق!",
- "Cartulina, tijeras y celo": "ورق مقوّى ومقص وشريط لاصق"
+ "Cartulina, tijeras y celo": "ورق مقوّى ومقص وشريط لاصق",
+ "casos favorables": "الحالات المواتية",
+ "casos posibles": "الحالات الممكنة",
+ "dos caras": "صورتان",
+ "una de cada": "واحدة من كلٍّ",
+ "cm": "cm",
+ "de": "من",
+ "dato": "القيمة",
+ "Me": "Me",
+ "Empieza a": "يبدأ عند"
 };

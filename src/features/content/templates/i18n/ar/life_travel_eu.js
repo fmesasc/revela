@@ -637,5 +637,16 @@ export default {
  "Sretan put!": "Sretan put!",
  "«¡Buen viaje!» · Embarque en el puerto de Split el sábado a las 17:00": "«رحلة سعيدة!» · الصعود إلى المركب في ميناء سبليت يوم السبت الساعة 17:00",
  "Zarpamos en…": "نبحر بعد…",
- "¡Larga amarras!": "فكّوا الحبال!"
+ "¡Larga amarras!": "فكّوا الحبال!",
+ "km/h": "km/h",
+ "kg": "kg",
+ "km": "km",
+ "mochila": "الحقيبة",
+ "tuyo": "أنت",
+ "máx.": "الحد الأقصى",
+ "agua (L)": "الماء (L)",
+ "horas de pedaleo": "ساعات ركوب الدراجة",
+ "nudo": "عقدة",
+ "milla/h": "ميل/س",
+ "milla": "ميل"
 };

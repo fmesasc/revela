@@ -683,5 +683,9 @@ export default {
  "Mira. Cuenta.": "Begira. Zenbatu.",
  "Mira. Cuenta. Borra.": "Begira. Zenbatu. Ezabatu.",
  "Mira. Cuenta. Borra. Vuelve a mirar.": "Begira. Zenbatu. Ezabatu. Begira berriz.",
- "«el charco guarda el cielo»": "«ur putzuak gorde ur zerua»"
+ "«el charco guarda el cielo»": "«ur putzuak gorde ur zerua»",
+ "bono": "bonua",
+ "dificultad": "zailtasuna",
+ "huella por uso": "erabilerako aztarna",
+ "desarrollo": "garapena"
 };

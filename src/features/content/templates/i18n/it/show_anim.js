@@ -683,5 +683,9 @@ export default {
  "Mira. Cuenta.": "Guarda. Conta.",
  "Mira. Cuenta. Borra.": "Guarda. Conta. Cancella.",
  "Mira. Cuenta. Borra. Vuelve a mirar.": "Guarda. Conta. Cancella. Riguarda.",
- "«el charco guarda el cielo»": "«il lago guarda il cielo»"
+ "«el charco guarda el cielo»": "«il lago guarda il cielo»",
+ "bono": "bonus",
+ "dificultad": "difficoltà",
+ "huella por uso": "impronta per uso",
+ "desarrollo": "sviluppo"
 };

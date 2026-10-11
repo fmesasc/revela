@@ -632,5 +632,11 @@ export default {
  "¿Qué palabra asocias con el buen uso de los antibióticos?": "Welk woord associeer je met goed gebruik van antibiotica?",
  "Cierre sobre una placa en penumbra. Mensaje de salud pública, sin recomendaciones individuales.": "Afsluiting op een schaal in halfduister. Boodschap voor de volksgezondheid, zonder individuele aanbevelingen.",
  "Solo cuando hacen falta,<br>como se indican": "Alleen als het nodig is,<br>zoals voorgeschreven",
- "Información general con fines docentes. Los antibióticos solo con prescripción.": "Algemene informatie voor onderwijsdoeleinden. Antibiotica alleen op recept."
+ "Información general con fines docentes. Los antibióticos solo con prescripción.": "Algemene informatie voor onderwijsdoeleinden. Antibiotica alleen op recept.",
+ "FC": "HF",
+ "lpm": "spm",
+ "cuadritos R–R": "hokjes R–R",
+ "Dosis": "Dosis",
+ "mL/min": "mL/min",
+ "HbA1c": "HbA1c"
 };

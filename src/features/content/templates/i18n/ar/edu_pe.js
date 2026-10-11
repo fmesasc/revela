@@ -572,5 +572,11 @@ export default {
  "Cierre: las notas aparecen solas una tras otra. Mañana, a contar minutos.": "ختام: تظهر الملاحظات وحدها واحدة تلو الأخرى. غدًا نبدأ عدّ الدقائق.",
  "¡Muévete!": "تحرّك!",
  "Cada minuto suma": "كل دقيقة تُحسب",
- "Mejor con amigos": "أفضل مع الأصدقاء"
+ "Mejor con amigos": "أفضل مع الأصدقاء",
+ "lpm": "ن/د",
+ "latidos en": "النبضات في",
+ "edad": "العمر",
+ "salida": "الانطلاق",
+ "mochila": "الحقيبة",
+ "del peso": "من الوزن"
 };

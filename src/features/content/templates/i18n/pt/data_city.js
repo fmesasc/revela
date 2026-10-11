@@ -669,5 +669,8 @@ export default {
  "Anillo con un color propio por porción y la leyenda con porcentajes. El camión 3D se balancea al llegar (Modelo 3D ▸ Al entrar ▸ Balanceo).": "Anel com uma cor própria por fatia e a legenda com percentagens. O camião 3D balança ao chegar (Modelo 3D ▸ Ao entrar ▸ Balanço).",
  "Portada: el título es Text Art de estilo neón con color propio y la onda son 40 barras con degradado de color que crecen solas, en cascada, al llegar.": "Capa: o título é Text Art de estilo néon com cor própria e a onda são 40 barras com gradiente de cor que crescem sozinhas, em cascata, ao chegar.",
  "Clic: las cifras caen una tras otra y luego el paseante 3D camina por el paseo (Modelo 3D ▸ Mientras se mueve, con una trayectoria). Datos inventados.": "Clique: os números caem um após outro e depois o caminhante 3D anda pelo passeio (Modelo 3D ▸ Enquanto se move, com uma trajetória). Dados inventados.",
- "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "Fecho com Text Art de estilo gelado. A garrafa 3D (Microsoft, CC0) não precisa de crédito."
+ "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "Fecho com Text Art de estilo gelado. A garrafa 3D (Microsoft, CC0) não precisa de crédito.",
+ "alquiler": "renda",
+ "ingresos netos": "rendimento líquido",
+ "fija": "fixa"
 };

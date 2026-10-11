@@ -651,5 +651,10 @@ export default {
  "Llevarla a su médico mañana": "Bihar medikuarengana eraman",
  "Cierre al atardecer: degradado vertical y un sol que se pone (elipse con degradado radial que asoma por abajo). Los tres iconos resumen el mensaje.": "Itxiera ilunabarrean: gradiente bertikala eta sartzen ari den eguzki bat (behetik agertzen den gradiente erradialeko elipsea). Hiru ikonoek mezua laburbiltzen dute.",
  "Agua, sombra<br>y una llamada": "Ura, itzala<br>eta dei bat",
- "El calor mata en silencio: pregunta hoy por tus mayores.": "Beroak isilik hiltzen du: galdetu gaur zure adinekoei nola dauden."
+ "El calor mata en silencio: pregunta hoy por tus mayores.": "Beroak isilik hiltzen du: galdetu gaur zure adinekoei nola dauden.",
+ "gotas/min": "tanta/min",
+ "mL": "mL",
+ "min": "min",
+ "expuestos": "esposatuak",
+ "no expuestos": "ez-esposatuak"
 };

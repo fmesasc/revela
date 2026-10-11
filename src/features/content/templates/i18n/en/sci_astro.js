@@ -681,5 +681,9 @@ export default {
  "Dos sondas que salen del sistema solar llevan grabado este mapa: el periodo de cada púlsar, en binario, en su línea. Quien lo encuentre podrá saber de dónde vienen.": "Two probes leaving the solar system carry this map engraved: each pulsar's period, in binary, on its line. Whoever finds it will be able to tell where they came from.",
  "Cierre: una línea casi plana que se traza sola y un único pulso, el último. Pide al grupo que busque grabaciones de púlsares convertidas en sonido.": "Closing: an almost flat line that traces itself and a single pulse, the last one. Ask the group to look for recordings of pulsars turned into sound.",
  "FIN DE LA SEÑAL": "END OF SIGNAL",
- "Próxima sesión: las ráfagas rápidas de radio, un misterio de milisegundos": "Next session: fast radio bursts, a millisecond mystery"
+ "Próxima sesión: las ráfagas rápidas de radio, un misterio de milisegundos": "Next session: fast radio bursts, a millisecond mystery",
+ "años": "years",
+ "luz": "light",
+ "He": "He",
+ "MeV": "MeV"
 };

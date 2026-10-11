@@ -683,5 +683,9 @@ export default {
  "Mira. Cuenta.": "Mira. Compta.",
  "Mira. Cuenta. Borra.": "Mira. Compta. Esborra.",
  "Mira. Cuenta. Borra. Vuelve a mirar.": "Mira. Compta. Esborra. Torna a mirar.",
- "«el charco guarda el cielo»": "«el bassal guarda el núvol»"
+ "«el charco guarda el cielo»": "«el bassal guarda el núvol»",
+ "bono": "bonus",
+ "dificultad": "dificultat",
+ "huella por uso": "petjada per ús",
+ "desarrollo": "desenvolupament"
 };

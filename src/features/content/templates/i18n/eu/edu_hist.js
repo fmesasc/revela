@@ -583,5 +583,13 @@ export default {
  "Internet": "Internet",
  "El móvil": "Mugikorra",
  "La inteligencia artificial": "Adimen artifiziala",
- "Las redes sociales": "Sare sozialak"
+ "Las redes sociales": "Sare sozialak",
+ "millones de m": "milioi m",
+ "pendiente": "malda",
+ "km": "km",
+ "cm": "cm",
+ "días": "egun",
+ "km/día": "km/egun",
+ "mcm": "mkt",
+ "= <b>52 años</b>: la «rueda calendárica», como nuestro siglo.": "= <b>52 urte</b>: «egutegi-gurpila», gure mendea bezala."
 };

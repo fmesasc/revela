@@ -637,5 +637,16 @@ export default {
  "Sretan put!": "Sretan put!",
  "«¡Buen viaje!» · Embarque en el puerto de Split el sábado a las 17:00": "«Boa viagem!» · Embarque no porto de Split no sábado às 17:00",
  "Zarpamos en…": "Zarpamos dentro de…",
- "¡Larga amarras!": "Larguem amarras!"
+ "¡Larga amarras!": "Larguem amarras!",
+ "km/h": "km/h",
+ "kg": "kg",
+ "km": "km",
+ "mochila": "mochila",
+ "tuyo": "teu",
+ "máx.": "máx.",
+ "agua (L)": "água (L)",
+ "horas de pedaleo": "horas a pedalar",
+ "nudo": "nó",
+ "milla/h": "milha/h",
+ "milla": "milha"
 };

@@ -572,5 +572,11 @@ export default {
  "Cierre: las notas aparecen solas una tras otra. Mañana, a contar minutos.": "Amaiera: oharrak berez agertzen dira bata bestearen atzetik. Bihar, minutuak zenbatzera.",
  "¡Muévete!": "Mugi zaitez!",
  "Cada minuto suma": "Minutu bakoitzak batzen du",
- "Mejor con amigos": "Hobe lagunekin"
+ "Mejor con amigos": "Hobe lagunekin",
+ "lpm": "bpm",
+ "latidos en": "taupadak",
+ "edad": "adina",
+ "salida": "irteera",
+ "mochila": "motxila",
+ "del peso": "pisuarena"
 };

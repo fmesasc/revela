@@ -632,5 +632,11 @@ export default {
  "¿Qué palabra asocias con el buen uso de los antibióticos?": "ما الكلمة التي تربطها بالاستخدام الرشيد للمضادات الحيوية؟",
  "Cierre sobre una placa en penumbra. Mensaje de salud pública, sin recomendaciones individuales.": "ختام على طبق في العتمة. رسالة صحة عامة، دون توصيات فردية.",
  "Solo cuando hacen falta,<br>como se indican": "فقط عند الحاجة،<br>وكما توصف",
- "Información general con fines docentes. Los antibióticos solo con prescripción.": "معلومات عامة لأغراض تعليمية. المضادات الحيوية بوصفة طبية فقط."
+ "Información general con fines docentes. Los antibióticos solo con prescripción.": "معلومات عامة لأغراض تعليمية. المضادات الحيوية بوصفة طبية فقط.",
+ "FC": "معدل القلب",
+ "lpm": "ن/د",
+ "cuadritos R–R": "مربعات R–R",
+ "Dosis": "الجرعة",
+ "mL/min": "mL/min",
+ "HbA1c": "HbA1c"
 };

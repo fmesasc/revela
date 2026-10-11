@@ -632,5 +632,11 @@ export default {
  "¿Qué palabra asocias con el buen uso de los antibióticos?": "What word do you associate with the responsible use of antibiotics?",
  "Cierre sobre una placa en penumbra. Mensaje de salud pública, sin recomendaciones individuales.": "Closing on a dish in half-light. A public health message, with no individual recommendations.",
  "Solo cuando hacen falta,<br>como se indican": "Only when needed,<br>as prescribed",
- "Información general con fines docentes. Los antibióticos solo con prescripción.": "General information for teaching purposes. Antibiotics only on prescription."
+ "Información general con fines docentes. Los antibióticos solo con prescripción.": "General information for teaching purposes. Antibiotics only on prescription.",
+ "FC": "HR",
+ "lpm": "bpm",
+ "cuadritos R–R": "small squares R–R",
+ "Dosis": "Dose",
+ "mL/min": "mL/min",
+ "HbA1c": "HbA1c"
 };

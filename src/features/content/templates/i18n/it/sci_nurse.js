@@ -651,5 +651,10 @@ export default {
  "Llevarla a su médico mañana": "Portarla dal medico domani",
  "Cierre al atardecer: degradado vertical y un sol que se pone (elipse con degradado radial que asoma por abajo). Los tres iconos resumen el mensaje.": "Chiusura al tramonto: sfumatura verticale e un sole che tramonta (ellisse a sfumatura radiale che spunta dal basso). Le tre icone riassumono il messaggio.",
  "Agua, sombra<br>y una llamada": "Acqua, ombra<br>e una telefonata",
- "El calor mata en silencio: pregunta hoy por tus mayores.": "Il caldo uccide in silenzio: chiedi oggi notizie dei tuoi anziani."
+ "El calor mata en silencio: pregunta hoy por tus mayores.": "Il caldo uccide in silenzio: chiedi oggi notizie dei tuoi anziani.",
+ "gotas/min": "gocce/min",
+ "mL": "mL",
+ "min": "min",
+ "expuestos": "esposti",
+ "no expuestos": "non esposti"
 };

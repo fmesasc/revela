@@ -715,5 +715,9 @@ export default {
  "<b style=\"color:#2f5d8a\">½ ρ CdA v³</b><br>el aire: poco a 19 km/h": "<b style=\"color:#2f5d8a\">½ ρ CdA v³</b><br>l'aire: poc a 19 km/h",
  "C₇: carga de los últimos 7 días · C̄₂₈: media semanal de los últimos 28 días": "C₇: càrrega dels últims 7 dies · C̄₂₈: mitjana setmanal dels últims 28 dies",
  "RPE: esfuerzo que siente la jugadora, de 1 a 10, al acabar cada sesión · t: minutos": "RPE: esforç que sent la jugadora, de 1 a 10, en acabar cada sessió · t: minuts",
- "<b>a</b>: tiros de campo anotados · <b>a₃</b>: triples anotados · <b>n</b>: tiros intentados": "<b>a</b>: tirs de camp anotats · <b>a₃</b>: triples anotats · <b>n</b>: tirs intentats"
+ "<b>a</b>: tiros de campo anotados · <b>a₃</b>: triples anotados · <b>n</b>: tiros intentados": "<b>a</b>: tirs de camp anotats · <b>a₃</b>: triples anotats · <b>n</b>: tirs intentats",
+ "ms": "ms",
+ "SR": "SR",
+ "DPS": "DPS",
+ "eFG%": "eFG%"
 };

@@ -632,5 +632,11 @@ export default {
  "¿Qué palabra asocias con el buen uso de los antibióticos?": "Welches Wort verbindest du mit dem richtigen Einsatz von Antibiotika?",
  "Cierre sobre una placa en penumbra. Mensaje de salud pública, sin recomendaciones individuales.": "Abschluss über einer Schale im Halbdunkel. Botschaft der öffentlichen Gesundheit, ohne individuelle Empfehlungen.",
  "Solo cuando hacen falta,<br>como se indican": "Nur wenn nötig,<br>wie verordnet",
- "Información general con fines docentes. Los antibióticos solo con prescripción.": "Allgemeine Information für Lehrzwecke. Antibiotika nur auf Verschreibung."
+ "Información general con fines docentes. Los antibióticos solo con prescripción.": "Allgemeine Information für Lehrzwecke. Antibiotika nur auf Verschreibung.",
+ "FC": "HF",
+ "lpm": "S/min",
+ "cuadritos R–R": "Kästchen R–R",
+ "Dosis": "Dosis",
+ "mL/min": "mL/min",
+ "HbA1c": "HbA1c"
 };

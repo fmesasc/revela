@@ -683,5 +683,9 @@ export default {
  "Mira. Cuenta.": "انظر. عُدّ.",
  "Mira. Cuenta. Borra.": "انظر. عُدّ. احذف.",
  "Mira. Cuenta. Borra. Vuelve a mirar.": "انظر. عُدّ. احذف. انظر مجددًا.",
- "«el charco guarda el cielo»": "el charco guarda el cielo"
+ "«el charco guarda el cielo»": "el charco guarda el cielo",
+ "bono": "المكافأة",
+ "dificultad": "الصعوبة",
+ "huella por uso": "البصمة لكل استخدام",
+ "desarrollo": "المسافة لكل دورة"
 };

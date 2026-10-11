@@ -626,5 +626,7 @@ export default {
  "<div><b style=\"font-size:28px\">Contactos de marketing: 95 %</b><br><span style=\"color:#6b7785\">Decisión:</span> Pasar 20.000 € de ferias a anuncios en buscadores</div>": "<div><b style=\"font-size:28px\">Contacts marketing : 95 %</b><br><span style=\"color:#6b7785\">Décision :</span> Basculer 20 000 € des salons vers les annonces sur moteurs de recherche</div>",
  "Votación en directo con resultado en gráfico circular: el comité vota desde el móvil y se ve al momento.": "Vote en direct avec résultat en graphique circulaire : le comité vote depuis son téléphone et le résultat s’affiche aussitôt.",
  "¿Cuál debe ser la prioridad del cuarto trimestre?": "Quelle doit être la priorité du quatrième trimestre ?",
- "Plazo de entrega": "Délai de livraison"
+ "Plazo de entrega": "Délai de livraison",
+ "compras": "achats",
+ "visitas": "visites"
 };

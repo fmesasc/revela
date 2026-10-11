@@ -669,5 +669,8 @@ export default {
  "Anillo con un color propio por porción y la leyenda con porcentajes. El camión 3D se balancea al llegar (Modelo 3D ▸ Al entrar ▸ Balanceo).": "Ringdiagram met een eigen kleur per segment en de legenda met percentages. De 3D-vrachtwagen schommelt bij binnenkomst (3D-model ▸ Bij binnenkomst ▸ Schommelen).",
  "Portada: el título es Text Art de estilo neón con color propio y la onda son 40 barras con degradado de color que crecen solas, en cascada, al llegar.": "Titeldia: de titel is Text Art in neonstijl met een eigen kleur en de golf bestaat uit 40 balken met kleurverloop die bij het verschijnen vanzelf groeien, als een waterval.",
  "Clic: las cifras caen una tras otra y luego el paseante 3D camina por el paseo (Modelo 3D ▸ Mientras se mueve, con una trayectoria). Datos inventados.": "Klik: de cijfers vallen na elkaar en daarna loopt de 3D-wandelaar over de boulevard (3D-model ▸ Tijdens het bewegen, met een bewegingspad). Verzonnen data.",
- "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "Afsluiting met Text Art in ijsstijl. De 3D-fles (Microsoft, CC0) heeft geen vermelding nodig."
+ "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "Afsluiting met Text Art in ijsstijl. De 3D-fles (Microsoft, CC0) heeft geen vermelding nodig.",
+ "alquiler": "huur",
+ "ingresos netos": "netto-inkomen",
+ "fija": "vast"
 };

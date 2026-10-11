@@ -621,5 +621,6 @@ export default {
  "Cierre con aplausos. Tarea: traer de casa algo (una foto, un objeto, una postal) que venga de otro continente.": "Afsluiting met applaus. Opdracht: neem van huis iets mee (een foto, een voorwerp, een ansichtkaart) dat van een ander continent komt.",
  "¡Buen viaje, exploradores!": "Goede reis, ontdekkingsreizigers!",
  "<b>agua subterránea (acuífero)</b>": "<b>grondwater (watervoerende laag)</b>",
- "<b>roca impermeable</b>": "<b>ondoorlatend gesteente</b>"
+ "<b>roca impermeable</b>": "<b>ondoorlatend gesteente</b>",
+ "min": "min"
 };

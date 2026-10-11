@@ -638,5 +638,7 @@ export default {
  "Por casualidad, sin relación con la sequía": "بالصدفة، بلا علاقة بالجفاف",
  "Cierre. Tarea: buscar otro ejemplo de selección natural observado en poco tiempo (las polillas de los abedules, las bacterias resistentes a los antibióticos).": "ختام. واجب: البحث عن مثال آخر على الانتقاء الطبيعي لوحظ في وقت قصير (عثّة البتولا، البكتيريا المقاومة للمضادات الحيوية).",
  "La evolución no es un plan:<br>es un filtro.": "التطور ليس خطة:<br>إنه مِصفاة.",
- "Cada generación pasa por él… y lo que pasa, se hereda.": "كل جيل يمرّ عبرها… وما يمرّ يُورَث."
+ "Cada generación pasa por él… y lo que pasa, se hereda.": "كل جيل يمرّ عبرها… وما يمرّ يُورَث.",
+ "clorofila": "الكلوروفيل",
+ "luz": "الضوء"
 };

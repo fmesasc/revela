@@ -673,5 +673,14 @@ export default {
  "Cuenta atrás de quince minutos para escribir una fábula propia. El zorro espera en el prado. Lee después dos o tres en voz alta.": "Conto alla rovescia di quindici minuti per scrivere una favola propria. La volpe aspetta nel prato. Poi leggetene due o tre ad alta voce.",
  "Ahora, tu fábula": "Ora, la tua favola",
  "<ul><li>Elige dos animales y un problema</li><li>Planteamiento, nudo y desenlace en diez líneas</li><li>Termina con una moraleja en una frase</li></ul>": "<ul><li>Scegli due animali e un problema</li><li>Situazione, complicazione e scioglimento in dieci righe</li><li>Chiudi con una morale in una frase</li></ul>",
- "¡Que hablen los animales!": "Che parlino gli animali!"
+ "¡Que hablen los animales!": "Che parlino gli animali!",
+ "sustantivo abstracto": "nome astratto",
+ "matiz": "sfumatura",
+ "métrico": "metrico",
+ "fonético": "fonetico",
+ "si acaba en aguda": "se finisce tronca",
+ "si acaba en llana": "se finisce piana",
+ "si acaba en esdrújula": "se finisce sdrucciola",
+ "= <b style=\"color:#ffc857\">8 sílabas</b> · octosílabo": "= <b style=\"color:#ffc857\">8 sillabe</b> · ottonario",
+ "= <b style=\"color:#ff5fa2\">10 sílabas</b> · decasílabo": "= <b style=\"color:#ff5fa2\">10 sillabe</b> · decasillabo"
 };

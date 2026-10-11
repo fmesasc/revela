@@ -572,5 +572,11 @@ export default {
  "Cierre: las notas aparecen solas una tras otra. Mañana, a contar minutos.": "Afsluiting: de briefjes verschijnen vanzelf een voor een. Morgen minuten tellen.",
  "¡Muévete!": "Beweeg!",
  "Cada minuto suma": "Elke minuut telt",
- "Mejor con amigos": "Beter met vrienden"
+ "Mejor con amigos": "Beter met vrienden",
+ "lpm": "spm",
+ "latidos en": "slagen in",
+ "edad": "leeftijd",
+ "salida": "worp",
+ "mochila": "rugzak",
+ "del peso": "van je gewicht"
 };

@@ -583,5 +583,13 @@ export default {
  "Internet": "Internet",
  "El móvil": "De smartphone",
  "La inteligencia artificial": "Kunstmatige intelligentie",
- "Las redes sociales": "Sociale media"
+ "Las redes sociales": "Sociale media",
+ "millones de m": "miljoen m",
+ "pendiente": "helling",
+ "km": "km",
+ "cm": "cm",
+ "días": "dagen",
+ "km/día": "km/dag",
+ "mcm": "kgv",
+ "= <b>52 años</b>: la «rueda calendárica», como nuestro siglo.": "= <b>52 jaar</b>: de «kalenderronde», zoals onze eeuw."
 };

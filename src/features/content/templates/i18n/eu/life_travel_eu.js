@@ -637,5 +637,16 @@ export default {
  "Sretan put!": "Sretan put!",
  "«¡Buen viaje!» · Embarque en el puerto de Split el sábado a las 17:00": "«Bidaia ona!» · Ontziratzea Spliteko portuan larunbatean 17:00etan",
  "Zarpamos en…": "Itsasoratuko gara…",
- "¡Larga amarras!": "Askatu amarrak!"
+ "¡Larga amarras!": "Askatu amarrak!",
+ "km/h": "km/h",
+ "kg": "kg",
+ "km": "km",
+ "mochila": "motxila",
+ "tuyo": "zurea",
+ "máx.": "gehienez",
+ "agua (L)": "ura (L)",
+ "horas de pedaleo": "pedalei eragindako orduak",
+ "nudo": "korapilo",
+ "milla/h": "milia/h",
+ "milla": "milia"
 };

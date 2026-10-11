@@ -715,5 +715,9 @@ export default {
  "<b style=\"color:#2f5d8a\">½ ρ CdA v³</b><br>el aire: poco a 19 km/h": "<b style=\"color:#2f5d8a\">½ ρ CdA v³</b><br>die Luft: wenig bei 19 km/h",
  "C₇: carga de los últimos 7 días · C̄₂₈: media semanal de los últimos 28 días": "C₇: Belastung der letzten 7 Tage · C̄₂₈: Wochenmittel der letzten 28 Tage",
  "RPE: esfuerzo que siente la jugadora, de 1 a 10, al acabar cada sesión · t: minutos": "RPE: gefühlte Anstrengung der Spielerin, 1 bis 10, nach jeder Einheit · t: Minuten",
- "<b>a</b>: tiros de campo anotados · <b>a₃</b>: triples anotados · <b>n</b>: tiros intentados": "<b>a</b>: Feldkörbe · <b>a₃</b>: Dreier getroffen · <b>n</b>: Würfe gesamt"
+ "<b>a</b>: tiros de campo anotados · <b>a₃</b>: triples anotados · <b>n</b>: tiros intentados": "<b>a</b>: Feldkörbe · <b>a₃</b>: Dreier getroffen · <b>n</b>: Würfe gesamt",
+ "ms": "ms",
+ "SR": "SR",
+ "DPS": "DPS",
+ "eFG%": "eFG%"
 };

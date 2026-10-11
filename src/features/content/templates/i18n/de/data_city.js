@@ -675,5 +675,8 @@ export default {
  "Anillo con un color propio por porción y la leyenda con porcentajes. El camión 3D se balancea al llegar (Modelo 3D ▸ Al entrar ▸ Balanceo).": "Ring mit eigener Farbe pro Segment und einer Legende mit Prozentwerten. Der 3D-Lkw schwingt beim Erscheinen (3D-Modell ▸ Beim Erscheinen ▸ Schwingen).",
  "Portada: el título es Text Art de estilo neón con color propio y la onda son 40 barras con degradado de color que crecen solas, en cascada, al llegar.": "Titelfolie: Der Titel ist Text Art im Neon-Stil mit eigener Farbe, und die Welle besteht aus 40 Balken mit Farbverlauf, die beim Erscheinen von selbst kaskadenartig wachsen.",
  "Clic: las cifras caen una tras otra y luego el paseante 3D camina por el paseo (Modelo 3D ▸ Mientras se mueve, con una trayectoria). Datos inventados.": "Klick: Die Zahlen fallen nacheinander herein, danach geht der 3D-Spaziergänger die Promenade entlang (3D-Modell ▸ Während der Bewegung, mit einem Animationspfad). Erfundene Daten.",
- "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "Abschluss mit Text Art im Eis-Stil. Die 3D-Flasche (Microsoft, CC0) braucht keinen Credit."
+ "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "Abschluss mit Text Art im Eis-Stil. Die 3D-Flasche (Microsoft, CC0) braucht keinen Credit.",
+ "alquiler": "Miete",
+ "ingresos netos": "Nettoeinkommen",
+ "fija": "fix"
 };

@@ -561,5 +561,14 @@ export default {
  "Taller: tu propia tesela": "Workshop: je eigen tegel",
  "Dibuja un cuadrado\nRecorta un trozo de un lado\nPégalo en el lado opuesto\nCalca la pieza muchas veces": "Teken een vierkant\nKnip een stukje van een zijde af\nPlak het op de tegenoverliggende zijde\nTrek het stuk vele malen over",
  "¡A pegar!": "Aan het plakken!",
- "Cartulina, tijeras y celo": "Karton, schaar en plakband"
+ "Cartulina, tijeras y celo": "Karton, schaar en plakband",
+ "casos favorables": "gunstige uitkomsten",
+ "casos posibles": "mogelijke uitkomsten",
+ "dos caras": "twee keer kop",
+ "una de cada": "een van elk",
+ "cm": "cm",
+ "de": "van",
+ "dato": "waarde",
+ "Me": "Me",
+ "Empieza a": "Begint op"
 };

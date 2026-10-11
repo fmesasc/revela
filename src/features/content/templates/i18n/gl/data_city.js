@@ -669,5 +669,8 @@ export default {
  "Anillo con un color propio por porción y la leyenda con porcentajes. El camión 3D se balancea al llegar (Modelo 3D ▸ Al entrar ▸ Balanceo).": "Anel cunha cor propia por porción e a lenda con porcentaxes. O camión 3D balancéase ao chegar (Modelo 3D ▸ Ao entrar ▸ Balanceo).",
  "Portada: el título es Text Art de estilo neón con color propio y la onda son 40 barras con degradado de color que crecen solas, en cascada, al llegar.": "Portada: o título é Text Art de estilo neon con cor propia e a onda son 40 barras con degradado de cor que medran soas, en fervenza, ao chegar.",
  "Clic: las cifras caen una tras otra y luego el paseante 3D camina por el paseo (Modelo 3D ▸ Mientras se mueve, con una trayectoria). Datos inventados.": "Clic: as cifras caen unha tras outra e logo o paseante 3D camiña polo paseo (Modelo 3D ▸ Mentres se move, cunha traxectoria). Datos inventados.",
- "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "Peche con Text Art de estilo xeado. A botella 3D (Microsoft, CC0) non necesita crédito."
+ "Cierre con Text Art de estilo helado. La botella 3D (Microsoft, CC0) no necesita crédito.": "Peche con Text Art de estilo xeado. A botella 3D (Microsoft, CC0) non necesita crédito.",
+ "alquiler": "aluguer",
+ "ingresos netos": "ingresos netos",
+ "fija": "fixa"
 };

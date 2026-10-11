@@ -683,5 +683,9 @@ export default {
  "Mira. Cuenta.": "Olha. Conta.",
  "Mira. Cuenta. Borra.": "Olha. Conta. Apaga.",
  "Mira. Cuenta. Borra. Vuelve a mirar.": "Olha. Conta. Apaga. Volta a olhar.",
- "«el charco guarda el cielo»": "«o charco guarda o azul»"
+ "«el charco guarda el cielo»": "«o charco guarda o azul»",
+ "bono": "bónus",
+ "dificultad": "dificuldade",
+ "huella por uso": "pegada por uso",
+ "desarrollo": "desenvolvimento"
 };

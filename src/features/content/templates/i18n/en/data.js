@@ -626,5 +626,7 @@ export default {
  "<div><b style=\"font-size:28px\">Contactos de marketing: 95 %</b><br><span style=\"color:#6b7785\">Decisión:</span> Pasar 20.000 € de ferias a anuncios en buscadores</div>": "<div><b style=\"font-size:28px\">Marketing leads: 95%</b><br><span style=\"color:#6b7785\">Decision:</span> Move €20,000 from trade fairs to search ads</div>",
  "Votación en directo con resultado en gráfico circular: el comité vota desde el móvil y se ve al momento.": "Live poll with the result as a pie chart: the committee votes from their phones and sees it instantly.",
  "¿Cuál debe ser la prioridad del cuarto trimestre?": "What should the fourth-quarter priority be?",
- "Plazo de entrega": "Delivery time"
+ "Plazo de entrega": "Delivery time",
+ "compras": "purchases",
+ "visitas": "visits"
 };

@@ -681,5 +681,9 @@ export default {
  "Dos sondas que salen del sistema solar llevan grabado este mapa: el periodo de cada púlsar, en binario, en su línea. Quien lo encuentre podrá saber de dónde vienen.": "Dues sondes que surten del sistema solar porten gravat aquest mapa: el període de cada púlsar, en binari, a la seva línia. Qui el trobi podrà saber d'on vénen.",
  "Cierre: una línea casi plana que se traza sola y un único pulso, el último. Pide al grupo que busque grabaciones de púlsares convertidas en sonido.": "Tancament: una línia gairebé plana que es traça sola i un únic pols, l'últim. Demana al grup que busqui enregistraments de púlsars convertits en so.",
  "FIN DE LA SEÑAL": "FI DEL SENYAL",
- "Próxima sesión: las ráfagas rápidas de radio, un misterio de milisegundos": "Propera sessió: els esclats ràpids de ràdio, un misteri de mil·lisegons"
+ "Próxima sesión: las ráfagas rápidas de radio, un misterio de milisegundos": "Propera sessió: els esclats ràpids de ràdio, un misteri de mil·lisegons",
+ "años": "anys",
+ "luz": "llum",
+ "He": "He",
+ "MeV": "MeV"
 };

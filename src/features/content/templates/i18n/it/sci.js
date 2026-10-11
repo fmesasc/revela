@@ -571,5 +571,10 @@ export default {
  "Cerebelo": "Cervelletto",
  "Transición «Diamante». Cerrar con la idea de plasticidad: aprender es cambiar el cerebro.": "Transizione «Diamante». Chiudere con l'idea di plasticità: imparare è cambiare il cervello.",
  "Tu cerebro acaba de cambiar": "Il tuo cervello è appena cambiato",
- "Cada cosa que aprendes refuerza unas conexiones y debilita otras: plasticidad": "Ogni cosa che impari rafforza alcune connessioni e ne indebolisce altre: plasticità"
+ "Cada cosa que aprendes refuerza unas conexiones y debilita otras: plasticidad": "Ogni cosa che impari rafforza alcune connessioni e ne indebolisce altre: plasticità",
+ "min": "min",
+ "ms": "ms",
+ "NDVI": "NDVI",
+ "cte": "cost.",
+ "energía": "energia"
 };

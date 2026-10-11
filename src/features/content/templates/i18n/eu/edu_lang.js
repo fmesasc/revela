@@ -673,5 +673,14 @@ export default {
  "Cuenta atrás de quince minutos para escribir una fábula propia. El zorro espera en el prado. Lee después dos o tres en voz alta.": "Hamabost minutuko atzerako kontaketa alegia propio bat idazteko. Azeria zelaian zain dago. Gero, irakurri bizpahiru ozen.",
  "Ahora, tu fábula": "Orain, zure alegia",
  "<ul><li>Elige dos animales y un problema</li><li>Planteamiento, nudo y desenlace en diez líneas</li><li>Termina con una moraleja en una frase</li></ul>": "<ul><li>Aukeratu bi animalia eta arazo bat</li><li>Hasiera, korapiloa eta amaiera hamar lerrotan</li><li>Amaitu esaldi bateko moral batekin</li></ul>",
- "¡Que hablen los animales!": "Utzi animaliei hitz egiten!"
+ "¡Que hablen los animales!": "Utzi animaliei hitz egiten!",
+ "sustantivo abstracto": "izen abstraktua",
+ "matiz": "ñabardura",
+ "métrico": "metrikoa",
+ "fonético": "fonetikoa",
+ "si acaba en aguda": "agudaz amaitzen bada",
+ "si acaba en llana": "llanaz amaitzen bada",
+ "si acaba en esdrújula": "esdrújulaz amaitzen bada",
+ "= <b style=\"color:#ffc857\">8 sílabas</b> · octosílabo": "= <b style=\"color:#ffc857\">8 silaba</b> · zortzikoa",
+ "= <b style=\"color:#ff5fa2\">10 sílabas</b> · decasílabo": "= <b style=\"color:#ff5fa2\">10 silaba</b> · hamarrekoa"
 };

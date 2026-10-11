@@ -638,5 +638,7 @@ export default {
  "Por casualidad, sin relación con la sequía": "Toevallig, los van de droogte",
  "Cierre. Tarea: buscar otro ejemplo de selección natural observado en poco tiempo (las polillas de los abedules, las bacterias resistentes a los antibióticos).": "Afsluiting. Opdracht: zoek nog een voorbeeld van natuurlijke selectie dat in korte tijd is waargenomen (de berkenspanner, bacteriën die resistent zijn tegen antibiotica).",
  "La evolución no es un plan:<br>es un filtro.": "Evolutie is geen plan:<br>het is een filter.",
- "Cada generación pasa por él… y lo que pasa, se hereda.": "Elke generatie gaat erdoorheen… en wat erdoor komt, wordt geërfd."
+ "Cada generación pasa por él… y lo que pasa, se hereda.": "Elke generatie gaat erdoorheen… en wat erdoor komt, wordt geërfd.",
+ "clorofila": "chlorofyl",
+ "luz": "licht"
 };

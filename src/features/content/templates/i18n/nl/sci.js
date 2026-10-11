@@ -571,5 +571,10 @@ export default {
  "Cerebelo": "Kleine hersenen",
  "Transición «Diamante». Cerrar con la idea de plasticidad: aprender es cambiar el cerebro.": "Overgang «Ruit». Sluit af met het idee van plasticiteit: leren is de hersenen veranderen.",
  "Tu cerebro acaba de cambiar": "Je hersenen zijn zojuist veranderd",
- "Cada cosa que aprendes refuerza unas conexiones y debilita otras: plasticidad": "Alles wat je leert versterkt sommige verbindingen en verzwakt andere: plasticiteit"
+ "Cada cosa que aprendes refuerza unas conexiones y debilita otras: plasticidad": "Alles wat je leert versterkt sommige verbindingen en verzwakt andere: plasticiteit",
+ "min": "min",
+ "ms": "ms",
+ "NDVI": "NDVI",
+ "cte": "const.",
+ "energía": "energie"
 };
