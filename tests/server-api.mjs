@@ -53,7 +53,7 @@ env.FETCH = async (url, init = {}) => {
     return Response.json({ sessionDescription: { type: 'answer', sdp: 'v=0 fake' }, tracks: [], requiresImmediateRenegotiation: false }); }
   if (u.startsWith('https://api.unsplash.com/')) { stockCalls.push({ u, auth: init.headers?.Authorization });
     return Response.json(u.includes('/download') ? {} : { results: [{ id: 'abc123', width: 4000, height: 3000, alt_description: 'Un faro', urls: { small: 'https://images.unsplash.com/s.jpg', regular: 'https://images.unsplash.com/r.jpg' },
-      user: { name: 'Ana Foto', links: { html: 'https://unsplash.com/@ana' } } }, { id: 'malo', urls: { small: 'javascript:alert(1)', regular: 'http://x/y.jpg' }, user: {} }] }); }
+      user: { name: 'Ana Foto', links: { html: 'https://unsplash.com/@ana' } }, links: { download_location: 'https://api.unsplash.com/photos/abc123/download?ixid=M3x1' } }, { id: 'malo', urls: { small: 'javascript:alert(1)', regular: 'http://x/y.jpg' }, user: {} }, { id: 'otro9', urls: { small: 'https://images.unsplash.com/s2.jpg', regular: 'https://images.unsplash.com/r2.jpg' }, user: { name: 'Leo', links: { html: 'javascript:alert(1)' } }, links: { download_location: 'https://evil.example/photos/otro9/download' } }] }); }
   if (u.startsWith('https://openrouter.ai/api/v1/audio/speech')) { aiCalls.push({ u, body: JSON.parse(init.body), auth: init.headers.Authorization }); return new Response(new Uint8Array([73, 68, 51, 4, 0]), { headers: { 'Content-Type': 'audio/mpeg' } }); }
   if (u.startsWith('https://openrouter.ai/')) { aiCalls.push({ u, body: JSON.parse(init.body), auth: init.headers.Authorization }); const r = aiReply(u); return Response.json(r.body, { status: r.status }); }
   if (u.startsWith('https://blender.test/')) { blenderCalls.push({ u, body: init.body, sig: init.headers['X-Revela-Signature'] }); return blenderReply(JSON.parse(init.body)); }
@@ -296,11 +296,22 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
   ok((await (await req('GET', '/api/me', { headers: { Cookie: ev } })).json()).photos.join() === 'unsplash', 'fotos: Unsplash configurado');
   ok((await req('GET', '/api/stock/search?provider=unsplash&q=faro')).status === 401, 'fotos: sin sesión no');
   const r = await req('GET', '/api/stock/search?provider=unsplash&q=faro&page=2', { headers: { Cookie: ev } }), d = await r.json();
-  ok(r.status === 200 && d.results.length === 1 && d.results[0].src === 'https://images.unsplash.com/r.jpg' && d.results[0].author === 'Ana Foto' && /utm_source=revela/.test(d.results[0].authorUrl), 'fotos: resultados con su autor (y enlaces seguros solo)');
+  const [a0, a1] = d.results;
+  ok(r.status === 200 && d.results.length === 2 && a0.src === 'https://images.unsplash.com/r.jpg' && a0.thumb === 'https://images.unsplash.com/s.jpg' && a0.author === 'Ana Foto', 'fotos: resultados con su autor, enlazados a images.unsplash.com (y solo los seguros)');
+  ok(a0.authorUrl === 'https://unsplash.com/@ana?utm_source=revelaslides&utm_medium=referral' && a0.sourceUrl === 'https://unsplash.com/?utm_source=revelaslides&utm_medium=referral', 'fotos: perfil y Unsplash con utm_source=revelaslides&utm_medium=referral: ' + a0.authorUrl + ' ' + a0.sourceUrl);
+  ok(a0.downloadLocation === 'https://api.unsplash.com/photos/abc123/download?ixid=M3x1', 'fotos: con su download_location tal cual (con su ixid)');
+  ok(a1.authorUrl === '' && a1.downloadLocation === '', 'fotos: ni un perfil que no sea https ni un download_location de otro sitio');
   ok(stockCalls.at(-1).auth === 'Client-ID unsplash-secreta' && /query=faro/.test(stockCalls.at(-1).u) && !JSON.stringify(d).includes('unsplash-secreta'), 'fotos: la clave va del servidor a Unsplash y nunca al navegador');
   ok((await req('GET', '/api/stock/search?provider=otro&q=x', { headers: { Cookie: ev } })).status === 400, 'fotos: solo los servicios conocidos');
+  let n = stockCalls.length;
+  await req('POST', '/api/stock/used', { headers: { Cookie: ev }, body: { provider: 'unsplash', id: 'abc123', downloadLocation: a0.downloadLocation } });
+  ok(stockCalls.length === n + 1 && stockCalls.at(-1).u === 'https://api.unsplash.com/photos/abc123/download?ixid=M3x1' && stockCalls.at(-1).auth === 'Client-ID unsplash-secreta', 'fotos: al usar una, se llama a su download_location (con la clave, desde el servidor)');
+  n = stockCalls.length;
+  await req('POST', '/api/stock/used', { headers: { Cookie: ev }, body: { provider: 'unsplash', id: 'abc123', downloadLocation: 'https://evil.example/photos/abc123/download' } });
+  await req('POST', '/api/stock/used', { headers: { Cookie: ev }, body: { provider: 'unsplash', id: 'abc123', downloadLocation: 'https://api.unsplash.com/photos/otra1/download' } });
+  ok(stockCalls.length === n, 'fotos: la clave no va a otra dirección que el download_location de esa foto');
   await req('POST', '/api/stock/used', { headers: { Cookie: ev }, body: { provider: 'unsplash', id: 'abc123' } });
-  ok(/\/photos\/abc123\/download$/.test(stockCalls.at(-1).u), 'fotos: se avisa a Unsplash al usar una (lo pide)');
+  ok(stockCalls.length === n + 1 && /\/photos\/abc123\/download$/.test(stockCalls.at(-1).u), 'fotos: una aplicación anterior (solo el id) también avisa');
   let limited = false; for (let i = 0; i < 35 && !limited; i++) limited = (await req('GET', '/api/stock/search?provider=unsplash&q=x', { headers: { Cookie: ev } })).status === 429;
   ok(limited, 'fotos: límite de búsquedas por minuto');
   delete env.UNSPLASH_ACCESS_KEY;
@@ -2615,6 +2626,10 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   ok(j.role === 'owner' && deck.name === 'Energía solar' && deck.slides.length === 5 && deck.palette && deck.layouts?.length, 'con el diseño elegido y sus diseños de diapositiva');
   ok(deck.slides[1].notes === 'Contar el caso de Almería' && deck.slides[2].blocks.some(b => b.type === 'chart'), 'notas y gráfico en su sitio');
   ok(deck.slides[3].blocks.some(b => b.type === 'image' && b.src === 'https://images.unsplash.com/r.jpg' && /Ana Foto/.test(b.caption)), 'image_search: una foto real con su autor');
+  { const pic = deck.slides[3].blocks.find(b => b.type === 'image');
+    ok(pic?.caption === 'Photo by Ana Foto on Unsplash' && JSON.stringify(pic.captionLinks) === JSON.stringify([{ text: 'Ana Foto', href: 'https://unsplash.com/@ana?utm_source=revelaslides&utm_medium=referral' }, { text: 'Unsplash', href: 'https://unsplash.com/?utm_source=revelaslides&utm_medium=referral' }]),
+      'image_search: «Photo by Ana Foto on Unsplash», con sus enlaces: ' + JSON.stringify(pic?.captionLinks));
+    ok(stockCalls.some(c => c.u === 'https://api.unsplash.com/photos/abc123/download?ixid=M3x1'), 'image_search: y se avisa a Unsplash en su download_location'); }
   ok(!JSON.stringify(deck.slides[4]).includes('<script>'), 'el texto llega escapado');
   // Outline and text.
   j = await (await kreq('GET', `/api/v1/decks/${did}?format=outline`, key)).json();

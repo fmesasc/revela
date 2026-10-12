@@ -35,6 +35,6 @@ subscribe(() => {
   const { id } = target; target = null;
   if (!s.blocks.some(x => x.id === id)) return;
   amend(() => { s.blocks.splice(s.blocks.indexOf(fresh), 1); });
-  replaceImage(id, fresh.src, { credit: fresh.credit, caption: fresh.caption, alt: fresh.alt });
+  replaceImage(id, fresh.src, { credit: fresh.credit, caption: fresh.caption, captionLinks: fresh.captionLinks, alt: fresh.alt });
 });
 export const changingImage = () => target?.id || null;

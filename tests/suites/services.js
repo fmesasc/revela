@@ -3274,12 +3274,33 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { W.fetch = realFetch; R.ai.disconnectAi(); }
   });
 
-  await test('fotos de Unsplash y Pexels: se usan desde su servidor, con el nombre de quien las hizo', async () => {
+  await test('fotos de Unsplash y Pexels: se usan desde su servidor, con «Foto de X en Unsplash» enlazado en la diapositiva y al presentar', async () => {
     reset();
+    const ana = 'https://unsplash.com/@ana?utm_source=revelaslides&utm_medium=referral', site = 'https://unsplash.com/?utm_source=revelaslides&utm_medium=referral';
     const b = R.stock.insertPhoto({ id: 'abc', src: 'https://images.unsplash.com/r.jpg', thumb: 'https://images.unsplash.com/s.jpg', width: 4000, height: 2000, alt: 'Un faro',
-      author: 'Ana Foto', authorUrl: 'https://unsplash.com/@ana?utm_source=revela&utm_medium=referral', source: 'Unsplash', sourceUrl: 'https://unsplash.com/?utm_source=revela&utm_medium=referral' });
-    eq(b.src, 'https://images.unsplash.com/r.jpg', 'enlazada a su servidor (lo pide Unsplash)'); eq(b.caption, 'Ana Foto / Unsplash', 'con su autor como pie');
+      author: 'Ana Foto', authorUrl: ana, source: 'Unsplash', sourceUrl: site, downloadLocation: 'https://api.unsplash.com/photos/abc/download?ixid=x1' });
+    eq(b.src, 'https://images.unsplash.com/r.jpg', 'enlazada a su servidor (lo pide Unsplash)'); eq(b.caption, 'Foto de Ana Foto en Unsplash', 'con su autor como pie');
+    eq(JSON.stringify(b.captionLinks), JSON.stringify([{ text: 'Ana Foto', href: ana }, { text: 'Unsplash', href: site }]), 'el nombre y el servicio, con sus enlaces');
     eq(Math.round(b.w / b.h), 2, 'con su proporción'); eq(b.alt, 'Un faro', 'texto alternativo');
+    await sleep(30);
+    const ovl = D.querySelector('#stage .caption-ovl'), as = ovl ? [...ovl.querySelectorAll('a')] : [];
+    assert(ovl && /Foto de Ana Foto en Unsplash/.test(ovl.textContent), 'el pie en la diapositiva: ' + ovl?.textContent);
+    eq(as.map(a => a.textContent + ' ' + a.href).join(' | '), `Ana Foto ${ana} | Unsplash ${site}`, 'con sus enlaces en el lienzo');
+    // Presenting: the photo from Unsplash's server and its credit linked (opened apart).
+    const html = R.io.buildHTML();
+    assert(html.includes('src="https://images.unsplash.com/r.jpg"'), 'al presentar, la foto enlazada a su servidor');
+    assert(html.includes(`<a href="${ana.replace(/&/g, '&amp;')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">Ana Foto</a>`), 'al presentar, el autor enlaza a su perfil (con utm)');
+    assert(html.includes(`<a href="${site.replace(/&/g, '&amp;')}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">Unsplash</a>`), 'y «Unsplash» a Unsplash (con utm)');
+    // Only https links, only where the caption says their words; the rest escaped.
+    const C = await frame.contentWindow.eval("import('/src/features/document/captions.js')");
+    eq(C.captionHTML('Foto de <b> en X', [{ text: '<b>', href: 'javascript:alert(1)' }, { text: 'X', href: 'https://x.test/"a' }]), 'Foto de &lt;b&gt; en X', 'sin enlaces inseguros');
+    eq(C.captionHTML('Mi pie', [{ text: 'Ana', href: 'https://a.test' }]), 'Mi pie', 'un pie editado a mano que ya no dice el nombre: sin enlace');
+    assert(/^Photo de <a [^>]*>Ana<\/a> sur <a [^>]*>Unsplash<\/a>$/.test(C.captionHTML('Photo de Ana sur Unsplash', [{ text: 'Unsplash', href: 'https://u.test' }, { text: 'Ana', href: 'https://a.test' }])), 'en el orden en que salgan');
+    // «Cambiar imagen» with another photo: its credit and links; with a file, neither.
+    const S2 = await frame.contentWindow.eval("import('/src/features/document/swapimage.js')");
+    S2.replaceImage(b.id, 'data:image/png;base64,iVBORw0KGgo=');
+    const after = slide().blocks.find(x => x.id === b.id);
+    assert(!after.caption && !after.captionLinks && !after.credit, 'otra imagen desde el ordenador: sin el crédito de la foto anterior');
     assert(!D.querySelector('#elements-panel [data-et="photos"]'), 'en la edición abierta (sin cuenta) no aparece');
   });
 

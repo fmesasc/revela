@@ -14,7 +14,7 @@ import { cleanClasses } from '../../features/design/devmode.js';
 import { state, commit, currentSlide, selectedBlock, isSelected, setSelection, docVersion } from '../../core/store.js';
 import { lockSVG, lockSig } from '../../render/svg.js';
 import { shadowCSS, levelCSS, shapeSVG, shapeSig, chartSVG, chartSig, iconSVG, iconSig, inkSVG, timerSVG, curvedTextSVG, hasShapeText, shapeTextStyle, wrapFor, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
-import { figuresMap, captionLine } from '../../features/document/captions.js';
+import { figuresMap, captionLine, captionHTML } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
 import { t } from '../../i18n/index.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
@@ -230,7 +230,7 @@ function drawCaptions() {
     const f = map.get(b.id); if (!f) continue;
     const el = document.createElement('div'); el.className = 'caption-ovl';
     el.style.left = b.x + 'px'; el.style.top = (b.y + b.h + 4) + 'px'; el.style.width = b.w + 'px';
-    el.textContent = captionLine(f); stage.appendChild(el);
+    el.innerHTML = captionHTML(captionLine(f), b.captionLinks); stage.appendChild(el);          // (a stock photo's credit, with its links)
   }
 }
 

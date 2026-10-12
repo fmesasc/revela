@@ -7,7 +7,7 @@
 import { esc } from '../../core/text.js';
 import { state, currentSlide, amend } from '../../core/store.js';
 import * as R from '../../features/content/resources.js';
-import { insertPhoto, searchImages, insertStockImage, hasTransparentBackground, searchIcons, iconPreview, insertOnlineIcon, consented, giveConsent } from '../../features/content/stock.js';
+import { insertPhoto, photoCredit, searchImages, insertStockImage, hasTransparentBackground, searchIcons, iconPreview, insertOnlineIcon, consented, giveConsent } from '../../features/content/stock.js';
 import { removeBackground } from '../dialogs/object.js';
 import { deckFg } from '../../features/design/palettes.js';
 import { factor } from '../canvas/interact.js';
@@ -39,7 +39,7 @@ const TABS = [
 ];
 const HELP = {
   images: 'Imágenes con licencias libres de Openverse. Se añade la atribución como pie de foto: mantenla si la licencia lo pide.',
-  photos: 'Fotos profesionales de Unsplash y Pexels, gratis. Se usan desde sus servidores (hace falta internet al presentar) y llevan el nombre de quien las hizo.',
+  photos: 'Fotos de Unsplash y Pexels, gratis, buscadas a través del servidor de Revela (Revela no es Unsplash ni Pexels). Se muestran desde sus servidores (hace falta internet al presentar) y llevan el nombre de quien las hizo, con un enlace a su perfil.',
   icons: 'Más de 200 000 iconos de colecciones libres (Material, Tabler, Font Awesome…) vía Iconify.',
   gif: 'GIF animados con licencias libres (Wikimedia y otros). Se añade la atribución como pie: mantenla si la licencia lo pide.',
   videos: 'Vídeos con licencias libres de Wikimedia Commons (naturaleza, ciencia, historia…). Los cortos se guardan dentro de la presentación; se añade la atribución como pie.',
@@ -157,6 +157,7 @@ function build() {
       <button type="button" class="mini2 el-upteam" hidden><i class="ms">upload</i> ${t('Subir una imagen al equipo')}</button>
       <label class="el-col" title="${t('Color')}">${t('Color')} <input type="color" class="el-color" value="${/^#[0-9a-f]{6}$/i.test(deckFg()) ? deckFg() : '#ffffff'}"></label></div>
     <p class="host-help el-help"></p>
+    <p class="el-by" hidden></p>
     <div class="el-grid" aria-live="polite"></div>
     <div class="el-foot"><span class="el-tip">${t('Clic: añadir a la diapositiva · Arrastrar: soltar donde quieras')}</span><button type="button" class="mini2 sk-more" hidden>${t('Más resultados')}</button></div>`;
   dock(elementsSide());
@@ -193,6 +194,7 @@ function show(tab) {
   q('.el-akind').hidden = tab !== 'audio'; stopListening();
   q('.el-col').hidden = tab !== 'icons';
   q('.el-upteam').hidden = tab !== 'team';
+  showProviders(tab);
   q('.el-grid').className = 'el-grid' + (tab === 'icons' || tab === 'stickers' ? ' small' : '') + (tab === 'images' ? ' checker justify' : tab === 'gif' || tab === 'videos' || tab === 'photos' ? ' justify' : '');
   q('.sk-q').value = terms[tab] || '';
   q('.el-grid').innerHTML = ''; q('.sk-more').hidden = true; q('.sk-go').disabled = false; picks = [];
@@ -211,6 +213,15 @@ function show(tab) {
   q('.sk-q').focus();
 }
 
+// Where the photos come from, always in sight on their tab (Pexels asks for a visible link to it wherever its
+// API is used; Unsplash, to be credited): the services' own sites, by name — never their logos.
+const PHOTO_SITES = { unsplash: ['Unsplash', 'https://unsplash.com/?utm_source=revelaslides&utm_medium=referral'], pexels: ['Pexels', 'https://www.pexels.com'] };
+function showProviders(tab) {
+  const by = q('.el-by'), sites = photoServices().map(p => PHOTO_SITES[p]).filter(Boolean);
+  by.hidden = tab !== 'photos' || !sites.length; if (by.hidden) return;
+  by.innerHTML = fillHTML(t('Fotos proporcionadas por {s}'), { s: sites.map(([n, u]) => link(n, u)).join(' · ') });
+}
+
 // One result: click adds it; dragging it onto the slide drops it there.
 // ar: its proportions (width / height), for rows of pictures as they are, not cropped.
 // What a model with logos may and may not be used for (see brandMarks).
@@ -219,10 +230,15 @@ function marksText(mk) {
   return t('Este modelo lleva el logotipo de {marca}, que es una marca: puedes enseñarlo tal cual, pero no como si fuera tu marca ni para dar a entender que te respaldan.').replace('{marca}', who)
     + (mk.copyright ? ' ' + t('Alguno de esos logotipos tiene además derechos de autor: para un uso comercial, pide permiso o elige otro modelo.') : '');
 }
-function item(thumb, title, badge, pick, ar = 0) {
+// credit: a stock photo's photographer and service ({ author, authorUrl, source, sourceUrl }), shown under it
+// as «Photo by <name> on Unsplash» with both linked (as Unsplash and Pexels ask): the result and its credit go
+// in a box of their own, since links can't go inside the result's button.
+function item(thumb, title, badge, pick, ar = 0, credit = null) {
   const i = picks.push(pick) - 1;
   const b = document.createElement('button'); b.type = 'button'; b.className = 'sk-item'; b.title = title; b.draggable = true; b.dataset.i = i;
-  if (ar > 0) b.style.setProperty('--ar', Math.min(3, Math.max(0.4, ar)).toFixed(3));
+  let node = b;
+  if (credit) { node = document.createElement('div'); node.className = 'sk-cell'; node.append(b, creditLine(credit)); }
+  if (ar > 0) node.style.setProperty('--ar', Math.min(3, Math.max(0.4, ar)).toFixed(3));
   b.innerHTML = `<img loading="lazy" src="${esc([].concat(thumb)[0])}" alt="${esc(title)}" referrerpolicy="no-referrer" draggable="false">${badge ? `<span>${esc(badge)}</span>` : ''}`;
   // A preview that can't load (no connection, the service busy): a clear placeholder, not a broken image.
   // (thumb can be a list of addresses, tried in turn.)
@@ -230,12 +246,23 @@ function item(thumb, title, badge, pick, ar = 0) {
   const alts = [].concat(thumb).slice(1), withOriginal = alts.length > 0, im = b.querySelector('img');
   im.addEventListener('error', () => {
     if (alts.length) { im.src = alts.shift(); return; }
-    if (withOriginal) { b.remove(); return; }
+    if (withOriginal) { node.remove(); return; }
     im.replaceWith(Object.assign(document.createElement('i'), { className: 'ms el-noimg', textContent: 'image_not_supported', title }));
   });
   b.addEventListener('click', () => add(b, pick));
   b.addEventListener('dragstart', e => { e.dataTransfer.setData(DRAG, String(i)); e.dataTransfer.effectAllowed = 'copy'; });
-  q('.el-grid').appendChild(b);
+  q('.el-grid').appendChild(node);
+}
+// «Photo by <name> on Unsplash»: the name to the photographer's profile, the service to its site (both with
+// Revela's referral tag, from the server: server/cloudflare/stock.js). Opened apart; not dragged onto the slide.
+const link = (text, href) => (/^https:\/\//.test(href || '') ? `<a href="${esc(href)}" target="_blank" rel="noopener" draggable="false">${esc(text)}</a>` : esc(text));
+// A translated text with its {placeholders} as HTML (in whatever order the language puts them), the rest escaped.
+const fillHTML = (tpl, parts) => tpl.split(/(\{\w+\})/).map(x => (/^\{\w+\}$/.test(x) && x.slice(1, -1) in parts ? parts[x.slice(1, -1)] : esc(x))).join('');
+function creditLine(c) {
+  const p = document.createElement('p'); p.className = 'sk-credit';
+  p.innerHTML = fillHTML(t('Foto de {a} en {s}'), { a: link(c.author || '?', c.authorUrl), s: link(c.source, c.sourceUrl) });
+  p.title = photoCredit(c);
+  return p;
 }
 async function add(b, pick, at = null) {
   if (!currentSlide()) return;
@@ -333,7 +360,11 @@ async function run(more = false) {
       const got = await Promise.all(photoServices().map(p => api(`stock/search?provider=${p}&q=${encodeURIComponent(term)}&page=${page}`).then(d => d.results.map(x => ({ ...x, provider: p })), () => [])));
       const mixed = []; for (let i = 0; i < 20; i++) got.forEach(l => l[i] && mixed.push(l[i]));
       full = got.some(l => l.length >= 20);
-      list = mixed.map(ph => [ph.thumb, `${ph.alt ? ph.alt + ' — ' : ''}${ph.author} (${ph.source})`, ph.source, () => { api('stock/used', { provider: ph.provider, id: ph.id }).catch(() => {}); return insertPhoto(ph); }, ph.width && ph.height ? ph.width / ph.height : 0]);
+      // (Inserting one tells Unsplash, at the photo's download_location, through the server: it holds the key. Not
+      // awaited: the photo goes on the slide at once.)
+      list = mixed.map(ph => [ph.thumb, `${ph.alt ? ph.alt + ' — ' : ''}${photoCredit(ph)}`, '', () => {
+        api('stock/used', { provider: ph.provider, id: ph.id, ...(ph.downloadLocation && { downloadLocation: ph.downloadLocation }) }).catch(() => {});
+        return insertPhoto(ph); }, ph.width && ph.height ? ph.width / ph.height : 0, ph]);
     } else if (tab === 'images') {
       const f = imageFilters(), found = [];
       // A see-through background: PNG and SVG only, each one checked on its preview;

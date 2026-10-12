@@ -45,7 +45,7 @@ import { shadowCSS, borderCSS, levelCSS, textPadding, webCardHTML, mathTeX, math
 import { googleFontLinks } from '../../features/design/fonts.js';
 import { t, speechLang, currentLang } from '../../i18n/index.js';
 import { sizeText } from '../../features/content/files.js';
-import { collectFigures, figuresMap, captionLine, figIndexTitle, slidePaths } from '../../features/document/captions.js';
+import { collectFigures, figuresMap, captionLine, captionHTML, figIndexTitle, slidePaths } from '../../features/document/captions.js';
 import { INK_CSS, inkJS } from '../runtime/ink.js';
 import { READING_CSS, readingJS } from '../runtime/reading.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
@@ -663,9 +663,10 @@ function slideHTML(s, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck),
     let html = adapt(blockHTML(b, s));
     if (lockHides.has(b.id)) html = html.replace(/^<([a-zA-Z][\w-]*)/, (m, tag) => `<${tag} data-lock-hide="${esc(lockHides.get(b.id))}"`);
     const f = figMap.get(b.id);
-    // (The caption goes with its object: it appears, leaves or moves along with it.)
+    // (The caption goes with its object: it appears, leaves or moves along with it. A stock photo's credit links
+    // to its photographer and the service: captions.js captionHTML.)
     if (f) html += `<div${animAttrs(b, s).replace(/ data-bid="[^"]*"/, '')}${fit === 'adapt' ? ` data-fcap="${esc(b.id)}"` : ''} style="position:absolute;left:${b.x}px;top:${b.y + b.h + 4}px;width:${b.w}px;`
-      + `text-align:center;font-style:italic;font-size:16px;${animVars(b)}"><span class="caption" style="opacity:.85">${esc(captionLine(f))}</span></div>`;
+      + `text-align:center;font-style:italic;font-size:16px;${animVars(b)}"><span class="caption" style="opacity:.85">${captionHTML(captionLine(f), b.captionLinks)}</span></div>`;
     return b0.anims?.length ? stepLayers(html, b0, s, tl) : html;
   });
   const inner = bk != null ? `<div class="rv-bgl" style="position:absolute;inset:0">${bgLayer(s)}${parts.slice(0, nBack).join('\n')}</div>${parts.slice(nBack).join('\n')}`

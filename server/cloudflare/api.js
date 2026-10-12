@@ -31,7 +31,7 @@
 //   POST /api/ai/image         { prompt, aspect_ratio? } → { data: [{ b64_json, media_type }] }
 //   POST /api/ai/speech        { input, voice?, speed? } → { audio (base64 mp3) }  (credits per character)
 //   GET  /api/stock/search     ?provider=unsplash|pexels&q=&page= → { results }   (Revela's keys; per-minute limit)
-//   POST /api/stock/used       { provider, id }        (Unsplash asks to be told when a photo is used)
+//   POST /api/stock/used       { provider, id, downloadLocation }   (Unsplash asks to be told, at the photo's download_location, when one is used)
 //   POST /api/billing/checkout { product } → { url, trialDays? }   (Stripe Checkout; promotion codes allowed; Pro's free trial
 //                              when the admin turned it on and the account never had a trial or a paid Pro: trialConfig)
 //   POST /api/billing/portal   → { url }                (Stripe customer portal)

@@ -174,7 +174,7 @@ function specsOf(a) {
   return [];
 }
 // A real photo for a spec that asks for one (image_search: words, in English best): the first of Unsplash or Pexels,
-// with its author's credit, as the editor's «Buscar fotos». Without those keys, or nothing found: the slide without it.
+// with its author's credit and its links (as Unsplash asks), as the editor's «Buscar fotos». Without those keys, or nothing found: the slide without it.
 async function findPictures(ctx, specs) {
   const env = ctx.env, want = specs.filter(sp => sp && typeof sp.image_search === 'string' && sp.image_search.trim() && !sp.image_url).slice(0, 12);
   if (!want.length) return;
@@ -183,8 +183,8 @@ async function findPictures(ctx, specs) {
     try {
       const [u, headers] = P.search(env, sp.image_search.slice(0, 100), 1), r = await (env.FETCH || fetch)(u, { headers });
       const x = r.ok ? P.list(await r.json())[0] : null;
-      if (x?.src?.startsWith('https://')) Object.assign(sp, { image_url: x.src, image_alt: sp.image_search, ...(x.width && x.height && { image_width: x.width, image_height: x.height }), ...(x.author && { image_credit: `${x.author} / ${x.source}` }) });
-      if (x?.source === 'Unsplash') await stockUsed(env, { provider: 'unsplash', id: x.id }, () => null);   // (Unsplash asks to be told)
+      if (x?.src?.startsWith('https://')) Object.assign(sp, { image_url: x.src, image_alt: sp.image_search, ...(x.width && x.height && { image_width: x.width, image_height: x.height }), ...(x.author && { image_credit: `Photo by ${x.author} on ${x.source}`, image_credit_links: [{ text: x.author, href: x.authorUrl }, { text: x.source, href: x.sourceUrl }] }) });
+      if (x?.source === 'Unsplash') await stockUsed(env, { provider: 'unsplash', id: x.id, downloadLocation: x.downloadLocation }, () => null);   // (Unsplash asks to be told)
     } catch {}
   }));
 }

@@ -7,6 +7,7 @@
 
 import { state, commit, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
+import { t } from '../../i18n/index.js';
 
 const OK = 'revela.consent.';
 export const consented = svc => { try { return localStorage.getItem(OK + svc) === '1'; } catch { return false; } };
@@ -78,13 +79,17 @@ export async function insertStockImage(img) {
 }
 
 // ---- Photos from Unsplash and Pexels (through Revela's server) ----------------------
-// Used from their own servers, as Unsplash asks (so they need the internet when
-// presenting), with the photographer's credit as the caption.
+// Used from their own servers, at the address the search gave (hotlinked, as Unsplash asks: so they need the
+// internet when presenting), with the photographer's credit as the caption — «Photo by <name> on Unsplash» —
+// whose name and service link to the photographer's profile and to the service (captionLinks; captions.js).
+// (Telling Unsplash that one was used is the panel's: elements.js, POST /api/stock/used.)
+export const photoCredit = ph => t('Foto de {a} en {s}').replace('{a}', ph.author || '?').replace('{s}', ph.source);
+const https = u => (/^https:\/\//.test(u || '') ? u : '');
 export function insertPhoto(ph) {
   const { w: W, h: H } = state.deck.size, ar = ph.width && ph.height ? ph.width / ph.height : 3 / 2;
   let w = W * 0.6, h = w / ar; if (h > H * 0.7) { h = H * 0.7; w = h * ar; }
-  const credit = `${ph.author} / ${ph.source}`;
-  const b = { id: uid(), type: 'image', src: ph.src, fit: 'cover', alt: String(ph.alt || '').slice(0, 125), caption: credit,
+  const links = [{ text: ph.author, href: https(ph.authorUrl) }, { text: ph.source, href: https(ph.sourceUrl) }].filter(l => l.text && l.href);
+  const b = { id: uid(), type: 'image', src: ph.src, fit: 'cover', alt: String(ph.alt || '').slice(0, 125), caption: photoCredit(ph), captionLinks: links,
     credit: `${ph.author} (${ph.authorUrl}) · ${ph.source} (${ph.sourceUrl})`,
     x: Math.round((W - w) / 2), y: Math.round((H - h) / 2) - 20, w: Math.round(w), h: Math.round(h), rotation: 0, animation: null };
   commit(() => { currentSlide().blocks.push(b); state.ui.selection = b.id; state.ui.multi = [b.id]; });

@@ -22,14 +22,18 @@ export const MAX_SLIDES = 60;
 const str = v => (v == null ? '' : String(v));
 const httpsURL = v => (/^https:\/\/[^\s"'<>]{4,2000}$/.test(str(v)) ? str(v) : '');
 
+// The words of a caption that link somewhere (a stock photo's «Photo by <name> on Unsplash»: the photographer's
+// profile and the service, features/document/captions.js), only by https.
+const captionLinks = list => list.slice(0, 4).map(l => ({ text: str(l?.text).slice(0, 120), href: httpsURL(l?.href) })).filter(l => l.text && l.href);
 // A spec as it arrives from outside: an object with a known kind (else «bullets»), its picture only by https.
 export function cleanSpec(sp) {
   if (!sp || typeof sp !== 'object' || Array.isArray(sp)) return null;
   const out = JSON.parse(JSON.stringify(sp, (k, v) => (typeof v === 'string' ? v.slice(0, 4000) : v)));
   if (!KINDS.includes(out.kind)) out.kind = 'bullets';
   const img = httpsURL(out.image_url);
-  if (img) out.picture = { src: img, w: +out.image_width > 0 ? +out.image_width : 4, h: +out.image_height > 0 ? +out.image_height : 3, alt: str(out.image_alt).slice(0, 300), caption: str(out.image_credit).slice(0, 200) };
-  delete out.image_url; delete out.image_width; delete out.image_height; delete out.image_alt; delete out.image_credit;
+  if (img) out.picture = { src: img, w: +out.image_width > 0 ? +out.image_width : 4, h: +out.image_height > 0 ? +out.image_height : 3, alt: str(out.image_alt).slice(0, 300), caption: str(out.image_credit).slice(0, 200),
+    ...(Array.isArray(out.image_credit_links) && { captionLinks: captionLinks(out.image_credit_links) }) };
+  delete out.image_url; delete out.image_width; delete out.image_height; delete out.image_alt; delete out.image_credit; delete out.image_credit_links;
   if (out.picture) out.figureRatio = out.picture.w / out.picture.h;
   return out;
 }
@@ -42,7 +46,7 @@ function placePicture(slide, sp, deck) {
   const k = Math.min(box.w / f.w, box.h / f.h), w = Math.round(f.w * k), h = Math.round(f.h * k);
   slide.blocks = slide.blocks.filter(b => !(b.type === 'placeholder' && b.ph === 'picture'));
   slide.blocks.push({ id: uid(), type: 'image', src: f.src, alt: str(f.alt), fit: 'contain', rotation: 0, animation: null,
-    x: Math.round(box.x + (box.w - w) / 2), y: Math.round(box.y + (box.h - h) / 2), w, h, ...(f.caption && { caption: str(f.caption) }) });
+    x: Math.round(box.x + (box.w - w) / 2), y: Math.round(box.y + (box.h - h) / 2), w, h, ...(f.caption && { caption: str(f.caption) }), ...(f.caption && f.captionLinks?.length && { captionLinks: f.captionLinks }) });
 }
 
 // New slides for `deck` from specs, to go at index `at` (they take the look of the slides around there).

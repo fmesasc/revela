@@ -6,9 +6,9 @@ import { commit, setSelection, currentSlide } from '../../core/store.js';
 import { shrinkImage } from './imgshrink.js';
 
 // What only made sense for the old picture.
-const OLD = ['uncropped', 'aiCaption', 'focusX', 'focusY', 'credit'];
+const OLD = ['uncropped', 'aiCaption', 'focusX', 'focusY', 'credit', 'captionLinks'];
 
-// → whether it was replaced. extra: what comes with the new picture (a stock photo's credit and caption, its title as alt).
+// → whether it was replaced. extra: what comes with the new picture (a stock photo's credit and caption with its links, its title as alt).
 export function replaceImage(id, src, extra = {}) {
   let b = null;
   commit(() => {
@@ -22,6 +22,7 @@ export function replaceImage(id, src, extra = {}) {
     if (stock) delete b.caption;
     if (extra.credit) b.credit = extra.credit;
     if (extra.caption && !b.caption) b.caption = extra.caption;
+    if (extra.captionLinks?.length && b.caption === extra.caption) b.captionLinks = extra.captionLinks;   // (a stock photo's credit, with its links)
     if (extra.alt && !b.alt && !b.decorative) b.alt = extra.alt;      // (one written by hand stays)
     setSelection(id);
   });

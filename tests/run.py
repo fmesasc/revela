@@ -396,7 +396,8 @@ def site_checks(send, recv):
                 return self.reply(200, {'mine': [{'id': 'abcdefghijklmnop1234', 'name': 'Charla de otoño', 'updated': 1790000000000}], 'shared': [{'id': 'zyxwvutsrqponmlk9876', 'name': 'De Luis', 'owner': 'luis@example.com', 'role': 'comment'}], 'limit': 3})
             if self.path.startswith('/api/stock/search'):
                 return self.reply(200, {'results': [{'id': 'f1', 'thumb': '/app/icons/icon-192.png', 'src': '/app/icons/icon-512.png', 'width': 512, 'height': 512, 'alt': 'Logo',
-                    'author': 'Ana Foto', 'authorUrl': 'https://unsplash.com/@ana', 'source': 'Unsplash', 'sourceUrl': 'https://unsplash.com'}]})
+                    'author': 'Ana Foto', 'authorUrl': 'https://unsplash.com/@ana?utm_source=revelaslides&utm_medium=referral', 'source': 'Unsplash',
+                    'sourceUrl': 'https://unsplash.com/?utm_source=revelaslides&utm_medium=referral', 'downloadLocation': 'https://api.unsplash.com/photos/f1/download?ixid=M3x1'}]})
             return super().do_GET()
         def do_POST(self):
             body = self.rfile.read(int(self.headers.get('Content-Length') or 0))
@@ -527,9 +528,17 @@ def site_checks(send, recv):
         ev("(()=>{localStorage.setItem('revela.consent.revelaphotos','1');document.querySelector('[data-action=\"insert-stock\"]').click();return 1})()"); time.sleep(0.4)
         check(ev("!!document.querySelector('[data-et=\"photos\"]')"), 'pestaña Fotos (el servidor la ofrece)')
         ev("(()=>{document.querySelector('[data-et=\"photos\"]').click();const q=document.querySelector('.sk-q');q.value='faro';document.querySelector('.sk-go').click();return 1})()"); time.sleep(0.8)
-        ev("(()=>{const it=document.querySelector('#elements-panel .el-grid .el-item, #elements-panel .el-grid button');it&&it.click();return 1})()"); time.sleep(0.5)
-        check(ev("(b=>!!b&&b.caption==='Ana Foto / Unsplash')(window.__revela.state.deck.slides[window.__revela.state.ui.slideIndex].blocks.at(-1))"), 'una foto añadida, con su autor')
-        check(seen.get('used') and seen['used'][-1].get('id') == 'f1', 'y se avisa a Unsplash de que se usa')
+        # Each result with «Foto de Ana Foto en Unsplash» in sight under it (not in a tooltip), both linked with
+        # utm_source=revelaslides, outside the result's button; and where the photos come from, linked.
+        credit = ev("(c=>c?JSON.stringify({text:c.textContent,vis:c.getBoundingClientRect().height>0&&getComputedStyle(c).visibility!=='hidden',inBtn:!!c.closest('button'),a:[...c.querySelectorAll('a')].map(a=>[a.textContent,a.href,a.target])}):'')(document.querySelector('#elements-panel .el-grid .sk-cell .sk-credit'))")
+        cj = json.loads(credit or '{}')
+        check(cj.get('text') == 'Foto de Ana Foto en Unsplash' and cj.get('vis') and not cj.get('inBtn'), 'Fotos: «Foto de Ana Foto en Unsplash» visible bajo cada una: ' + str(cj))
+        check(cj.get('a') == [['Ana Foto', 'https://unsplash.com/@ana?utm_source=revelaslides&utm_medium=referral', '_blank'], ['Unsplash', 'https://unsplash.com/?utm_source=revelaslides&utm_medium=referral', '_blank']], 'Fotos: el autor a su perfil y «Unsplash» a Unsplash, con utm: ' + str(cj.get('a')))
+        check(ev("(p=>!!p&&!p.hidden&&/Fotos proporcionadas por Unsplash/.test(p.textContent)&&/utm_source=revelaslides/.test(p.querySelector('a').href))(document.querySelector('#elements-panel .el-by'))"), 'Fotos: de dónde vienen, enlazado')
+        check(ev("(()=>{const b=document.querySelector('#elements-panel .sk-cell > button.sk-item');return !!b&&b.draggable&&!b.querySelector('a')&&b.getBoundingClientRect().height>80})()"), 'Fotos: el resultado sigue siendo un botón que se arrastra, sin enlaces dentro')
+        ev("(()=>{const it=document.querySelector('#elements-panel .el-grid button.sk-item');it&&it.click();return 1})()"); time.sleep(0.5)
+        check(ev("(b=>!!b&&b.caption==='Foto de Ana Foto en Unsplash'&&b.src==='/app/icons/icon-512.png'&&b.captionLinks.length===2)(window.__revela.state.deck.slides[window.__revela.state.ui.slideIndex].blocks.at(-1))"), 'una foto añadida, con su autor')
+        check(seen.get('used') and seen['used'][-1].get('id') == 'f1' and seen['used'][-1].get('downloadLocation') == 'https://api.unsplash.com/photos/f1/download?ixid=M3x1', 'y se avisa a Unsplash de que se usa, en su download_location: ' + str((seen.get('used') or [None])[-1]))
         # From the website in English, the app starts in English (and keeps it).
         recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/app/index.html?test&lang=en')); time.sleep(3)
         check(ev("document.documentElement.lang") == 'en' and ev("localStorage.getItem('revela.lang')") == 'en', 'la aplicación con ?lang=en, en inglés')
