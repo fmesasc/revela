@@ -44,6 +44,7 @@ const SECTIONS = [
     C('export-pptx', 'co_present', 'PowerPoint (.pptx)', 'Para abrirla y editarla en PowerPoint o Keynote.'),
     C('export-odp', 'description', 'LibreOffice (.odp)', 'Para LibreOffice Impress.'),
     C('export', 'html', 'Página web (.html)', 'Se abre en cualquier navegador, también sin conexión.'),
+    C('export-embed', 'code', 'Insertar en Moodle o en una web', 'El código para pegarla en Moodle, un blog o la web del centro; siempre con los últimos cambios.'),
     C('export-scorm', 'school', 'SCORM (Moodle, Canvas…)', 'Cada alumno la recorre a su ritmo y la plataforma recibe su nota.'),
     C('export-png', 'image', 'Imágenes', 'Cada diapositiva como PNG o JPG.'),
     C('export-video', 'movie', 'Vídeo', 'MP4 o GIF animado, pasando sola.'),

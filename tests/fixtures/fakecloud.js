@@ -48,7 +48,8 @@ export function fakeCloud(seed = {}) {
     switch (op) {
       case 'get': return { deck: clone(db.decks[id]), rev: 1, role: mine(id) ? 'owner' : d.role, name: d.name, thumbAt: d.thumbAt || null, ...(mine(id) ? { sharing: { link: 'none', people: {} } } : { owner: d.owner }) };
       case 'since': return { rev: 1, ops: [] };
-      case 'ops': case 'view': case 'share': return { rev: 1, ok: true, sharing: { link: 'none', people: {} } };
+      case 'ops': case 'view': return { rev: 1, ok: true, sharing: { link: 'none', people: {} } };
+      case 'share': return { rev: 1, ok: true, sharing: { link: 'none', people: {}, ...body } };
       case 'thumb': db.thumbs[id] = body.thumb; d.thumbAt = Date.now(); return { at: d.thumbAt };
       case 'meta':
         if (body.name !== undefined) { d.name = body.name; db.decks[id].name = body.name; }

@@ -2942,7 +2942,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   await test('insertar en una web: iframe del visor con la presentación de la nube (pública por enlace); si no lo es, lo dice', async () => {
     reset(); const W = frame.contentWindow, CD = R.clouddocs;
     const code = CD.embedCode('docpublica00000001', 'Mi "charla" <b>');
-    assert(/^<iframe src="https:\/\/revelaslides\.com\/app\/view\.html\?doc=docpublica00000001"/.test(code) && /allowfullscreen/.test(code) && !/<b>|"charla"/.test(code), 'el código del iframe: ' + code);
+    assert(/^<div style="position:relative;width:100%;padding-top:56.25%;"><iframe src="https:\/\/revelaslides\.com\/app\/view\.html\?doc=docpublica00000001"/.test(code) && /allowfullscreen/.test(code) && !/<b>|"charla"/.test(code) && !/<a /.test(code), 'el código: ancho de la página, proporción 16:9 — ' + code);
+    const code43 = CD.embedCode('docpublica00000001', '', { w: 1024, h: 768, newTab: 'Abrir <la> "presentación"' });
+    assert(/padding-top:75%/.test(code43) && /<p style="text-align:center;"><a href="https:\/\/revelaslides\.com\/app\/view\.html\?doc=docpublica00000001" target="_blank" rel="noopener">Abrir la presentación<\/a><\/p>$/.test(code43), '4:3, y el enlace para abrirla aparte — ' + code43);
     const deck = JSON.parse(JSON.stringify(R.state.deck)); deck.slides[0].blocks[0].html = 'Hola desde la nube';
     const ok = async () => ({ ok: true, status: 200, json: async () => ({ deck, rev: 3, role: 'view', name: 'Charla' }) });
     const got = await CD.publicDeck('docpublica00000001', ok);
@@ -2955,6 +2957,45 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       let m; for (let i = 0; i < 60 && !/nube|cloud|abrir|open|pública|public/i.test((m = f.contentDocument?.getElementById('m'))?.textContent || ''); i++) await sleep(100);
       assert(/nube|cloud|abrir|open|pública|public/i.test(m?.textContent || ''), 'el visor dice qué pasa: ' + (m?.textContent || ''));
     } finally { f.remove(); }
+  });
+
+  await test('Exportar ▸ Insertar en Moodle: la guarda en la nube, la comparte por enlace solo como presentación (nunca para editar) y da el código para pegar', async () => {
+    reset(); const W = frame.contentWindow, CD = R.clouddocs, M = await W.eval("import('/src/ui/dialogs/embed.js')"), { fakeCloud } = await W.eval("import('/tests/fixtures/fakecloud.js')");
+    const C = fakeCloud({}); CD.setTransport(C.io); W.localStorage.removeItem('revela.embed.newTab');
+    const $ = s => D.querySelector('#embed-modal ' + s), until = async (fn, ms = 1500) => { for (let t = 0; t < ms && !fn(); t += 20) await sleep(20); return fn(); };
+    try {
+      R.store.commit(() => { R.state.deck.name = 'Volcanes'; });
+      await M.openEmbedExport({ accounts: true, ready: async () => true });
+      assert($('.em-save') && /nube/.test($('.em-body').textContent), 'sin estar en la nube: primero guardarla');
+      $('.em-save').click(); await until(() => $('.em-share'));
+      eq(C.db.docs.length, 1, 'guardada en la nube');
+      assert($('.em-share') && /no editarla/.test($('.em-body').textContent), 'avisa de que se compartirá por enlace como presentación');
+      $('.em-share').click(); await until(() => $('.em-code'));
+      const share = C.db.calls.find(c => /\/share$/.test(c.path));
+      eq(JSON.stringify(share?.body), '{"link":"present"}', 'compartida por enlace, solo como presentación');
+      const id = CD.cloudDoc().id, v = $('.em-code').value;
+      assert(v.startsWith('<div style="position:relative;width:100%;padding-top:56.25%;"><iframe src="https://revelaslides.com/app/view.html?doc=' + id + '"') && /title="Volcanes"/.test(v), 'el código: el visor, a todo el ancho, 16:9 — ' + v);
+      assert(/target="_blank" rel="noopener">Abrir la presentación en una pestaña nueva<\/a><\/p>$/.test(v), 'con el enlace para abrirla en otra pestaña');
+      $('.em-tab').click(); assert(!/<a /.test($('.em-code').value), 'sin el enlace, si se quita'); eq(W.localStorage.getItem('revela.embed.newTab'), '0', 'y se recuerda');
+      assert($('.em-how') && /trustcontent/.test($('.em-how').textContent) && /<\/>/.test($('.em-how').textContent), 'cómo pegarlo en Moodle (con el botón </> visible)');
+      $('.em-done').click(); assert(!D.getElementById('embed-modal'), 'Listo cierra');
+      // Shared for editing: never handed to a class like that.
+      CD.setSharing({ link: 'edit', people: {} }); C.db.calls.length = 0;
+      await M.openEmbedExport({ accounts: true, ready: async () => true });
+      assert($('.em-share') && /solo verla/.test($('.em-body').textContent), 'con enlace para editar: avisa y lo cambia');
+      $('.em-share').click(); await until(() => $('.em-code'));
+      eq(C.db.calls.find(c => /\/share$/.test(c.path))?.body.link, 'present', 'pasa a solo presentación');
+      $('.modal-close').click();
+      // Already shared to view: the code at once, nothing changed.
+      CD.setSharing({ link: 'view', people: {} }); C.db.calls.length = 0;
+      await M.openEmbedExport({ accounts: true, ready: async () => true });
+      assert($('.em-code') && !C.db.calls.some(c => /\/share$/.test(c.path)), 'ya compartida para ver: el código, sin tocar nada');
+      $('.modal-close').click();
+      // Without accounts (self-hosted): the «Share» dialog, whose HTML file also gives an iframe.
+      await M.openEmbedExport({ accounts: false });
+      assert(D.getElementById('share-modal') && !D.getElementById('embed-modal'), 'sin cuentas: Compartir ▸ archivo HTML');
+      D.querySelector('#share-modal .modal-close').click();
+    } finally { CD.closeDoc(); CD.setTransport(null); D.querySelectorAll('#embed-modal,#share-modal').forEach(x => x.remove()); W.localStorage.removeItem('revela.embed.newTab'); }
   });
 
   await test('abrir otra presentación no pierde nada: la de la nube manda sus últimos cambios y se cierra (nunca recibe la otra); sin guardar en ningún sitio, queda una copia que se recupera', async () => {

@@ -29,7 +29,14 @@ export const listDocs = () => send('docs');
 export const docLink = id => `${OFFICIAL_SITE}/app/?doc=${encodeURIComponent(id)}`;
 // Embedding one shared by link in another site (an iframe): the viewer page, in presentation mode.
 export const embedLink = id => `${OFFICIAL_SITE}/app/view.html?doc=${encodeURIComponent(id)}`;
-export const embedCode = (id, name = '') => `<iframe src="${embedLink(id)}" width="960" height="540" style="border:0;max-width:100%;aspect-ratio:16/9;height:auto" allow="fullscreen" allowfullscreen loading="lazy"${name ? ` title="${String(name).replace(/[<>"&]/g, '')}"` : ''}></iframe>`;
+// The code to paste into Moodle or another page: the frame takes the page's width and the slides' proportions (a box
+// with that padding, which every editor keeps — not all of them keep aspect-ratio), and below it, when newTab is given,
+// a link that opens it in a tab of its own (on a phone the frame is small; and some sites strip frames).
+export function embedCode(id, name = '', { w = 16, h = 9, newTab = '' } = {}) {
+  const clean = s => String(s).replace(/[<>"&]/g, ''), src = embedLink(id), pct = +(h / w * 100).toFixed(2);
+  return `<div style="position:relative;width:100%;padding-top:${pct}%;"><iframe src="${src}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="fullscreen" allowfullscreen loading="lazy"${name ? ` title="${clean(name)}"` : ''}></iframe></div>`
+    + (newTab ? `\n<p style="text-align:center;"><a href="${src}" target="_blank" rel="noopener">${clean(newTab)}</a></p>` : '');
+}
 // The presentation of a link that anyone can view (no account): → { deck, name } or throws { status }.
 // track: a tracked link's { r, e, n } (its token; the email and name asked for) → { ask: true, name } while the email is missing.
 export async function publicDeck(id, fetcher = fetch, track = null) {

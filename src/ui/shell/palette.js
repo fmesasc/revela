@@ -96,6 +96,7 @@ const SYN = {
   'a:find-replace': 'buscar|reemplazar|sustituir|find|replace|search|rechercher|suchen|cerca',
   'a:export-png': 'png|jpg|exportar imagen|guardar como imagen|images|export image|picture|screenshot',
   'a:export-video': 'vídeo|video|mp4|gif|exportar vídeo|export video|movie',
+  'a:export-embed': 'insertar|incrustar|iframe|embed|moodle|blog|web del centro|código|pegar|publicar en la web|google sites|insert|publish to the web|intégrer|einbetten|incorpora|incorporar|inserir',
   'a:export': 'html|página web|web|sin conexión|export html|offline|website',
   'a:save': 'guardar|descargar|copia|save|download|backup|speichern|enregistrer',
   'a:open': 'abrir|cargar|open|load|ouvrir|öffnen|aprire',

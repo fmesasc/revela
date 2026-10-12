@@ -104,7 +104,7 @@ export async function openCloudShare() {
         <div class="sh-row"><select class="cl-linkrole">${Object.entries(LINK_NAMES).map(([k, v]) => `<option value="${k}"${k === link ? ' selected' : ''}>${t(v)}</option>`).join('')}</select>${link === 'none' ? '' : untilIn('cl-l-until', linkUntil)}${slidesBtn('cl-l-only', linkSlides, link)}</div>
         <div class="sh-row"><input readonly class="cl-link" value="${esc(cd.docLink(doc.id))}"><button type="button" class="mini2 cl-copy">${t('Copiar')}</button></div>
         <div class="cl-embed"${link === 'none' ? ' hidden' : ''}><label class="fr-l">${t('Insertar en una web (iframe)')}</label>
-          <div class="sh-row"><textarea readonly class="cl-ifr" rows="3">${esc(cd.embedCode(doc.id, doc.name || state.deck.name || ''))}</textarea><button type="button" class="mini2 cl-copy-ifr">${t('Copiar')}</button></div>
+          <div class="sh-row"><textarea readonly class="cl-ifr" rows="3">${esc(cd.embedCode(doc.id, doc.name || state.deck.name || '', state.deck.size))}</textarea><button type="button" class="mini2 cl-copy-ifr">${t('Copiar')}</button></div>
           <p class="host-help">${t('Se ve como presentación, sin el editor, y siempre con los últimos cambios.')}</p></div>
         <p class="host-help cl-linkhint" hidden><i class="ms">lock</i> ${t('Con «Solo las personas añadidas», el enlace solo lo abren las personas de arriba. Para que lo abra cualquiera, elige «Cualquiera con el enlace puede ver».')}</p>
         <p class="host-help">${t('Las personas añadidas entran con su cuenta de Google. Con el enlace para ver no hace falta cuenta.')}</p>
