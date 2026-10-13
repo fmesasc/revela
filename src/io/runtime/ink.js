@@ -26,6 +26,8 @@ export const INK_CSS = `
  #rv-cm i{width:18px;text-align:center;font-style:normal;opacity:.85}#rv-cm kbd{margin-left:auto;font:12px system-ui;opacity:.55}
  #rv-cm hr{border:0;border-top:1px solid rgba(255,255,255,.12);margin:4px 2px}
  #rv-cm .rv-cm-list{max-height:40vh;overflow:auto}#rv-cm .rv-cm-list button{padding:5px 10px 5px 38px;font-size:13px}
+ #rv-fs{position:fixed;top:10px;right:10px;z-index:41;width:38px;height:38px;display:flex;align-items:center;justify-content:center;border:0;border-radius:8px;background:rgba(20,20,20,.55);color:#fff;cursor:pointer;opacity:.75;transition:opacity .2s}
+ #rv-fs:hover,#rv-fs:focus-visible{opacity:1;background:rgba(20,20,20,.8)}
  #rv-white{position:fixed;inset:0;z-index:55;background:#fff;display:none}
  #captions{position:fixed;left:50%;bottom:6%;transform:translateX(-50%);z-index:42;max-width:80vw;padding:.3em .7em;border-radius:.3em;background:rgba(0,0,0,.72);color:#fff;font:600 clamp(18px,2.6vw,38px)/1.3 system-ui,sans-serif;text-align:center;display:none}`;
 
@@ -46,6 +48,18 @@ export function inkJS(W, H, labels) {
   +'<button data-z="0" title="'+L.zreset+' (0)" style="font-size:11px;width:auto;padding:0 6px" class="rv-zl">100%</button>'
   +'<button data-z="1" title="'+L.zin+' (+ \u00b7 Ctrl + rueda)" style="font-size:20px">+</button>';
  document.body.appendChild(bar);
+ // Embedded in another site (Moodle, a blog: the «Insert» code), a visible full-screen button, as Google Slides'
+ // embeds have: F and the right-click menu are there too, but nobody looks for them inside a course page. Not in
+ // Revela's own windows (same site: the editor's show and previews) nor where the page doesn't allow it (no
+ // allowfullscreen on the iframe).
+ (function(){var foreign;try{foreign=window.parent!==window&&window.parent.origin!==window.origin;}catch(_){foreign=true;}
+  if(!foreign||!document.fullscreenEnabled)return;
+  var fb=document.createElement('button');fb.id='rv-fs';fb.type='button';fb.title=L.full+' (F)';fb.setAttribute('aria-label',L.full);
+  var ico=function(on){return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="'
+   +(on?'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5':'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5')+'"/></svg>';};
+  var paint=function(){fb.innerHTML=ico(!!document.fullscreenElement);};paint();
+  fb.addEventListener('click',function(e){e.stopPropagation();fullscreen();fb.blur();});
+  document.addEventListener('fullscreenchange',paint);document.body.appendChild(fb);})();
  function key(){var i=Reveal.getIndices();return i.h+'/'+(i.v||0);}
  function rect(){return document.querySelector('.reveal .slides').getBoundingClientRect();}
  function toDeck(e){var r=rect();return[(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H];}

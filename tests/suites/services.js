@@ -2476,6 +2476,21 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!/onload/.test(by('t').rows[0][0]) && by('t').rows[0][1] === 'ok', 'celdas de tabla limpias');
     eq(R.state.deck.defaultTransition, '', 'nada que se salga del script de la presentación');
     assert(!/alert\(1\)/.test(R.io.buildHTML()), 'la presentación exportada no lo lleva');
+    // Embedded in another site (Moodle): a visible full-screen button; not in Revela's own windows.
+    {
+      const fsHTML = R.io.buildHTML(R.state.deck), probe = '<script>setTimeout(function(){parent.postMessage({rvFs:!!document.getElementById("rv-fs")},"*");},1500)<\/script></body>';
+      const run = async (attrs, html) => {
+        const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:360px;visibility:hidden';
+        for (const [k, v] of Object.entries(attrs)) f.setAttribute(k, v);
+        let got = null; const on = e => { if (e.source === f.contentWindow && e.data && 'rvFs' in e.data) got = e.data.rvFs; };
+        W.addEventListener('message', on); D.body.appendChild(f); f.srcdoc = html.replace('</body>', probe);
+        try { for (let i = 0; i < 80 && got === null; i++) await sleep(100); } finally { W.removeEventListener('message', on); f.remove(); }
+        return got;
+      };
+      eq(await run({ sandbox: 'allow-scripts', allow: 'fullscreen' }, fsHTML), true, 'incrustada en otra web: botón de pantalla completa');
+      eq(await run({ sandbox: 'allow-scripts' }, fsHTML), false, 'sin permiso de pantalla completa, sin botón');
+      eq(await run({}, fsHTML), false, 'en las ventanas de Revela, sin botón');
+    }
     // A web page from elsewhere keeps its address in the presentation (a stray quote left it blank from 0.4.15 on).
     R.store.replaceDeck(R.model.emptyDeck()); await sleep(10);
     slide().blocks.push({ id: 'w', type: 'embed', src: 'https://example.org/panel?a=1&b=2', x: 0, y: 0, w: 400, h: 300 });
