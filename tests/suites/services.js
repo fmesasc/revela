@@ -2476,6 +2476,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!/onload/.test(by('t').rows[0][0]) && by('t').rows[0][1] === 'ok', 'celdas de tabla limpias');
     eq(R.state.deck.defaultTransition, '', 'nada que se salga del script de la presentación');
     assert(!/alert\(1\)/.test(R.io.buildHTML()), 'la presentación exportada no lo lleva');
+    // A web page from elsewhere keeps its address in the presentation (a stray quote left it blank from 0.4.15 on).
+    R.store.replaceDeck(R.model.emptyDeck()); await sleep(10);
+    slide().blocks.push({ id: 'w', type: 'embed', src: 'https://example.org/panel?a=1&b=2', x: 0, y: 0, w: 400, h: 300 });
+    const wf = new DOMParser().parseFromString(R.io.buildHTML(), 'text/html').querySelector('section iframe[referrerpolicy]');
+    eq(wf?.getAttribute('src'), 'https://example.org/panel?a=1&b=2', 'la web incrustada sale con su dirección');
     // Pasting from another site through the system clipboard.
     const n0 = slide().blocks.length;
     R.clipboard.paste({ blocks: [{ id: 'p1', type: 'text', html: '<b onmouseover=alert(1)>x</b>', x: 0, y: 0, w: 10, h: 10 }] });

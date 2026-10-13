@@ -409,7 +409,7 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'embed' && b.srcdoc != null)
     return `<iframe${a} srcdoc="${esc(b.srcdoc)}" sandbox="allow-scripts allow-popups" style="${box(b)}border:0;background:${b.transparent ? 'transparent' : '#fff'}"${b.transparent ? ' allowtransparency="true"' : ''}></iframe>`;
   if (b.type === 'embed')
-    return `<iframe${a} src=""${esc(b.src || '')}" referrerpolicy="strict-origin-when-cross-origin"${b.refreshMin ? ` data-refresh-min="${+b.refreshMin}"` : ''} `
+    return `<iframe${a} src="${esc(b.src || '')}" referrerpolicy="strict-origin-when-cross-origin"${b.refreshMin ? ` data-refresh-min="${+b.refreshMin}"` : ''} `
       + `sandbox="${embedSandbox(b.src)}" `
       + `style="${box(b)}border:0;background:#fff"></iframe>`;
   if (b.type === 'shape')
