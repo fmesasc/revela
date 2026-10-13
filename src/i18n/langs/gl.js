@@ -4576,4 +4576,11 @@ export default {
   "En el editor, abre el código HTML: en TinyMCE, Ver ▸ Código fuente; en Atto, el botón </> (en «Mostrar más botones»).": "No editor, abre o código HTML: en TinyMCE, Ver ▸ Código fonte; en Atto, o botón </> (en «Amosar máis botóns»).",
   "Pega el código, vuelve al editor normal y guarda.": "Pega o código, volve ao editor normal e garda.",
   "Si al guardar desaparece, tu cuenta de Moodle no puede insertar iframes: pide a quien lo administra el permiso moodle/site:trustcontent, o usa solo el enlace.": "Se ao gardar desaparece, a túa conta de Moodle non pode inserir iframes: pide a quen o administra o permiso moodle/site:trustcontent, ou usa só a ligazón.",
+  "Código QR del enlace": "Código QR da ligazón",
+  "Código QR": "Código QR",
+  "Código QR de {link}": "Código QR de {link}",
+  "Mostrar en grande": "Amosar en grande",
+  "Descargar PNG": "Descargar PNG",
+  "Añadir a la diapositiva": "Engadir á diapositiva",
+  "No se pudo crear el código QR: ": "Non se puido crear o código QR: ",
 };

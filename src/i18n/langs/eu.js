@@ -4576,4 +4576,11 @@ export default {
   "En el editor, abre el código HTML: en TinyMCE, Ver ▸ Código fuente; en Atto, el botón </> (en «Mostrar más botones»).": "Editorean, ireki HTML kodea: TinyMCE-n, Ikusi ▸ Iturburu-kodea; Atto-n, </> botoia («Erakutsi botoi gehiago» atalean).",
   "Pega el código, vuelve al editor normal y guarda.": "Itsatsi kodea, itzuli editore arruntera eta gorde.",
   "Si al guardar desaparece, tu cuenta de Moodle no puede insertar iframes: pide a quien lo administra el permiso moodle/site:trustcontent, o usa solo el enlace.": "Gordetzean desagertzen bada, zure Moodle kontuak ezin ditu iframe-ak txertatu: eskatu administratzaileari moodle/site:trustcontent baimena, edo erabili esteka bakarrik.",
+  "Código QR del enlace": "Estekaren QR kodea",
+  "Código QR": "QR kodea",
+  "Código QR de {link}": "{link} helbidearen QR kodea",
+  "Mostrar en grande": "Erakutsi handian",
+  "Descargar PNG": "Deskargatu PNG",
+  "Añadir a la diapositiva": "Gehitu diapositibari",
+  "No se pudo crear el código QR: ": "Ezin izan da QR kodea sortu: ",
 };

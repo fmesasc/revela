@@ -12,6 +12,7 @@ import { t } from '../../i18n/index.js';
 import { signedIn, errorText } from './cloud.js';
 import { openShare } from './share.js';
 import { nowInCloud } from '../shell/where.js';
+import { openQR } from './qr.js';
 
 const NEW_TAB_KEY = 'revela.embed.newTab';
 const remembered = () => { try { return localStorage.getItem(NEW_TAB_KEY) !== '0'; } catch { return true; } };
@@ -71,7 +72,7 @@ export async function openEmbedExport({ accounts = hasAccounts(), ready = signed
         <li>${esc(t('En el editor, abre el código HTML: en TinyMCE, Ver ▸ Código fuente; en Atto, el botón </> (en «Mostrar más botones»).'))}</li>
         <li>${t('Pega el código, vuelve al editor normal y guarda.')}</li></ol>
         <p class="host-help">${t('Si al guardar desaparece, tu cuenta de Moodle no puede insertar iframes: pide a quien lo administra el permiso moodle/site:trustcontent, o usa solo el enlace.')}</p></details>
-      <div class="fr-actions"><span></span><button type="button" class="fr-do em-done">${t('Listo')}</button></div>`;
+      <div class="fr-actions"><button type="button" class="mini2 em-qr"><i class="ms" aria-hidden="true">qr_code_2</i> ${t('Código QR')}</button><button type="button" class="fr-do em-done">${t('Listo')}</button></div>`;
     const area = body.querySelector('.em-code'), box = body.querySelector('.em-tab');
     const fill = () => { area.value = make(box.checked); };
     fill();
@@ -81,6 +82,7 @@ export async function openEmbedExport({ accounts = hasAccounts(), ready = signed
       area.select(); navigator.clipboard?.writeText(area.value).catch(() => document.execCommand('copy'));
       e.currentTarget.textContent = t('Copiado');
     });
+    body.querySelector('.em-qr').addEventListener('click', () => openQR(cd.embedLink(doc.id)));
     body.querySelector('.em-done').addEventListener('click', close);
   }
   render();

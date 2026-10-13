@@ -2978,6 +2978,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(/target="_blank" rel="noopener">Abrir la presentación en una pestaña nueva<\/a><\/p>$/.test(v), 'con el enlace para abrirla en otra pestaña');
       $('.em-tab').click(); assert(!/<a /.test($('.em-code').value), 'sin el enlace, si se quita'); eq(W.localStorage.getItem('revela.embed.newTab'), '0', 'y se recuerda');
       assert($('.em-how') && /trustcontent/.test($('.em-how').textContent) && /<\/>/.test($('.em-how').textContent), 'cómo pegarlo en Moodle (con el botón </> visible)');
+      assert($('.em-qr'), 'y su código QR');
       $('.em-done').click(); assert(!D.getElementById('embed-modal'), 'Listo cierra');
       // Shared for editing: never handed to a class like that.
       CD.setSharing({ link: 'edit', people: {} }); C.db.calls.length = 0;
@@ -2996,6 +2997,29 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(D.getElementById('share-modal') && !D.getElementById('embed-modal'), 'sin cuentas: Compartir ▸ archivo HTML');
       D.querySelector('#share-modal .modal-close').click();
     } finally { CD.closeDoc(); CD.setTransport(null); D.querySelectorAll('#embed-modal,#share-modal').forEach(x => x.remove()); W.localStorage.removeItem('revela.embed.newTab'); }
+  });
+
+  await test('QR del enlace: se dibuja (negro sobre blanco), se muestra en grande (Esc lo cierra) y se añade a la diapositiva con su texto alternativo', async () => {
+    reset(); const W = frame.contentWindow, Q = await W.eval("import('/src/ui/dialogs/qr.js')");
+    const link = 'https://revelaslides.com/app/?doc=docqr0000000000001', until = async (fn, ms = 8000) => { for (let t = 0; t < ms && !fn(); t += 50) await sleep(50); return fn(); };
+    const dark = c => { try { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] < 60) n++; return n / (d.length / 4); } catch { return 0; } };
+    try {
+      Q.openQR(link, 'Volcanes');
+      const c = D.querySelector('#qr-modal .qr-code');
+      assert(await until(() => dark(c) > 0.2 && dark(c) < 0.7), 'el código dibujado: ' + dark(c));
+      eq(D.querySelector('#qr-modal .qr-link').textContent, 'revelaslides.com/app/?doc=docqr0000000000001', 'con el enlace debajo, sin https://');
+      D.querySelector('#qr-modal .qr-big').click(); await sleep(50);
+      const big = D.getElementById('qr-big'); assert(big && /Volcanes/.test(big.textContent), 'en grande, con el título');
+      W.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(50);
+      assert(!D.getElementById('qr-big') && D.getElementById('qr-modal'), 'Esc cierra solo la vista grande');
+      const before = R.state.deck.slides[R.state.ui.current ?? 0]?.blocks.length;
+      D.querySelector('#qr-modal .qr-slide').click();
+      assert(await until(() => !D.getElementById('qr-modal')), 'añadido: el diálogo se cierra');
+      const img = R.state.deck.slides.flatMap(x => x.blocks).find(b => b.type === 'image' && /Código QR de revelaslides\.com/.test(b.alt || ''));
+      assert(img && /^data:image\/(png|webp)/.test(img.src), 'una imagen en la diapositiva, con su texto alternativo');
+      // The buttons next to each link.
+      assert(/qr_code_2/.test(Q.qrButton('x')), 'el botón junto a «Copiar»');
+    } finally { D.querySelectorAll('#qr-modal,#qr-big').forEach(x => x.remove()); }
   });
 
   await test('abrir otra presentación no pierde nada: la de la nube manda sus últimos cambios y se cierra (nunca recibe la otra); sin guardar en ningún sitio, queda una copia que se recupera', async () => {

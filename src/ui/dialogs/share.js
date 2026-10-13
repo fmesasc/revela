@@ -12,6 +12,7 @@ import { t } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from './dialog.js';
 import { hasAccounts } from '../../io/cloud/account.js';
 import { openCloudShare } from './cloud.js';
+import { openQR, qrButton } from './qr.js';
 
 const copyBtn = sel => `<button type="button" class="mini2 sh-copy" data-copy="${sel}">${t('Copiar')}</button>`;
 
@@ -88,8 +89,9 @@ ${hasAccounts() ? `<div class="sh-cloud"><div><b>${t('Con personas concretas')}<
           + (r.key ? `<p class="host-help">${t('Añade esto al final de su dirección; sin ello la presentación no se abre:')}</p>
               <div class="sh-row"><input readonly class="sh-suffix" value="${esc(r.suffix)}">${copyBtn('.sh-suffix')}</div>` : '')
           + `<div class="sh-row"><textarea readonly class="sh-ifr" rows="2">${esc(`<iframe src="https://…/${r.file}${r.suffix}" width="960" height="540" style="border:0;max-width:100%" allow="fullscreen" allowfullscreen></iframe>`)}</textarea>${copyBtn('.sh-ifr')}</div>`
-        : `<label class="fr-l">${t('Enlace')}</label><div class="sh-row"><input readonly class="sh-link" value="${esc(r.link)}">${copyBtn('.sh-link')}</div>
+        : `<label class="fr-l">${t('Enlace')}</label><div class="sh-row"><input readonly class="sh-link" value="${esc(r.link)}">${copyBtn('.sh-link')}${qrButton('sh-qr')}</div>
            <label class="fr-l">${t('Insertar (iframe)')}</label><div class="sh-row"><textarea readonly class="sh-ifr" rows="3">${esc(r.iframe)}</textarea>${copyBtn('.sh-ifr')}</div>`;
+      q('.sh-qr')?.addEventListener('click', () => openQR(r.link));
       renderList();
     } catch (e) { alertDialog(t('No se pudo compartir: ') + (e.message || e)); }
     finally { go.disabled = false; go.textContent = t('Compartir'); }

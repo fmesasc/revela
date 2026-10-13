@@ -16,6 +16,7 @@ import { present } from '../shell/present.js';
 import { saveProject } from '../../io/formats/project.js';
 import { openCloudDocs, fmtSize } from './cloudlibrary.js';
 import { nowInCloud } from '../shell/where.js';
+import { openQR, qrButton } from './qr.js';
 
 const ROLE_NAMES = { present: 'Solo presentar', view: 'Puede ver', comment: 'Puede comentar', edit: 'Puede editar', owner: 'Propietario' };
 const LINK_NAMES = { none: 'Solo las personas añadidas', present: 'Cualquiera con el enlace puede verla como presentación', view: 'Cualquiera con el enlace puede ver', comment: 'Cualquiera con el enlace puede comentar', edit: 'Cualquiera con el enlace puede editar' };
@@ -102,7 +103,7 @@ export async function openCloudShare() {
         <p class="host-help">${t('La ven en Mi nube ▸ Del equipo, también quien entre más tarde.')}</p></fieldset>` : ''}
       <fieldset><legend>${t('Enlace')}</legend>
         <div class="sh-row"><select class="cl-linkrole">${Object.entries(LINK_NAMES).map(([k, v]) => `<option value="${k}"${k === link ? ' selected' : ''}>${t(v)}</option>`).join('')}</select>${link === 'none' ? '' : untilIn('cl-l-until', linkUntil)}${slidesBtn('cl-l-only', linkSlides, link)}</div>
-        <div class="sh-row"><input readonly class="cl-link" value="${esc(cd.docLink(doc.id))}"><button type="button" class="mini2 cl-copy">${t('Copiar')}</button></div>
+        <div class="sh-row"><input readonly class="cl-link" value="${esc(cd.docLink(doc.id))}"><button type="button" class="mini2 cl-copy">${t('Copiar')}</button>${link === 'none' ? '' : qrButton('cl-qr')}</div>
         <div class="cl-embed"${link === 'none' ? ' hidden' : ''}><label class="fr-l">${t('Insertar en una web (iframe)')}</label>
           <div class="sh-row"><textarea readonly class="cl-ifr" rows="3">${esc(cd.embedCode(doc.id, doc.name || state.deck.name || '', state.deck.size))}</textarea><button type="button" class="mini2 cl-copy-ifr">${t('Copiar')}</button></div>
           <p class="host-help">${t('Se ve como presentación, sin el editor, y siempre con los últimos cambios.')}</p></div>
@@ -138,6 +139,7 @@ export async function openCloudShare() {
     q('.cl-edshare')?.addEventListener('change', e => { editorsShare = e.target.checked; apply(); });
     q('.cl-copy').addEventListener('click', e => { navigator.clipboard?.writeText(cd.docLink(doc.id)); e.target.textContent = t('Copiado'); linkHint(); });
     linkHint(); status(shareSt);
+    q('.cl-qr')?.addEventListener('click', () => openQR(cd.docLink(doc.id), doc.name || state.deck.name || ''));
     q('.cl-copy-ifr').addEventListener('click', e => { navigator.clipboard?.writeText(q('.cl-ifr').value); e.target.textContent = t('Copiado'); });
     q('.cl-stats')?.addEventListener('click', () => openCloudStats());
     q('.cl-versions').addEventListener('click', () => openCloudVersions());

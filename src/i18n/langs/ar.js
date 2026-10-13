@@ -4576,4 +4576,11 @@ export default {
   "En el editor, abre el código HTML: en TinyMCE, Ver ▸ Código fuente; en Atto, el botón </> (en «Mostrar más botones»).": "في المحرر، افتح شيفرة HTML: في TinyMCE من عرض ▸ الشيفرة المصدرية؛ وفي Atto الزر </> (ضمن «إظهار المزيد من الأزرار»).",
   "Pega el código, vuelve al editor normal y guarda.": "الصق الرمز، وعد إلى المحرر العادي واحفظ.",
   "Si al guardar desaparece, tu cuenta de Moodle no puede insertar iframes: pide a quien lo administra el permiso moodle/site:trustcontent, o usa solo el enlace.": "إذا اختفى عند الحفظ، فحسابك في Moodle لا يمكنه تضمين إطارات iframe: اطلب من المسؤول صلاحية moodle/site:trustcontent، أو استخدم الرابط فقط.",
+  "Código QR del enlace": "رمز QR للرابط",
+  "Código QR": "رمز QR",
+  "Código QR de {link}": "رمز QR لـ {link}",
+  "Mostrar en grande": "عرض بحجم كبير",
+  "Descargar PNG": "تنزيل PNG",
+  "Añadir a la diapositiva": "إضافة إلى الشريحة",
+  "No se pudo crear el código QR: ": "تعذّر إنشاء رمز QR: ",
 };

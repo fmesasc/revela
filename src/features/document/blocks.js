@@ -101,8 +101,9 @@ export function addModel(src) {
 
 // The box takes the picture's own proportion (within 600 × 460, about the same centre)
 // once it has loaded, so its handles sit on the picture's edges.
-export function addImage(src) {
-  const b = { id: uid(), type: 'image', x: 340, y: 130, w: 600, h: 460, rotation: 0, animation: null, src, fit: 'contain' };
+// props: what else it carries (a QR's alt text, say).
+export function addImage(src, props = {}) {
+  const b = { id: uid(), type: 'image', x: 340, y: 130, w: 600, h: 460, rotation: 0, animation: null, src, fit: 'contain', ...props };
   insert(b);
   if (typeof Image !== 'function') return;
   const i = new Image();

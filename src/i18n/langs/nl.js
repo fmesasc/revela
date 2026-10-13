@@ -4576,4 +4576,11 @@ export default {
   "En el editor, abre el código HTML: en TinyMCE, Ver ▸ Código fuente; en Atto, el botón </> (en «Mostrar más botones»).": "Open in de editor de HTML-code: in TinyMCE via Beeld ▸ Broncode; in Atto met de knop </> (onder ‘Meer knoppen tonen’).",
   "Pega el código, vuelve al editor normal y guarda.": "Plak de code, ga terug naar de gewone editor en sla op.",
   "Si al guardar desaparece, tu cuenta de Moodle no puede insertar iframes: pide a quien lo administra el permiso moodle/site:trustcontent, o usa solo el enlace.": "Als ze bij het opslaan verdwijnt, mag je Moodle-account geen iframes insluiten: vraag de beheerder om het recht moodle/site:trustcontent, of gebruik alleen de link.",
+  "Código QR del enlace": "QR-code van de link",
+  "Código QR": "QR-code",
+  "Código QR de {link}": "QR-code van {link}",
+  "Mostrar en grande": "Groot tonen",
+  "Descargar PNG": "PNG downloaden",
+  "Añadir a la diapositiva": "Aan de dia toevoegen",
+  "No se pudo crear el código QR: ": "De QR-code kon niet worden gemaakt: ",
 };
