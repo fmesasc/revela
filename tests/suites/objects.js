@@ -3724,4 +3724,134 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const e = G.addMap(); R.render(); await sleep(20);
     assert(/Doble clic para añadir lugares/.test(D.querySelector(`#stage .block[data-id="${e.id}"] .map-ph`)?.textContent || ''), 'vacío: dice cómo empezar');
   });
+  // ---- Código QR (Insertar ▸ Código QR) ----------------------------------
+  // (La previa y el dibujo pasan por la librería del CDN, así que aquí se
+  // espera a que algo ocurra en vez de dormir una cifra fija: en una máquina
+  // de CI ocupada, un sleep que vale casi siempre es un fallo intermitente.)
+  const until = async (f, ms = 8000) => { for (let i = 0; i < ms / 25 && !f(); i++) await sleep(25); return f(); };
+  // Lo que se comprueba aquí es lo que se rompe en silencio: el contenido que
+  // un QR lleva no es una URL sino una convención corta por tipo (WIFI:…,
+  // BEGIN:VCARD…) con su propio escapado, y una contraseña con un «;» dentro
+  // parte el código sin que nada lo diga — el QR se lee y da media
+  // contraseña. Lo demás (que la librería dibuje) ya lo prueba el ojo.
+  await test('código QR: cada contenido se compone y se escapa como su formato manda, y un texto se reconoce al reabrirlo', async () => {
+    const W = frame.contentWindow, Q = await W.eval("import('/src/features/content/qrcode.js')");
+    eq(Q.qrPayload('url', { url: 'revelaslides.com' }), 'https://revelaslides.com', 'un enlace sin esquema se abre como enlace, no como texto');
+    eq(Q.qrPayload('url', { url: 'http://aula.cat/x' }), 'http://aula.cat/x', 'y el que ya lo trae no se toca');
+    eq(Q.qrPayload('text', { text: '  hola  ' }), 'hola', 'texto');
+    // El escapado del Wi-Fi: los dos caracteres que separan campos.
+    eq(Q.qrPayload('wifi', { ssid: 'Aula 3', pass: 'a;b:c', sec: 'WPA' }), 'WIFI:T:WPA;S:Aula 3;P:a\\;b\\:c;;', 'Wi-Fi: el «;» y el «:» de la contraseña van escapados');
+    eq(Q.qrPayload('wifi', { ssid: 'Abierta', sec: 'nopass', pass: 'sobra' }), 'WIFI:T:nopass;S:Abierta;;', 'una red abierta no lleva contraseña aunque se haya escrito');
+    assert(/;H:true;/.test(Q.qrPayload('wifi', { ssid: 'x', hidden: true })), 'red oculta');
+    eq(Q.qrPayload('wifi', { pass: 'x' }), '', 'sin SSID no hay código');
+    const card = Q.qrPayload('contact', { first: 'Laia', last: 'Puig, Mesas', org: 'Clot', tel: '+34 600 00 00 00', email: 'l@c.cat' });
+    assert(/^BEGIN:VCARD\nVERSION:3\.0\n/.test(card) && /\nEND:VCARD$/.test(card), 'vCard entera');
+    assert(/N:Puig\\, Mesas;Laia;;;/.test(card), 'la coma de los apellidos va escapada');
+    assert(/FN:Laia Puig\\, Mesas/.test(card) && /TEL;TYPE=CELL:\+34600000000/.test(card), 'nombre completo y teléfono sin espacios');
+    eq(Q.qrPayload('email', { to: 'a@b.cat', subject: 'Nota 1', body: 'Hola & adiós' }), 'mailto:a@b.cat?subject=Nota%201&body=Hola%20%26%20adi%C3%B3s', 'el correo codifica asunto y cuerpo');
+    eq(Q.qrPayload('sms', { tel: '600 00 00 00', text: 'una\nlínea' }), 'SMSTO:600000000:una línea', 'el SMS no puede llevar saltos');
+    eq(Q.qrPayload('tel', { tel: '(+34) 600-000-000' }), 'tel:+34600000000', 'teléfono limpio');
+    eq(Q.qrPayload('geo', { lat: '41,4036', lon: '2.1744', as: 'link' }), 'https://www.google.com/maps?q=41.4036,2.1744', 'la ubicación, como enlace de mapa (la coma decimal también vale)');
+    assert(/^geo:41\.4036,2\.1744\?q=/.test(Q.qrPayload('geo', { lat: '41.4036', lon: '2.1744', name: 'El Clot', as: 'geo' })), 'o en formato geo:');
+    eq(Q.qrPayload('geo', { lat: '200', lon: '2' }), '', 'una latitud imposible no produce código');
+    // `Number('')` es 0 y es finito, así que con media coordenada salía un código legible apuntando a otro
+    // sitio: el ecuador o el meridiano de Greenwich. No fallaba nada, es lo que lo hacía peligroso.
+    eq(Q.qrPayload('geo', { lat: '41.4036', as: 'link' }), '', 'media coordenada no produce código (la longitud que falta no es 0)');
+    eq(Q.qrPayload('geo', { lon: '2.1744', as: 'link' }), '', 'ni al contrario');
+    const ev = Q.qrPayload('event', { summary: 'Examen; unidad 3', start: '2026-10-14T09:00', end: '2026-10-14T10:30', place: 'Aula 3' });
+    assert(/DTSTART:20261014T090000/.test(ev) && /DTEND:20261014T103000/.test(ev), 'el evento, en hora local y sin zona');
+    assert(/SUMMARY:Examen\\; unidad 3/.test(ev), 'y su título escapado');
+    // Reabrirlo: de la cadena a los campos y otra vez a la misma cadena.
+    for (const [kind, fields] of [['wifi', { ssid: 'Aula 3', pass: 'a;b:c', sec: 'WPA' }], ['contact', { first: 'Laia', last: 'Puig', tel: '600000000', email: 'l@c.cat' }],
+      ['email', { to: 'a@b.cat', subject: 'Nota 1' }], ['sms', { tel: '600000000', text: 'hola' }], ['tel', { tel: '600000000' }],
+      ['geo', { lat: '41.4036', lon: '2.1744', as: 'geo' }], ['url', { url: 'https://x.cat/a' }]]) {
+      const txt = Q.qrPayload(kind, fields), g = Q.qrGuess(txt);
+      eq(g.kind, kind, `reconoce un ${kind}`);
+      eq(Q.qrPayload(g.kind, g.fields), txt, `y lo vuelve a componer igual (${kind})`);
+    }
+    eq(Q.qrGuess('hola mundo').kind, 'text', 'lo que no es ninguno es texto');
+    eq(Q.qrGuess('revelaslides.com/app').kind, 'url', 'un dominio pelado es un enlace');
+    // Esto recibe lo que alguien haya pegado, así que no puede lanzar: un «%» suelto en un mailto hacía
+    // saltar un URIError desde decodeURIComponent, y lo que se veía era un diálogo que no se abre.
+    for (const raro of ['mailto:%', 'mailto:a b%ZZ', 'mailto:', 'WIFI:', 'BEGIN:VCARD', 'geo:', 'SMSTO:'])
+      assert(Q.qrKind(Q.qrGuess(raro).kind), `qrGuess aguanta «${raro}» sin lanzar`);
+    // Los colores: lo que no se puede leer se avisa, y un código invertido no vale.
+    assert(Q.qrContrast({ dark: '#000000', light: '#ffffff' }).ok, 'negro sobre blanco se lee');
+    assert(!Q.qrContrast({ dark: '#888888', light: '#999999' }).ok, 'dos grises parecidos, no');
+    assert(Q.qrContrast({ dark: '#ffffff', light: '#000000' }).inverted, 'y se detecta el invertido');
+    // Las etiquetas viajan en castellano y se traducen al pintarlas: si una no
+    // está en el diccionario sale en castellano en los otros seis idiomas y no
+    // da ningún error. Es el caso de js_pistaN de los laboratorios, otra vez.
+    const { ROWS } = await W.eval("import('/src/i18n/strings.js')"), filas = new Map(ROWS.map(r => [r[0], r]));
+    const NUMEROS = /^[\d\s.,:%()+–-]*$/, MARCAS = new Set(['Wi-Fi', 'SMS', 'WEP', 'WPA / WPA2 / WPA3', 'revelaslides.com']);
+    const textos = [...Q.QR_KINDS.flatMap(k => [k.label, ...k.fields.flatMap(f => [f.label, f.ph, ...(f.opts || []).map(o => o[1])])]), ...Q.QR_LEVELS.map(l => l[1])]
+      .filter(x => x && !NUMEROS.test(x) && !MARCAS.has(x));
+    const sin = textos.filter(x => !filas.has(x) || filas.get(x).slice(1, 7).some(v => !v));
+    eq(sin.length, 0, 'sin traducción: ' + sin.join(' | '));
+  });
+
+  await test('código QR: se inserta como imagen SVG con lo que se eligió, se puede volver a abrir y sobrevive al export', async () => {
+    reset(); const W = frame.contentWindow, Q = await W.eval("import('/src/features/content/qrcode.js')");
+    D.querySelector('[data-action="insert-qr"]').click();
+    assert(await until(() => D.getElementById('qrm-modal')), 'el botón de la cinta abre el generador');
+    const m = D.getElementById('qrm-modal'), q = s => m.querySelector(s), n0 = slide().blocks.length;
+    eq(slide().blocks.length, n0, 'nada en la diapositiva todavía: primero se elige qué lleva, y cancelar no deja un hueco');
+    // Un enlace, con el margen y los colores por defecto.
+    q('.qm-kind').value = 'url'; q('.qm-kind').dispatchEvent(new W.Event('change'));
+    const inp = q('.qm-fields .qm-f'); inp.value = 'revelaslides.com/app'; inp.dispatchEvent(new W.Event('input'));
+    assert(await until(() => /\d+ caracteres/.test(q('.qm-info').textContent)), 'dibujado, y dice cuánto lleva: ' + q('.qm-info').textContent);
+    assert(!q('.qm-ok').disabled, 'con contenido, se puede insertar');
+    // El margen es la trampa que la propia previa esconde: sobre el blanco de
+    // aquí un código sin margen se lee, y sobre una diapositiva de color deja de
+    // leerse (medido con un lector de verdad). Así que se dice.
+    q('.qm-margin').value = '0'; q('.qm-margin').dispatchEvent(new W.Event('input'));
+    assert(await until(() => /margen/i.test(q('.qm-info').textContent)), 'sin margen, avisa: ' + q('.qm-info').textContent);
+    q('.qm-margin').value = '2'; q('.qm-margin').dispatchEvent(new W.Event('input'));
+    assert(await until(() => /\d+ caracteres/.test(q('.qm-info').textContent)), 'y con margen vuelve a contar');
+    q('.qm-ok').click();
+    assert(await until(() => slide().blocks.length === n0 + 1), 'insertado');
+    const b = last();
+    eq(b.type, 'image', 'es una imagen (así no hace falta nada al presentar ni al exportar)');
+    assert(/^data:image\/svg\+xml/.test(b.src), 'y va en SVG: nítida al proyectar y en papel, y el encogedor de imágenes no la toca');
+    eq(b.w, b.h, 'cuadrada');
+    assert(/^data:image\/svg\+xml[^,]*,.*%3Csvg/.test(b.src) && !/script/i.test(decodeURIComponent(b.src.split(',')[1])), 'el SVG no lleva nada ejecutable');
+    eq(b.qr?.kind, 'url', 'guarda de qué se hizo, para poder cambiarlo luego');
+    eq(b.qr.fields.url, 'revelaslides.com/app', 'con lo que se escribió');
+    assert(/revelaslides\.com\/app/.test(b.alt || ''), 'y su texto alternativo lo dice: ' + b.alt);
+    // Lo que de verdad lleva dentro: lo que compone qrPayload, no el campo a secas.
+    const Lib = await W.eval("import('/src/core/vendor.js')").then(V => V.loadScript(V.QRCODE, 'QRCode'));
+    // (En modo byte, `data` son los bytes; en alfanumérico, el texto.)
+    const dentro = Lib.create(Q.qrPayload(b.qr.kind, b.qr.fields)).segments
+      .map(x => (typeof x.data === 'string' ? x.data : new W.TextDecoder().decode(new W.Uint8Array(x.data)))).join('');
+    eq(dentro, 'https://revelaslides.com/app', 'el código codifica el enlace con su esquema');
+    // La corrección de errores más alta ocupa más módulos: así se ve que la opción llega al dibujo.
+    // (Con un texto corto, los cuatro niveles caben en la versión 1 y miden lo
+    //  mismo: medido, 'hola' da 25 módulos con L y con H. Hace falta uno que
+    //  obligue a crecer — este enlace va de 29 a 37.)
+    const chico = await Q.qrSVG('https://revelaslides.com/app', { ecc: 'L' }), grande = await Q.qrSVG('https://revelaslides.com/app', { ecc: 'H' });
+    const lado = svg => +/viewBox="0 0 (\d+)/.exec(svg)[1];
+    assert(lado(grande) > lado(chico), `la corrección máxima da un código más denso (${lado(chico)} → ${lado(grande)})`);
+    assert(!/fill="#ffffff"/.test(await Q.qrSVG('hola', { light: 'transparent' })), 'el fondo transparente no pinta fondo');
+    // Volver a abrirlo: el mismo objeto cambia de contenido y se queda donde estaba.
+    select(b); await sleep(20);
+    eq(D.querySelector('#ribbon [data-tab="ctx"]').textContent, 'Imagen', 'su pestaña es la de una imagen');
+    const boton = [...D.querySelectorAll('#ribbon [data-page="ctx"] button')].find(x => /Editar el código QR/.test(x.title || x.textContent));
+    assert(boton, 'con el botón de editar el código QR');
+    const antes = b.src;
+    boton.click();
+    assert(await until(() => D.getElementById('qrm-modal')), 'se reabre el generador');
+    const m2 = D.getElementById('qrm-modal');
+    eq(m2.querySelector('.qm-kind').value, 'url', 'empezando por donde se dejó');
+    eq(m2.querySelector('.qm-fields .qm-f').value, 'revelaslides.com/app', 'y con lo escrito');
+    m2.querySelector('.qm-kind').value = 'wifi'; m2.querySelector('.qm-kind').dispatchEvent(new W.Event('change'));
+    const ssid = m2.querySelector('.qm-fields .qm-f'); ssid.value = 'Aula 3'; ssid.dispatchEvent(new W.Event('input'));
+    assert(await until(() => /\d+ caracteres/.test(m2.querySelector('.qm-info').textContent) && !m2.querySelector('.qm-ok').disabled), 'listo para aplicar');
+    m2.querySelector('.qm-ok').click();
+    assert(await until(() => last().src !== antes), 'el dibujo cambia');
+    eq(slide().blocks.length, n0 + 1, 'y no se añade otro objeto: es el mismo, con su sitio y sus animaciones');
+    eq(last().id, b.id, 'el mismo id');
+    eq(last().qr.kind, 'wifi', 'ahora es el Wi-Fi del aula');
+    // En la presentación exportada es una imagen más.
+    assert(/<img[^>]+data:image\/svg\+xml/.test(R.io.buildHTML()), 'exportado, va como imagen');
+  });
 }

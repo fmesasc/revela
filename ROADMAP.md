@@ -116,6 +116,7 @@ the origin of every requirement is traceable.
 - ✅ Crop a picture to an aspect ratio (1:1, 4:3, 16:9…) with framing; pictures exported to PowerPoint without stretching and with their crop (srcRect), read back when importing `PP·GS·OO`
 - ✅ Treemap and bubble charts (bubbles as PowerPoint's own chart, both ways) `PP`
 - ✅ Code lock for escape rooms — number wheels or a text field (case- and accent-insensitive, several valid codes), a hint, on opening go on / go to a slide / show hidden objects, a message and a number of tries on a wrong code, and «can't go past this slide until it's open» for pupils on their own (self-paced, viewer, exported HTML); the exported page only carries a salted SHA-256 of each code; a picture in PowerPoint/ODP `—`
+- ✅ QR code (Insert ▸ QR code) — a link, plain text, the room's Wi-Fi, a contact (vCard), an email, an SMS, a phone number, a place or a calendar event, each composed and escaped as its own convention needs; error correction, quiet margin, the two colours (transparent background), a logo in the middle (error correction raised to H) and the PNG's size; a live preview that says when the colours won't read; inserted as an SVG picture, so it is sharp at any size and exports like any other, and it keeps what it was made from so it can be edited again `—`
 
 ## 4. Slides & structure
 - ✅ Sections (create/rename/remove inline from the navigator) `PP·GS·OO`

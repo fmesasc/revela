@@ -148,6 +148,9 @@ function groupsFor(b) {
       ]],
     // (An animated GIF plays as a video does: the same options.)
     ...(isGif(b) ? playbackGroups(b, set) : []),
+    // A QR code made here keeps what it was made from, so it can be opened again and have its contents or its
+    // colours changed instead of being deleted and done again. (Only if this object is one: features/content/qrcode.js.)
+    ...(b.qr ? [['Código QR', [btn('qr_code_2', 'Editar el código QR', () => import('../dialogs/qrmaker.js').then(m => m.editQR(b)))]]] : []),
     ['Archivo', [btn('swap_horiz', 'Cambiar imagen', () => changeImage(b, document.querySelector('#ribbon [data-ctx="change-image"]')), null, 'change-image'),
       btn('download', 'Descargar', () => saveFile(b)), btn('photo_camera', 'Guardar como imagen', () => openSaveAsPicture())]],
     ['Lupa', [btn('loupe', 'Ampliar una zona de la imagen', () => startMagnifyDraw({ within: b }), null, 'magnify-image')]]);

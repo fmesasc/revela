@@ -29,14 +29,18 @@ export function openQR(link, name = state.deck.name || '') {
     <div class="fr-actions" style="justify-content:center;flex-wrap:wrap;gap:6px">
       <button type="button" class="mini2 qr-big"><i class="ms" aria-hidden="true">fullscreen</i> ${t('Mostrar en grande')}</button>
       <button type="button" class="mini2 qr-png"><i class="ms" aria-hidden="true">download</i> ${t('Descargar PNG')}</button>
-      <button type="button" class="mini2 qr-slide"><i class="ms" aria-hidden="true">add_photo_alternate</i> ${t('Añadir a la diapositiva')}</button></div></div>`;
+      <button type="button" class="mini2 qr-slide"><i class="ms" aria-hidden="true">add_photo_alternate</i> ${t('Añadir a la diapositiva')}</button>
+      <button type="button" class="mini2 qr-more"><i class="ms" aria-hidden="true">tune</i> ${t('Más opciones…')}</button></div></div>`;
   document.body.appendChild(back);
   const q = s => back.querySelector(s), close = () => back.remove();
   q('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   const failed = e => alertDialog(t('No se pudo crear el código QR: ') + (e?.message || e));
   draw(q('.qr-code'), link, 256).catch(e => { q('.qr-code').hidden = true; failed(e); });
-  q('.qr-big').addEventListener('click', () => showBig(link, name));
+  q('.qr-big').addEventListener('click', () => showQRBig(link, name));
+  // The colours, the margin, a logo, the SVG: the same code with everything in hand. (Loaded only if asked for: a
+  // link's QR is three clicks and nobody should pay for the maker to see it.)
+  q('.qr-more').addEventListener('click', () => import('./qrmaker.js').then(m => { close(); m.openQRMaker({ text: link }); }).catch(failed));
   q('.qr-png').addEventListener('click', async () => {
     try {
       const c = document.createElement('canvas'); await draw(c, link, 1024);
@@ -53,8 +57,9 @@ export function openQR(link, name = state.deck.name || '') {
   });
 }
 
-// Over the whole screen, as large as it fits, with the link under it (for whoever can't scan): a click or Esc closes it.
-function showBig(link, name) {
+// Over the whole screen, as large as it fits, with the text under it (for whoever can't scan): a click or Esc closes
+// it. Exported because the QR maker (dialogs/qrmaker.js) shows its code the same way — one «show it big», not two.
+export function showQRBig(link, name) {
   const el = document.createElement('div'); el.id = 'qr-big'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', t('Código QR'));
   el.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#fff;color:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2vh;cursor:zoom-out;padding:16px;outline:none';
   const side = Math.floor(Math.min(innerWidth * 0.9, innerHeight * 0.72));

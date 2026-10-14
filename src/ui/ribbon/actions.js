@@ -252,6 +252,10 @@ export const ACTIONS = {
   'insert-map': () => import('../../features/content/geomap.js').then(G => { const b = G.addMap(); if (b) return import('../dialogs/geomap.js').then(m => m.openMapEditor(b, { isNew: true })); })
     .catch(e => { console.error(e); alertDialog(t('No se pudo completar: ') + (e?.message || e)); }),
   'insert-lock': () => { const b = blocks.addLock(); if (b) import('../dialogs/lock.js').then(m => m.openLock(b)); },
+  // A QR code: the dialog first and the picture when it is accepted — a code with nothing inside is no use, and an
+  // empty picture on the slide would have to be undone by hand.
+  'insert-qr': () => import('../dialogs/qrmaker.js').then(m => m.openQRMaker())
+    .catch(e => { console.error(e); alertDialog(t('No se pudo completar: ') + (e?.message || e)); }),
   'insert-file': () => { const i = document.createElement('input'); i.type = 'file'; i.addEventListener('change', () => { if (i.files.length) insertFiles(i.files); }); i.click(); },
   'insert-model': () => readFile('.glb,.gltf', blocks.addModel),
   'resources': () => openElements('gif'),
