@@ -64,15 +64,15 @@ export async function openEmbedExport({ accounts = hasAccounts(), ready = signed
     const make = on => cd.embedCode(doc.id, state.deck.name || '', { w, h, newTab: on ? t('Abrir la presentación en una pestaña nueva') : '' });
     body.innerHTML = `${note ? `<p class="host-help"><i class="ms" aria-hidden="true">info</i> ${note}</p>` : ''}
       <label class="fr-l" for="em-code">${t('Código para pegar')}</label>
-      <div class="sh-row"><textarea readonly id="em-code" class="em-code" rows="5" spellcheck="false" dir="ltr"></textarea><button type="button" class="mini2 em-copy">${t('Copiar')}</button></div>
+      <div class="sh-row"><textarea readonly id="em-code" class="em-code" rows="5" spellcheck="false" dir="ltr"></textarea><button type="button" class="fr-do em-copy"><i class="ms" aria-hidden="true">content_copy</i> ${t('Copiar')}</button></div>
       <label class="fr-chk"><input type="checkbox" class="em-tab"${remembered() ? ' checked' : ''}> ${t('Añadir debajo un enlace para abrirla en una pestaña nueva (en el móvil se ve mejor)')}</label>
       <p class="host-help">${t('Se ve como presentación, ocupa todo el ancho y siempre muestra los últimos cambios de tu nube.')}</p>
-      <details class="em-how"><summary>${t('Cómo pegarlo en Moodle')}</summary><ol class="host-help">
+      <details class="em-how dk-more"><summary><i class="ms" aria-hidden="true">expand_more</i>${t('Cómo pegarlo en Moodle')}</summary><ol class="host-help">
         <li>${t('Edita la página, la etiqueta o la descripción de la actividad donde quieras que se vea.')}</li>
         <li>${esc(t('En el editor, abre el código HTML: en TinyMCE, Ver ▸ Código fuente; en Atto, el botón </> (en «Mostrar más botones»).'))}</li>
         <li>${t('Pega el código, vuelve al editor normal y guarda.')}</li></ol>
         <p class="host-help">${t('Si al guardar desaparece, tu cuenta de Moodle no puede insertar iframes: pide a quien lo administra el permiso moodle/site:trustcontent, o usa solo el enlace.')}</p></details>
-      <div class="fr-actions"><button type="button" class="mini2 em-qr"><i class="ms" aria-hidden="true">qr_code_2</i> ${t('Código QR')}</button><button type="button" class="fr-do em-done">${t('Listo')}</button></div>`;
+      <div class="fr-actions"><button type="button" class="mini2 em-qr"><i class="ms" aria-hidden="true">qr_code_2</i> ${t('Código QR')}</button><button type="button" class="mini2 em-done">${t('Listo')}</button></div>`;
     const area = body.querySelector('.em-code'), box = body.querySelector('.em-tab');
     const fill = () => { area.value = make(box.checked); };
     fill();
@@ -80,7 +80,7 @@ export async function openEmbedExport({ accounts = hasAccounts(), ready = signed
     area.addEventListener('focus', () => area.select());
     body.querySelector('.em-copy').addEventListener('click', e => {
       area.select(); navigator.clipboard?.writeText(area.value).catch(() => document.execCommand('copy'));
-      e.currentTarget.textContent = t('Copiado');
+      e.currentTarget.innerHTML = `<i class="ms" aria-hidden="true">check</i> ${t('Copiado')}`;
     });
     body.querySelector('.em-qr').addEventListener('click', () => openQR(cd.embedLink(doc.id)));
     body.querySelector('.em-done').addEventListener('click', close);

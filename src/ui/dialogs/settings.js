@@ -13,6 +13,7 @@ import { SHRINK_SIZES, shrinkPrefs, setShrinkPrefs, shrinkDeckImages } from '../
 import { toast } from '../shell/toast.js';
 import { audienceField } from '../shell/audience.js';
 import { esc } from '../../core/text.js';
+import { tabsHTML, wireTabs, moreHTML, tipHTML, footHTML } from './dlgkit.js';
 
 // The current slide presented on three common screens with a fit mode: the real
 // presentation page, without its live parts (polls, cameras, 3D, videos…).
@@ -53,60 +54,60 @@ export function openSettings() {
   const sel = (k, l, opts) => `<label class="fr-l">${t(l)}<select data-k="${k}">${opts.map(([v, n]) => `<option value="${v}"${String(o[k]) === String(v) ? ' selected' : ''}>${t(n)}</option>`).join('')}</select></label>`
     + (EXAMPLES[k] ? exampleHTML(k, o[k]) : '');
   const back = document.createElement('div'); back.id = 'set-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:start;width:min(640px,94vw);max-width:94vw;max-height:88vh;overflow:auto">
-    <button class="modal-close">✕</button><h3>${t('Configuración de la presentación')}</h3>
-    <div class="set-grid">
-      <fieldset class="bgf set-fit"><legend>${t('Pantalla')}</legend>
+  // Six subjects, one at a time; in each, what most people change first and the rest under «Más opciones».
+  const tabs = [
+    { id: 'screen', icon: 'fit_screen', label: t('Pantalla'), html: `<div class="set-fit">
         ${sel('fit', 'Ajuste a la pantalla', FIT_MODES.map(m => [m, FIT_LABELS[m]]))}
         <p class="host-help">${t('Cuando la pantalla no tiene la proporción de las diapositivas (por ejemplo, un portátil 16:10 con diapositivas 16:9):')}</p>
-        <div class="fit-prev">${FIT_SCREENS.map(([n, a, b]) => `<figure><iframe tabindex="-1" aria-hidden="true" style="aspect-ratio:${a}/${b}"></iframe><figcaption>${t('Pantalla')} ${n}</figcaption></figure>`).join('')}</div>
-      </fieldset>
-      <fieldset class="bgf"><legend>${t('Navegación')}</legend>
+        <div class="fit-prev">${FIT_SCREENS.map(([n, a, b]) => `<figure><iframe tabindex="-1" aria-hidden="true" style="aspect-ratio:${a}/${b}"></iframe><figcaption>${t('Pantalla')} ${n}</figcaption></figure>`).join('')}</div></div>` },
+    { id: 'nav', icon: 'swap_horiz', label: t('Navegación'), html: `
         ${ck('controls', 'Flechas de navegación')}
         ${sel('controlsLayout', 'Posición de las flechas', [['bottom-right', 'Abajo a la derecha'], ['edges', 'En los bordes']])}
         ${ck('progress', 'Barra de progreso')}
-        ${sel('navigationMode', 'Modo de navegación', [['default', 'Normal'], ['linear', 'Lineal (todo con ← →)'], ['grid', 'Cuadrícula']])}
-        ${sel('view', 'Vista', [['slides', 'Diapositivas'], ['scroll', 'Desplazamiento (como una página)']])}
-        ${ck('mouseWheel', 'Avanzar con la rueda del ratón')}
-        ${ck('jumpToSlide', 'Ir a una diapositiva con G + número')}
-        ${ck('shuffle', 'Orden aleatorio')}
-        ${ck('rtl', 'De derecha a izquierda')}
-        ${ck('autoSlideStoppable', 'El avance automático se detiene al tocar')}
-      </fieldset>
-      <fieldset class="bgf"><legend>${t('Presentación')}</legend>
+        ${moreHTML(`
+          ${sel('navigationMode', 'Modo de navegación', [['default', 'Normal'], ['linear', 'Lineal (todo con ← →)'], ['grid', 'Cuadrícula']])}
+          ${sel('view', 'Vista', [['slides', 'Diapositivas'], ['scroll', 'Desplazamiento (como una página)']])}
+          ${ck('mouseWheel', 'Avanzar con la rueda del ratón')}
+          ${ck('jumpToSlide', 'Ir a una diapositiva con G + número')}
+          ${ck('shuffle', 'Orden aleatorio')}
+          ${ck('rtl', 'De derecha a izquierda')}
+          ${ck('autoSlideStoppable', 'El avance automático se detiene al tocar')}`)}` },
+    { id: 'show', icon: 'slideshow', label: t('Al presentar'), html: `
         ${ck('hideInactiveCursor', 'Ocultar el cursor si no se mueve')}
-        ${ck('previewLinks', 'Abrir los enlaces en una vista previa')}
         ${ck('zoom', 'Ampliar con Alt + clic')}
         ${ck('search', 'Buscar con Ctrl + Mayús + F')}
-        ${ck('fragmentInURL', 'Recordar el paso de animación en la dirección')}
-        <label class="fr-l">${t('Fondo parallax (imagen que se desplaza)')}<input type="url" data-k="parallax" placeholder="https://…/fondo.jpg" value="${(o.parallax || '').replace(/"/g, '&quot;')}"></label>
-        <label class="fr-l">${t('Tamaño del fondo parallax')}<input type="text" data-k="parallaxSize" placeholder="2100px 900px" value="${(o.parallaxSize || '').replace(/"/g, '&quot;')}"></label>
-      </fieldset>
-      <fieldset class="bgf"><legend>${t('Transformar (Morph)')}</legend>
+        ${moreHTML(`
+          ${ck('previewLinks', 'Abrir los enlaces en una vista previa')}
+          ${ck('fragmentInURL', 'Recordar el paso de animación en la dirección')}
+          <label class="fr-l">${t('Fondo parallax (imagen que se desplaza)')}<input type="url" data-k="parallax" placeholder="https://…/fondo.jpg" value="${(o.parallax || '').replace(/"/g, '&quot;')}"></label>
+          <label class="fr-l">${t('Tamaño del fondo parallax')}<input type="text" data-k="parallaxSize" placeholder="2100px 900px" value="${(o.parallaxSize || '').replace(/"/g, '&quot;')}"></label>`)}` },
+    { id: 'morph', icon: 'animation', label: t('Transformar (Morph)'), html: `
         <label class="fr-l">${t('Duración (s)')}<input type="number" data-k="autoAnimateDuration" min="0.1" max="10" step="0.1" value="${o.autoAnimateDuration}"></label>
         ${sel('autoAnimateEasing', 'Curva', [['ease', 'Suave'], ['linear', 'Lineal'], ['ease-in', 'Acelerar'], ['ease-out', 'Frenar'], ['ease-in-out', 'Acelerar y frenar'], ['cubic-bezier(0.68,-0.55,0.27,1.55)', 'Con rebote']])}
-        <p class="host-help">${t('Esta diapositiva (vacío = como la presentación):')}</p>
-        <label class="fr-l">${t('Duración (s)')}<input type="number" class="sl-dur" min="0.1" max="10" step="0.1" value="${s.aaDuration ?? ''}"></label>
-        <label class="fr-l">${t('Retardo (s)')}<input type="number" class="sl-del" min="0" max="10" step="0.1" value="${s.aaDelay ?? ''}"></label>
-      </fieldset>
-      <fieldset class="bgf set-wm"><legend>${t('Marca de agua')}</legend>
-        <label class="fr-chk"><input type="checkbox" class="wm-on"${wm ? ' checked' : ''}> ${t('Marca de agua «Confidencial» al presentar, compartir y exportar')}</label>
+        <fieldset class="bgf"><legend>${t('Esta diapositiva (vacío = como la presentación):').replace(/:$/, '')}</legend>
+          <div class="set-pair"><label class="fr-l">${t('Duración (s)')}<input type="number" class="sl-dur" min="0.1" max="10" step="0.1" value="${s.aaDuration ?? ''}"></label>
+          <label class="fr-l">${t('Retardo (s)')}<input type="number" class="sl-del" min="0" max="10" step="0.1" value="${s.aaDelay ?? ''}"></label></div></fieldset>` },
+    { id: 'wm', icon: 'branding_watermark', label: t('Marca de agua'), html: `<div class="set-wm">
+        <label class="fr-chk"><input type="checkbox" class="wm-on"${wm ? ' checked' : ''}> ${t('Marca de agua «Confidencial» al presentar, compartir y exportar')}</label>${tipHTML(t('En diagonal y discreta sobre cada diapositiva: en el visor, al presentar, en la página web y en el PDF. Quien la ve no puede quitarla, pero es un aviso que disuade, no una protección: una copia se puede manipular y una pantalla siempre se puede fotografiar.'))}
         <label class="fr-l">${t('Texto')}<input type="text" class="wm-text" maxlength="60" placeholder="${esc(t('CONFIDENCIAL'))}" value="${esc(wm?.text || '')}"></label>
-        <label class="fr-chk"><input type="checkbox" class="wm-email"${wm?.email ? ' checked' : ''}> ${t('Con el correo de quien la abre (enlaces con seguimiento que piden el correo)')}</label>
-        <p class="host-help">${t('En diagonal y discreta sobre cada diapositiva: en el visor, al presentar, en la página web y en el PDF. Quien la ve no puede quitarla, pero es un aviso que disuade, no una protección: una copia se puede manipular y una pantalla siempre se puede fotografiar.')}</p>
-      </fieldset>
-      <fieldset class="bgf set-aud"><legend>${t('Uso de Revela (en este navegador)')}</legend>
-        <p class="host-help">${t('Qué ejemplos ves primero y, para empresa, sin los botones solo para docentes (siguen en la búsqueda de comandos).')}</p>
-      </fieldset>
-      <fieldset class="bgf"><legend>${t('Imágenes (en este navegador)')}</legend>
-        <label class="fr-l">${t('Reducir las imágenes grandes al insertarlas')}<select class="img-max">${SHRINK_SIZES.map(v => `<option value="${v}"${shrinkPrefs().max === v ? ' selected' : ''}>${v ? t('Como máximo {n} px').replace('{n}', v) + (v === 1920 ? ' · ' + t('recomendado') : '') : t('No reducir')}</option>`).join('')}</select></label>
-        <label class="fr-l">${t('Calidad')} <span class="img-q-val">${Math.round(shrinkPrefs().quality * 100)} %</span><input type="range" class="img-q" min="0.5" max="0.95" step="0.05" value="${shrinkPrefs().quality}"></label>
-        <p class="host-help">${t('Una foto del móvil pesa varios MB; en una diapositiva se ve igual a 1920 px y la presentación se guarda, abre y comparte mucho más rápido. Las transparencias se conservan; los dibujos (SVG) y las animaciones (GIF) no se tocan.')}</p>
-        <button type="button" class="mini2 img-now"><i class="ms">compress</i> ${t('Reducir ahora las imágenes de esta presentación')}</button>
-      </fieldset>
-    </div>
-    <div class="fr-actions"><button class="fr-do set-ok">${t('Aplicar')}</button></div></div>`;
+        <label class="fr-chk"><input type="checkbox" class="wm-email"${wm?.email ? ' checked' : ''}> ${t('Con el correo de quien la abre (enlaces con seguimiento que piden el correo)')}</label></div>` },
+    { id: 'here', icon: 'computer', label: t('En este navegador'), html: `
+        <fieldset class="bgf set-aud"><legend>${t('Uso de Revela (en este navegador)')}</legend>
+          <p class="host-help">${t('Qué ejemplos ves primero y, para empresa, sin los botones solo para docentes (siguen en la búsqueda de comandos).')}</p>
+        </fieldset>
+        <fieldset class="bgf"><legend>${t('Imágenes')}</legend>
+          <label class="fr-l">${t('Reducir las imágenes grandes al insertarlas')}<select class="img-max">${SHRINK_SIZES.map(v => `<option value="${v}"${shrinkPrefs().max === v ? ' selected' : ''}>${v ? t('Como máximo {n} px').replace('{n}', v) + (v === 1920 ? ' · ' + t('recomendado') : '') : t('No reducir')}</option>`).join('')}</select></label>
+          <label class="fr-l">${t('Calidad')} <span class="img-q-val">${Math.round(shrinkPrefs().quality * 100)} %</span><input type="range" class="img-q" min="0.5" max="0.95" step="0.05" value="${shrinkPrefs().quality}"></label>
+          ${tipHTML(t('Una foto del móvil pesa varios MB; en una diapositiva se ve igual a 1920 px y la presentación se guarda, abre y comparte mucho más rápido. Las transparencias se conservan; los dibujos (SVG) y las animaciones (GIF) no se tocan.'))}
+          <button type="button" class="mini2 img-now"><i class="ms">compress</i> ${t('Reducir ahora las imágenes de esta presentación')}</button>
+        </fieldset>` },
+  ];
+  back.innerHTML = `<div class="modal dk" role="dialog" aria-modal="true" aria-labelledby="set-title">
+    <button class="modal-close" aria-label="${esc(t('Cerrar'))}">✕</button><h3 id="set-title">${t('Configuración de la presentación')}</h3>
+    ${tabsHTML(tabs)}
+    ${footHTML(`<button class="fr-do set-ok">${t('Aplicar')}</button>`)}</div>`;
   document.body.appendChild(back);
+  wireTabs(back, 'revela.settings.tab');
   back.querySelector('.set-aud legend').after(audienceField());   // (kept at once, like the pictures' choice)
   const fitSel = back.querySelector('[data-k="fit"]'), prev = back.querySelector('.fit-prev');
   showFitPreview(prev, fitSel.value);

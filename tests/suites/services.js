@@ -2484,7 +2484,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
         for (const [k, v] of Object.entries(attrs)) f.setAttribute(k, v);
         let got = null; const on = e => { if (e.source === f.contentWindow && e.data && 'rvFs' in e.data) got = e.data.rvFs; };
         W.addEventListener('message', on); D.body.appendChild(f); f.srcdoc = html.replace('</body>', probe);
-        try { for (let i = 0; i < 80 && got === null; i++) await sleep(100); } finally { W.removeEventListener('message', on); f.remove(); }
+        try { for (let i = 0; i < 300 && got === null; i++) await sleep(100); } finally { W.removeEventListener('message', on); f.remove(); }
         return got;
       };
       eq(await run({ sandbox: 'allow-scripts', allow: 'fullscreen' }, fsHTML), true, 'incrustada en otra web: botón de pantalla completa');

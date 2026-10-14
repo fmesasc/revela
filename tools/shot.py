@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Screenshot of the editor after running some JavaScript, for visual checks.
 
-    tools/shot.py OUT.png "JS to run (window.__revela is R)" [CSS selector to clip to] [--scale=3] [--size=1280x800]
+    tools/shot.py OUT.png "JS to run (window.__revela is R)" [CSS selector to clip to] [--scale=3] [--size=1280x800] [--page=index.html]
 
 Serves the repo, opens index.html?test in headless Chrome (like tests/run.py),
 starts from a new deck, runs the JS, waits a moment and saves the screenshot
@@ -22,6 +22,7 @@ def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     out, js, sel = args[0], args[1] if len(args) > 1 else '', args[2] if len(args) > 2 else ''
     scale = float(next((o.split('=')[1] for o in opts if o.startswith('--scale=')), '2'))
+    page = next((o.split('=', 1)[1] for o in opts if o.startswith('--page=')), 'index.html')
     w, h = map(int, next((o.split('=')[1] for o in opts if o.startswith('--size=')), '1280x800').split('x'))
     chrome = next((shutil.which(c) for c in ('google-chrome', 'chromium', 'chromium-browser') if shutil.which(c)), None)
     srv = socketserver.TCPServer(('127.0.0.1', 0), Quiet)
@@ -57,7 +58,7 @@ def main():
         sid = recv(send('Target.attachToTarget', targetId=tid, flatten=True))['result']['sessionId']
         ev = lambda e: recv(send('Runtime.evaluate', sid, expression=e, awaitPromise=True, returnByValue=True)).get('result', {}).get('result', {})
         recv(send('Emulation.setDeviceMetricsOverride', sid, width=w, height=h, deviceScaleFactor=scale, mobile=False))
-        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html?test')); time.sleep(2.5)
+        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/{page}?test')); time.sleep(2.5)
         ev("(()=>{const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.render();return 1})()")
         if js:
             r = ev(f"(async()=>{{const R=window.__revela;{js};return 'ok'}})()")

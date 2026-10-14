@@ -17,6 +17,7 @@ import { saveProject } from '../../io/formats/project.js';
 import { openCloudDocs, fmtSize } from './cloudlibrary.js';
 import { nowInCloud } from '../shell/where.js';
 import { openQR, qrButton } from './qr.js';
+import { moreHTML, tipHTML } from './dlgkit.js';
 
 const ROLE_NAMES = { present: 'Solo presentar', view: 'Puede ver', comment: 'Puede comentar', edit: 'Puede editar', owner: 'Propietario' };
 const LINK_NAMES = { none: 'Solo las personas añadidas', present: 'Cualquiera con el enlace puede verla como presentación', view: 'Cualquiera con el enlace puede ver', comment: 'Cualquiera con el enlace puede comentar', edit: 'Cualquiera con el enlace puede editar' };
@@ -59,7 +60,7 @@ export { openCloudDocs };
 export async function openCloudShare() {
   if (!(await signedIn())) return;
   let doc = cd.cloudDoc();
-  const { body, close } = modal('cloud-share-modal', 'Compartir con personas');
+  const { body, close } = modal('cloud-share-modal', 'Compartir con personas', 600);
   if (!doc) {
     body.innerHTML = `<p class="host-help">${t('Para compartirla con personas concretas o por enlace, guárdala en tu nube de Revela. Los cambios se guardan solos y quien tenga permiso los ve.')}</p>
       <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do cl-save">${t('Guardar en la nube')}</button></div>`;
@@ -91,30 +92,32 @@ export async function openCloudShare() {
   const roleSel = (cls, v, withOff) => `<select class="${cls}">${['present', 'view', 'comment', 'edit'].map(r => `<option value="${r}"${r === v ? ' selected' : ''}>${t(ROLE_NAMES[r])}</option>`).join('')}${withOff ? `<option value="">${t('Quitar')}</option>` : ''}</select>`;
   const untilIn = (cls, v) => `<label class="cl-until" title="${t('Acceso hasta (vacío: sin fecha de fin)')}"><i class="ms" aria-hidden="true">event</i><input type="date" class="${cls}" min="${tomorrow()}" value="${dayOf(v)}" aria-label="${t('Acceso hasta (vacío: sin fecha de fin)')}"></label>`;
   const render = () => {
+    // (As Google Docs': who first — a box to add someone and the list —, then the link, with its copy button in view;
+    // the explanations under «Más información» and the permission settings folded.)
     body.innerHTML = `${owner ? '' : `<p class="host-help">${t('Te la ha compartido {owner}. Puedes compartirla y cambiar los permisos de los demás.').replace('{owner}', esc(doc.owner || ''))}</p>`}
       <fieldset><legend>${t('Personas')}</legend>
+        <div class="sh-row cl-addrow"><input type="email" class="cl-email" placeholder="${t('correo@ejemplo.com')}" aria-label="${t('correo@ejemplo.com')}"${pro ? '' : ' disabled'}>${roleSel('cl-new-role', 'edit')}<button type="button" class="mini2 cl-add"${pro ? '' : ' disabled'}>${t('Añadir')}</button></div>
         ${pro ? '' : `<p class="host-help">${t('Compartir con personas concretas es del plan Pro. El enlace funciona en todos los planes.')}</p>`}
         <div class="cl-people">${Object.entries(people).map(([e, r]) => `<div class="sh-item" data-email="${esc(e)}"><span>${esc(e)}</span>${slidesBtn('cl-p-only', slidesOf[e], r)}${untilIn('cl-p-until', until[e])}${roleSel('cl-role', r, true)}</div>`).join('')
           || `<p class="host-help">${t('Solo tú.')}</p>`}</div>
-        <div class="sh-row"><input type="email" class="cl-email" placeholder="${t('correo@ejemplo.com')}"${pro ? '' : ' disabled'}>${roleSel('cl-new-role', 'edit')}<button type="button" class="mini2 cl-add"${pro ? '' : ' disabled'}>${t('Añadir')}</button></div>
+        ${tipHTML(t('Las personas añadidas entran con su cuenta de Google. Con el enlace para ver no hace falta cuenta.'))}
       </fieldset>
       ${owner && myTeam ? `<fieldset><legend>${t('Tu equipo')}</legend>
         <div class="sh-row"><span style="flex:1">${t('Todo el equipo «{t}»').replace('{t}', esc(myTeam))}</span><select class="cl-team"><option value="none"${team === 'none' ? ' selected' : ''}>${t('Sin acceso')}</option>${['present', 'view', 'comment', 'edit'].map(r => `<option value="${r}"${r === team ? ' selected' : ''}>${t(ROLE_NAMES[r])}</option>`).join('')}</select></div>
-        <p class="host-help">${t('La ven en Mi nube ▸ Del equipo, también quien entre más tarde.')}</p></fieldset>` : ''}
+        ${tipHTML(t('La ven en Mi nube ▸ Del equipo, también quien entre más tarde.'))}</fieldset>` : ''}
       <fieldset><legend>${t('Enlace')}</legend>
-        <div class="sh-row"><select class="cl-linkrole">${Object.entries(LINK_NAMES).map(([k, v]) => `<option value="${k}"${k === link ? ' selected' : ''}>${t(v)}</option>`).join('')}</select>${link === 'none' ? '' : untilIn('cl-l-until', linkUntil)}${slidesBtn('cl-l-only', linkSlides, link)}</div>
-        <div class="sh-row"><input readonly class="cl-link" value="${esc(cd.docLink(doc.id))}"><button type="button" class="mini2 cl-copy">${t('Copiar')}</button>${link === 'none' ? '' : qrButton('cl-qr')}</div>
-        <div class="cl-embed"${link === 'none' ? ' hidden' : ''}><label class="fr-l">${t('Insertar en una web (iframe)')}</label>
-          <div class="sh-row"><textarea readonly class="cl-ifr" rows="3">${esc(cd.embedCode(doc.id, doc.name || state.deck.name || '', state.deck.size))}</textarea><button type="button" class="mini2 cl-copy-ifr">${t('Copiar')}</button></div>
-          <p class="host-help">${t('Se ve como presentación, sin el editor, y siempre con los últimos cambios.')}</p></div>
+        <div class="sh-row"><select class="cl-linkrole" aria-label="${t('Enlace')}">${Object.entries(LINK_NAMES).map(([k, v]) => `<option value="${k}"${k === link ? ' selected' : ''}>${t(v)}</option>`).join('')}</select></div>
+        ${link === 'none' ? '' : `<div class="sh-row cl-linkopts">${untilIn('cl-l-until', linkUntil)}${slidesBtn('cl-l-only', linkSlides, link)}</div>`}
+        <div class="sh-row cl-linkrow"><input readonly class="cl-link" value="${esc(cd.docLink(doc.id))}" aria-label="${t('Enlace')}"><button type="button" class="fr-do cl-copy"><i class="ms" aria-hidden="true">link</i> ${t('Copiar')}</button>${link === 'none' ? '' : qrButton('cl-qr')}</div>
         <p class="host-help cl-linkhint" hidden><i class="ms">lock</i> ${t('Con «Solo las personas añadidas», el enlace solo lo abren las personas de arriba. Para que lo abra cualquiera, elige «Cualquiera con el enlace puede ver».')}</p>
-        <p class="host-help">${t('Las personas añadidas entran con su cuenta de Google. Con el enlace para ver no hace falta cuenta.')}</p>
+        <div class="cl-embed"${link === 'none' ? ' hidden' : ''}><button type="button" class="mini2 cl-embed-open"><i class="ms" aria-hidden="true">code</i> ${t('Insertar en Moodle o en una web')}</button></div>
       </fieldset>
-      ${owner ? `<details class="cl-perms"${noCopy || editorsShare ? ' open' : ''}><summary>${t('Ajustes de permisos')}</summary>
+      ${owner ? moreHTML(`
         <label class="fr-chk"><input type="checkbox" class="cl-nocopy"${noCopy ? ' checked' : ''}> ${t('Quien puede ver o comentar no puede descargarla, imprimirla ni copiarla')}</label>
-        <p class="host-help">${t('Revela quita esas opciones y no entrega copias; lo que se ve en una pantalla siempre se puede fotografiar. «Solo presentar» nunca permite copiar ni ve las notas del orador.')}</p>
-        <label class="fr-chk"><input type="checkbox" class="cl-edshare"${editorsShare ? ' checked' : ''}> ${t('Quien puede editar también puede compartirla y cambiar permisos')}</label></details>` : ''}
-      <div class="fr-actions"><span>${analytics ? `<button type="button" class="mini2 cl-stats"><i class="ms">insights</i> ${t('Estadísticas')}</button>` : ''}
+        ${tipHTML(t('Revela quita esas opciones y no entrega copias; lo que se ve en una pantalla siempre se puede fotografiar. «Solo presentar» nunca permite copiar ni ve las notas del orador.'))}
+        <label class="fr-chk"><input type="checkbox" class="cl-edshare"${editorsShare ? ' checked' : ''}> ${t('Quien puede editar también puede compartirla y cambiar permisos')}</label>`,
+        { label: t('Ajustes de permisos'), cls: 'cl-perms', open: noCopy || editorsShare }) : ''}
+      <div class="fr-actions cl-foot"><span class="cl-tools">${analytics ? `<button type="button" class="mini2 cl-stats"><i class="ms">insights</i> ${t('Estadísticas')}</button>` : ''}
         <button type="button" class="mini2 cl-versions"><i class="ms">history</i> ${t('Versiones')}</button></span>
         <span class="cl-status" role="status" aria-live="polite"></span><button type="button" class="fr-do cl-apply">${t('Listo')}</button></div>`;
     const q = s => body.querySelector(s);
@@ -137,10 +140,11 @@ export async function openCloudShare() {
       if (ids) slidesOf[e] = ids; else delete slidesOf[e]; render(); apply(); }));
     q('.cl-l-only')?.addEventListener('click', async () => { const ids = await pickSlides(kept(linkSlides), t('El enlace')); if (ids === undefined) return; linkSlides = ids; render(); apply(); });
     q('.cl-edshare')?.addEventListener('change', e => { editorsShare = e.target.checked; apply(); });
-    q('.cl-copy').addEventListener('click', e => { navigator.clipboard?.writeText(cd.docLink(doc.id)); e.target.textContent = t('Copiado'); linkHint(); });
+    q('.cl-copy').addEventListener('click', e => { navigator.clipboard?.writeText(cd.docLink(doc.id)); e.currentTarget.innerHTML = `<i class="ms" aria-hidden="true">check</i> ${t('Copiado')}`; linkHint(); });
     linkHint(); status(shareSt);
     q('.cl-qr')?.addEventListener('click', () => openQR(cd.docLink(doc.id), doc.name || state.deck.name || ''));
-    q('.cl-copy-ifr').addEventListener('click', e => { navigator.clipboard?.writeText(q('.cl-ifr').value); e.target.textContent = t('Copiado'); });
+    // (The code to paste, in its own dialog: ui/dialogs/embed.js — imported when asked, it imports this one.)
+    q('.cl-embed-open').addEventListener('click', async () => { await saving; close(); (await import('./embed.js')).openEmbedExport(); });
     q('.cl-stats')?.addEventListener('click', () => openCloudStats());
     q('.cl-versions').addEventListener('click', () => openCloudVersions());
     q('.cl-apply').addEventListener('click', async () => { await saving; close(); });
