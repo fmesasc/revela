@@ -32,7 +32,27 @@ body.slide-pick .thumb-check .ms{font-size:20px}
 .nav-pick .np-done{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
 body.sorter .nav-pick{grid-column:1/-1;margin:-24px -24px 0;padding:10px 24px;top:-24px;background:var(--canvas-bg)}
 .thumb.drop-target{border-color:var(--go);box-shadow:0 -3px 0 var(--go)}
-.thumb-num{position:absolute;top:2px;left:5px;z-index:2;font-size:11px;color:#fff;opacity:.75;text-shadow:0 1px 2px #000}
+/* The number: white on the slide itself was lost on a light theme (Francisco, 2026-10-14). In the side column it
+   sits in a margin of its own, left of the slide (as PowerPoint), in the panel's colours; in the sorter, above
+   each slide (in the gap between rows); in a strip (phone, the Lienzo and Mínima views), on a dark label in the
+   bottom corner, where a slide seldom has text. */
+.thumb-num{position:absolute;bottom:4px;left:4px;z-index:2;min-width:18px;padding:0 5px;border-radius:6px;box-sizing:border-box;
+  background:#000b;color:#fff;font:700 11px/17px system-ui,sans-serif;text-align:center;box-shadow:0 0 0 1px #fff6;pointer-events:none}
+.thumb.active .thumb-num{background:var(--accent);color:var(--on-accent)}
+#navigator.multi .thumb-num,body.slide-pick .thumb-num{left:26px}  /* (beside the tick) */
+body.sorter #navigator .thumb{overflow:visible;background:transparent}
+body.sorter #navigator .thumb-canvas{border-radius:4px}
+body.sorter #navigator .thumb-num{bottom:auto;top:-21px;left:0;padding:0;background:none;box-shadow:none;color:var(--txt2);font-size:12px;text-align:start}
+body.sorter #navigator .thumb.active .thumb-num{background:none;color:var(--accent)}
+@media (min-width:861px) and (min-height:521px){
+  html:not([data-view="studio"]):not([data-view="simple"]) body:not(.sorter) #navigator{padding-inline-start:4px}
+  html:not([data-view="studio"]):not([data-view="simple"]) body:not(.sorter) #navigator .thumb{overflow:visible;margin-inline-start:22px;background:transparent}
+  html:not([data-view="studio"]):not([data-view="simple"]) body:not(.sorter) #navigator .thumb.is-vertical{margin-inline-start:44px}
+  html:not([data-view="studio"]):not([data-view="simple"]) body:not(.sorter) #navigator .thumb-canvas{border-radius:4px}
+  html:not([data-view="studio"]):not([data-view="simple"]) body:not(.sorter) #navigator .thumb-num{top:-2px;bottom:auto;left:auto;inset-inline-start:-26px;min-width:20px;padding:0;background:none;box-shadow:none;
+  color:var(--txt2);font-size:12px;text-align:end}
+  html:not([data-view="studio"]):not([data-view="simple"]) body:not(.sorter) #navigator .thumb.active .thumb-num{background:none;color:var(--accent)}
+}
 .thumb-canvas{position:relative;aspect-ratio:var(--ar,16/9);overflow:hidden}
 /* (Thumbnails out of sight aren't laid out or painted: with 300 slides of 40 objects, each edit or slide change
    laid out all 12,000 elements again, ~100 ms. Their size comes from the width and the aspect ratio anyway.) */
