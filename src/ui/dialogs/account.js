@@ -8,6 +8,7 @@ import * as acc from '../../io/cloud/account.js';
 import * as gd from '../../io/cloud/gdrive.js';
 import * as od from '../../io/cloud/onedrive.js';
 import { connect, signOutCloud } from '../../io/cloud/othercloud.js';
+import { tabsHTML, wireTabs, footHTML } from './dlgkit.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { openTeam } from './team.js';
@@ -15,7 +16,7 @@ import { openReport } from './report.js';
 import { developersBox, wireDevelopers, handleConnect } from './developers.js';
 import { ssoSignIn } from './teamsso.js';
 
-const FEATURE_NAMES = { ai: 'IA incluida', 'share-people': 'Compartir con personas', 'cloud-save': 'Guardado en la nube', 'video-calls': 'Videollamadas en el editor', 'premium-templates': 'Plantillas premium' };
+const FEATURE_NAMES = { ai: 'IA incluida', 'share-people': 'Compartir con personas', 'cloud-save': 'Guardado en la nube', 'video-calls': 'Videollamadas en el editor', 'premium-templates': 'Plantillas premium', analytics: 'Estadísticas' };
 const errorText = e => (e.data?.error === 'no customer' ? t('Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.')
   : /^billing (not available|failed)$/.test(e.message) ? t('Los pagos no están disponibles ahora mismo. Inténtalo más tarde.')
   : e.message === 'NOT_TESTER' ? t('Esta es la web de pruebas de Revela: solo pueden entrar las personas invitadas. La de verdad está en revelaslides.com.')
@@ -74,7 +75,7 @@ export function openAccount({ buy } = {}) {
   const back = document.createElement('div'); back.id = 'account-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(440px,94vw)"><button class="modal-close">✕</button><h3>${t('Mi cuenta de Revela')}</h3><div class="acc-body"></div></div>`;
   document.body.appendChild(back);
-  const body = back.querySelector('.acc-body'), close = () => { abort?.abort(); back.remove(); };
+  const body = back.querySelector('.acc-body'), modalEl = back.querySelector('.modal'), close = () => { abort?.abort(); back.remove(); };
   let abort = null;
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
@@ -82,6 +83,7 @@ export function openAccount({ buy } = {}) {
   const render = () => {
     const me = acc.account();
     if (!me) {
+      modalEl.classList.remove('dk'); modalEl.style.width = 'min(440px,94vw)';
       body.innerHTML = `<p class="host-help">${t('Inicia sesión para usar la IA incluida, sin claves. Las cuentas nuevas reciben créditos de regalo para probarla.')}</p>
         ${termsBox()}
         <div class="acc-code" hidden></div>
@@ -120,9 +122,9 @@ export function openAccount({ buy } = {}) {
     if (buy && BUYABLE.includes(buy) && me.billing && !(me.plan === 'pro' && buy.startsWith('pro'))) { const b = buy; buy = null; acc.buy(b).catch(e => alertDialog(errorText(e))); }
     // (trialDays: Pro's free trial on offer to this account — the server decides; 0: none.)
     const pro = me.plan === 'pro', trialDays = !pro && me.billing && me.trialDays > 0 ? me.trialDays | 0 : 0, until = me.until ? new Date(me.until).toLocaleDateString(currentLang(), { dateStyle: 'long' }) : '';
-    // (Drawn again when the account is refreshed: the sections the person had open stay open.)
-    const opened = [...body.querySelectorAll('details[open]')].map(d => d.className);
-    body.innerHTML = `<div class="acc-who">${esc(me.email)}</div>
+    // (Tabs, one subject at a time; the sections that load when opened — notices, developers, sessions, data — keep
+    // their <details>, opened with their tab: ui/dialogs/dlgkit.js. The last tab seen comes back when it is redrawn.)
+    const plan = `<div class="acc-who">${esc(me.email)}</div>
       ${me.blocked ? `<p class="host-help acc-blocked" role="alert">${t('Tu cuenta está bloqueada: la IA y la nube no están disponibles. Si crees que es un error, usa «Informar de un problema».')}</p>` : ''}
       <div class="acc-plan"><span class="acc-badge${pro ? ' pro' : ''}">${t(pro ? 'Pro' : 'Gratis')}</span>${pro && until ? `<small>${t(me.trial ? 'Prueba gratis hasta:' : 'Renovación:')} ${esc(until)}</small>` : ''}</div>
       <div class="acc-credits"><b>${Math.max(0, me.credits | 0)}</b> ${t('créditos')}${me.expiring?.[0] ? `<small>${t('{n} caducan el {d}').replace('{n}', me.expiring[0].n).replace('{d}', new Date(me.expiring[0].exp).toLocaleDateString(currentLang(), { day: 'numeric', month: 'long' }))}</small>` : ''}</div>
@@ -132,40 +134,43 @@ export function openAccount({ buy } = {}) {
         ${pro ? '' : `<button type="button" class="fr-do" data-buy="pro-month"${me.billing ? '' : ' disabled'}>${trialDays ? t('Prueba Pro {n} días gratis').replace('{n}', trialDays) : t('Pro mensual')}</button><button type="button" class="fr-do" data-buy="pro-year"${me.billing ? '' : ' disabled'}>${t('Pro anual')}</button>`}
         <button type="button" class="mini2" data-buy="credits-500"${me.billing ? '' : ' disabled'}>${t('500 créditos')}</button>
         <button type="button" class="mini2" data-buy="credits-1500"${me.billing ? '' : ' disabled'}>${t('1500 créditos')}</button>
+        ${pro && me.portal !== false ? `<button type="button" class="mini2 acc-portal">${t('Gestionar la suscripción')}</button>` : ''}
       </div>
-      ${me.billing ? '' : `<p class="host-help" style="font-size:12px">${t('Los pagos estarán disponibles muy pronto.')}</p>`}
-      ${trialDays ? `<p class="host-help acc-trial" style="font-size:12px">${t('Se pide una tarjeta, pero no se cobra nada hasta que acabe la prueba. Puedes cancelarla antes en «Gestionar la suscripción».')}</p>` : ''}
-      <div class="fr-actions" style="justify-content:space-between">
-        ${pro && me.portal !== false ? `<button type="button" class="mini2 acc-portal">${t('Gestionar la suscripción')}</button>` : '<span></span>'}
-        <button type="button" class="mini2 acc-out">${t('Cerrar sesión')}</button></div>
-      <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><button type="button" class="mini2 acc-team"><i class="ms">groups</i> ${me.team ? esc(me.team.name) : t('Equipos y centros')}</button>
-        <button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></div>
-      <div class="acc-drive"></div><div class="acc-drive acc-od" hidden></div>
-      <details class="acc-amb" hidden></details>
-      <details class="acc-ref" hidden><summary>${t('Recomienda Revela a tu centro')}</summary>
+      ${me.billing ? '' : `<p class="host-help">${t('Los pagos estarán disponibles muy pronto.')}</p>`}
+      ${trialDays ? `<p class="host-help acc-trial">${t('Se pide una tarjeta, pero no se cobra nada hasta que acabe la prueba. Puedes cancelarla antes en «Gestionar la suscripción».')}</p>` : ''}
+      <details class="acc-amb dk-more" hidden></details>
+      <details class="acc-ref dk-more" hidden><summary><i class="ms" aria-hidden="true">expand_more</i>${t('Recomienda Revela a tu centro')}</summary>
         <p class="host-help">${t('Si te gusta Revela, pásale este enlace a la dirección de tu centro o empresa. Lo envías tú: Revela no escribe a nadie.')}</p>
         <p class="host-help acc-ref-reward" hidden></p>
         <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><input type="text" class="acc-ref-link" readonly style="flex:1 1 220px;min-width:0">
           <button type="button" class="mini2 acc-ref-copy">${t('Copiar el enlace')}</button>
           <a class="mini2 acc-ref-mail" target="_blank" rel="noopener"><i class="ms">mail</i> ${t('Correo')}</a>
           <a class="mini2 acc-ref-wa" target="_blank" rel="noopener">WhatsApp</a></div>
-        <p class="host-help acc-ref-stats"></p></details>
-      <details class="acc-mail"><summary>${t('Avisos por correo')}</summary>
+        <p class="host-help acc-ref-stats"></p></details>`;
+    const links = `<div class="acc-drive"></div><div class="acc-drive acc-od" hidden></div>
+      <div class="acc-drive"><i class="ms">groups</i><span>${t('Equipos y centros')}${me.team ? `: <b>${esc(me.team.name)}</b>` : ''}</span><button type="button" class="mini2 acc-team">${t('Abrir')}</button></div>`;
+    const tabs = [
+      { id: 'plan', icon: 'workspace_premium', label: t('Plan y créditos'), html: plan },
+      { id: 'links', icon: 'cloud', label: t('Conexiones'), html: links },
+      { id: 'mail', icon: 'mail', label: t('Avisos por correo'), html: `<details class="acc-mail dk-section"><summary>${t('Avisos por correo')}</summary>
         <p class="host-help">${t('Revela te escribe a {email} cuando te comparten una presentación, te invitan a un equipo o cambia tu plan.').replace('{email}', esc(me.email))}</p>
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="credits"> ${t('Avisarme cuando mis créditos estén a punto de caducar')}</label>
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="trialEnding"> ${t('Avisarme antes de que acabe mi prueba de Pro')}</label>
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="opened"> ${t('Avisarme cuando alguien abra uno de mis enlaces con seguimiento')}</label>
-        <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-mail-test">${t('Enviarme un correo de prueba')}</button></div></details>
-      ${developersBox()}
-      <details class="acc-sess"><summary>${t('Sesiones abiertas')}</summary>
+        <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-mail-test">${t('Enviarme un correo de prueba')}</button></div></details>` },
+      { id: 'dev', icon: 'code', label: t('Desarrolladores e IA'), html: developersBox().replace('class="acc-dev"', 'class="acc-dev dk-section"') },
+      { id: 'sess', icon: 'devices', label: t('Sesiones abiertas'), html: `<details class="acc-sess dk-section"><summary>${t('Sesiones abiertas')}</summary>
         <p class="host-help">${t('Dónde está abierta tu cuenta. Si ves una sesión que no reconoces, ciérrala y revisa la seguridad de tu cuenta de Google.')}</p>
         <ul class="acc-sess-list"></ul>
-        <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-sess-others" hidden>${t('Cerrar las demás sesiones')}</button></div></details>
-      <details class="acc-data"><summary>${t('Tus datos')}</summary>
+        <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-sess-others" hidden>${t('Cerrar las demás sesiones')}</button></div></details>` },
+      { id: 'data', icon: 'shield_person', label: t('Tus datos'), html: `<details class="acc-data dk-section"><summary>${t('Tus datos')}</summary>
         <p class="host-help">${t('Descarga una copia de todo lo que guarda tu cuenta, o elimínala con todas tus presentaciones en la nube. Las facturas las conserva Stripe, como exige la ley.')}</p>
         <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><button type="button" class="mini2 acc-export">${t('Descargar mis datos')}</button>
-          <button type="button" class="mini2 acc-delete">${t('Eliminar mi cuenta')}</button></div></details>`;
-    for (const c of opened) { const d = body.querySelector(`details[class="${c}"]`); if (d) d.open = true; }
+          <button type="button" class="mini2 acc-delete">${t('Eliminar mi cuenta')}</button></div></details>` },
+    ];
+    body.innerHTML = `${tabsHTML(tabs)}${footHTML(`<span class="dk-foot-start"><button type="button" class="mini2 acc-report"><i class="ms">bug_report</i> ${t('Informar de un problema')}</button></span>
+      <button type="button" class="mini2 acc-out"><i class="ms">logout</i> ${t('Cerrar sesión')}</button>`)}`;
+    modalEl.classList.add('dk'); modalEl.style.width = 'min(760px,96vw)';
     body.querySelectorAll('[data-buy]').forEach(b => b.addEventListener('click', () => acc.buy(b.dataset.buy).catch(e => alertDialog(errorText(e)))));
     body.querySelector('.acc-portal')?.addEventListener('click', () => acc.manageBilling().catch(e => alertDialog(errorText(e))));
     body.querySelector('.acc-out').addEventListener('click', async () => { await acc.signOut(); render(); });
@@ -263,6 +268,7 @@ export function openAccount({ buy } = {}) {
       try { await acc.api('account/delete', { confirm: typed.trim() }); await acc.signOut(); close(); alertDialog(t('Tu cuenta se ha eliminado.')); }
       catch (e) { alertDialog(errorText(e)); }
     });
+    wireTabs(body, 'revela.account.tab');
   };
   render();
   acc.refreshAccount().then(render, () => {});

@@ -1,6 +1,7 @@
 // AI tab: connection settings (OpenRouter sign-in or own key), privacy notice,
 // and the actions. A small overlay shows while the model is working.
 
+import { moreHTML } from './dlgkit.js';
 import { readAttachment, pdfFigures, ATTACH, ATTACH_ACCEPT } from '../../features/ai/attach.js';
 import { GALLERY, buildFromGallery } from '../../features/design/gallery.js';
 import { ensureLayouts } from '../../features/document/master.js';
@@ -176,18 +177,18 @@ export function openCreateDeck() {
     <label class="fr-l">${t('Tema o instrucciones')}<textarea class="ad-topic" rows="3" placeholder="${forBusiness() ? t('p. ej.: Resultados del trimestre para el comité de dirección') : t('p. ej.: Introducción a la energía solar para estudiantes de secundaria')}"></textarea></label>
     <label class="fr-l">${t('O basarla en documentos o fotos (PDF, textos, fotos de apuntes o de una pizarra) o en texto pegado')}
       <input type="file" class="ad-file" multiple accept="${ATTACH_ACCEPT},.markdown">
-      <textarea class="ad-source" rows="3" placeholder="${t('Pega aquí un texto (opcional)')}"></textarea></label>
-    <div class="ad-grid">
-      <label class="fr-l">${t('Diapositivas')}<input type="number" class="ad-count" min="3" max="30" value="8"></label>
+      <textarea class="ad-source" rows="2" placeholder="${t('Pega aquí un texto (opcional)')}"></textarea></label>
+    <label class="fr-l ad-countl">${t('Diapositivas')}<input type="number" class="ad-count" min="3" max="30" value="8"></label>
+    ${moreHTML(`<div class="ad-grid">
       <label class="fr-l">${t('Público')}<input type="text" class="ad-aud" placeholder="${t('p. ej.: directivos')}"></label>
       <label class="fr-l">${t('Tono')}<select class="ad-tone">${TONES.map(x => `<option value="${x}">${t(x)}</option>`).join('')}</select></label>
-      <label class="fr-l">${t('Diseño')}<select class="ad-pal"><option value="">${t('Automático (según el contenido)')}</option>${Object.keys(deck.DECK_DESIGNS).map(k => `<option value="${k}">${t(GALLERY[k].name)}</option>`).join('')}</select></label>
+      <label class="fr-l" style="grid-column:1/-1">${t('Diseño')}<select class="ad-pal"><option value="">${t('Automático (según el contenido)')}</option>${Object.keys(deck.DECK_DESIGNS).map(k => `<option value="${k}">${t(GALLERY[k].name)}</option>`).join('')}</select></label>
     </div>
-    <label class="fr-chk"><input type="checkbox" class="ad-web"> ${t('Buscar en internet datos actuales y citar las fuentes (unos céntimos más)')}</label>
     <label class="fr-l">${t('Imágenes y vídeos')}<select class="ad-media">
       <option value="search">${t('Buscar imágenes y vídeos reales que expliquen el contenido (con licencia libre; solo se envían las palabras de búsqueda)')}</option>
       <option value="generate">${t('Generar imágenes con IA (coste extra en OpenRouter)')}</option>
       <option value="">${t('Sin imágenes')}</option></select></label>
+    <label class="fr-chk"><input type="checkbox" class="ad-web"> ${t('Buscar en internet datos actuales y citar las fuentes (unos céntimos más)')}</label>`, { cls: 'ad-opts' })}
     <label class="fr-chk"><input type="checkbox" class="ad-new" checked> ${t('Empezar una presentación nueva (si no, se añade a la actual)')}</label>
     <div class="ad-ask" hidden><h4 style="margin:10px 0 4px">${t('Para hacerla a tu medida')}</h4>
       <p class="host-help">${t('Responde lo que quieras (o sáltalo): cuanto más sepa de tu caso, más tuya será la presentación.')}</p>

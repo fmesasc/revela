@@ -4583,4 +4583,6 @@ export default {
   "Descargar PNG": "Deskargatu PNG",
   "Añadir a la diapositiva": "Gehitu diapositibari",
   "No se pudo crear el código QR: ": "Ezin izan da QR kodea sortu: ",
+  "Plan y créditos": "Plana eta kredituak",
+  "Conexiones": "Konexioak",
 };

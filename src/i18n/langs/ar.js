@@ -4583,4 +4583,6 @@ export default {
   "Descargar PNG": "تنزيل PNG",
   "Añadir a la diapositiva": "إضافة إلى الشريحة",
   "No se pudo crear el código QR: ": "تعذّر إنشاء رمز QR: ",
+  "Plan y créditos": "الخطة والأرصدة",
+  "Conexiones": "الاتصالات",
 };

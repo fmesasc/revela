@@ -294,6 +294,7 @@ body.master-view #navigator{display:flex}
 .as-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}.as-cost{font-size:11px;color:var(--txt2)}
 .as-send{background:var(--accent);color:var(--on-accent);border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font:inherit;font-size:13px}.as-send:disabled{opacity:.5;cursor:default}
 .ad-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.modal .ad-countl{max-width:180px}
 /* The large before/after viewer */
 .asv-back{position:fixed;inset:0;z-index:3100;background:#000a;display:grid;place-items:center;padding:2vh 2vw}
 .asv{width:96vw;height:94vh;background:var(--panel);border-radius:14px;box-shadow:0 20px 60px #0006;display:flex;flex-direction:column;gap:8px;padding:12px 16px;box-sizing:border-box;min-width:0}
@@ -727,7 +728,9 @@ body.file-drag::after{content:attr(data-drop-hint);position:fixed;left:50%;botto
 .titlebar .plan-btn{display:inline-flex;align-items:center;gap:4px;margin-inline-end:8px;padding:3px 10px;border-radius:14px;border:1px solid var(--line2);background:var(--panel);color:inherit;font:600 13px system-ui,sans-serif;cursor:pointer;white-space:nowrap}
 .titlebar .plan-btn .ms{font-size:17px;color:#6d5dfc}.titlebar .plan-btn.in{border-color:#6d5dfc}
 .titlebar .plan-btn[hidden]{display:none}
-#account-modal .acc-who{font-weight:600}
+#account-modal .modal.dk>.acc-body{display:flex;flex-direction:column;min-height:0;flex:1}
+#account-modal .acc-drive>span{flex:1;min-width:0}
+#account-modal .acc-who{font-weight:600;font-size:16px}
 #account-modal .acc-plan{display:flex;gap:8px;align-items:center;margin:6px 0}
 #account-modal .acc-badge{padding:2px 10px;border-radius:12px;background:var(--bg);font-weight:700;font-size:13px}
 #account-modal .acc-badge.pro{background:linear-gradient(90deg,#6d5dfc,#3f6497);color:#fff}

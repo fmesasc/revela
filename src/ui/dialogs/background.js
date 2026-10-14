@@ -2,6 +2,7 @@
 // video (file or address, loop, muted), web page (interactive or not) and the
 // background transition; for this slide (or the selected ones) or all.
 
+import { moreHTML } from './dlgkit.js';
 import { currentSlide, slideSelCount } from '../../core/store.js';
 import { setBackgroundOptions } from '../../features/document/slides.js';
 import { alertDialog } from './dialog.js';
@@ -18,7 +19,7 @@ export function openBackgroundDialog() {
     <fieldset class="bgf"><legend>${t('Imagen de fondo')}</legend>
       <label class="fr-l">${t('Ajuste')}<select class="bg-fit"${hasImg ? '' : ' disabled'}>${opt('cover', 'Cubrir', fit)}${opt('contain', 'Contener', fit)}${opt('tile', 'Mosaico', fit)}</select></label>
       <label class="fr-l">${t('Opacidad del fondo')} <input type="range" class="bg-op" min="10" max="100" step="5" value="${s.bgOpacity ?? 100}"></label></fieldset>
-    <fieldset class="bgf"><legend>${t('Vídeo de fondo')}</legend>
+    ${moreHTML(`    <fieldset class="bgf"><legend>${t('Vídeo de fondo')}</legend>
       <label class="fr-l"><input type="url" class="bg-vurl" placeholder="https://…/video.mp4" value="${s.bgVideo && !s.bgVideo.startsWith('data:') ? s.bgVideo.replace(/"/g, '&quot;') : ''}"></label>
       <div class="bg-row"><button class="bg-vfile mini2">${t('Elegir archivo…')}</button><span class="bg-vname">${s.bgVideo?.startsWith('data:') ? t('Vídeo del equipo') : ''}</span></div>
       <label class="fr-chk"><input type="checkbox" class="bg-loop"${s.bgVideoLoop !== false ? ' checked' : ''}> ${t('En bucle')}</label>
@@ -26,7 +27,7 @@ export function openBackgroundDialog() {
     <fieldset class="bgf"><legend>${t('Página web de fondo')}</legend>
       <label class="fr-l"><input type="url" class="bg-iurl" placeholder="https://…" value="${(s.bgIframe || '').replace(/"/g, '&quot;')}"></label>
       <label class="fr-chk"><input type="checkbox" class="bg-inter"${s.bgInteractive ? ' checked' : ''}> ${t('Se puede usar durante la presentación (interactiva)')}</label></fieldset>
-    <label class="fr-l">${t('Transición del fondo')}<select class="bg-tr">${opt('', 'Como la presentación', s.bgTransition || '')}${['none', 'fade', 'slide', 'convex', 'concave', 'zoom'].map(v => opt(v, v, s.bgTransition)).join('')}</select></label>
+    <label class="fr-l">${t('Transición del fondo')}<select class="bg-tr">${opt('', 'Como la presentación', s.bgTransition || '')}${['none', 'fade', 'slide', 'convex', 'concave', 'zoom'].map(v => opt(v, v, s.bgTransition)).join('')}</select></label>`, { open: !!(s.bgVideo || s.bgIframe || s.bgTransition) })}
     <label class="fr-chk"><input type="checkbox" class="bg-all"> ${t('Aplicar a todas las diapositivas')}</label>
     <div class="fr-actions"><button class="bg-clear mini2">${t('Quitar vídeo y web')}</button><button class="fr-do bg-ok">${t('Aplicar')}</button></div></div>`;
   document.body.appendChild(back);

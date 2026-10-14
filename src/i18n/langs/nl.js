@@ -4583,4 +4583,6 @@ export default {
   "Descargar PNG": "PNG downloaden",
   "Añadir a la diapositiva": "Aan de dia toevoegen",
   "No se pudo crear el código QR: ": "De QR-code kon niet worden gemaakt: ",
+  "Plan y créditos": "Abonnement en tegoed",
+  "Conexiones": "Koppelingen",
 };

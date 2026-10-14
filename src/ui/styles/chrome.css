@@ -72,6 +72,7 @@
 .dk-tab[aria-selected=true] .ms{color:var(--accent)}
 .dk-panes{padding:18px 24px;overflow:auto;height:min(520px,calc(100dvh - 200px))}
 .dk-pane-title{margin:0 0 14px;font-size:16px;color:var(--txt)}
+.dk-pane>details.dk-section>summary{display:none}
 .dk-pane .fr-l{max-width:460px}
 .dk-more{margin:6px 0 4px;border-top:1px solid var(--line);padding-top:10px}
 .dk-more>summary{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--accent);font-weight:600;font-size:14px;list-style:none;padding:4px 0;border-radius:6px}

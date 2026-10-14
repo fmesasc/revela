@@ -17,11 +17,13 @@ export const tabsHTML = tabs => `<div class="dk-tabs"><div class="dk-tablist" ro
   + `<h4 class="dk-pane-title">${x.label}</h4>${x.html}</section>`).join('')}</div></div>`;
 
 // Clicks and arrow keys between the tabs; key: remembers the last one opened (this browser), so a second visit lands there.
+// A pane's sections that load when opened (<details class="dk-section">, their summary hidden) open with their tab and
+// close when it is left, so their «toggle» does the loading as before.
 export function wireTabs(root, key = '') {
   const tabs = [...root.querySelectorAll('.dk-tab')];
   const show = (id, focus = false) => {
     for (const b of tabs) { const on = b.dataset.tab === id; b.setAttribute('aria-selected', on); b.tabIndex = on ? 0 : -1; if (on && focus) b.focus(); }
-    root.querySelectorAll('.dk-pane').forEach(p => { p.hidden = p.dataset.pane !== id; });
+    root.querySelectorAll('.dk-pane').forEach(p => { p.hidden = p.dataset.pane !== id; p.querySelectorAll('details.dk-section').forEach(d => { d.open = !p.hidden; }); });
     root.querySelector('.dk-panes')?.scrollTo?.(0, 0);
     root.querySelector('.dk-tab[aria-selected=true]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
     if (key) try { localStorage.setItem(key, id); } catch {}
@@ -35,7 +37,7 @@ export function wireTabs(root, key = '') {
     });
   });
   let last = ''; if (key) try { last = localStorage.getItem(key) || ''; } catch {}
-  if (last && tabs.some(b => b.dataset.tab === last)) show(last);
+  show(last && tabs.some(b => b.dataset.tab === last) ? last : tabs[0]?.dataset.tab);
   return show;
 }
 

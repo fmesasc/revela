@@ -4606,5 +4606,7 @@ export const ROWS = [
   ['Descargar PNG', 'Download PNG', 'Télécharger le PNG', 'PNG herunterladen', 'Scarica PNG', 'Descarregar PNG', 'Baixa el PNG'],
   ['Añadir a la diapositiva', 'Add to the slide', 'Ajouter à la diapositive', 'Zur Folie hinzufügen', 'Aggiungi alla diapositiva', 'Adicionar ao diapositivo', 'Afegeix a la diapositiva'],
   ['No se pudo crear el código QR: ', 'The QR code couldn\'t be created: ', 'Impossible de créer le code QR : ', 'Der QR-Code konnte nicht erstellt werden: ', 'Impossibile creare il codice QR: ', 'Não foi possível criar o código QR: ', 'No s’ha pogut crear el codi QR: '],
+  ['Plan y créditos', 'Plan and credits', 'Forfait et crédits', 'Tarif und Guthaben', 'Piano e crediti', 'Plano e créditos', 'Pla i crèdits'],
+  ['Conexiones', 'Connections', 'Connexions', 'Verbindungen', 'Connessioni', 'Ligações', 'Connexions'],
 ];
 // Additional languages (partial; anything missing falls back to Spanish).

@@ -4583,4 +4583,6 @@ export default {
   "Descargar PNG": "Descargar PNG",
   "Añadir a la diapositiva": "Engadir á diapositiva",
   "No se pudo crear el código QR: ": "Non se puido crear o código QR: ",
+  "Plan y créditos": "Plan e créditos",
+  "Conexiones": "Conexións",
 };
