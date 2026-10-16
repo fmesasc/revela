@@ -19,7 +19,7 @@ const entersByItself = b => { const a = animsOf(b)[0]; return !!a && isEntrance(
 const leavesByItself = b => { const a = animsOf(b).at(-1); return !!a && ['fade-out', 'semi-fade-out', 'fade-in-then-out'].includes(a.effect); };
 const plainOf = h => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
 export const morphSig = b => b.type + '|' + ({ text: plainOf(b.html), image: b.src, shape: `${b.shape}|${b.fill}`, icon: b.icon, math: b.latex, code: b.code,
-  chart: b.chartType, table: JSON.stringify(b.rows), video: b.src }[b.type] ?? '');
+  chart: b.chartType, table: JSON.stringify(b.rows), video: b.src, map: b.look }[b.type] ?? '');
 export function morphPlan(deck) {
   const vis = deck.slides.filter(s => !s.hidden), marked = new Set(), keys = new Map(), textMode = new Map(), blocked = new Map();
   const k = (s, b) => `${s.id}:${b.id}`;

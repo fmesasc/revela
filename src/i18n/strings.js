@@ -4848,6 +4848,8 @@ export const ROWS = [
   ['Solo la bola del mundo, sobre el fondo de la diapositiva', 'Just the globe, over the slide\'s background', 'Seulement le globe, sur le fond de la diapositive', 'Nur der Globus, auf dem Folienhintergrund', 'Solo il globo, sullo sfondo della diapositiva', 'Só o globo, sobre o fundo do diapositivo', 'Només el globus, sobre el fons de la diapositiva'],
   ['Una a una, con un clic cada vez', 'One by one, a click each', 'Une par une, un clic à chaque fois', 'Eine nach der anderen, je ein Klick', 'Una alla volta, un clic ciascuna', 'Uma a uma, um clique de cada vez', 'Una a una, amb un clic cada vegada'],
   ['Todas a la vez, sin viajar', 'All at once, no trip', 'Toutes à la fois, sans voyage', 'Alle auf einmal, ohne Reise', 'Tutte insieme, senza viaggio', 'Todas de uma vez, sem viajar', 'Totes alhora, sense viatjar'],
+  ['Bordes desvanecidos', 'Faded edges', 'Bords estompés', 'Ausgeblendete Ränder', 'Bordi sfumati', 'Bordas esbatidas', 'Vores esvaïdes'],
+  ['Óvalo desvanecido', 'Faded oval', 'Ovale estompé', 'Ausgeblendetes Oval', 'Ovale sfumato', 'Oval esbatido', 'Oval esvaït'],
   ['Usar la vista actual para el mapa', 'Use the current view for the map', 'Utiliser la vue actuelle pour la carte', 'Aktuelle Ansicht für die Karte verwenden', 'Usa la vista attuale per la mappa', 'Usar a vista atual para o mapa', 'Fes servir la vista actual per al mapa'],
   ['Que se vean todas', 'Show them all', 'Les montrer toutes', 'Alle zeigen', 'Mostrarle tutte', 'Mostrar todas', 'Que es vegin totes'],
   ['Marcadores de las paradas', 'Stop markers', 'Marqueurs des étapes', 'Markierungen der Halte', 'Indicatori delle tappe', 'Marcadores das paragens', 'Marcadors de les parades'],

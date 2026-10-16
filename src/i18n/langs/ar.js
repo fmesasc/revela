@@ -4824,6 +4824,8 @@ export default {
   "Solo la bola del mundo, sobre el fondo de la diapositiva": "الكرة الأرضية فقط، فوق خلفية الشريحة",
   "Una a una, con un clic cada vez": "واحدة تلو الأخرى، بنقرة لكل منها",
   "Todas a la vez, sin viajar": "جميعها معًا، دون تنقّل",
+  "Bordes desvanecidos": "حواف متلاشية",
+  "Óvalo desvanecido": "شكل بيضاوي متلاشٍ",
   "Usar la vista actual para el mapa": "استخدام العرض الحالي للخريطة",
   "Que se vean todas": "إظهارها جميعًا",
   "Marcadores de las paradas": "علامات المحطات",

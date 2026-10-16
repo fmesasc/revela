@@ -17,6 +17,13 @@ export function geoMapRuntime(lib, rtl, words) {
   var gl = null, mounted = [], left = null;           // (left: where the last map shown was left — c.state())
   var CSS = '.rvm-live{position:absolute;inset:0;opacity:0;transition:opacity .5s}.rvm-on>.rvm-live{opacity:1}.rvm-on>.rv-map-shot{visibility:hidden!important}'
     // (The credits: a short line always in sight, the whole of them behind MapLibre's ⓘ — never a wide bar over the map.)
+    // (A box whose edges fade (--rvm-mask: features/content/geomap.js mapEdgeCSS): the map and its markers fade, not
+    // its credits nor the stop's note — moved in, off the faded corner.)
+    // (MapLibre leaves that layer without a size — its canvas and markers are placed in it —: given the map's, or the
+    // mask, sized by it, would hide everything.)
+    + '.rvm-fade .maplibregl-canvas-container{position:absolute;inset:0}'
+    + '.rvm-live .maplibregl-canvas-container{-webkit-mask-image:var(--rvm-mask);mask-image:var(--rvm-mask);-webkit-mask-composite:source-in;mask-composite:intersect}'
+    + '.rvm-fade>.rvm-note{left:16%;top:16%}'
     + '.rvm-live .maplibregl-ctrl-attrib{font:11px/1.3 system-ui,sans-serif;text-align:end;max-width:calc(100% - 20px)}'
     + '.rvm-credit{position:absolute;right:calc(34px - var(--rvm-r,0px));bottom:calc(6px - var(--rvm-b,0px));max-width:calc(100% - 48px);padding:1px 6px;border-radius:8px;background:rgba(255,255,255,.7);color:#333;'
     + 'font:10px/1.4 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;z-index:1}'
@@ -261,10 +268,11 @@ export function geoMapRuntime(lib, rtl, words) {
     box.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%';      // (MapLibre's own CSS makes its box position:relative)
     // (Behind the map, what shows while its tiles come: none for a globe without its space — cfg.clear: the slide.)
     var bg = function () { return cfg.clear ? 'transparent' : cfg.look === 'map' ? '#e8e8e0' : '#05070d'; };
-    box.style.background = bg();
+    // (With its edges fading, what is behind fades too: on the map's own canvas, not on the box.)
+    var paintBg = function () { box.style.background = cfg.fade ? 'transparent' : bg(); if (c.map) c.map.getCanvas().style.background = cfg.fade ? bg() : ''; el.classList.toggle('rvm-fade', !!cfg.fade); };
     var note = document.createElement('div'); note.className = 'rvm-note'; note.setAttribute('aria-live', 'polite');
     var credit = document.createElement('div'); credit.className = 'rvm-credit'; credit.textContent = cfg.short || ''; credit.hidden = true;
-    el.appendChild(box); el.appendChild(note); el.appendChild(credit);
+    el.appendChild(box); el.appendChild(note); el.appendChild(credit); paintBg();
     // Zoom is kept for the block's own size (cfg.w × cfg.h): a smaller or bigger box shows the same area — all of it,
     // and more around it if the box took another proportion (a slide adapted to the screen: screenfit.js).
     var zk = function () { return Math.log2(Math.max(1e-3, Math.min((el.clientWidth || cfg.w) / cfg.w, (el.clientHeight || cfg.h) / cfg.h))); };
@@ -402,9 +410,11 @@ export function geoMapRuntime(lib, rtl, words) {
         interactive: opts.interactive !== false, attributionControl: { compact: true }, pixelRatio: pr(), fadeDuration: opts.capture ? 0 : 300,
         canvasContextAttributes: { antialias: true, preserveDrawingBuffer: !!opts.capture } });
       if (!opts.keyboard && m.keyboard) m.keyboard.disable();            // (the arrows are the presentation's)
+      paintBg();
       m.on('style.load', dress);
       if (opts.onMove) m.on('moveend', function () { opts.onMove(c.view()); });
       m.on('moveend', function (e) { if (e && e.originalEvent && c.settled) ahead(300); });   // (moved by hand: from there)
+      m.on('moveend', function () { if (c.follower && Date.now() - (c.told || 0) > 1000) { c.told = Date.now(); c.follower(); } });
       // (A hand on the map: it stops moving on its own — motion() —, and goes on a moment after it lets go.)
       var hold = function () { mo.rest = performance.now() + 2500; };
       box.addEventListener('pointerdown', hold); box.addEventListener('wheel', hold, { passive: true });
@@ -563,22 +573,33 @@ export function geoMapRuntime(lib, rtl, words) {
     // The slide's start (cfg.start; settle()): down to the first stop from the Earth seen from space, or from where
     // the previous slide's map was left (from: c.state() of that one). Left at this very stop, it goes on as it was —
     // as if it were the same map. → a promise, once at the first stop.
+    // (k: the stop to go down to — the first, or, a slide come back to with Morph, the one its steps had reached.)
     var START_MS = 4500;
-    c.begin = function (kind, from) {
-      var a = cfg.stops[0] && place(0);
-      if (!a || reduced() || !(kind === 'space' || (kind === 'prev' && from))) { c.first = false; return c.go(0, false); }
-      var me = ++c.token; c.first = true; c.cur = 0; motion(false); shot(0);
+    c.begin = function (kind, from, k) {
+      k = k || 0;
+      var a = cfg.stops[k] && place(k);
+      if (!a || reduced() || !(kind === 'space' || (kind === 'prev' && from))) { c.first = false; return c.go(k, false); }
+      var me = ++c.token; c.first = true; c.cur = k; motion(false); shot(k);
       return c.ready.then(function () {
         var m = c.map; if (!m || c.failed || me !== c.token || !el.classList.contains('rvm-on')) return;
         var cam = kind === 'space' ? space() : Object.assign({}, from.cam, { zoom: from.cam.zoom + zk() });
-        m.stop(); m.jumpTo(cam); c.arriving = false;
+        // (Drawn there at once, before the screen shows it: with Morph, the box glides from the other one's — no
+        // flash of this map's own first view.)
+        m.stop(); m.jumpTo(cam); try { m.redraw(); } catch (e) {} c.arriving = false;
         if (kind === 'prev' && from.at && Math.abs(from.at.c[0] - a.c[0]) < 1e-4 && Math.abs(from.at.c[1] - a.c[1]) < 1e-4 && Math.abs(from.at.z - a.z) < 0.01) {
-          c.first = false; paint(0); showNote(0, true); mo.z = from.z || 0; if (c.settled) { free(); job = null; ahead(0); }
+          c.first = false; paint(k); showNote(k, true); mo.z = from.z || 0; if (c.settled) { free(); job = null; ahead(0); }
+          if (moves()) motion(true);
           return;
         }
-        c.cur = -1; paint(-1); showNote(0, false); if (c.settled) ahead(0);
-        return later(kind === 'space' ? 600 : 150).then(function () { if (me === c.token) return c.go(0, true, START_MS); });
+        c.cur = k - 1; paint(k - 1); showNote(k, false); if (c.settled) ahead(0);
+        return later(kind === 'space' ? 600 : 150).then(function () { if (me === c.token) return c.go(k, true, START_MS); });
       });
+    };
+    // The map of the next slide, that will carry on from this one (Morph): kept looking where this one is, while it
+    // waits out of sight — its tiles fetched by the time it is shown. (st: c.state() of this one.)
+    c.shadow = function (st) {
+      var m = c.map; if (!m || c.failed || c.dead || !st || (el.closest('section') && el.closest('section').classList.contains('present'))) return;
+      m.stop(); m.jumpTo(Object.assign({}, st.cam, { zoom: st.cam.zoom + zk() }));
     };
     // A click on a marker: there, out of turn — the trip's steps carry on from where they were (the next click goes
     // to the stop after the last one reached, from here); its note, once there; then the map's motion, if any. With
@@ -608,7 +629,7 @@ export function geoMapRuntime(lib, rtl, words) {
     // New settings (the dialog, as they are edited): a new style if the look changed, else the line and the markers.
     c.update = function (next) {
       var restyle = JSON.stringify([next.style, next.proj, next.dem, next.lang, !!next.clear]) !== JSON.stringify([cfg.style, cfg.proj, cfg.dem, cfg.lang, !!cfg.clear]);
-      cfg = c.cfg = next; credit.textContent = cfg.short || ''; box.style.background = bg();
+      cfg = c.cfg = next; credit.textContent = cfg.short || ''; paintBg();
       c.cur = Math.min(c.cur, Math.max(0, cfg.stops.length - 1));
       if (!c.map) return;
       // (Edited in the dialog: what was being warmed is no longer the trip; warmed again once the edits pause.)
@@ -686,7 +707,7 @@ export function geoMapRuntime(lib, rtl, words) {
     c.destroy = function () {
       c.dead = true; c.token++; motion(false); if (c.ro) c.ro.disconnect(); mounted = mounted.filter(function (x) { return x !== c; }); clearTimeout(c.at); job = null;
       if (c.map) try { c.map.remove(); } catch (e) {}
-      box.remove(); note.remove(); credit.remove(); el.classList.remove('rvm-on', 'rvm-offline'); el.style.overflow = 'hidden'; el.removeAttribute('data-bled'); var n = el.querySelector(':scope > .rvm-off'); if (n) n.remove();
+      box.remove(); note.remove(); credit.remove(); el.classList.remove('rvm-on', 'rvm-offline', 'rvm-fade'); el.style.overflow = 'hidden'; el.removeAttribute('data-bled'); var n = el.querySelector(':scope > .rvm-off'); if (n) n.remove();
       el._rvm = null;
     };
     mounted.push(c);
@@ -703,8 +724,9 @@ export function geoMapRuntime(lib, rtl, words) {
     el._rvm = mount(el, cfg, { interactive: true, warm: !receiver, motion: true, start: true });
     return el._rvm;
   }
-  // (entering: the slide has just been arrived at — its map may start from elsewhere: c.begin().)
-  function settle(el, animate, entering) {
+  // (entering: the slide has just been arrived at — its map may start from elsewhere: c.begin(). from: the map it
+  // carries on from — the previous slide's, through Morph —: c.state() of that one.)
+  function settle(el, animate, entering, from) {
     var c = ensure(el); if (!c) return;
     var sec = el.closest('section');
     var shown = sec ? [].slice.call(sec.querySelectorAll('[data-mapgo]')).filter(function (f) {
@@ -714,6 +736,7 @@ export function geoMapRuntime(lib, rtl, words) {
     var last = shown[shown.length - 1], k = last ? +last.getAttribute('data-mapgo') || 0 : 0;
     var dur = last ? secs(getComputedStyle(last).getPropertyValue('--anim-dur')) || 3000 : 0;
     var wait = last && animate ? secs(getComputedStyle(last).getPropertyValue('--anim-del')) : 0;
+    if (entering && from && c.cfg.start !== 'space') { c.begin('prev', from, k); return; }
     if (entering && !last && c.cfg.start) { c.begin(c.cfg.start, left); return; }
     if (wait) setTimeout(function () { c.go(k, true, dur); }, wait); else c.go(k, animate, dur);
   }
@@ -722,14 +745,36 @@ export function geoMapRuntime(lib, rtl, words) {
     var all = Reveal.getSlides(), a = all.indexOf(sec.closest('section')), b = all.indexOf(cur);
     return a >= 0 && b >= 0 && Math.abs(a - b) <= 1;
   }
-  function inSlide(slide) {
+  // ── Morph (Transformar) between two slides with a map each, of the same look: the same Earth — the new one carries
+  // on from where the other was left, as its box glides to its place (and back, going back). Its partner: the one
+  // Morph pairs it with (the same data-id), else the only map there of that look. (The map's own «from space» wins.)
+  function morphs(a, b) { return !!(a && b && a.hasAttribute('data-auto-animate') && b.hasAttribute('data-auto-animate')); }
+  function lookOf(el) { try { var x = JSON.parse(el.getAttribute('data-geomap')); return [x.look, x.style].join('|'); } catch (e) { return ''; } }
+  function partner(el, other) {
+    if (!morphs(el.closest('section'), other)) return null;
+    var id = el.getAttribute('data-id'), maps = [].slice.call(other.querySelectorAll('[data-geomap]'));
+    var p = id ? maps.filter(function (x) { return x.getAttribute('data-id') === id; })[0] : null;
+    if (!p) { var same = maps.filter(function (x) { return lookOf(x) === lookOf(el); }); p = same.length === 1 ? same[0] : null; }
+    return p && lookOf(p) === lookOf(el) ? p : null;
+  }
+  function inSlide(slide, prev) {
     if (!slide) return;
     mounted.slice().forEach(function (c) { if (!c.el.isConnected || !near(c.el.closest('section'), slide)) { if (!c.el.closest('.rv-dlg-map')) c.destroy(); } });
-    slide.querySelectorAll('[data-geomap]').forEach(function (el) { settle(el, false, true); if (el._rvm) el._rvm.resize(); });
+    slide.querySelectorAll('[data-geomap]').forEach(function (el) {
+      var p = prev && partner(el, prev), from = p && p._rvm && p._rvm.state();
+      settle(el, false, true, from); if (el._rvm) el._rvm.resize();
+    });
     // (A map on the next slide, started now — reveal.js has it laid out already —: its first view loaded and its
     // first flight fetched before it is shown. Not in the speaker view's previews: the presentation does it.)
     var all = Reveal.getSlides(), next = all[all.indexOf(slide) + 1];
     if (next && !receiver) next.querySelectorAll('[data-geomap]').forEach(function (el) { ensure(el); });
+    // (And one there that will carry on from a map here: kept looking where this one is — c.shadow().)
+    slide.querySelectorAll('[data-geomap]').forEach(function (el) {
+      var c = el._rvm, f = next && !receiver && c ? [].slice.call(next.querySelectorAll('[data-geomap]')).filter(function (x) { return partner(x, slide) === el && x._rvm; })[0] : null;
+      if (!c) return;
+      c.follower = f && f._rvm.cfg.start !== 'space' ? function () { if (f._rvm) f._rvm.ready.then(function () { if (f._rvm) f._rvm.shadow(c.state()); }); } : null;
+      if (c.follower) c.ready.then(function () { if (c.follower) c.follower(); });
+    });
   }
   function fromFragments(e) {
     (e.fragments || [e.fragment]).forEach(function (f) {
@@ -743,7 +788,7 @@ export function geoMapRuntime(lib, rtl, words) {
     Reveal.on('slidechanged', function (e) {
       var was = e.previousSlide && [].slice.call(e.previousSlide.querySelectorAll('[data-geomap]')).map(function (el) { return el._rvm && el._rvm.state(); }).filter(Boolean)[0];
       if (was) left = was;
-      inSlide(e.currentSlide);
+      inSlide(e.currentSlide, e.previousSlide);
     });
     Reveal.on('fragmentshown', fromFragments); Reveal.on('fragmenthidden', fromFragments);
     Reveal.on('resize', function () { mounted.forEach(function (c) { c.resize(); }); });

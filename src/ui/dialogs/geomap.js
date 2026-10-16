@@ -19,7 +19,7 @@ import { toast } from '../shell/toast.js';
 let runtime = null;
 const rt = () => (runtime ||= geoMapRuntime(MAPLIBRE, MAPLIBRE_RTL, { offline: t('Sin conexión: el mapa no se puede cargar') }));
 const lang = () => deckTag(state.deck, currentLang()).split('-')[0];
-const SETTINGS = ['look', 'theme', 'route', 'routeColor', 'terrain', 'names', 'labels', 'showAll', 'curve', 'marker', 'arrive', 'past', 'motion', 'speed', 'start', 'pulse', 'transparent', 'mode', 'view'];
+const SETTINGS = ['look', 'theme', 'route', 'routeColor', 'terrain', 'names', 'labels', 'showAll', 'curve', 'marker', 'arrive', 'past', 'motion', 'speed', 'start', 'pulse', 'transparent', 'mode', 'view', 'edge'];
 const pick = b => Object.fromEntries(SETTINGS.filter(k => b[k] !== undefined).map(k => [k, structuredClone(b[k])]));
 // (A little picture of each look, for choosing: drawn here, nothing to download.)
 const LOOK_ART = {
@@ -75,6 +75,7 @@ export function openMapEditor(b0, { isNew = false } = {}) {
         <div class="gm-row gm-opts"><label class="fr-l gm-theme">${t('Colores del mapa')}<select class="gm-themesel">${G.MAP_THEMES.map(([v, l]) => `<option value="${v}">${t(l)}</option>`).join('')}</select></label>
           <label class="fr-chk gm-namesw"><input type="checkbox" class="gm-names"> ${t('Nombres de lugares')}</label>
           <label class="fr-chk"><input type="checkbox" class="gm-terrain"> ${t('Relieve 3D')}</label>
+          <label class="fr-l">${t('Bordes')}<select class="gm-edge">${G.MAP_EDGES.map(([v, l]) => `<option value="${v}">${t(l)}</option>`).join('')}</select></label>
           <label class="fr-chk gm-clearw" title="${esc(t('Solo la bola del mundo, sobre el fondo de la diapositiva'))}"><input type="checkbox" class="gm-clear"> ${t('Fondo transparente')}</label></div>
         <div class="gm-view rv-dlg-map" style="aspect-ratio:${ratio.toFixed(4)}"></div>
         <p class="host-help gm-hint">${t('Arrastra para moverte; rueda para acercar; con el botón derecho (o Ctrl) inclina y gira. Luego «Usar la vista actual» en la parada.')}</p>
@@ -115,6 +116,10 @@ export function openMapEditor(b0, { isNew = false } = {}) {
     // (All the stops at once: no trip — its line, its flights, «show them all from the start» go; the map's view comes.)
     const all = d.mode === 'all'; q('.gm-mode').value = d.mode || ''; q('.gm-viewrow').hidden = !all; q('.gm-allw').hidden = all; q('.gm-flysec').hidden = all;
     q('.gm-fitview').disabled = !d.view;
+    // (Its edges, as on the slide: the same mask, the corners rounded in proportion.)
+    const vw = q('.gm-view'), ev = G.mapEdgeCSS(d), rad = /border-radius:(\d+)px/.exec(ev);
+    q('.gm-edge').value = d.edge || ''; vw.style.setProperty('--rvm-mask', (/--rvm-mask:(.*);$/.exec(ev) || [])[1] || 'none');
+    vw.style.borderRadius = rad ? (rad[1] * (vw.clientWidth || d.w) / Math.max(1, d.w)).toFixed(1) + 'px' : '';
     q('.gm-clearw').hidden = d.look !== 'globe'; q('.gm-clear').checked = !!d.transparent; q('.gm-view').classList.toggle('gm-clearbg', G.isClear(d));
     // (On a flat map the «turning» is a slide sideways: said so.)
     q('.gm-motionsel option[value="spin"]').textContent = t(d.look === 'globe' ? 'Girar el planeta' : 'Desplazarse de lado');
@@ -141,6 +146,7 @@ export function openMapEditor(b0, { isNew = false } = {}) {
   on('.gm-names', 'change', x => { d.names = x.checked ? undefined : false; });
   on('.gm-terrain', 'change', x => { d.terrain = x.checked; });
   on('.gm-clear', 'change', x => { d.transparent = x.checked || undefined; });
+  on('.gm-edge', 'change', x => { d.edge = x.value || undefined; });
   on('.gm-mcolor', 'input', x => { d.marker = { ...d.marker, color: x.value }; });
   q('.gm-mcolor').addEventListener('change', sync);
   on('.gm-msize', 'change', x => { d.marker = { ...d.marker, size: +x.value }; });

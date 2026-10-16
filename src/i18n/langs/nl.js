@@ -4824,6 +4824,8 @@ export default {
   "Solo la bola del mundo, sobre el fondo de la diapositiva": "Alleen de wereldbol, op de achtergrond van de dia",
   "Una a una, con un clic cada vez": "Een voor een, telkens met een klik",
   "Todas a la vez, sin viajar": "Allemaal tegelijk, zonder reis",
+  "Bordes desvanecidos": "Vervaagde randen",
+  "Óvalo desvanecido": "Vervaagd ovaal",
   "Usar la vista actual para el mapa": "Huidige weergave gebruiken voor de kaart",
   "Que se vean todas": "Alle tonen",
   "Marcadores de las paradas": "Haltemarkeringen",

@@ -33,7 +33,7 @@ import { createCameraEngine, revelaCameraRuntime } from '../runtime/camera.js';
 import { modelAttrsHTML, bleedBox, edgeCSS } from '../../features/content/model3d.js';
 import { model3dRuntime } from '../runtime/model3d.js';
 import { geoMapRuntime } from '../runtime/geomap.js';
-import { mapConfig, stopIndex, mapAlt, isClear } from '../../features/content/geomap.js';
+import { mapConfig, stopIndex, mapAlt, isClear, mapEdgeCSS, MAP_MASK, fadesOut } from '../../features/content/geomap.js';
 import { puppetBones, puppetMorph, puppetSolve, puppetMirror, createPuppet, revelaPuppetRuntime } from '../runtime/puppet.js';
 import { timerRuntime } from '../runtime/timer.js';
 import { screenFitRuntime } from '../runtime/screenfit.js';
@@ -471,13 +471,14 @@ function blockHTMLRaw(b, slide) {
 function mapHTML(b, a = '') {
   const stops = b.stops || [], lang = deckTag(state.deck, currentLang());
   const shots = stops.map((s, k) => (s.shot && /^data:image\//.test(s.shot)
-    ? `<img class="rv-map-shot" data-k="${k}" src="${esc(s.shot)}" alt="" style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;${k ? 'visibility:hidden' : ''}">` : '')).join('');
+    ? `<img class="rv-map-shot" data-k="${k}" src="${esc(s.shot)}" alt="" style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;${MAP_MASK}${k ? 'visibility:hidden' : ''}">` : '')).join('');
   const label = b.decorative ? ' aria-hidden="true"' : ` role="img" aria-label="${esc((b.alt || '').trim() || mapAlt(b))}"`;
   // (A map over the whole slide — touching its four edges, within 2 % — goes on to the screen's edges when presenting
   // on a screen of another proportion, as a background would: io/runtime/geomap.js, bleed().)
   const { w: W, h: H } = state.deck.size, tx = W * 0.02, ty = H * 0.02;
-  const whole = !b.rotation && !b.flipH && !b.flipV && b.x <= tx && b.y <= ty && b.x + b.w >= W - tx && b.y + b.h >= H - ty;
-  return `<div${a.replace(/ (role|aria-label|aria-hidden)="[^"]*"/g, '')}${stops.length ? ` data-geomap="${esc(JSON.stringify(mapConfig(b, lang)))}" data-prevent-swipe` : ''}${whole ? ' data-bleed' : ''}${label} style="${box(b)}overflow:hidden;background:${isClear(b) ? 'transparent' : b.look === 'map' ? '#e8e8e0' : '#0b1d33'}">${shots}</div>`;
+  // (Not one whose edges fade or are rounded: it stays in its box, as drawn.)
+  const whole = !b.edge && !b.rotation && !b.flipH && !b.flipV && b.x <= tx && b.y <= ty && b.x + b.w >= W - tx && b.y + b.h >= H - ty;
+  return `<div${a.replace(/ (role|aria-label|aria-hidden)="[^"]*"/g, '')}${stops.length ? ` data-geomap="${esc(JSON.stringify(mapConfig(b, lang)))}" data-prevent-swipe` : ''}${whole ? ' data-bleed' : ''}${label} style="${box(b)}overflow:hidden;${mapEdgeCSS(b)}background:${isClear(b) || fadesOut(b) ? 'transparent' : b.look === 'map' ? '#e8e8e0' : '#0b1d33'}">${shots}</div>`;
 }
 
 // A magnifier: the lines and the area's frame over the slide, under its box;

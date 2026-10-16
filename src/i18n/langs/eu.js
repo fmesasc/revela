@@ -4824,6 +4824,8 @@ export default {
   "Solo la bola del mundo, sobre el fondo de la diapositiva": "Lurra-bola soilik, diapositibaren atzeko planoaren gainean",
   "Una a una, con un clic cada vez": "Banan-banan, klik bakoitzeko",
   "Todas a la vez, sin viajar": "Denak batera, bidaiatu gabe",
+  "Bordes desvanecidos": "Ertz lausotuak",
+  "Óvalo desvanecido": "Obalo lausotua",
   "Usar la vista actual para el mapa": "Erabili uneko ikuspegia maparako",
   "Que se vean todas": "Denak ikusi daitezen",
   "Marcadores de las paradas": "Geldialdien markatzaileak",

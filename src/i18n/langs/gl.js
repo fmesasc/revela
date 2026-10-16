@@ -4824,6 +4824,8 @@ export default {
   "Solo la bola del mundo, sobre el fondo de la diapositiva": "Só o globo terráqueo, sobre o fondo da diapositiva",
   "Una a una, con un clic cada vez": "Unha a unha, cun clic cada vez",
   "Todas a la vez, sin viajar": "Todas á vez, sen viaxar",
+  "Bordes desvanecidos": "Bordos esvaídos",
+  "Óvalo desvanecido": "Óvalo esvaído",
   "Usar la vista actual para el mapa": "Usar a vista actual para o mapa",
   "Que se vean todas": "Que se vexan todas",
   "Marcadores de las paradas": "Marcadores das paradas",

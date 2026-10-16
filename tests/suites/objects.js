@@ -3671,6 +3671,43 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); }
   });
 
+  await test('mapa: bordes del recuadro (redondeados, desvanecidos, óvalo) y, con Transformar, el mismo planeta sigue de una diapositiva a otra', async () => {
+    reset(); const { G, W } = await mapSetup(); R.slides.addSlide('blank'); await sleep(10);
+    eq(G.normalizeMap({ type: 'map', edge: 'raro', stops: [] }).edge, undefined, 'un borde raro, fuera');
+    assert(/border-radius:\d+px/.test(G.mapEdgeCSS({ edge: 'round', w: 600, h: 400 })), 'esquinas redondeadas');
+    assert(/--rvm-mask:linear-gradient\(90deg,transparent,#000 9\.33%/.test(G.mapEdgeCSS({ edge: 'soft', w: 600, h: 400 })), 'bordes desvanecidos: lo mismo en los cuatro lados');
+    assert(/radial-gradient\(closest-side/.test(G.mapEdgeCSS({ edge: 'oval', w: 600, h: 400 })), 'óvalo');
+    const b1 = G.addMap({ look: 'globe', x: 700, y: 100, w: 500, h: 500, stops: [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 4 }] });
+    R.slides.addSlide('blank'); await sleep(10);
+    const b2 = G.addMap({ look: 'globe', edge: 'soft', x: 0, y: 0, w: 1280, h: 720, stops: [{ name: 'Atenas', lon: 23.7, lat: 37.98, zoom: 6, shot: 'data:image/png;base64,iVBORw0KGgo=' }] });
+    const k0 = G.shotKey(b2, 0); G.setMap(b2.id, { edge: 'oval' }); eq(G.shotKey(b2, 0), k0, 'el borde no cambia su imagen');
+    G.setMap(b2.id, { edge: 'soft' }); eq(G.mapConfig(b2).fade, true);
+    R.slides.addSlide('blank'); await sleep(10);
+    G.addMap({ look: 'map', stops: [{ name: 'Roma', lon: 12.5, lat: 41.9, zoom: 5 }] });
+    const sl = R.state.deck.slides; sl[1].autoAnimate = true; sl[2].autoAnimate = true;
+    const html = R.io.buildHTML(R.state.deck, { inApp: true }), S = await W.eval("import('/src/core/vendor.js')");
+    const tag = html.match(/<div[^>]*data-geomap[^>]*>/g)[1];
+    assert(/--rvm-mask:linear-gradient/.test(tag) && /background:transparent/.test(tag) && !/data-bleed/.test(tag), 'desvanecido: su máscara, sin fondo, y no se sale de su recuadro aunque ocupe la diapositiva');
+    assert(/class="rv-map-shot"[^>]*mask-image:var\(--rvm-mask\)/.test(html), 'también en su imagen');
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    try {
+      f.srcdoc = html.split(JSON.stringify(S.MAPLIBRE)).join(JSON.stringify('data:text/javascript;charset=utf-8,' + encodeURIComponent(mapStub) + '%2F%2F'));
+      for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
+      const F = f.contentWindow, RV = F.Reveal, [e1, e2, e3] = F.document.querySelectorAll('[data-geomap]');
+      RV.slide(1); for (let k = 0; k < 60 && !(e1.classList.contains('rvm-on') && e2._rvm?.map); k++) await sleep(50);
+      for (let k = 0; k < 60 && String(e2._rvm.map.c) !== '-3.7,40.4'; k++) await sleep(50);
+      eq(String(e2._rvm.map.c), '-3.7,40.4', 'el mapa de la siguiente espera donde está este (para tener sus imágenes)');
+      assert(e2.classList.contains('rvm-fade'), 'con sus bordes desvanecidos');
+      const m2 = e2._rvm.map, real = () => m2.flights.filter(x => x.duration > 1), n0 = real().length, v0 = m2.moves.length;
+      RV.slide(2); for (let k = 0; k < 80 && real().length === n0; k++) await sleep(50);
+      assert(m2.moves.slice(v0).some(c => String(c) === '-3.7,40.4'), 'al transformar: desde donde quedó el otro');
+      const fl = real().at(-1); eq(String(fl?.center), '23.7,37.98', 'y de allí, volando, a su parada'); eq(fl?.duration, 4500);
+      for (let k = 0; k < 60 && !e3._rvm?.map; k++) await sleep(50);
+      const m3 = e3._rvm.map; RV.slide(3); await sleep(300);
+      assert(!m3.flights.some(x => x.duration > 1), 'otro tipo de mapa: no sigue del anterior, empieza en su parada');
+    } finally { f.remove(); }
+  });
+
   await test('mapa: todas las paradas a la vez, sin viaje: ninguna en un paso, su vista, y un clic en un marcador va y vuelve', async () => {
     reset(); const { G, W } = await mapSetup(); R.slides.addSlide('blank'); await sleep(10);
     const b = G.addMap({ stops: [{ name: 'Lisboa', lon: -9.14, lat: 38.72, zoom: 10 }, { name: 'Tokio', lon: 139.69, lat: 35.69, zoom: 10 }, { name: 'Sídney', lon: 151.2, lat: -33.87, zoom: 10 }] });

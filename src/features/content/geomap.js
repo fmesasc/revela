@@ -7,7 +7,7 @@
 // read out for it, and the steps (animations) that take it from one stop to the next.
 //
 // block = { type: 'map', look, theme, route, routeColor, terrain, names, labels, showAll, curve, marker, arrive, past,
-//           motion, speed, start, pulse, transparent, mode, view, stops: [{ id, name, note, lon, lat, zoom, pitch, bearing, cc, marker, shot, shotKey }] }
+//           motion, speed, start, pulse, transparent, mode, view, edge, stops: [{ id, name, note, lon, lat, zoom, pitch, bearing, cc, marker, shot, shotKey }] }
 // marker = { kind, color, size, icon }: the map's (every stop's, by default); a stop's own overrides some of it.
 // The first stop is where the map starts; every other one is an animation of the map (effect 'mapfly', a.stop: the
 // stop's id), so it is a click like any other step of the slide — reordered in the animation pane, played back by
@@ -67,6 +67,23 @@ export const MAP_SPEEDS = [['slow', 'Lento'], ['normal', 'Normal'], ['fast', 'R�
 // The globe on the slide itself, without the space around it (transparent): only for the globe — the flat looks fill
 // their box.
 export const isClear = b => !!(b?.transparent && b.look === 'globe');
+// The box's edge: straight, its corners rounded, or the map fading into the slide at its four sides or in an oval,
+// as a vignette. Drawn by CSS over the map and its pictures (mapEdgeCSS, MAP_MASK) — not over its credits nor the
+// stop's note, which stay readable —; the pictures themselves are whole (the shot key doesn't change).
+export const MAP_EDGES = [['', 'Recto'], ['round', 'Esquinas redondeadas'], ['soft', 'Bordes desvanecidos'], ['oval', 'Óvalo desvanecido']];
+export const fadesOut = b => b?.edge === 'soft' || b?.edge === 'oval';
+// (The fade, as wide as a seventh of the box's shorter side on all four: in % of each side, so it scales with the box.)
+export function mapEdgeCSS(b) {
+  const w = Math.max(1, +b?.w || 1), h = Math.max(1, +b?.h || 1), k = Math.min(w, h);
+  if (b?.edge === 'round') return `border-radius:${Math.round(k * 0.06)}px;`;
+  if (b?.edge === 'soft') {
+    const fx = +(k * 14 / w).toFixed(2), fy = +(k * 14 / h).toFixed(2);
+    return `--rvm-mask:linear-gradient(90deg,transparent,#000 ${fx}%,#000 ${100 - fx}%,transparent),linear-gradient(transparent,#000 ${fy}%,#000 ${100 - fy}%,transparent);`;
+  }
+  if (b?.edge === 'oval') return '--rvm-mask:radial-gradient(closest-side,#000 68%,transparent);';
+  return '';
+}
+export const MAP_MASK = '-webkit-mask-image:var(--rvm-mask);mask-image:var(--rvm-mask);-webkit-mask-composite:source-in;mask-composite:intersect;';
 // How the stops are shown when presenting: one after the other, a click each, flying; or all at once, no trip.
 export const MAP_MODES = [['', 'Una a una, con un clic cada vez'], ['all', 'Todas a la vez, sin viajar']];
 export const MAP_STARTS = [['', 'En la primera parada'], ['space', 'Desde el espacio'], ['prev', 'Desde el mapa de la diapositiva anterior']];
@@ -159,6 +176,7 @@ export function normalizeMap(b) {
   if (b.speed !== 'slow' && b.speed !== 'fast') delete b.speed;
   if (b.start !== 'space' && b.start !== 'prev') delete b.start;
   if (b.pulse !== 'cur' && b.pulse !== 'all') delete b.pulse;
+  if (!MAP_EDGES.some(e => e[0] && e[0] === b.edge)) delete b.edge;
   if (b.mode !== 'all') { delete b.mode; delete b.view; }
   else if (b.view != null) { const v = cleanStop(b.view); b.view = { lon: v.lon, lat: v.lat, zoom: v.zoom, pitch: v.pitch, bearing: v.bearing }; }
   b.stops = (Array.isArray(b.stops) ? b.stops : []).slice(0, MAX_STOPS).map(cleanStop);
@@ -286,7 +304,7 @@ export function mapConfig(b, lang = 'es') {
     color: b.routeColor || '#e63946', route: b.route || 'line', labels: b.labels !== false, all: !!b.showAll, curve: b.curve || 1.42,
     arrive: b.arrive || 'drop', dim: b.past === 'dim',
     ...(b.mode === 'all' && { all: true, home: (v => ({ c: [v.lon, v.lat], z: v.zoom, p: v.pitch || 0, b: v.bearing || 0 }))(mapView(b)) }),
-    ...(b.motion && { motion: b.motion, speed: { slow: 0.5, fast: 2 }[b.speed] || 1 }), ...(b.start && { start: b.start }), ...(isClear(b) && { clear: true }), ...(b.pulse && { pulse: b.pulse }),
+    ...(b.motion && { motion: b.motion, speed: { slow: 0.5, fast: 2 }[b.speed] || 1 }), ...(b.start && { start: b.start }), ...(isClear(b) && { clear: true }), ...(b.pulse && { pulse: b.pulse }), ...(fadesOut(b) && { fade: true }),
     stops: stops.map((s, i) => ({ n: s.name || '', ...(s.note && { t: s.note }), c: [s.lon, s.lat], z: s.zoom, p: s.pitch || 0, b: s.bearing || 0, m: markerArt(markerOf(b, s), i + 1, s.cc), col: markerOf(b, s).color })),
     segs: b.mode === 'all' ? [] : routeSegments(b), credit: mapCredit(b), short: mapCreditShort(b) };
 }
@@ -370,11 +388,11 @@ export const clearGeocodeCache = () => { memo.clear(); lastAsk = 0; try { localS
 
 // What the editor and the thumbnails show: the first stop's picture, or — no stops yet, or no picture — a drawing of
 // a map with the names of its stops. (An element per stop picture, for the animation preview.)
-export const mapSig = b => JSON.stringify([b.look, b.w, b.h, (b.stops || []).map(s => [s.id, s.name, (s.shot || '').length, (s.shot || '').slice(-24)])]);
+export const mapSig = b => JSON.stringify([b.look, b.w, b.h, b.edge || '', (b.stops || []).map(s => [s.id, s.name, (s.shot || '').length, (s.shot || '').slice(-24)])]);
 const escH = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export function mapPreviewHTML(b) {
   const first = (b.stops || [])[0];
-  if (first?.shot) return `<img class="map-shot" src="${first.shot}" alt="" draggable="false" style="width:100%;height:100%;object-fit:cover;display:block">`;
+  if (first?.shot) return `<div style="width:100%;height:100%;overflow:hidden;${mapEdgeCSS(b)}"><img class="map-shot" src="${first.shot}" alt="" draggable="false" style="width:100%;height:100%;object-fit:cover;display:block;${MAP_MASK}"></div>`;
   const dark = b.look !== 'map' || b.theme === 'dark', names = (b.stops || []).map(s => s.name).filter(Boolean);
   return `<div class="map-ph" style="width:100%;height:100%;display:grid;place-items:center;text-align:center;overflow:hidden;font:600 28px/1.3 system-ui,sans-serif;`
     + `color:${dark ? '#e8eef6' : '#29435c'};background:${dark ? 'radial-gradient(circle at 50% 45%,#1f5a8a 0,#0b1d33 70%)' : 'repeating-linear-gradient(35deg,#dfe9d8 0 40px,#e7efe1 40px 80px),#e3ecdc'}">`

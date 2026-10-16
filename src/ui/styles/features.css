@@ -1342,7 +1342,7 @@ body.presenting #stage .empty-hint{display:none}
 .gm-looks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .gm-look svg{width:100%;height:auto;max-height:64px;border-radius:5px;display:block}
 .gm-look span{font-size:12px;font-weight:600}
-.gm-opts{align-items:center;min-height:36px}.gm-opts .fr-chk{margin:0}.gm-opts .fr-l{margin:0;max-width:200px}
+.gm-opts{align-items:center;min-height:36px;flex-shrink:0}.gm-opts .fr-chk{margin:0}.gm-opts .fr-l{margin:0;max-width:260px;flex:0 1 auto;flex-direction:row;align-items:center;gap:6px}
 .gm-view{position:relative;width:100%;max-height:58vh;border-radius:8px;overflow:hidden;background:#cfd8dc;border:1px solid var(--line2)}
 .gm-view>.rvm-live{opacity:1}
 .gm-view.gm-clearbg{background:repeating-conic-gradient(#e3e7ea 0 25%,#fff 0 50%) 0 0/20px 20px}
