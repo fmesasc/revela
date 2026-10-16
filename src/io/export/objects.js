@@ -10,7 +10,7 @@ import { state, currentSlide } from '../../core/store.js';
 import { opacityOf } from '../../core/model.js';
 import { JSZIP, loadScript } from '../../core/vendor.js';
 import { tableCSS, levelCSS, shapeSVG, iconSVG, chartSVG, inkSVG } from '../../render/svg.js';
-import { lookSpec, applyLook } from '../../render/imagelook.js';
+import { lookSpec, applyLook, NO_LOOK } from '../../render/imagelook.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { t } from '../../i18n/index.js';
 import { blockHTML } from '../formats/html.js';
@@ -107,7 +107,7 @@ export function boundsOf(blocks) {
 export async function selectionCanvas(blocks, { scale = 2, background = null, slide = currentSlide(), deck = state.deck } = {}) {
   const box = boundsOf(blocks);
   const baked = await Promise.all(blocks.map(async b => (b.type === 'image' && b.src
-    ? { ...b, src: (await bakeImage(b, scale)).toDataURL('image/png'), adj: null, fx: null, crop: null, fit: 'fill' }
+    ? { ...b, src: (await bakeImage(b, scale)).toDataURL('image/png'), ...NO_LOOK, crop: null, fit: 'fill' }
     : b)));
   const bg = background === 'slide' ? slide?.background || '#ffffff' : background;
   const holder = document.createElement('div'); holder.className = 'rst';   // (.rst: the images' size rule below must not reach html2canvas's own iframe)

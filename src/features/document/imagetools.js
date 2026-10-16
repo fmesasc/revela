@@ -131,14 +131,19 @@ export function fillHoles(d, known, W, H) {
 // The AI sees the picture squared and on white: it squeezes whatever it gets into a square (a wide logo came out
 // smudged), and a see-through part reaches it as black (its gaps came out as black lines). What it keeps is then
 // limited to what the picture shows — a picture with no background of its own has nothing to separate.
-export async function pictureLayers(src) {
-  const img = await loadPicture(src), W = img.naturalWidth, H = img.naturalHeight, n = W * H, S = Math.max(W, H);
-  const sq = canvasOf(S, S), sg = sq.getContext('2d'); sg.fillStyle = '#fff'; sg.fillRect(0, 0, S, S);
-  sg.drawImage(img, (S - W) / 2, (S - H) / 2);
+// The subject alone, the picture's size (W×H: its own, or smaller), as the AI sees it so (squared, on white).
+export async function subjectCanvas(img, W = img.naturalWidth, H = img.naturalHeight) {
+  const S = Math.max(W, H), sq = canvasOf(S, S), sg = sq.getContext('2d'); sg.fillStyle = '#fff'; sg.fillRect(0, 0, S, S);
+  sg.drawImage(img, (S - W) / 2, (S - H) / 2, W, H);
   const cut = await layerKit.cutout(sq.toDataURL('image/png')).then(loadPicture), k = cut.naturalWidth / S;
-  const top = canvasOf(W, H), base = canvasOf(W, H), tg = top.getContext('2d');
+  const top = canvasOf(W, H), tg = top.getContext('2d');
   tg.drawImage(cut, (S - W) / 2 * k, (S - H) / 2 * k, W * k, H * k, 0, 0, W, H);
-  tg.globalCompositeOperation = 'destination-in'; tg.drawImage(img, 0, 0); tg.globalCompositeOperation = 'source-over';
+  tg.globalCompositeOperation = 'destination-in'; tg.drawImage(img, 0, 0, W, H); tg.globalCompositeOperation = 'source-over';
+  return top;
+}
+export async function pictureLayers(src) {
+  const img = await loadPicture(src), W = img.naturalWidth, H = img.naturalHeight, n = W * H;
+  const top = await subjectCanvas(img), base = canvasOf(W, H), tg = top.getContext('2d');
   const g = base.getContext('2d'); g.drawImage(img, 0, 0);
   const px = g.getImageData(0, 0, W, H), d = px.data, m = tg.getImageData(0, 0, W, H).data;
   let on = 0, shown = 0; for (let i = 0; i < n; i++) { if (m[i * 4 + 3] > 20) on++; if (d[i * 4 + 3] > 20) shown++; }
@@ -170,4 +175,186 @@ export async function splitLayers(id) {
     state.ui.selection = top.id; state.ui.multi = [b.id, top.id];
   });
   return top.id;
+}
+
+// ---- Pixel tools: each makes a new picture, one step to undo -----------------------------------------------------
+// - straighten: turned a little, enlarged so that no corner is left empty (Lightroom's «Enderezar»);
+// - hideArea: what is painted, blurred or in big squares (a pupil's face or name on a photo of the class);
+// - eraseArea: what is painted, filled from what is around it (the same fill as Capas' hole);
+// - retouchCutout: after «Quitar fondo», more taken away, or given back from the picture it was;
+// - blurBackground, selectiveColour: with the subject's mask (the same AI as «Quitar fondo»): portrait mode, and the
+//   background in black and white;
+// - recolour: one colour of the picture (its hue, give or take) made another;
+// - photoColours: its few main colours, for the theme.
+// A painted mask is a canvas of any size (the brush's), laid over the whole picture.
+
+const pictureOf = id => currentSlide().blocks.find(x => x.id === id && x.type === 'image') || null;
+export async function pixelsOf(src, max = MAX) {
+  const img = await loadPicture(src), k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  const W = Math.max(1, Math.round(img.naturalWidth * k)), H = Math.max(1, Math.round(img.naturalHeight * k));
+  const c = canvasOf(W, H), g = c.getContext('2d'); g.drawImage(img, 0, 0, W, H);
+  return { img, c, g, W, H, data: g.getImageData(0, 0, W, H) };
+}
+// The mask at W×H: 0…1 per pixel (its alpha).
+export function maskWeights(mask, W, H) {
+  const c = canvasOf(W, H), g = c.getContext('2d'); g.drawImage(mask, 0, 0, W, H);
+  const d = g.getImageData(0, 0, W, H).data, out = new Float32Array(W * H);
+  for (let i = 0; i < out.length; i++) out[i] = d[i * 4 + 3] / 255;
+  return out;
+}
+const painted = w => { for (let i = 0; i < w.length; i += 7) if (w[i] > 0.01) return true; return w.some(v => v > 0.01); };
+// The new pixels, as the picture's new source (JPEG stays JPEG unless asked for transparency); one step.
+async function setPixels(id, P, png = false) {
+  const b = pictureOf(id); if (!b) return null;
+  P.g.putImageData(P.data, 0, 0);
+  const src = png ? P.c.toDataURL('image/png') : encode(P.c, b.src);
+  commit(() => { b.src = src; });
+  return src;
+}
+
+// Enderezar: deg (−45…45), the picture's own size kept.
+export const straightenZoom = (deg, W, H) => { const a = Math.abs(deg) * Math.PI / 180; return Math.cos(a) + Math.max(W / H, H / W) * Math.sin(a); };
+export async function straightenImage(id, deg) {
+  const b = pictureOf(id); deg = Math.max(-45, Math.min(45, +deg || 0)); if (!b || !deg) return null;
+  const img = await loadPicture(b.src), k0 = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+  const W = Math.round(img.naturalWidth * k0), H = Math.round(img.naturalHeight * k0), c = canvasOf(W, H), g = c.getContext('2d'), k = straightenZoom(deg, W, H);
+  g.imageSmoothingQuality = 'high'; g.translate(W / 2, H / 2); g.rotate(deg * Math.PI / 180); g.scale(k, k); g.drawImage(img, -W / 2, -H / 2, W, H);
+  const src = encode(c, b.src); commit(() => { b.src = src; }); return src;
+}
+
+// Difuminar o pixelar: strength 0…100 (how big the blur or the squares are, from the picture's size).
+export function hideData(data, w, { mode = 'blur', strength = 60 } = {}) {
+  const d = data.data, W = data.width, H = data.height, L = Math.max(W, H), out = new Uint8ClampedArray(d);
+  if (mode === 'pixel') {
+    const s = Math.max(4, Math.round(L * (0.012 + strength / 100 * 0.05)));
+    for (let y0 = 0; y0 < H; y0 += s) for (let x0 = 0; x0 < W; x0 += s) {
+      const x1 = Math.min(W, x0 + s), y1 = Math.min(H, y0 + s), n = (x1 - x0) * (y1 - y0), m = [0, 0, 0];
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) for (let ch = 0; ch < 3; ch++) m[ch] += d[(y * W + x) * 4 + ch];
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) for (let ch = 0; ch < 3; ch++) out[(y * W + x) * 4 + ch] = m[ch] / n;
+    }
+  } else boxBlur(out, W, H, Math.max(3, Math.round(L * (0.008 + strength / 100 * 0.03))));
+  for (let i = 0; i < w.length; i++) { const a = w[i]; if (a > 0) for (let ch = 0; ch < 3; ch++) d[i * 4 + ch] = d[i * 4 + ch] * (1 - a) + out[i * 4 + ch] * a; }
+  return data;
+}
+export async function hideArea(id, mask, opts) {
+  const b = pictureOf(id); if (!b) return null;
+  const P = await pixelsOf(b.src), w = maskWeights(mask, P.W, P.H); if (!painted(w)) return null;
+  hideData(P.data, w, opts); return setPixels(id, P);
+}
+// Borrar: what is painted (a little more, so that its outline goes too) filled from around it.
+export function eraseData(data, w) {
+  const W = data.width, H = data.height, grow = new Uint8ClampedArray(W * H * 4);
+  for (let i = 0; i < w.length; i++) grow[i * 4] = w[i] > 0.05 ? 255 : 0;
+  boxBlur(grow, W, H, Math.max(1, Math.round(Math.min(W, H) * 0.004)), 1);
+  const known = new Float32Array(W * H); for (let i = 0; i < known.length; i++) known[i] = grow[i * 4] > 4 ? 0 : 1;
+  // (Premultiplied, as Capas' hole: a see-through neighbour gives its transparency, not its hidden colour.)
+  const d = data.data, f = Float32Array.from(d, (v, i) => ((i & 3) === 3 ? v : v * d[i | 3] / 255));
+  fillHoles(f, known, W, H);
+  for (let i = 0; i < d.length; i += 4) { const a = f[i + 3], u = a > 0 ? 255 / a : 0; d[i] = f[i] * u; d[i + 1] = f[i + 1] * u; d[i + 2] = f[i + 2] * u; d[i + 3] = a; }
+  return data;
+}
+export async function eraseArea(id, mask) {
+  const b = pictureOf(id); if (!b) return null;
+  const P = await pixelsOf(b.src), w = maskWeights(mask, P.W, P.H); if (!painted(w)) return null;
+  eraseData(P.data, w); return setPixels(id, P);
+}
+// The pictures a background was taken from (this session's: the deck would double its size keeping them), so that
+// «Retocar el recorte» can give some of it back. id → the picture before.
+export const cutoutOrigins = new Map();
+// mode 'erase': more made see-through; 'restore': the picture before, where painted.
+export async function retouchCutout(id, mask, mode = 'erase') {
+  const b = pictureOf(id); if (!b) return null;
+  const P = await pixelsOf(b.src), w = maskWeights(mask, P.W, P.H), d = P.data.data; if (!painted(w)) return null;
+  if (mode === 'restore') {
+    const from = cutoutOrigins.get(id); if (!from) return null;
+    const o = await loadPicture(from), oc = canvasOf(P.W, P.H), og = oc.getContext('2d'); og.drawImage(o, 0, 0, P.W, P.H);
+    const od = og.getImageData(0, 0, P.W, P.H).data;
+    for (let i = 0; i < w.length; i++) { const a = w[i]; if (a > 0) for (let ch = 0; ch < 4; ch++) d[i * 4 + ch] = d[i * 4 + ch] * (1 - a) + od[i * 4 + ch] * a; }
+  } else for (let i = 0; i < w.length; i++) d[i * 4 + 3] *= 1 - w[i];
+  return setPixels(id, P, true);
+}
+
+// The subject's mask (subjectCanvas: the background removal's AI): 0…1 per pixel at W×H. One per picture this session.
+const masks = new Map();
+export async function subjectMask(src, W, H) {
+  if (!masks.has(src)) masks.set(src, loadPicture(src).then(img => subjectCanvas(img)).catch(e => { masks.delete(src); throw e; }));
+  const cut = await masks.get(src), c = canvasOf(W, H), g = c.getContext('2d'); g.drawImage(cut, 0, 0, W, H);
+  const d = g.getImageData(0, 0, W, H).data, a = new Float32Array(W * H);
+  let on = 0; for (let i = 0; i < a.length; i++) { a[i] = d[i * 4 + 3] / 255; if (a[i] > 0.1) on++; }
+  if (on < a.length * 0.003 || on > a.length * 0.97) throw new Error(t('No se ha encontrado nada que separar del fondo.'));
+  return a;
+}
+// Portrait mode: the background blurred (its subject's place first filled from around it, so that no halo of the
+// subject is blurred into it), the subject sharp on top. strength 0…100.
+export function blurBackgroundData(data, a, strength = 60) {
+  const W = data.width, H = data.height, d = data.data, bg = new Uint8ClampedArray(d), known = new Float32Array(W * H);
+  const grow = new Uint8ClampedArray(W * H * 4); for (let i = 0; i < a.length; i++) grow[i * 4] = a[i] > 0.08 ? 255 : 0;
+  boxBlur(grow, W, H, Math.max(2, Math.round(Math.min(W, H) * 0.01)), 1);
+  for (let i = 0; i < known.length; i++) known[i] = grow[i * 4] > 4 ? 0 : 1;
+  fillHoles(bg, known, W, H);
+  boxBlur(bg, W, H, Math.max(2, Math.round(Math.max(W, H) * (0.004 + Math.max(0, Math.min(100, strength)) / 100 * 0.025))));
+  for (let i = 0; i < a.length; i++) for (let ch = 0; ch < 3; ch++) d[i * 4 + ch] = d[i * 4 + ch] * a[i] + bg[i * 4 + ch] * (1 - a[i]);
+  return data;
+}
+export function selectiveData(data, a) {
+  const d = data.data;
+  for (let i = 0; i < a.length; i++) {
+    const y = 0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2], k = a[i];
+    for (let ch = 0; ch < 3; ch++) d[i * 4 + ch] = d[i * 4 + ch] * k + y * (1 - k);
+  }
+  return data;
+}
+export async function subjectEffect(id, kind, strength) {
+  const b = pictureOf(id); if (!b) return null;
+  const src = b.src, P = await pixelsOf(src), a = await subjectMask(src, P.W, P.H);
+  if (kind === 'blur') blurBackgroundData(P.data, a, strength); else selectiveData(P.data, a);
+  return setPixels(id, P);
+}
+
+// Cambiar un color: the pixels whose hue is near `from`'s (tolerance 0…100), turned to `to`'s hue — their light and
+// how colourful they are kept, so that shading stays; the greys are left alone.
+const hsl = (r, g, b) => {
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, dd = mx - mn; if (!dd) return [0, 0, l];
+  const s = dd / (1 - Math.abs(2 * l - 1) || 1), h = mx === r ? ((g - b) / dd + 6) % 6 : mx === g ? (b - r) / dd + 2 : (r - g) / dd + 4;
+  return [h * 60, s, l];
+};
+const fromHsl = (h, s, l) => { const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2, k = Math.floor(((h % 360) + 360) % 360 / 60);
+  const [r, g, b] = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][k]; return [r + m, g + m, b + m]; };
+const rgbOf = c => { const n = parseInt(String(c).slice(1), 16) || 0; return [(n >> 16) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; };
+export function recolourData(data, { from = '#ff0000', to = '#0000ff', tolerance = 40 } = {}) {
+  const d = data.data, [h0, s0, l0] = hsl(...rgbOf(from)), [h1, s1] = hsl(...rgbOf(to)), tk = Math.max(0, Math.min(100, tolerance)) / 100, tol = 4 + tk * 56;
+  const satK = s0 > 0.05 ? Math.min(2, s1 / s0) : 1;
+  for (let i = 0; i < d.length; i += 4) {
+    const [h, s, l] = hsl(d[i] / 255, d[i + 1] / 255, d[i + 2] / 255); if (s < 0.08) continue;
+    // (Near in hue above all; and not too far in how light and how colourful, so that a brown is not the sand.)
+    const dh = Math.abs(((h - h0 + 540) % 360) - 180), near = Math.max(0, 1 - (Math.abs(s - s0) + Math.abs(l - l0)) / (0.45 + tk * 0.6));
+    const w = Math.min(1, Math.max(0, (tol - dh) / (tol * 0.35))) * Math.min(1, (s - 0.08) / 0.12) * Math.min(1, near * 2);
+    if (w <= 0) continue;
+    const [r, g, b] = fromHsl(h + ((h1 - h0 + 540) % 360 - 180) * w, Math.min(1, s * (1 + (satK - 1) * w)), l);
+    d[i] = r * 255; d[i + 1] = g * 255; d[i + 2] = b * 255;
+  }
+  return data;
+}
+export async function recolour(id, opts) {
+  const b = pictureOf(id); if (!b) return null;
+  const P = await pixelsOf(b.src); recolourData(P.data, opts); return setPixels(id, P);
+}
+
+// Colores de la foto: its main colours (k-means on a small copy, the see-through left out), the commonest first.
+export async function photoColours(src, n = 6) {
+  const P = await pixelsOf(src, 72), d = P.data.data, px = [];
+  for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 128) px.push([d[i], d[i + 1], d[i + 2]]);
+  if (!px.length) return [];
+  // (Seeds far apart: the first the mean, each next the pixel farthest from those chosen — the same every time.)
+  const dist = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
+  const mean = [0, 1, 2].map(ch => px.reduce((s, p) => s + p[ch], 0) / px.length), cs = [mean];
+  while (cs.length < n) { let best = null, bd = -1; for (const p of px) { const m = Math.min(...cs.map(c => dist(p, c))); if (m > bd) { bd = m; best = p; } } if (bd < 200) break; cs.push([...best]); }
+  let count = [];
+  for (let it = 0; it < 8; it++) {
+    const sum = cs.map(() => [0, 0, 0]); count = cs.map(() => 0);
+    for (const p of px) { let k = 0, m = Infinity; cs.forEach((c, j) => { const v = dist(p, c); if (v < m) { m = v; k = j; } }); count[k]++; for (let ch = 0; ch < 3; ch++) sum[k][ch] += p[ch]; }
+    cs.forEach((c, j) => { if (count[j]) for (let ch = 0; ch < 3; ch++) c[ch] = sum[j][ch] / count[j]; });
+  }
+  const hx = c => '#' + c.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+  return cs.map((c, j) => [hx(c), count[j]]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).map(x => x[0]);
 }

@@ -383,7 +383,8 @@ function blockHTMLRaw(b, slide) {
     return `<div${a} data-pano="${esc(b.src)}" data-prevent-swipe role="img" aria-label="${esc(b.alt || '')}" style="${box(b)}overflow:hidden;background:#000 url('${esc(b.src)}') center/cover"></div>`;
   if (b.type === 'image')
     return `<img${a} src="${esc(b.src || '')}"${b.zoomable ? ' data-lightbox' : ''} alt="${b.decorative ? '' : esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};${b.fit === 'cover' && (b.focusX != null || b.focusY != null) ? `object-position:${imgFocus(b)};` : ''}`
-      + `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}">`;
+      // (Its shadow after its look, else the picture's own filter would replace box()'s: a cut-out's follows its figure.)
+      + `filter:${imgFilter(b)}${b.shadow ? ' ' + shadowCSS(b) : ''};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}">`;
   if (b.type === 'video')
     return `<video${a} data-vid="${b.id}" src="${esc(b.src || '')}"${b.poster && /^(data:image\/|https:|blob:)/.test(b.poster) ? ` poster="${esc(b.poster)}"` : ''} controls preload="metadata" style="${box(b)}object-fit:contain"></video>`;
   if (b.type === 'poll')     // live poll: question, live results and the QR to vote

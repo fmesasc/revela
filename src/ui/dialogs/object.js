@@ -16,6 +16,7 @@ import { renderLatex } from '../canvas/content.js';
 import { tablePresets, tableClass, tableVars, tableCSS, chartSVG } from '../../render/svg.js';
 import { withBlobs, blobURL } from '../../io/formats/blobmedia.js';
 import { currentPalette, deckFg, paletteColours } from '../../features/design/palettes.js';
+import { cutoutOrigins } from '../../features/document/imagetools.js';
 
 // PowerPoint's «Correcciones» and «Color», as examples of the picture itself.
 export const IMG_PRESETS = [['Original', { brightness: 100, contrast: 100, saturate: 100, opacity: 100 }], ['Más claro', { brightness: 130, contrast: 100, saturate: 100, opacity: 100 }],
@@ -416,6 +417,8 @@ export async function removeBackground(b) {
       ? await gifRemoveBackground(b.src, { onProgress: (i, n) => el?.setAttribute('data-progress', `${i} / ${n}`) })
       : await import(BG_REMOVAL).then(m => m.removeBackground(b.src))
         .then(blob => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); }));
+    // (The picture before, for «Retocar el recorte» to give some of it back: this session only.)
+    if (!isGif(b)) cutoutOrigins.set(b.id, b.src);
     commit(() => (b.src = dataUrl));
   } catch (e) {
     alertDialog(t('No se pudo quitar el fondo: ') + e.message);

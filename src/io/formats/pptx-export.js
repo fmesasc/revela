@@ -19,6 +19,8 @@ import { shownRows } from '../../core/formulas.js';
 import { lockSVG } from '../../render/svg.js';
 import { chartSVG, chartSeries, histogramBins, bubblePoints, scatterSeries, pieColours, iconSVG, inkSVG, timerSVG, shapeTextStyle, cellBg } from '../../render/svg.js';
 import { blockImage, magnifyImage } from '../export/images.js';
+import { bakeImage } from '../export/objects.js';
+import { hasLook } from '../../render/imagelook.js';
 import { magGeometry, viewOf, underArea, targetImage, imageCrop } from '../../features/document/magnify.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../features/document/master.js';
 import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
@@ -212,7 +214,8 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
     } else if (b.type === 'magnify') {
       addMagnifier(slide, b, pptx, raster, [...blocksById.values()]);
     } else if (raster.has(b.id)) {                            // icons, ink, equations, polls…
-      slide.addImage({ ...pos, ...hl, ...see, data: raster.get(b.id), ...((b.alt || (b.type === 'lock' && b.hint)) && { altText: b.alt || b.hint }) });
+      slide.addImage({ ...pos, ...hl, ...see, data: raster.get(b.id), ...((b.alt || (b.type === 'lock' && b.hint)) && { altText: b.alt || b.hint }),
+        ...(b.type === 'image' && b.flipH && { flipH: true }), ...(b.type === 'image' && b.flipV && { flipV: true }) });
     } else if (b.type === 'video' && /^data:video\//.test(b.src || '')) {
       slide.addMedia({ ...pos, type: 'video', data: b.src.replace(/^data:/, '') });
     } else if (b.type === 'embed' && b.srcdoc != null) {           // (an HTML object of the developer mode: its name; PowerPoint can't run it)
@@ -411,7 +414,7 @@ function masterObject(b) {
     return { text: { text: '', options: { ...pos, shape: SHAPE_MAP[b.shape], fill: b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497', ...see } : { type: 'none' },
       ...(b.strokeWidth ? { line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth * 0.75, ...dashOf(b.dash), ...see } } : {}) } } };
   }
-  if (b.type === 'image' && /^data:image\/(png|jpe?g|gif)/.test(b.src || '') && !b.crop && !b.adj && !b.fx) return { image: { ...pos, data: b.src } };
+  if (b.type === 'image' && /^data:image\/(png|jpe?g|gif)/.test(b.src || '') && !b.crop && !hasLook(b)) return { image: { ...pos, data: b.src } };
   return null;
 }
 // Every layout, used or not (a template brings them all to PowerPoint); and, for the slides without one, «Revela»: the
@@ -501,6 +504,9 @@ export async function buildPptx(deck = state.deck, { progress = null } = {}) {
     // (Only equations are shared: a poll's, an index's or a map's picture depends on more than the object.)
     if (b.type === 'math' || b.type === 'poll' || b.type === 'figindex' || b.type === 'file' || b.type === 'map') return once(b.type === 'math' ? mathKey(b) : null, () => blockImage(b, s, deck));
     if (b.type === 'magnify' && !magCrop(b, slideBlocks(s, deck))) return magnifyImage(b, s, deck);
+    // (A picture with a look — its corrections, filter, shape, outline… render/imagelook.js —: PowerPoint has nearly none
+    // of them, so it goes as it shows, in its box. Not an animated GIF: its frames would be lost.)
+    if (b.type === 'image' && b.src && hasLook(b) && !/^data:image\/gif/.test(b.src)) return bakeImage(b, 2).then(c => c.toDataURL('image/png'));
     return null;
   };
   // A few at a time: most of a picture's time is html2canvas waiting (its copy of the page loading, the fonts), and

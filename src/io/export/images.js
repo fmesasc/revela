@@ -87,23 +87,29 @@ async function fitPictures(holder) {
 // leaving the rest out moves nothing.)
 const h2c = (el, opts) => window.html2canvas(el, { ...opts,
   ignoreElements: n => !(n.closest('head') || /^(STYLE|LINK)$/.test(n.tagName) || n.contains(el) || el.contains(n)) || !!opts.ignoreElements?.(n) });
-// html2canvas draws no CSS filter either: a picture with corrections or a filter (render/imagelook.js) is drawn here
-// with them, on its own pixels, and goes in with its filter taken off. (One from another site that doesn't allow
+// html2canvas draws no CSS filter nor clip-path either: a picture with corrections, a filter, a shape… (render/imagelook.js)
+// or a crop is drawn here as it shows in its box — the box's size, its fit and focus, the crop, and the look on those
+// pixels, as the SVG filter does it — and goes in with all that taken off. (One from another site that doesn't allow
 // reading its pixels stays as it is.)
 async function bakeLooks(holder) {
   for (const img of holder.querySelectorAll('img')) {
-    const f = img.style.filter || ''; if (!f || f === 'none') continue;
+    const f = img.style.filter || '', clip = /inset\(([^)]*)\)/.exec(img.style.clipPath || '')?.[1].trim().split(/\s+/).map(v => parseFloat(v) / 100 || 0);
     const n = re => +(f.match(re)?.[1] ?? 100), adj = { brightness: n(/brightness\(([\d.]+)%\)/), contrast: n(/contrast\(([\d.]+)%\)/), saturate: n(/saturate\(([\d.]+)%\)/) };
     const look = specOf(f.match(/url\(["']?#([\w-]+)/)?.[1] || '');
-    if (!look && adj.brightness === 100 && adj.contrast === 100 && adj.saturate === 100) continue;
+    if (!look && !clip && adj.brightness === 100 && adj.contrast === 100 && adj.saturate === 100) continue;
     try {
       await img.decode();
-      const nw = img.naturalWidth, nh = img.naturalHeight; if (!nw || !nh) continue;
-      const c = Object.assign(document.createElement('canvas'), { width: nw, height: nh }), g = c.getContext('2d'); g.drawImage(img, 0, 0);
-      // (Its pixels per slide pixel as drawn in its box: the softness as wide as on the slide.)
-      const k = nw / (fitRect(getComputedStyle(img).objectFit || 'contain', nw, nh, img.clientWidth || nw, img.clientHeight || nh)[2] || nw);
-      g.putImageData(applyLook(applyAdjustments(g.getImageData(0, 0, nw, nh), adj), look, k), 0, 0);
-      img.src = c.toDataURL('image/png'); await img.decode().catch(() => {}); img.style.filter = 'none';
+      const nw = img.naturalWidth, nh = img.naturalHeight, bw = img.clientWidth, bh = img.clientHeight; if (!nw || !nh || !bw || !bh) continue;
+      const cs = getComputedStyle(img), fit = cs.objectFit || 'contain', [, , w, h] = fitRect(fit, nw, nh, bw, bh);
+      // (As many pixels per box pixel as the picture has where it is drawn — its sharpness kept —, within a canvas's limit.)
+      const k = Math.max(1, Math.min(nw / w, 4096 / Math.max(bw, bh))), W = Math.round(bw * k), H = Math.round(bh * k);
+      const pos = (fit === 'cover' ? cs.objectPosition : '').split(' ').map(v => (v.endsWith('%') ? parseFloat(v) / 100 : 0.5));
+      const c = Object.assign(document.createElement('canvas'), { width: W, height: H }), g = c.getContext('2d');
+      if (clip) { const [t, r = t, b = t, l = r] = clip; g.beginPath(); g.rect(W * l, H * t, W * (1 - l - r), H * (1 - t - b)); g.clip(); }
+      g.drawImage(img, (bw - w) * (pos[0] ?? 0.5) * k, (bh - h) * (pos[1] ?? 0.5) * k, w * k, h * k);
+      g.putImageData(applyLook(applyAdjustments(g.getImageData(0, 0, W, H), adj), look, k), 0, 0);
+      img.src = c.toDataURL('image/png'); await img.decode().catch(() => {});
+      Object.assign(img.style, { filter: 'none', clipPath: 'none', objectFit: 'fill', objectPosition: '50% 50%' });
     } catch {}
   }
 }
