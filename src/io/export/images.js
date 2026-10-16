@@ -39,9 +39,49 @@ export async function hydrateStatic(root, deck) {
     d.appendChild(img); mv.replaceWith(d); return img.decode().catch(() => {});
   });
   await Promise.all(posters);
+  // A map's box that fades at its sides or in an oval (a CSS mask: html2canvas draws none): its picture, faded the same
+  // way, in its place. (Rounded corners and ovals with a clean edge, and the frame, html2canvas draws as they are.)
+  await Promise.all([...root.querySelectorAll('[data-edge="soft"] > .rv-map-shot, [data-edge="oval"] > .rv-map-shot')]
+    .filter(img => img.style.visibility !== 'hidden').map(fadeMapShot));
+  // (And its shadow — a drop-shadow filter, which html2canvas doesn't draw —: as the box's shadow, in its shape.)
+  root.querySelectorAll('[data-geomap]').forEach(el => {
+    const ds = /drop-shadow\(((?:[^()]|\([^()]*\))*)\)/.exec(el.style.filter || '')?.[1]; if (!ds) return;
+    el.style.boxShadow = ds; el.style.filter = 'none';
+  });
   root.querySelectorAll('.rv-poll').forEach(el => {
     try { const p = JSON.parse(el.getAttribute('data-poll')); el.querySelector('.rv-poll-res').innerHTML = pollResultsHTML(p, tallyVotes(p, savedVotes(p.pollId)), currentPalette(deck).accents, pollLabels()); } catch {}
   });
+}
+
+// The picture faded as its box's mask (features/content/geomap.js mapEdgeCSS): at the four sides, as wide as a seventh
+// of the box's shorter side; or out of an oval, from 68 % of the way to its edge.
+async function fadeMapShot(img) {
+  const box = img.parentElement, edge = box.getAttribute('data-edge');
+  try { await img.decode(); } catch { return; }
+  const w = img.naturalWidth, h = img.naturalHeight; if (!w || !h) return;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0, w, h); g.globalCompositeOperation = 'destination-in';
+  const bw = parseFloat(box.style.width) || w, bh = parseFloat(box.style.height) || h, k = Math.min(bw, bh) * 0.14;
+  if (edge === 'soft') {
+    const ramp = (x0, y0, x1, y1, f) => { const gr = g.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(f, '#000'); gr.addColorStop(1 - f, '#000'); gr.addColorStop(1, 'rgba(0,0,0,0)'); return gr; };
+    g.fillStyle = ramp(0, 0, w, 0, k / bw); g.fillRect(0, 0, w, h);
+    g.fillStyle = ramp(0, 0, 0, h, k / bh); g.fillRect(0, 0, w, h);
+  } else {
+    g.save(); g.translate(w / 2, h / 2); g.scale(1, h / w);
+    const gr = g.createRadialGradient(0, 0, 0, 0, 0, w / 2); gr.addColorStop(0.68, '#000'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.fillRect(-w / 2, -w / 2, w, w); g.restore();
+  }
+  // (Its credits, faded with its corner: written again, as the live map shows them — over the fade, in sight.)
+  let credit = ''; try { credit = JSON.parse(box.getAttribute('data-geomap') || '{}').credit || ''; } catch {}
+  if (credit) {
+    g.globalCompositeOperation = 'source-over';
+    const k2 = w / bw; let fs = 10 * k2; g.font = fs + 'px system-ui,sans-serif';
+    const tw0 = g.measureText(credit).width; if (tw0 > w * 0.96) { fs *= w * 0.96 / tw0; g.font = fs + 'px system-ui,sans-serif'; }
+    const cw = g.measureText(credit).width + fs, ch = fs * 1.5;
+    g.fillStyle = 'rgba(255,255,255,.75)'; g.fillRect(w - cw, h - ch, cw, ch); g.fillStyle = '#333'; g.textBaseline = 'middle'; g.fillText(credit, w - cw + fs / 2, h - ch / 2);
+  }
+  img.src = c.toDataURL('image/png'); img.style.webkitMaskImage = img.style.maskImage = 'none';
+  try { await img.decode(); } catch {}
 }
 
 // html2canvas with the gradient texts right. It ignores background-clip:text (Text Art «Oro», gradient…) and

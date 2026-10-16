@@ -3683,6 +3683,21 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/rv-map-frame[^>]*border:8px solid #112233;border-radius:inherit/.test(G.mapFrameHTML({ edge: 'circle', frame: { width: 8, color: '#112233' } })), 'el marco sigue la forma del recuadro');
     eq(G.mapFrameHTML({ edge: 'soft', frame: { width: 8, color: '#112233' } }), '', 'con los bordes desvanecidos, sin marco');
     const b1 = G.addMap({ look: 'globe', x: 700, y: 100, w: 500, h: 500, stops: [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 4 }] });
+    // In PDF, pictures and PowerPoint (html2canvas draws no CSS mask): the picture itself faded, its corners see-through.
+    {
+      const W = frame.contentWindow, cv = D.createElement('canvas'); cv.width = 320; cv.height = 180; const g0 = cv.getContext('2d'); g0.fillStyle = '#c03030'; g0.fillRect(0, 0, 320, 180);
+      const I = await W.eval("import('/src/io/export/images.js')"), sl = R.state.deck.slides[R.state.ui.slideIndex];
+      const px = async (edge, frameOn) => {
+        const blk = { id: 'mx' + edge, type: 'map', look: 'satellite', edge, ...(frameOn && { frame: { width: 6, color: '#ffffff' } }), x: 0, y: 0, w: 320, h: 180, stops: [{ id: 's1', name: 'A', lon: 0, lat: 0, zoom: 3, shot: cv.toDataURL('image/png') }] };
+        const url = await I.blockImage(blk, sl), im = new W.Image(); im.src = url; await im.decode();
+        const c2 = D.createElement('canvas'); c2.width = im.width; c2.height = im.height; const g = c2.getContext('2d'); g.drawImage(im, 0, 0);
+        const at = (x, y) => g.getImageData(Math.round(x * im.width), Math.round(y * im.height), 1, 1).data;
+        return { corner: at(0.01, 0.02), mid: at(0.5, 0.5), edgeMid: at(0.5, 0.005) };
+      };
+      const soft = await px('soft'); assert(soft.corner[3] < 40 && soft.mid[3] > 240 && soft.mid[0] > 150, 'desvanecido: transparente en la esquina, entero en medio ' + [soft.corner[3], soft.mid[3]]);
+      const oval = await px('oval'); assert(oval.corner[3] < 10 && oval.mid[3] > 240, 'óvalo desvanecido');
+      const circ = await px('circle', true); assert(circ.corner[3] < 10 && circ.edgeMid[0] > 200 && circ.edgeMid[1] > 200, 'óvalo con su marco blanco ' + [...circ.edgeMid]);
+    }
     R.slides.addSlide('blank'); await sleep(10);
     const b2 = G.addMap({ look: 'globe', edge: 'soft', x: 0, y: 0, w: 1280, h: 720, stops: [{ name: 'Atenas', lon: 23.7, lat: 37.98, zoom: 6, shot: 'data:image/png;base64,iVBORw0KGgo=' }] });
     const k0 = G.shotKey(b2, 0); G.setMap(b2.id, { edge: 'oval' }); eq(G.shotKey(b2, 0), k0, 'el borde no cambia su imagen');

@@ -743,8 +743,16 @@ export function geoMapRuntime(lib, rtl, words) {
           var cw = g.measureText(cfg.credit).width + fs, ch = fs * 1.5;
           g.fillStyle = 'rgba(255,255,255,.75)'; g.fillRect(W - cw, H - ch, cw, ch); g.fillStyle = '#333'; g.fillText(cfg.credit, W - cw + 5 * k2, H - ch / 2);
         }
-        // (A globe without its space: a PNG, its see-through corners kept.)
-        try { return cfg.clear ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.85); } catch (e) { return null; }
+        // (A globe without its space: its see-through corners kept — a WebP, a tenth of a PNG, where the browser writes
+        // them, else a PNG —; a JPEG if, so close, nothing of it is see-through.)
+        try {
+          if (!cfg.clear) return cv.toDataURL('image/jpeg', 0.85);
+          var px = g.getImageData(0, 0, W, H).data, see = false;
+          for (var i = 3; i < px.length; i += 16) if (px[i] < 250) { see = true; break; }
+          if (!see) return cv.toDataURL('image/jpeg', 0.85);
+          var wp = cv.toDataURL('image/webp', 0.85);
+          return /^data:image\/webp/.test(wp) ? wp : cv.toDataURL('image/png');
+        } catch (e) { return null; }
         });
       });
     };
