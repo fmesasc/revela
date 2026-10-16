@@ -4164,6 +4164,44 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     m.querySelector('.modal-close').click();
   });
 
+  await test('editar imagen: un logo transparente — difuminar y borrar actúan en su transparencia, enderezar gira el objeto, «no tiene fondo», la sombra en el PNG', async () => {
+    reset(); const W = frame.contentWindow, T = await W.eval("import('/src/features/document/imagetools.js')"), was = T.layerKit.cutout;
+    // (A logo: black letters — a bar — on nothing.)
+    const logo = testPicture(g => { g.fillStyle = '#000000'; g.fillRect(20, 30, 80, 20); });
+    const b = putPicture(logo); await sleep(30); const cur = () => slide().blocks.find(x => x.id === b.id);
+    const all = () => { const c = D.createElement('canvas'); c.width = 120; c.height = 80; const g = c.getContext('2d'); g.fillRect(0, 0, 120, 80); return c; };
+    await T.hideArea(b.id, all(), { mode: 'blur', strength: 80 });
+    const edge = await pixelOf(cur().src, 60, 26); assert(edge.px[3] > 10 && edge.px[3] < 245, 'difuminado: el borde de las letras, a medias transparente: ' + edge.px);
+    R.store.undo(); await sleep(20); eq(cur().src, logo, 'Ctrl+Z');
+    const part = D.createElement('canvas'); part.width = 120; part.height = 80; part.getContext('2d').fillRect(50, 0, 70, 80);
+    await T.eraseArea(b.id, part);
+    eq((await pixelOf(cur().src, 80, 40)).px[3], 0, 'borrar en un logo: transparente, no una mancha');
+    assert((await pixelOf(cur().src, 30, 40)).px[3] > 240, 'lo no pintado, igual');
+    R.store.undo(); await sleep(20);
+    await T.straightenImage(b.id, 10);
+    eq(cur().src, logo, 'enderezar un logo: la imagen, intacta'); eq(cur().rotation, 10, 'el objeto, girado');
+    R.store.undo(); await sleep(20);
+    // (The AI, played: it keeps what is not white — the whole logo.)
+    T.layerKit.cutout = async src => { const img = await T.loadPicture(src), c = D.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const g = c.getContext('2d'); g.drawImage(img, 0, 0); const p = g.getImageData(0, 0, c.width, c.height);
+      for (let i = 0; i < p.data.length; i += 4) if (p.data[i] > 200 && p.data[i + 1] > 200 && p.data[i + 2] > 200) p.data[i + 3] = 0;
+      g.putImageData(p, 0, 0); return c.toDataURL('image/png'); };
+    try {
+      let said = ''; try { await T.cutoutPicture(logo); } catch (e) { said = e.message; } assert(/no tiene fondo/.test(said), 'quitar el fondo: lo dice: ' + said);
+      said = ''; try { await T.subjectEffect(b.id, 'blur', 60); } catch (e) { said = e.message; } assert(/no tiene fondo/.test(said), 'desenfocar el fondo: también: ' + said);
+    } finally { T.layerKit.cutout = was; }
+    // The shadow, in the slide's PNG: below and right of the picture, darker than the white slide.
+    R.store.commit(() => { slide().background = '#ffffff'; cur().src = testPicture((g, w, h) => { g.fillStyle = '#0000ff'; g.fillRect(0, 0, w, h); }); cur().fit = 'fill'; cur().shadow = true; });
+    const I = await W.eval("import('/src/io/export/images.js')"), url = URL.createObjectURL(await I.slideImageBlob(slide(), 'png'));
+    const k = (await pixelOf(url, 0, 0)).w / R.state.deck.size.w, sh = await pixelOf(url, Math.round(k * (100 + 240 + 3)), Math.round(k * (100 + 160 + 5)));
+    const inn = await pixelOf(url, Math.round(k * 220), Math.round(k * 180)); URL.revokeObjectURL(url);
+    assert(sh.px[0] < 235, 'la sombra, en el PNG: ' + sh.px.slice(0, 3)); assert(inn.px[2] > 200 && inn.px[0] < 60, 'y la foto en su sitio: ' + inn.px.slice(0, 3));
+    // Turned and «contain» (a long picture in its box): html2canvas cut it to its box unturned; drawn whole now.
+    R.store.commit(() => { const x = cur(); x.shadow = false; x.fit = 'contain'; x.rotation = 30; x.src = testPicture((g, w, h) => { g.fillStyle = '#000000'; g.fillRect(0, 0, w, h); }, 120, 40); });
+    const u2 = URL.createObjectURL(await I.slideImageBlob(slide(), 'png')), end = await pixelOf(u2, Math.round(k * 306), Math.round(k * 230)); URL.revokeObjectURL(u2);
+    assert(end.px[0] < 60, 'girada 30°: su extremo, dibujado: ' + end.px.slice(0, 3));
+  });
+
   await test('editar imagen: desenfocar el fondo y color selectivo con la figura (IA simulada); colores de la foto al tema', async () => {
     reset(); const T = await frame.contentWindow.eval("import('/src/features/document/imagetools.js')"), was = T.layerKit.cutout;
     const src0 = testPicture((g, w, h) => { for (let x = 0; x < w; x += 4) { g.fillStyle = x % 8 ? '#00ff00' : '#008000'; g.fillRect(x, 0, 4, h); } g.fillStyle = '#ff0000'; g.fillRect(45, 25, 30, 30); });

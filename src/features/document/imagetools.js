@@ -36,7 +36,7 @@ export function visiblePart(b, iw, ih) {
 }
 
 export const EXTEND_RATIOS = [['16:9', 'Panorámica 16:9 (la diapositiva)'], ['4:3', '4:3'], ['1:1', 'Cuadrada'], ['3:2', '3:2'], ['9:16', 'Vertical 9:16'], ['margin', 'Un margen alrededor']];
-export const EXTEND_FILLS = [['blur', 'La misma imagen, desenfocada'], ['mirror', 'Sus bordes, como en un espejo'], ['color', 'Un color']];
+export const EXTEND_FILLS = [['blur', 'La misma imagen, desenfocada'], ['mirror', 'Sus bordes, como en un espejo'], ['color', 'Un color'], ['none', 'Nada (transparente)']];
 // The new size around a sw×sh picture: [W, H, left, top] (null: it already has that shape).
 export function extendSize(sw, sh, { ratio = '16:9', margin = 15 } = {}) {
   if (ratio === 'margin') { const m = Math.round(Math.max(sw, sh) * Math.max(1, Math.min(100, +margin || 0)) / 100); return [sw + 2 * m, sh + 2 * m, m, m]; }
@@ -47,6 +47,15 @@ export function extendSize(sw, sh, { ratio = '16:9', margin = 15 } = {}) {
 }
 // The picture (its part [sx, sy, sw, sh]) on a larger canvas → { canvas, pad: [left, top], k (scale applied) }.
 // max: the longest side (a smaller one for the dialog's preview).
+// A blur of colour and transparency together (premultiplied): boxBlur leaves the transparency sharp — right for a
+// cut-out's outline, but a see-through logo blurred so stayed readable.
+export function blurAll(d, W, H, r) {
+  const n = W * H, pm = new Float32Array(n * 4), al = new Float32Array(n * 4);
+  for (let i = 0; i < n; i++) { const a = d[i * 4 + 3] / 255; for (let ch = 0; ch < 3; ch++) pm[i * 4 + ch] = d[i * 4 + ch] * a; al[i * 4] = d[i * 4 + 3]; }
+  boxBlur(pm, W, H, r); boxBlur(al, W, H, r);
+  for (let i = 0; i < n; i++) { const A = al[i * 4], u = A > 0 ? 255 / A : 0; for (let ch = 0; ch < 3; ch++) d[i * 4 + ch] = pm[i * 4 + ch] * u; d[i * 4 + 3] = A; }
+  return d;
+}
 export function extendCanvas(img, part, opts = {}) {
   const [sx, sy, sw, sh] = part, size = extendSize(sw, sh, opts); if (!size) return null;
   const s = Math.min(1, (opts.max || MAX) / Math.max(size[0], size[1])), [W, H, L, T] = size.map(v => v * s), w = sw * s, h = sh * s;
@@ -59,11 +68,12 @@ export function extendCanvas(img, part, opts = {}) {
       g.save(); g.translate(L + i * w + (i % 2 ? w : 0), T + j * h + (j % 2 ? h : 0)); g.scale(i % 2 ? -1 : 1, j % 2 ? -1 : 1);
       g.drawImage(img, sx, sy, sw, sh, 0, 0, w, h); g.restore();
     }
-  } else {
-    // (Blurred: the picture filling it all, drawn small, blurred and enlarged — the same in every browser.)
-    const sm = canvasOf(Math.max(8, c.width / 16), Math.max(8, c.height / 16)), q = sm.getContext('2d'), kk = Math.max(sm.width / sw, sm.height / sh);
+  } else if (opts.fill !== 'none') {
+    // (Blurred: the picture filling it all, drawn small, blurred and enlarged — the same in every browser; blurred
+    // enough that a logo's letters, filling it, can't be read.)
+    const sm = canvasOf(Math.max(8, c.width / 24), Math.max(8, c.height / 24)), q = sm.getContext('2d'), kk = Math.max(sm.width / sw, sm.height / sh);
     q.drawImage(img, sx, sy, sw, sh, (sm.width - sw * kk) / 2, (sm.height - sh * kk) / 2, sw * kk, sh * kk);
-    const d = q.getImageData(0, 0, sm.width, sm.height); boxBlur(d.data, sm.width, sm.height, 2); q.putImageData(d, 0, 0);
+    const d = q.getImageData(0, 0, sm.width, sm.height); blurAll(d.data, sm.width, sm.height, Math.max(2, Math.round(Math.min(sm.width, sm.height) * 0.12))); q.putImageData(d, 0, 0);
     g.imageSmoothingQuality = 'high'; g.drawImage(sm, 0, 0, c.width, c.height);
   }
   g.drawImage(img, sx, sy, sw, sh, L, T, w, h);
@@ -75,7 +85,8 @@ export async function extendImage(id, opts) {
   const b = currentSlide().blocks.find(x => x.id === id); if (!b || b.type !== 'image') return false;
   const img = await loadPicture(b.src), iw = img.naturalWidth, ih = img.naturalHeight;
   const v = visiblePart(b, iw, ih), made = extendCanvas(img, v.src, opts); if (!made) return false;
-  const src = encode(made.canvas, b.src), { w: SW, h: SH } = state.deck.size;
+  // (Transparent margins, or a see-through picture: a PNG — a JPEG would make them black.)
+  const src = opts.fill === 'none' || seeThrough(img) > 0.03 ? made.canvas.toDataURL('image/png') : encode(made.canvas, b.src), { w: SW, h: SH } = state.deck.size;
   let k = v.k / made.k, w = made.canvas.width * k, h = made.canvas.height * k;
   let x = b.x + v.box[0] - made.pad[0] * v.k, y = b.y + v.box[1] - made.pad[1] * v.k;
   const fit = Math.min(1, SW / w, SH / h);
@@ -140,6 +151,24 @@ export async function subjectCanvas(img, W = img.naturalWidth, H = img.naturalHe
   tg.drawImage(cut, (S - W) / 2 * k, (S - H) / 2 * k, W * k, H * k, 0, 0, W, H);
   tg.globalCompositeOperation = 'destination-in'; tg.drawImage(img, 0, 0, W, H); tg.globalCompositeOperation = 'source-over';
   return top;
+}
+// How much of a picture is see-through (0…1): a logo or a cut-out has no background of its own to take away.
+export function seeThrough(img) {
+  const k = Math.min(1, 256 / Math.max(img.naturalWidth, img.naturalHeight)), w = Math.max(1, Math.round(img.naturalWidth * k)), h = Math.max(1, Math.round(img.naturalHeight * k));
+  const c = canvasOf(w, h), g = c.getContext('2d'); g.drawImage(img, 0, 0, w, h);
+  const d = g.getImageData(0, 0, w, h).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] < 20) n++;
+  return n / (w * h);
+}
+// «Quitar fondo» (a still picture): the subject alone as a PNG data URL — the AI seeing it as Capas does —, or an
+// error when there is nothing to take away.
+export async function cutoutPicture(src) {
+  const img = await loadPicture(src), top = await subjectCanvas(img), W = img.naturalWidth, H = img.naturalHeight;
+  const m = top.getContext('2d').getImageData(0, 0, W, H).data, base = canvasOf(W, H), g = base.getContext('2d'); g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, W, H).data; let on = 0, shown = 0;
+  for (let i = 3; i < d.length; i += 4) { if (m[i] > 20) on++; if (d[i] > 20) shown++; }
+  if (on < shown * 0.003) throw new Error(t('No se ha encontrado nada que separar del fondo.'));
+  if (on > shown * 0.97 && shown < W * H * 0.97) throw new Error(t('Esta imagen ya no tiene fondo: no hay nada que separar.'));
+  return top.toDataURL('image/png');
 }
 export async function pictureLayers(src) {
   const img = await loadPicture(src), W = img.naturalWidth, H = img.naturalHeight, n = W * H;
@@ -217,6 +246,9 @@ export const straightenZoom = (deg, W, H) => { const a = Math.abs(deg) * Math.PI
 export async function straightenImage(id, deg) {
   const b = pictureOf(id); deg = Math.max(-45, Math.min(45, +deg || 0)); if (!b || !deg) return null;
   const img = await loadPicture(b.src), k0 = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+  // (A see-through picture — a logo —: its corners need no filling, and filling them took a long one ×2 and more,
+  // leaving pieces: the object is turned instead, as a whole.)
+  if (seeThrough(img) > 0.03) { commit(() => { b.rotation = Math.round(((+b.rotation || 0) + deg + 540) % 360 - 180); }); return b.src; }
   const W = Math.round(img.naturalWidth * k0), H = Math.round(img.naturalHeight * k0), c = canvasOf(W, H), g = c.getContext('2d'), k = straightenZoom(deg, W, H);
   g.imageSmoothingQuality = 'high'; g.translate(W / 2, H / 2); g.rotate(deg * Math.PI / 180); g.scale(k, k); g.drawImage(img, -W / 2, -H / 2, W, H);
   const src = encode(c, b.src); commit(() => { b.src = src; }); return src;
@@ -224,16 +256,25 @@ export async function straightenImage(id, deg) {
 
 // Difuminar o pixelar: strength 0…100 (how big the blur or the squares are, from the picture's size).
 export function hideData(data, w, { mode = 'blur', strength = 60 } = {}) {
-  const d = data.data, W = data.width, H = data.height, L = Math.max(W, H), out = new Uint8ClampedArray(d);
+  // (Premultiplied, with its transparency blurred too: black letters on a see-through logo, blurred as colour alone,
+  // stayed black letters — nothing changed.)
+  const d = data.data, W = data.width, H = data.height, L = Math.max(W, H), n = W * H;
+  const pm = new Float32Array(n * 4), al = new Float32Array(n * 4);
+  for (let i = 0; i < n; i++) { const a = d[i * 4 + 3] / 255; for (let ch = 0; ch < 3; ch++) pm[i * 4 + ch] = d[i * 4 + ch] * a; al[i * 4] = d[i * 4 + 3]; }
   if (mode === 'pixel') {
     const s = Math.max(4, Math.round(L * (0.012 + strength / 100 * 0.05)));
     for (let y0 = 0; y0 < H; y0 += s) for (let x0 = 0; x0 < W; x0 += s) {
-      const x1 = Math.min(W, x0 + s), y1 = Math.min(H, y0 + s), n = (x1 - x0) * (y1 - y0), m = [0, 0, 0];
-      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) for (let ch = 0; ch < 3; ch++) m[ch] += d[(y * W + x) * 4 + ch];
-      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) for (let ch = 0; ch < 3; ch++) out[(y * W + x) * 4 + ch] = m[ch] / n;
+      const x1 = Math.min(W, x0 + s), y1 = Math.min(H, y0 + s), k = (x1 - x0) * (y1 - y0), m = [0, 0, 0, 0];
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = y * W + x; for (let ch = 0; ch < 3; ch++) m[ch] += pm[i * 4 + ch]; m[3] += al[i * 4]; }
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = y * W + x; for (let ch = 0; ch < 3; ch++) pm[i * 4 + ch] = m[ch] / k; al[i * 4] = m[3] / k; }
     }
-  } else boxBlur(out, W, H, Math.max(3, Math.round(L * (0.008 + strength / 100 * 0.03))));
-  for (let i = 0; i < w.length; i++) { const a = w[i]; if (a > 0) for (let ch = 0; ch < 3; ch++) d[i * 4 + ch] = d[i * 4 + ch] * (1 - a) + out[i * 4 + ch] * a; }
+  } else { const r = Math.max(3, Math.round(L * (0.008 + strength / 100 * 0.03))); boxBlur(pm, W, H, r); boxBlur(al, W, H, r); }
+  for (let i = 0; i < n; i++) {
+    const a = w[i]; if (!(a > 0)) continue;
+    const A = al[i * 4], u = A > 0 ? 255 / A : 0;
+    for (let ch = 0; ch < 3; ch++) d[i * 4 + ch] = d[i * 4 + ch] * (1 - a) + pm[i * 4 + ch] * u * a;
+    d[i * 4 + 3] = d[i * 4 + 3] * (1 - a) + A * a;
+  }
   return data;
 }
 export async function hideArea(id, mask, opts) {
@@ -256,6 +297,9 @@ export function eraseData(data, w) {
 export async function eraseArea(id, mask) {
   const b = pictureOf(id); if (!b) return null;
   const P = await pixelsOf(b.src), w = maskWeights(mask, P.W, P.H); if (!painted(w)) return null;
+  // (A picture with see-through parts — a logo, a cut-out —: what is painted goes, as with an eraser. Filled from
+  // around it, it was a smudge of half its colours and half the transparency.)
+  if (seeThrough(P.img) > 0.03) { const d = P.data.data; for (let i = 0; i < w.length; i++) d[i * 4 + 3] *= 1 - w[i]; return setPixels(id, P, true); }
   eraseData(P.data, w); return setPixels(id, P);
 }
 // The pictures a background was taken from (this session's: the deck would double its size keeping them), so that
@@ -281,7 +325,12 @@ export async function subjectMask(src, W, H) {
   const cut = await masks.get(src), c = canvasOf(W, H), g = c.getContext('2d'); g.drawImage(cut, 0, 0, W, H);
   const d = g.getImageData(0, 0, W, H).data, a = new Float32Array(W * H);
   let on = 0; for (let i = 0; i < a.length; i++) { a[i] = d[i * 4 + 3] / 255; if (a[i] > 0.1) on++; }
-  if (on < a.length * 0.003 || on > a.length * 0.97) throw new Error(t('No se ha encontrado nada que separar del fondo.'));
+  if (on < a.length * 0.003) throw new Error(t('No se ha encontrado nada que separar del fondo.'));
+  // (What the picture shows: a logo with no background of its own has nothing to blur or turn grey around it.)
+  // (Counted at the same size and threshold as the mask: on a small copy a thin logo's edges counted for more.)
+  const pc = canvasOf(W, H), pg = pc.getContext('2d'); pg.drawImage(await loadPicture(src), 0, 0, W, H);
+  const pd = pg.getImageData(0, 0, W, H).data; let shown = 0; for (let i = 3; i < pd.length; i += 4) if (pd[i] > 25) shown++;
+  if (on > shown * 0.97) throw new Error(shown < a.length * 0.97 ? t('Esta imagen ya no tiene fondo: no hay nada que separar.') : t('No se ha encontrado nada que separar del fondo.'));
   return a;
 }
 // Portrait mode: the background blurred (its subject's place first filled from around it, so that no halo of the
@@ -330,8 +379,10 @@ export function recolourData(data, { from = '#ff0000', to = '#0000ff', tolerance
     const dh = Math.abs(((h - h0 + 540) % 360) - 180), near = Math.max(0, 1 - (Math.abs(s - s0) + Math.abs(l - l0)) / (0.45 + tk * 0.6));
     const w = Math.min(1, Math.max(0, (tol - dh) / (tol * 0.35))) * Math.min(1, (s - 0.08) / 0.12) * Math.min(1, near * 2);
     if (w <= 0) continue;
-    const [r, g, b] = fromHsl(h + ((h1 - h0 + 540) % 360 - 180) * w, Math.min(1, s * (1 + (satK - 1) * w)), l);
-    d[i] = r * 255; d[i + 1] = g * 255; d[i + 2] = b * 255;
+    // (The new colour whole, mixed with the old by how near it was: turned only part of the way, a hue went through
+    // the ones between — an orange half-way to blue was a red smear on a yellow dog.)
+    const [r, g, b] = fromHsl(h + ((h1 - h0 + 540) % 360 - 180), Math.min(1, s * satK), l);
+    d[i] += (r * 255 - d[i]) * w; d[i + 1] += (g * 255 - d[i + 1]) * w; d[i + 2] += (b * 255 - d[i + 2]) * w;
   }
   return data;
 }

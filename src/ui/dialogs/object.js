@@ -11,12 +11,12 @@ import { readFile } from '../shell/openfile.js';
 import { isGif } from '../../features/live/media.js';
 import { canCropOnSlide, uncrop } from '../../features/document/crop.js';
 import { gifRemoveBackground } from '../../features/live/gifbg.js';
-import { MATHLIVE, BG_REMOVAL, loadScript } from '../../core/vendor.js';
+import { MATHLIVE, loadScript } from '../../core/vendor.js';
 import { renderLatex } from '../canvas/content.js';
 import { tablePresets, tableClass, tableVars, tableCSS, chartSVG } from '../../render/svg.js';
 import { withBlobs, blobURL } from '../../io/formats/blobmedia.js';
 import { currentPalette, deckFg, paletteColours } from '../../features/design/palettes.js';
-import { cutoutOrigins } from '../../features/document/imagetools.js';
+import { cutoutOrigins, cutoutPicture } from '../../features/document/imagetools.js';
 
 // PowerPoint's «Correcciones» and «Color», as examples of the picture itself.
 export const IMG_PRESETS = [['Original', { brightness: 100, contrast: 100, saturate: 100, opacity: 100 }], ['Más claro', { brightness: 130, contrast: 100, saturate: 100, opacity: 100 }],
@@ -415,8 +415,7 @@ export async function removeBackground(b) {
     // An animated GIF keeps its animation: every frame goes through the AI.
     const dataUrl = isGif(b)
       ? await gifRemoveBackground(b.src, { onProgress: (i, n) => el?.setAttribute('data-progress', `${i} / ${n}`) })
-      : await import(BG_REMOVAL).then(m => m.removeBackground(b.src))
-        .then(blob => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); }));
+      : await cutoutPicture(b.src);
     // (The picture before, for «Retocar el recorte» to give some of it back: this session only.)
     if (!isGif(b)) cutoutOrigins.set(b.id, b.src);
     commit(() => (b.src = dataUrl));

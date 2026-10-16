@@ -4673,6 +4673,7 @@ export default {
   "Solo con fotos fijas (no con un GIF animado).": "Argazki finkoekin bakarrik (ez GIF animatu batekin).",
   "Sombras": "Itzalak",
   "Sus bordes, como en un espejo": "Bere ertzak, ispiluan bezala",
+  "Nada (transparente)": "Ezer ez (gardena)",
   "Un margen alrededor": "Marjina bat inguruan",
   "Vivo": "Bizia",
   "Ajustes copiados: abre otra imagen y pulsa «Pegar ajustes».": "Doikuntzak kopiatuta: ireki beste irudi bat eta sakatu «Itsatsi doikuntzak».",
@@ -4739,6 +4740,6 @@ export default {
   "Borrar un objeto": "Ezabatu objektu bat",
   "Cambiar un color": "Aldatu kolore bat",
   "Para caras, nombres o matrículas: pinta encima o arrastra un rectángulo.": "Aurpegi, izen edo matrikuletarako: margotu gainean edo arrastatu laukizuzen bat.",
-  "Pinta encima de lo que sobra: se rellena con lo que hay alrededor.": "Margotu soberan dagoenaren gainean: inguruan dagoenarekin betetzen da.",
+  "Pinta encima de lo que sobra: se rellena con lo que hay alrededor, o queda transparente en un logo.": "Margotu soberan dagoenaren gainean: inguruan dagoenarekin betetzen da, edo garden geratzen da logo batean.",
   "Haz clic en la foto sobre el color que quieres cambiar.": "Egin klik argazkian aldatu nahi duzun kolorearen gainean.",
 };

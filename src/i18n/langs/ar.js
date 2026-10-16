@@ -4673,6 +4673,7 @@ export default {
   "Solo con fotos fijas (no con un GIF animado).": "للصور الثابتة فقط (وليس لصور GIF المتحركة).",
   "Sombras": "الظلال",
   "Sus bordes, como en un espejo": "حوافها، كما في المرآة",
+  "Nada (transparente)": "لا شيء (شفاف)",
   "Un margen alrededor": "هامش من كل الجهات",
   "Vivo": "زاهٍ",
   "Ajustes copiados: abre otra imagen y pulsa «Pegar ajustes».": "تم نسخ الإعدادات: افتح صورة أخرى واضغط «لصق الإعدادات».",
@@ -4739,6 +4740,6 @@ export default {
   "Borrar un objeto": "محو كائن",
   "Cambiar un color": "تغيير لون",
   "Para caras, nombres o matrículas: pinta encima o arrastra un rectángulo.": "للوجوه أو الأسماء أو اللوحات: لوّن فوقها أو اسحب مستطيلًا.",
-  "Pinta encima de lo que sobra: se rellena con lo que hay alrededor.": "لوّن فوق ما لا تريده: يُملأ بما حوله.",
+  "Pinta encima de lo que sobra: se rellena con lo que hay alrededor, o queda transparente en un logo.": "لوّن فوق ما لا تريده: يُملأ بما حوله، أو يصبح شفافًا في الشعار.",
   "Haz clic en la foto sobre el color que quieres cambiar.": "انقر في الصورة على اللون الذي تريد تغييره.",
 };

@@ -22,7 +22,7 @@ import { FILTERS, DUOTONE, SHAPES, maskPath, ensureLook, NO_LOOK, LOOK_PROPS } f
 import { imgFilter, DEFAULT_SHADOW } from '../../render/svg.js';
 import { isGif } from '../../features/live/media.js';
 import { uncrop } from '../../features/document/crop.js';
-import { EXTEND_RATIOS, EXTEND_FILLS, extendCanvas, extendImage, loadPicture, visiblePart, splitLayers, straightenImage, straightenZoom,
+import { EXTEND_RATIOS, EXTEND_FILLS, extendCanvas, extendImage, loadPicture, seeThrough, visiblePart, splitLayers, straightenImage, straightenZoom,
   pixelsOf, maskWeights, hideData, hideArea, eraseData, eraseArea, retouchCutout, cutoutOrigins, subjectEffect, recolourData, recolour, photoColours } from '../../features/document/imagetools.js';
 import { applyPalette, currentPalette } from '../../features/design/palettes.js';
 import { tabsHTML, wireTabs, moreHTML, tipHTML, footHTML } from './dlgkit.js';
@@ -46,7 +46,7 @@ const NEUTRAL = Object.fromEntries(SLIDERS.map(s => [s[0], s[4]]));
 const BASE = ['brightness', 'contrast', 'saturate', 'opacity'];        // (PowerPoint's four: always there when b.adj is)
 // The brushes: [id, icon, name, one line of help].
 const TOOLS = [['hide', 'blur_on', 'Difuminar o pixelar una zona', 'Para caras, nombres o matrículas: pinta encima o arrastra un rectángulo.'],
-  ['erase', 'ink_eraser', 'Borrar un objeto', 'Pinta encima de lo que sobra: se rellena con lo que hay alrededor.'],
+  ['erase', 'ink_eraser', 'Borrar un objeto', 'Pinta encima de lo que sobra: se rellena con lo que hay alrededor, o queda transparente en un logo.'],
   ['recolour', 'colorize', 'Cambiar un color', 'Haz clic en la foto sobre el color que quieres cambiar.']];
 let copied = null;                                                       // («Copiar ajustes»: the look, while Revela is open)
 
@@ -243,6 +243,13 @@ export function openImageEditor(b0, tab = '') {
     const k = x.dataset.shape, m = { ...b.mask, shape: k }; if (!k) delete m.shape;
     if (k === 'round' && m.radius == null) m.radius = 25;
     if (m.shape || m.feather > 0) b.mask = m; else delete b.mask;
+    // (A shape that keeps its own proportion — circle, star… — in a long box was a small one in its middle: the box
+    // becomes square, about as big, and the picture fills it, as a frame in Canva. «Proporción original» undoes it.)
+    const meet = SHAPES.find(x => x[0] === k)?.[2] === 'meet', r = b.w / b.h;
+    if (meet && (r > 1.15 || r < 1 / 1.15)) {
+      const S = Math.round(Math.min(Math.sqrt(b.w * b.h), state.deck.size.w, state.deck.size.h)), cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+      Object.assign(b, { w: S, h: S, x: Math.round(cx - S / 2), y: Math.round(cy - S / 2), fit: 'cover', ratio: '1:1' }); delete b.crop;
+    }
   })));
   q('.ie-radius').addEventListener('input', e => look(b => { if (b.mask) b.mask.radius = +e.target.value; }, true));
   q('.ie-feather').addEventListener('input', e => look(b => { const m = { ...b.mask, feather: +e.target.value }; if (!m.feather) delete m.feather; if (m.shape || m.feather) b.mask = m; else delete b.mask; }, true));
@@ -398,12 +405,14 @@ export function openImageEditor(b0, tab = '') {
     const n = ++pending, img = await loadPicture(b.src).catch(() => null); if (!img || n !== pending || shown !== 'extend') return;
     const made = extendCanvas(img, visiblePart(b, img.naturalWidth, img.naturalHeight).src, { ...extOpts(), max: 640 });
     note.textContent = made ? '' : t('La imagen ya tiene esa forma.');
-    extendPreview = made ? made.canvas.toDataURL('image/jpeg', 0.85) : ''; paint();
+    extendPreview = made ? made.canvas.toDataURL('image/png') : ''; paint();   // (PNG: its transparency shown as such)
   }
   if (still) {
     const sync = () => { q('.ie-margin').hidden = q('.ie-ratio').value !== 'margin'; q('.ie-color-l').hidden = q('.ie-fill').value !== 'color'; previewExtend(); };
     for (const s of ['.ie-ratio', '.ie-fill', '.ie-mg', '.ie-color']) q(s).addEventListener('input', sync);
     sync();
+    // (A see-through picture — a logo —: its new room left see-through too, at first.)
+    loadPicture(cur()?.src || '').then(img => { if (seeThrough(img) > 0.03) { q('.ie-fill').value = 'none'; sync(); } }).catch(() => {});
     act('[data-do="extend"]', e => busy(e.currentTarget, t('Ampliando…'), async () => {
       if (!(await extendImage(id, extOpts()))) throw new Error(t('La imagen ya tiene esa forma.'));
       extendPreview = ''; paint(); done();

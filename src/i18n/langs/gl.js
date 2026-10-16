@@ -4673,6 +4673,7 @@ export default {
   "Solo con fotos fijas (no con un GIF animado).": "Só con fotos fixas (non cun GIF animado).",
   "Sombras": "Sombras",
   "Sus bordes, como en un espejo": "Os seus bordos, en espello",
+  "Nada (transparente)": "Nada (transparente)",
   "Un margen alrededor": "Unha marxe arredor",
   "Vivo": "Vivo",
   "Ajustes copiados: abre otra imagen y pulsa «Pegar ajustes».": "Axustes copiados: abre outra imaxe e preme «Pegar axustes».",
@@ -4739,6 +4740,6 @@ export default {
   "Borrar un objeto": "Borrar un obxecto",
   "Cambiar un color": "Cambiar unha cor",
   "Para caras, nombres o matrículas: pinta encima o arrastra un rectángulo.": "Para caras, nomes ou matrículas: pinta enriba ou arrastra un rectángulo.",
-  "Pinta encima de lo que sobra: se rellena con lo que hay alrededor.": "Pinta enriba do que sobra: énchese co que hai arredor.",
+  "Pinta encima de lo que sobra: se rellena con lo que hay alrededor, o queda transparente en un logo.": "Pinta enriba do que sobra: énchese co que hai arredor, ou queda transparente nun logo.",
   "Haz clic en la foto sobre el color que quieres cambiar.": "Fai clic na foto sobre a cor que queres cambiar.",
 };

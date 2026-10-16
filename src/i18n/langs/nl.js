@@ -4673,6 +4673,7 @@ export default {
   "Solo con fotos fijas (no con un GIF animado).": "Alleen bij stilstaande foto's (niet bij een geanimeerde GIF).",
   "Sombras": "Schaduwen",
   "Sus bordes, como en un espejo": "De randen, gespiegeld",
+  "Nada (transparente)": "Niets (transparant)",
   "Un margen alrededor": "Een marge rondom",
   "Vivo": "Levendig",
   "Ajustes copiados: abre otra imagen y pulsa «Pegar ajustes».": "Instellingen gekopieerd: open een andere afbeelding en klik op «Instellingen plakken».",
@@ -4739,6 +4740,6 @@ export default {
   "Borrar un objeto": "Een object wissen",
   "Cambiar un color": "Een kleur veranderen",
   "Para caras, nombres o matrículas: pinta encima o arrastra un rectángulo.": "Voor gezichten, namen of kentekens: schilder erover of sleep een rechthoek.",
-  "Pinta encima de lo que sobra: se rellena con lo que hay alrededor.": "Schilder over wat weg moet: het wordt gevuld met wat eromheen staat.",
+  "Pinta encima de lo que sobra: se rellena con lo que hay alrededor, o queda transparente en un logo.": "Schilder over wat weg moet: het wordt gevuld met wat eromheen staat, of blijft transparant bij een logo.",
   "Haz clic en la foto sobre el color que quieres cambiar.": "Klik in de foto op de kleur die je wilt veranderen.",
 };

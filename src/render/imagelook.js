@@ -101,13 +101,15 @@ export function maskPath(shape, radius, w, h, m = 0) {
 const N = 32;
 const cl = (v, lo, hi) => Math.max(lo, Math.min(hi, +v || 0));
 function toneCurve(a) {
-  const sh = cl(a.shadows, -100, 100) / 100, hl = cl(a.highlights, -100, 100) / 100, fade = cl(a.fade, 0, 100) / 100;
+  // (Exposure: brighter as a curve that eases into white, not a product that clips — an orange doubled was a yellow.)
+  const ex = cl(a.exposure, -100, 100) / 50, sh = cl(a.shadows, -100, 100) / 100, hl = cl(a.highlights, -100, 100) / 100, fade = cl(a.fade, 0, 100) / 100;
   const bp = cl(a.black, 0, 100) / 100 * 0.4, wp = 1 - cl(a.white, 0, 100) / 100 * 0.4, g = 2 ** (cl(a.mid, -100, 100) / 100);
   const ch = ['red', 'green', 'blue'].map(k => cl(a[k], -100, 100) / 100);
-  if (!sh && !hl && !fade && !bp && wp === 1 && g === 1 && ch.every(v => !v)) return null;
+  if (!ex && !sh && !hl && !fade && !bp && wp === 1 && g === 1 && ch.every(v => !v)) return null;
   const c01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
   return ch.map(c => Array.from({ length: N + 1 }, (_, i) => {
-    let v = c01((i / N - bp) / (wp - bp)) ** (1 / g);                       // (levels: black and white points, midtones)
+    const x = i / N, e = ex > 0 ? 1 - (1 - x) ** (2 ** ex) : x * 2 ** ex;
+    let v = c01((e - bp) / (wp - bp)) ** (1 / g);                       // (levels: black and white points, midtones)
     // (Shadows lift or deepen the dark third, highlights the light one: two bumps that leave black and white be.)
     v = c01(v + 0.12 * 6.75 * (sh * v * (1 - v) ** 2 + hl * v * v * (1 - v)));
     v = v ** (2 ** -c);                                                     // (a channel's midtones: more of that colour)
@@ -120,8 +122,7 @@ const hexOk = (c, d) => (/^#[0-9a-f]{6}$/i.test(c || '') ? c.toLowerCase() : d);
 // softness, the vignette, the shape… are the same size in the editor, a thumbnail and the presentation.
 export function lookSpec(b) {
   const a = b?.adj || {}, f = FILTER[b?.fx?.name], t = f ? Math.max(0, Math.min(100, b.fx.amount ?? 100)) / 100 : 0;
-  const exp = cl(a.exposure, -100, 100);
-  let m = chain(...(exp ? [bright(2 ** (exp / 50))] : []), ...(a.hue ? [hueMatrix(+a.hue)] : []), ...(a.warmth ? [warm(+a.warmth / 100)] : []));
+  let m = chain(...(a.hue ? [hueMatrix(+a.hue)] : []), ...(a.warmth ? [warm(+a.warmth / 100)] : []));
   if (f && t) { const fm = f[2](b.fx); m = mul(fm.map((v, i) => I[i] + (v - I[i]) * t), m); }
   const sharp = cl(a.sharpen, -100, 100) / 100, vig = Math.min(1, cl(a.vignette, 0, 100) / 100 + (f?.[3] || 0) * t);
   const clar = cl(a.clarity, -100, 100) / 100, grain = cl(a.grain, 0, 100) / 100, curve = toneCurve(a);

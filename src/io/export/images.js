@@ -96,7 +96,14 @@ async function bakeLooks(holder) {
     const f = img.style.filter || '', clip = /inset\(([^)]*)\)/.exec(img.style.clipPath || '')?.[1].trim().split(/\s+/).map(v => parseFloat(v) / 100 || 0);
     const n = re => +(f.match(re)?.[1] ?? 100), adj = { brightness: n(/brightness\(([\d.]+)%\)/), contrast: n(/contrast\(([\d.]+)%\)/), saturate: n(/saturate\(([\d.]+)%\)/) };
     const look = specOf(f.match(/url\(["']?#([\w-]+)/)?.[1] || '');
-    if (!look && !clip && adj.brightness === 100 && adj.contrast === 100 && adj.saturate === 100) continue;
+    // (Its shadow — render/svg.js shadowCSS, a drop-shadow in the same filter — drawn too: taking the filter off lost it.)
+    // (The browser writes it back its own way — the colour first, as rgba(…) —: read in any order.)
+    const ds = /drop-shadow\(((?:[^()]|\([^()]*\))*)\)/.exec(f)?.[1], px = ds ? (ds.replace(/rgba?\([^)]*\)|#[0-9a-f]+/gi, '').match(/-?[\d.]+px/g) || []).map(parseFloat) : [];
+    const sh = ds && px.length >= 2 ? { x: px[0], y: px[1], blur: px[2] || 0, color: /rgba?\([^)]*\)|#[0-9a-f]{3,8}/i.exec(ds)?.[0] || '#00000066' } : null;
+    // (Turned, and not «fill»: html2canvas clips a contained picture to its box unturned — a turned logo came out cut
+    // off —, while one filled draws right; so it is drawn here as it shows, and goes in as «fill».)
+    const turned = /rotate\((?!0deg\))/.test(img.style.transform || '') || !/^(|none|0deg)$/.test(img.style.rotate || '');
+    if (!look && !clip && !sh && !(turned && getComputedStyle(img).objectFit !== 'fill') && adj.brightness === 100 && adj.contrast === 100 && adj.saturate === 100) continue;
     try {
       await img.decode();
       const nw = img.naturalWidth, nh = img.naturalHeight, bw = img.clientWidth, bh = img.clientHeight; if (!nw || !nh || !bw || !bh) continue;
@@ -108,8 +115,17 @@ async function bakeLooks(holder) {
       if (clip) { const [t, r = t, b = t, l = r] = clip; g.beginPath(); g.rect(W * l, H * t, W * (1 - l - r), H * (1 - t - b)); g.clip(); }
       g.drawImage(img, (bw - w) * (pos[0] ?? 0.5) * k, (bh - h) * (pos[1] ?? 0.5) * k, w * k, h * k);
       g.putImageData(applyLook(applyAdjustments(g.getImageData(0, 0, W, H), adj), look, k), 0, 0);
-      img.src = c.toDataURL('image/png'); await img.decode().catch(() => {});
+      let out = c, pad = 0;
+      if (sh) {
+        const { x, y, blur } = sh; pad = Math.ceil(Math.abs(x) + Math.abs(y) + blur * 2);
+        out = Object.assign(document.createElement('canvas'), { width: W + 2 * pad * k, height: H + 2 * pad * k });
+        const o = out.getContext('2d'); Object.assign(o, { shadowColor: sh.color, shadowBlur: blur * k, shadowOffsetX: x * k, shadowOffsetY: y * k });
+        o.drawImage(c, pad * k, pad * k);
+      }
+      img.src = out.toDataURL('image/png'); await img.decode().catch(() => {});
       Object.assign(img.style, { filter: 'none', clipPath: 'none', objectFit: 'fill', objectPosition: '50% 50%' });
+      // (Shadowed: the picture larger by the shadow's room on each side, so that the box stays where it was.)
+      if (pad) Object.assign(img.style, { left: `${img.offsetLeft - pad}px`, top: `${img.offsetTop - pad}px`, width: `${bw + 2 * pad}px`, height: `${bh + 2 * pad}px`, maxWidth: 'none', maxHeight: 'none' });
     } catch {}
   }
 }
