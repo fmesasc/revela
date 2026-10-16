@@ -3828,6 +3828,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
         f.srcdoc = html.split(JSON.stringify(S.MAPLIBRE)).join(JSON.stringify('data:text/javascript;charset=utf-8,' + encodeURIComponent(mapStub) + '%2F%2F'));
         for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
         const F = f.contentWindow; F.Reveal.slide(1); const el = F.document.querySelector('[data-geomap]');
+        // (The scroll view: there it is scrolled to, as a finger does — only the slide in view has a live map.)
+        if (F.Reveal.isScrollView?.()) { F.document.querySelector('.reveal-viewport').scrollTop = 1e6; F.dispatchEvent(new F.Event('scroll')); }
         for (let k = 0; k < 60 && !el.classList.contains('rvm-on'); k++) await sleep(50);
         await sleep(100); await run(F, el);
       } finally { f.remove(); }
