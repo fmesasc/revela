@@ -395,6 +395,12 @@ body.assistant-open .tb-ai{background:var(--accent);color:var(--on-accent)}
 .ie-swatches button:hover{transform:scale(1.08)}
 .ie-rot{display:inline-block;transform:rotate(90deg)}
 .ie-deg{float:inline-end;font-variant-numeric:tabular-nums;color:var(--txt2)}
+/* Separar las piezas: each piece tinted and boxed in its colour over the picture (in the stage: the box's pixels, --k its scale). */
+.ie-pc-v{float:inline-end;font-variant-numeric:tabular-nums;color:var(--txt2)}
+.ie-pieces{position:absolute;inset:0;pointer-events:none}
+.ie-pc-clip{position:absolute;overflow:hidden}.ie-pc-pic{position:absolute}
+.ie-pc-pic canvas{position:absolute;inset:0;width:100%;height:100%}
+.ie-pc-pic i{position:absolute;box-sizing:border-box;border:calc(2px / var(--k, 1)) solid;border-radius:calc(3px / var(--k, 1));outline:calc(1px / var(--k, 1)) solid #fff8}
 .ie-viewacts{display:flex;gap:8px}.ie-viewacts .ms{font-size:18px;vertical-align:-4px}
 .ie-ba[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
 .ie-stage{touch-action:none}

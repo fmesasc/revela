@@ -3970,6 +3970,56 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { T.layerKit.cutout = was; }
   });
 
+  await test('editar imagen: separar las piezas de un logo sin fondo — en su sitio, agrupadas, girado y Ctrl+Z', async () => {
+    reset(); const W = frame.contentWindow, T = await W.eval("import('/src/features/document/imagetools.js')");
+    // A round blob on the left and three «letters» close together on the right, on a see-through 400×160.
+    const src0 = testPicture(g => { g.fillStyle = '#f58220'; g.beginPath(); g.arc(70, 80, 50, 0, 7); g.fill(); g.fillStyle = '#000000'; for (const x of [200, 245, 290]) g.fillRect(x, 50, 30, 60); }, 400, 160);
+    const b = putPicture(src0), cur = () => slide().blocks.find(x => x.id === b.id);
+    // (A box of another shape: the picture letterboxed in it, 480×192 from y 54. Its look: a filter, and a shape that goes.)
+    R.store.commit(() => Object.assign(cur(), { w: 480, h: 300, fx: { name: 'bw', amount: 100 }, mask: { shape: 'circle' } }));
+    const I = await W.eval("import('/src/io/export/images.js')"), shotPx = async pts => { const u = URL.createObjectURL(await I.slideImageBlob(slide(), 'png')); const r = []; for (const [x, y] of pts) r.push((await pixelOf(u, x, y)).px); URL.revokeObjectURL(u); return r; };
+    R.store.commit(() => { delete cur().mask; }); const pts = [[184, 250], [358, 250], [412, 250]], before = await shotPx(pts);
+    R.store.commit(() => { cur().mask = { shape: 'circle' }; });
+    const n0 = slide().blocks.length, at = slide().blocks.indexOf(cur());
+    const m = await openEditor(); await tabTo(m, 'layers');
+    const btn = m.querySelector('[data-do="pieces"]');
+    assert(await until(() => /2/.test(btn.textContent) && !btn.disabled), 'por defecto: la mancha y la palabra, 2 piezas — ' + btn.textContent);
+    assert(!m.querySelector('.ie-pieces').hidden && m.querySelectorAll('.ie-pieces i').length === 2, 'en la vista, las dos piezas marcadas');
+    const gapR = m.querySelector('.ie-pc-gap'); gapR.value = 2; gapR.dispatchEvent(new Event('input', { bubbles: true })); await sleep(30);
+    assert(/4/.test(btn.textContent) && m.querySelectorAll('.ie-pieces i').length === 4, 'con poca separación, cada letra: 4 — ' + btn.textContent);
+    btn.click();
+    assert(await until(() => slide().blocks.length === n0 + 3), 'cuatro objetos en lugar de la imagen');
+    assert(!slide().blocks.some(x => x.id === b.id), 'la imagen ya no está'); assert(!D.getElementById('imged-modal'), 'el editor se cierra');
+    const ps = slide().blocks.slice(at, at + 4);
+    assert(ps.every(p => p.type === 'image' && p.groupId && p.groupId === ps[0].groupId), 'en su sitio en el orden, agrupadas');
+    eq(JSON.stringify([...R.state.ui.multi].sort()), JSON.stringify(ps.map(p => p.id).sort()), 'y seleccionadas');
+    assert(ps.every(p => p.fx?.name === 'bw' && !p.mask), 'con su filtro; sin la forma, que era de la imagen entera');
+    const near = (p, x, y, w, h) => [p.x - x, p.y - y, p.w - w, p.h - h].every(d => Math.abs(d) <= 2);
+    assert(near(ps[0], 124, 190, 120, 120), 'la mancha, donde estaba: ' + [ps[0].x, ps[0].y, ps[0].w, ps[0].h]);
+    [340, 394, 448].forEach((x, i) => assert(near(ps[i + 1], x, 214, 36, 72), `la letra ${i + 1}, donde estaba: ` + [ps[i + 1].x, ps[i + 1].y, ps[i + 1].w, ps[i + 1].h]));
+    const L = await pixelOf(ps[1].src, 15, 30); assert(L.w === 30 && L.h === 60 && L.px[3] === 255, 'cada pieza, su recorte a tamaño real (PNG): ' + [L.w, L.h, L.px]);
+    const after = await shotPx(pts);
+    assert(before.every((p, i) => p.every((v, k) => Math.abs(v - after[i][k]) <= 6)), 'la diapositiva como imagen, igual que antes: ' + JSON.stringify([before, after]));
+    R.store.undo(); await sleep(30);
+    eq(slide().blocks.length, n0, 'Ctrl+Z: una sola imagen'); eq(cur()?.src, src0, 'la de antes, con su id');
+    // Turned 90°: each piece turned too, around the picture's centre (340, 250).
+    R.store.commit(() => { cur().rotation = 90; delete cur().mask; });
+    const ids = await T.splitPieces(b.id, 2), p1 = slide().blocks.find(x => x.id === ids[1]);
+    assert(p1.rotation === 90 && Math.abs(p1.x + p1.w / 2 - 340) <= 2 && Math.abs(p1.y + p1.h / 2 - 268) <= 2, 'girada: la letra, girada en su sitio: ' + [p1.x + p1.w / 2, p1.y + p1.h / 2]);
+    R.store.undo(); await sleep(20);
+    // An opaque picture: the button off, pointing to «Separar en capas».
+    const o = putPicture(testPicture((g, w, h) => { g.fillStyle = '#808080'; g.fillRect(0, 0, w, h); })); await sleep(30);
+    (await W.eval("import('/src/ui/dialogs/imageedit.js')")).openImageEditor(o, 'layers'); await sleep(60); const m2 = D.getElementById('imged-modal'); await tabTo(m2, 'layers');
+    assert(await until(() => /Separar en capas/.test(m2.querySelector('.ie-pc-say').textContent)), 'opaca: lo explica y remite a «Separar en capas»');
+    assert(m2.querySelector('[data-do="pieces"]').disabled && m2.querySelector('.ie-pc-gap').closest('.ie-pc-on').hidden, 'y el botón, desactivado');
+    m2.querySelector('.modal-close').click();
+    let said = ''; try { await T.splitPieces(o.id, 4); } catch (e) { said = e.message; } assert(/transparentes/.test(said), 'opaca: no separa');
+    // Too many pieces: 70 dots, each its own at gap 0 — said, and not done.
+    const dots = putPicture(testPicture(g => { g.fillStyle = '#00f'; for (let i = 0; i < 70; i++) g.fillRect(10 + (i % 10) * 38, 10 + Math.floor(i / 10) * 38, 12, 12); }, 400, 280));
+    said = ''; const k = slide().blocks.length; try { await T.splitPieces(dots.id, 0); } catch (e) { said = e.message; }
+    assert(/70 piezas/.test(said) && slide().blocks.length === k, 'más de 60: lo dice y no separa: ' + said);
+  });
+
   // «Editar imagen», más denso (2026-10-16): Lightroom's adjustments, the shape, outline and glow, copy/paste, the
   // brushes and the effects made with the subject's mask.
   const setRange = (m, sel, v, ev = 'input') => { const e = m.querySelector(sel); e.value = v; e.dispatchEvent(new Event(ev, { bubbles: true })); };

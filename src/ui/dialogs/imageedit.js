@@ -16,7 +16,8 @@
 //   all blurred but a round area placed with a click (b.focusBlur, live);
 // - Retocar: brushes on the picture — blur or pixelate (faces, names), erase something, change a colour — and its colours;
 // - Ampliar: more picture around it without AI (features/document/imagetools.js), or with it (Editar con IA);
-// - Capas: the subject lifted off its background, two objects; the text in the picture read by AI, as a text box.
+// - Capas: the subject lifted off its background, two objects; a logo's loose pieces (no AI: what is not see-through and
+//   touches), each an object, grouped; the text in the picture read by AI, as a text box.
 // The look is live and undoes with Ctrl+Z like any other change (a slider dragged: one step); what makes a new picture
 // (straightening, the brushes, the background's effects) is one step each. «Antes / después», held, shows it without its look.
 
@@ -29,7 +30,8 @@ import { isGif } from '../../features/live/media.js';
 import { uncrop } from '../../features/document/crop.js';
 import { EXTEND_RATIOS, EXTEND_FILLS, extendCanvas, extendImage, loadPicture, seeThrough, visiblePart, splitLayers, straightenImage, straightenZoom,
   pixelsOf, maskWeights, hideData, hideArea, eraseData, eraseArea, retouchCutout, cutoutOrigins, subjectEffect, recolourData, recolour, photoColours,
-  BG_KINDS, pictureSubject, previewBackground, changeBackground, pixelateData, pixelateImage, textBoxFor } from '../../features/document/imagetools.js';
+  BG_KINDS, pictureSubject, previewBackground, changeBackground, pixelateData, pixelateImage, textBoxFor,
+  PIECES_MAX, PIECES_GAP_MAX, pieceMap, defaultPiecesGap, visiblePieces, splitPieces } from '../../features/document/imagetools.js';
 import { textBlock } from '../../core/model.js';
 import { applyPalette, currentPalette } from '../../features/design/palettes.js';
 import { tabsHTML, wireTabs, moreHTML, tipHTML, footHTML } from './dlgkit.js';
@@ -166,6 +168,13 @@ export function openImageEditor(b0, tab = '') {
       <label class="fr-l">${t('El hueco del fondo')}<select class="ie-hole">${opts([['near', 'Rellenarlo con lo que hay alrededor'], ['ai', 'Rellenarlo con IA (más natural)']])}</select></label>
       <button type="button" class="fr-do" data-do="layers"><i class="ms" aria-hidden="true">layers</i> ${t('Separar en capas')}</button>
       ${tipHTML(t('La figura se recorta con la misma IA que «Quitar fondo». Las dos capas quedan seleccionadas; haz clic en la figura para moverla sola.'))}
+      <h5 class="ie-sec">${t('Separar las piezas')}</h5>
+      <p class="ie-say">${t('Para un logo o un dibujo sin fondo: cada parte suelta (la figura, la palabra…) pasa a ser un objeto, en su sitio, para moverla o animarla por separado.')}</p>
+      <div class="ie-pc-on"><label class="fr-l ie-sl">${t('Separación')} <output class="ie-pc-v"></output><input type="range" class="ie-pc-gap" min="0" max="${PIECES_GAP_MAX}" step="0.5" value="4"></label></div>
+      <p class="ie-say ie-pc-say" aria-live="polite" hidden></p>
+      <div class="ie-acts"><button type="button" class="fr-do" data-do="pieces" disabled><i class="ms" aria-hidden="true">scatter_plot</i> <span class="ie-pc-n">${t('Separar las piezas')}</span></button>
+        <button type="button" class="mini2 ie-pc-on" data-do="pieces-letters"><i class="ms" aria-hidden="true">text_rotation_none</i> ${t('Cada letra por separado')}</button></div>
+      ${tipHTML(t('Sin IA. Las partes más cerca entre sí que la separación van juntas, como las letras de una palabra; con la separación a 0, cada parte suelta es una pieza. En la vista, cada pieza de un color. Quedan agrupadas y seleccionadas: Ctrl+Z lo deshace.'))}
       <h5 class="ie-sec">${t('Sacar el texto')}</h5>
       <p class="ie-say">${t('Lee el texto de la imagen y lo pone en un cuadro de texto que puedes editar.')}</p>
       <label class="fr-l">${t('Dónde')}<select class="ie-tx-place">${opts([['over', 'Encima de la imagen, donde estaba'], ['beside', 'Al lado de la imagen']])}</select></label>
@@ -183,7 +192,10 @@ export function openImageEditor(b0, tab = '') {
     ${footHTML(`<button type="button" class="fr-do ie-ok">${t('Listo')}</button>`)}</div>`;
   document.body.appendChild(back);
   const q = s => back.querySelector(s), qa = s => [...back.querySelectorAll(s)], pic = q('.ie-pic'), note = q('.ie-note');
-  let extendPreview = '', before = false, tool = null;
+  let extendPreview = '', before = false, tool = null, viewK = 1, shown = '';
+  // (Separar las piezas: the pieces found, each in a colour over the picture — in the stage, in the box's own pixels.)
+  const pcView = Object.assign(document.createElement('div'), { className: 'ie-pieces', hidden: true }); q('.ie-stage').appendChild(pcView);
+  let pcMap = null, pcSrc = '', pcMoved = false, pcN = 0, pcDrawn = '';
   const straight = () => +(q('.ie-straight')?.value || 0);
   // The picture as on the slide (its box, fit, crop and look), scaled to the pane: its filter's sizes are the box's.
   const paint = () => {
@@ -192,6 +204,7 @@ export function openImageEditor(b0, tab = '') {
     // (Its shadow's style or reflection drawn past the box: room for them in the pane.)
     const st = q('.ie-stage'), fr = q('.ie-frame'), [pl, pt, pr, pb] = before ? [0, 0, 0, 0] : lookPad(b);
     const k = Math.min(fr.clientWidth / ((b.w || 1) + pl + pr), fr.clientHeight / ((b.h || 1) + pt + pb)) || 0.3;
+    viewK = k; if (shown === 'layers') syncPieces(); else pcView.hidden = true;
     if (extendPreview) { st.style.cssText = 'inset:0'; pic.removeAttribute('style'); pic.className = 'ie-pic ie-ext'; if (pic.src !== extendPreview) pic.src = extendPreview; return; }
     pic.className = 'ie-pic';
     st.style.cssText = `width:${b.w}px;height:${b.h}px;transform:scale(${k});left:${(fr.clientWidth - (b.w + pl + pr) * k) / 2 + pl * k}px;top:${(fr.clientHeight - (b.h + pt + pb) * k) / 2 + pt * k}px`;
@@ -236,10 +249,9 @@ export function openImageEditor(b0, tab = '') {
   back.addEventListener('click', e => { if (e.target === back) close(); });
   const showTab = wireTabs(back, 'revela.imageedit.tab');
   if (tab) showTab(tab);
-  // (Ampliar shows what it would make; Retocar, the photo's colours; the other tabs, the picture.)
-  let shown = '';
+  // (Ampliar shows what it would make; Retocar, the photo's colours; Capas, its pieces; the other tabs, the picture.)
   const onTab = () => { const now = q('.dk-tab[aria-selected=true]')?.dataset.tab; if (now === shown) return; shown = now; extendPreview = ''; endTool();
-    if (now === 'extend') previewExtend(); else paint(); if (now === 'retouch') loadColours(); };
+    if (now === 'extend') previewExtend(); else paint(); if (now === 'retouch') loadColours(); if (now === 'layers') loadPieces(); };
   for (const ev of ['click', 'keyup']) q('.dk-tablist').addEventListener(ev, onTab);
   const done = () => { note.textContent = t('Hecho. Puedes deshacerlo con Ctrl+Z.'); };
   const busy = async (btn, msg, fn) => {
@@ -583,6 +595,57 @@ export function openImageEditor(b0, tab = '') {
         if (b) run(() => A.editImage(b, 'erase', { what: 'the blurred, smeared patch where something was cut out: rebuild the background that would be behind it' })); }
     }));
   }
+  // ---- Separar las piezas: found when the tab is shown (once per picture), the gap to start with chosen from them; the
+  // pieces coloured in the view and counted on the button as the gap changes; a picture with no see-through parts
+  // points to «Separar en capas».
+  async function loadPieces() {
+    const b = cur(); if (!b || !q('.ie-pc-gap')) return;
+    if (pcSrc !== b.src) {
+      const n = ++pcN; pcSrc = b.src; pcMap = null; syncPieces();
+      const map = await pieceMap(b.src).catch(() => null); if (n !== pcN) return;
+      pcMap = map; if (map && !pcMoved) q('.ie-pc-gap').value = defaultPiecesGap(map);
+    }
+    syncPieces();
+  }
+  function syncPieces() {
+    const b = cur(), btn = q('[data-do="pieces"]'), say = q('.ie-pc-say'); if (!b || !btn) return;
+    if (pcSrc !== b.src && shown === 'layers') { loadPieces(); return; }
+    const gap = +q('.ie-pc-gap').value, P = pcMap ? visiblePieces(pcMap, b, gap) : null, n = P?.count || 0;
+    q('.ie-pc-v').textContent = `${gap} %`;
+    qa('.ie-pc-on').forEach(x => { x.hidden = !!pcMap && (!P || pcMap.regions.length < 2); });   // (nothing to choose)
+    btn.disabled = !P || n < 2 || n > PIECES_MAX;
+    q('.ie-pc-n').textContent = n >= 2 && n <= PIECES_MAX ? t('Separar en {n} piezas').replace('{n}', n) : t('Separar las piezas');
+    say.textContent = !pcMap ? '' : !P ? t('Esta imagen no tiene partes transparentes: para sacar la figura de su fondo, usa «Separar en capas», arriba.')
+      : pcMap.regions.length < 2 ? t('Todas sus partes se tocan: no hay piezas sueltas que separar.')
+      : n < 2 ? t('Con esta separación todo queda junto: bájala para separar las piezas.')
+      : n > PIECES_MAX ? t('Saldrían {n} piezas: demasiadas. Sube la separación para juntar las que están cerca (como mucho, {max}).').replace('{n}', n).replace('{max}', PIECES_MAX) : '';
+    say.hidden = !say.textContent;
+    drawPieces(b, P, gap);
+  }
+  const PC_COLOURS = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#00b8d9', '#f032e6', '#9a6324', '#808000', '#000075'];
+  function drawPieces(b, P, gap) {
+    const on = !!(P?.count && shown === 'layers' && !before && !extendPreview && !tool);
+    pcView.hidden = !on; if (!on) return;
+    const map = pcMap, v = visiblePart(b, map.W, map.H), [sx, sy, sw, sh] = v.src, kx = v.box[2] / sw, ky = v.box[3] / sh;
+    pcView.style.setProperty('--k', viewK);
+    pcView.style.transform = `${b.flipH ? 'scaleX(-1) ' : ''}${b.flipV ? 'scaleY(-1)' : ''}`;
+    const key = [pcSrc.length, pcSrc.slice(-40), gap, ...v.src, ...v.box].join('|'); if (key === pcDrawn) return; pcDrawn = key;
+    const pct = (a, z) => `${a / z * 100}%`, col = j => PC_COLOURS[j % PC_COLOURS.length];
+    const boxes = P.pieces.map((p, j) => P.seen[j] ? `<i style="left:${pct(p.box[0], map.W)};top:${pct(p.box[1], map.H)};width:${pct(p.box[2] - p.box[0], map.W)};height:${pct(p.box[3] - p.box[1], map.H)};border-color:${col(j)}"></i>` : '').join('');
+    pcView.innerHTML = `<div class="ie-pc-clip" style="left:${v.box[0]}px;top:${v.box[1]}px;width:${v.box[2]}px;height:${v.box[3]}px">
+      <div class="ie-pc-pic" style="left:${-sx * kx}px;top:${-sy * ky}px;width:${map.W * kx}px;height:${map.H * ky}px"><canvas></canvas>${boxes}</div></div>`;
+    // (Each part tinted with its piece's colour, on the grid the pieces were found on.)
+    const c = pcView.querySelector('canvas'); c.width = map.gw; c.height = map.gh;
+    const g = c.getContext('2d'), img = g.createImageData(map.gw, map.gh), d = img.data, rgb = P.pieces.map((_, j) => [1, 3, 5].map(i => parseInt(col(j).slice(i, i + 2), 16)));
+    for (let i = 0; i < map.lab.length; i++) { const r = map.lab[i]; if (r < 0) continue; const j = P.of[r]; if (!P.seen[j]) continue; d.set(rgb[j], i * 4); d[i * 4 + 3] = 120; }
+    g.putImageData(img, 0, 0);
+  }
+  q('.ie-pc-gap')?.addEventListener('input', () => { pcMoved = true; syncPieces(); });
+  act('[data-do="pieces-letters"]', () => { pcMoved = true; q('.ie-pc-gap').value = 0; syncPieces(); });
+  act('[data-do="pieces"]', e => busy(e.currentTarget, t('Separando las piezas…'), async () => {
+    if (await splitPieces(id, +q('.ie-pc-gap').value)) close();
+  }));
+
   // ---- Sacar el texto: read by the vision AI (it asks to connect it first, as every AI feature), put in a text box over
   // the picture or beside it — a step of its own —; then, if asked, the text taken off the picture by the image model.
   act('[data-do="read-text"]', async e => {

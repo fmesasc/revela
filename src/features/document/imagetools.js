@@ -4,10 +4,11 @@
 // - split into layers (Canva's «Magic Grab»): the main subject cut out (the same AI as «Quitar fondo») on top, and under
 //   it the picture with the subject's place filled from what is around it, both where the picture was;
 // - change the background: the subject on a colour, a gradient, itself blurred, another picture or one made by AI;
-// - pixelate it all; and «Sacar el texto»'s text box, where the AI read the text (textBoxFor).
+// - pixelate it all; and «Sacar el texto»'s text box, where the AI read the text (textBoxFor);
+// - split a see-through picture (a logo) into its loose pieces, each an object where it was, grouped — no AI (at the end).
 
 import { BG_REMOVAL } from '../../core/vendor.js';
-import { commit, currentSlide, state } from '../../core/store.js';
+import { commit, currentSlide, state, setMulti } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { t } from '../../i18n/index.js';
 import { boxBlur } from '../../render/imagelook.js';
@@ -507,4 +508,132 @@ export function textBoxFor(b, lines, iw, ih, place = 'over', size = state.deck.s
   if (right >= 220) return { html, fontSize, x: Math.round(b.x + b.w + gap), y: Math.round(b.y), w: Math.round(Math.min(560, right - 2 * gap)), h: Math.min(Math.round(size.h - b.y), Math.max(tall, 60)) };
   if (below >= 100 || below >= left) return { html, fontSize, x: Math.round(b.x), y: Math.round(b.y + b.h + gap), w: Math.round(b.w), h: Math.max(60, Math.min(tall, Math.round(below - gap))) };
   return { html, fontSize, x: gap, y: Math.round(b.y), w: Math.round(Math.max(160, left - 2 * gap)), h: Math.max(tall, 60) };
+}
+
+// ---- Separar las piezas: a picture with see-through parts (a logo: a cloud and a word) as one object per piece -------
+// No AI. What is not see-through (alpha > 20) is found in connected parts (8 neighbours) on a grid of cells — each cell
+// s×s of the picture's pixels, the most opaque of them, at most 512 a side: fast, and no faint pixel falls between two
+// parts —; then the parts closer than the gap are put together (the letters of a word; the two halves of a cloud). The
+// gap between two parts is measured once, as far as the slider goes (a search outwards from all of them at once: where
+// two meet), so that moving the slider only joins them again. Each piece, a tight crop of the picture at its own size.
+export const PIECES_MAX = 60, PIECES_GAP_MAX = 50;     // (the slider: % of the picture's height)
+const pieceMaps = new Map();
+export function pieceMap(src) {
+  if (!pieceMaps.has(src)) {
+    if (pieceMaps.size > 1) pieceMaps.delete(pieceMaps.keys().next().value);
+    pieceMaps.set(src, loadPicture(src).then(img => pieceMapOf(img)).catch(e => { pieceMaps.delete(src); throw e; }));
+  }
+  return pieceMaps.get(src);
+}
+export function pieceMapOf(img) {
+  const W = img.naturalWidth, H = img.naturalHeight, c = canvasOf(W, H), g = c.getContext('2d'); g.drawImage(img, 0, 0);
+  const data = g.getImageData(0, 0, W, H).data, s = Math.max(1, Math.ceil(Math.max(W, H) / 512)), gw = Math.ceil(W / s), gh = Math.ceil(H / s), N = gw * gh;
+  const cell = new Uint8Array(N); let clear = 0;
+  for (let y = 0; y < H; y++) { const row = (y / s | 0) * gw; for (let x = 0; x < W; x++) { const a = data[(y * W + x) * 4 + 3]; if (a < 20) clear++; const k = row + (x / s | 0); if (a > cell[k]) cell[k] = a; } }
+  // The parts: their cells, how many, and their box (in cells).
+  const lab = new Int32Array(N).fill(-1), regions = [], stack = new Int32Array(N);
+  for (let i = 0; i < N; i++) {
+    if (cell[i] <= 20 || lab[i] >= 0) continue;
+    const r = { n: 0, x0: gw, y0: gh, x1: 0, y1: 0 }, id = regions.push(r) - 1; let top = 0; stack[top++] = i; lab[i] = id;
+    while (top) {
+      const k = stack[--top], x = k % gw, y = (k / gw) | 0; r.n++;
+      if (x < r.x0) r.x0 = x; if (x > r.x1) r.x1 = x; if (y < r.y0) r.y0 = y; if (y > r.y1) r.y1 = y;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= gw || yy >= gh) continue;
+        const j = yy * gw + xx; if (cell[j] > 20 && lab[j] < 0) { lab[j] = id; stack[top++] = j; }
+      }
+    }
+  }
+  // Outwards from every part at once (8 neighbours: a cell's distance is how many cells from its nearest part); where
+  // two meet, the gap between them (the empty cells across). As far as the slider's largest gap.
+  const R = Math.ceil(PIECES_GAP_MAX / 100 * H / s / 2) + 1, near = Int32Array.from(lab), dist = new Uint16Array(N).fill(65535), queue = new Int32Array(N), gaps = new Map();
+  let head = 0, tail = 0; for (let i = 0; i < N; i++) if (lab[i] >= 0) { dist[i] = 0; queue[tail++] = i; }
+  const n = regions.length;
+  while (head < tail) {
+    const k = queue[head++], a = near[k], d = dist[k], x = k % gw, y = (k / gw) | 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= gw || yy >= gh) continue;
+      const j = yy * gw + xx, b = near[j];
+      if (b < 0) { if (d < R) { near[j] = a; dist[j] = d + 1; queue[tail++] = j; } }
+      else if (b !== a) { const key = a < b ? a * n + b : b * n + a, gap = d + dist[j]; if (!(gaps.get(key) <= gap)) gaps.set(key, gap); }
+    }
+  }
+  const edges = [...gaps].map(([key, gap]) => [Math.floor(key / n), key % n, gap]).sort((p, q) => p[2] - q[2]);
+  return { W, H, s, gw, gh, data, lab, near, dist, regions, edges, clear: clear / (W * H) };
+}
+// The gap to start with (% of the picture's height): 4 % at least, or 0.4 of the parts' usual height — a word's letters
+// together (their spacing is about a third of their height), apart from what is beside it.
+export function defaultPiecesGap(map) {
+  const tall = map.regions.filter(r => r.n >= 4).map(r => (r.y1 - r.y0 + 1) * map.s).sort((a, b) => a - b), mid = tall[tall.length >> 1] || 0;
+  return Math.min(PIECES_GAP_MAX, Math.round(Math.max(4, mid * 0.4 / map.H * 100) * 2) / 2);
+}
+// The pieces with a gap (% of the height): [{ regions, box: [x0, y0, x1, y1] in the picture's pixels }], left to right;
+// and of: each part's piece. Crumbs (a few cells) go with what is nearest, whatever the gap.
+export function piecesAt(map, gap) {
+  const { regions, edges, s, W, H } = map, n = regions.length, up = Int32Array.from({ length: n }, (_, i) => i);
+  const find = i => { while (up[i] !== i) { up[i] = up[up[i]]; i = up[i]; } return i; };
+  const lim = Math.max(0, +gap || 0) / 100 * H / s, total = regions.reduce((v, r) => v + r.n, 0), crumb = Math.max(3, total * 0.002);
+  for (const [a, b, d] of edges) if (d <= lim) up[find(a)] = find(b);
+  const tied = new Set();
+  for (const [a, b] of edges) for (const [p, q] of [[a, b], [b, a]]) if (regions[p].n < crumb && !tied.has(p)) { tied.add(p); up[find(p)] = find(q); }
+  const at = new Map(), of = new Int32Array(n);
+  regions.forEach((r, i) => { const k = find(i); if (!at.has(k)) at.set(k, { regions: [], box: [Infinity, Infinity, -Infinity, -Infinity] }); const p = at.get(k); p.regions.push(i);
+    p.box = [Math.min(p.box[0], r.x0 * s), Math.min(p.box[1], r.y0 * s), Math.max(p.box[2], Math.min(W, (r.x1 + 1) * s)), Math.max(p.box[3], Math.min(H, (r.y1 + 1) * s))]; });
+  const pieces = [...at.values()].sort((p, q) => p.box[0] - q.box[0] || p.box[1] - q.box[1]);
+  pieces.forEach((p, j) => { for (const i of p.regions) of[i] = j; });
+  return { pieces, of };
+}
+// The pieces of what is in sight (its crop, its fit) with a gap; null when the picture has no see-through parts.
+export function visiblePieces(map, b, gap) {
+  if (map.clear <= 0.03) return null;
+  const [sx, sy, sw, sh] = visiblePart(b, map.W, map.H).src, P = piecesAt(map, gap), seen = P.pieces.map(p => p.box[2] > sx && p.box[0] < sx + sw && p.box[3] > sy && p.box[1] < sy + sh);
+  return { ...P, seen, count: seen.filter(Boolean).length };
+}
+// Split picture `id` into its pieces: each its own picture (a PNG, its part of the picture at full size), exactly where
+// it was on the slide — the box's fit and crop, and its turn and flip around the picture's centre —, with its look
+// (corrections, filter, effect, outline, glow, shadow; not the shape, the focus nor the reflection, which were the
+// whole picture's), grouped and selected, the picture gone: one step. → the pieces' ids.
+export async function splitPieces(id, gap) {
+  const b = pictureOf(id); if (!b) return null;
+  const map = await pieceMap(b.src), P = visiblePieces(map, b, gap);
+  if (!P) throw new Error(t('Esta imagen no tiene partes transparentes: no hay piezas sueltas que separar.'));
+  if (P.count < 2) throw new Error(map.regions.length < 2 ? t('Todas sus partes se tocan: no hay piezas sueltas que separar.') : t('Con esta separación todo queda junto: bájala para separar las piezas.'));
+  if (P.count > PIECES_MAX) throw new Error(t('Saldrían {n} piezas: demasiadas. Sube la separación para juntar las que están cerca (como mucho, {max}).').replace('{n}', P.count).replace('{max}', PIECES_MAX));
+  const { W, H, s, gw, data, lab, near, dist } = map, v = visiblePart(b, W, H), [sx, sy, sw, sh] = v.src;
+  // Each cell's piece: its part's, or (the faint edge around a part) its nearest part's, two cells away at most.
+  const cellPiece = new Int32Array(lab.length);
+  for (let i = 0; i < lab.length; i++) { const r = lab[i] >= 0 ? lab[i] : near[i] >= 0 && dist[i] <= 2 ? near[i] : -1; cellPiece[i] = r >= 0 && P.seen[P.of[r]] ? P.of[r] : -1; }
+  const X0 = Math.max(0, Math.floor(sx)), Y0 = Math.max(0, Math.floor(sy)), X1 = Math.min(W, Math.ceil(sx + sw)), Y1 = Math.min(H, Math.ceil(sy + sh));
+  const box = P.pieces.map(() => [Infinity, Infinity, -1, -1]), pieceOf = (x, y) => cellPiece[(y / s | 0) * gw + (x / s | 0)];
+  for (let y = Y0; y < Y1; y++) for (let x = X0; x < X1; x++) {
+    if (!data[(y * W + x) * 4 + 3]) continue; const p = pieceOf(x, y); if (p < 0) continue;
+    const q = box[p]; if (x < q[0]) q[0] = x; if (y < q[1]) q[1] = y; if (x > q[2]) q[2] = x; if (y > q[3]) q[3] = y;
+  }
+  const kx = v.box[2] / sw, ky = v.box[3] / sh, px0 = v.box[0] - sx * kx, py0 = v.box[1] - sy * ky;
+  const rot = (+b.rotation || 0) * Math.PI / 180, cos = Math.cos(rot), sin = Math.sin(rot), group = uid(), made = [];
+  for (const [j, [x0, y0, x1, y1]] of box.entries()) {
+    if (x1 < x0) continue;
+    const w = x1 - x0 + 1, h = y1 - y0 + 1, c = canvasOf(w, h), g = c.getContext('2d'), out = g.createImageData(w, h), o = out.data;
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      if (pieceOf(x, y) !== j) continue; const i = (y * W + x) * 4, k = ((y - y0) * w + x - x0) * 4;
+      o[k] = data[i]; o[k + 1] = data[i + 1]; o[k + 2] = data[i + 2]; o[k + 3] = data[i + 3];
+    }
+    g.putImageData(out, 0, 0);
+    // Where it goes: in the box (turned over with it), then turned with the box around the box's centre.
+    const bw = w * kx, bh = h * ky; let bx = px0 + x0 * kx, by = py0 + y0 * ky;
+    if (b.flipH) bx = b.w - bx - bw; if (b.flipV) by = b.h - by - bh;
+    const dx = bx + bw / 2 - b.w / 2, dy = by + bh / 2 - b.h / 2, cx = b.x + b.w / 2 + dx * cos - dy * sin, cy = b.y + b.h / 2 + dx * sin + dy * cos;
+    // (Each edge rounded to the slide's pixel, not the size: half a pixel off at most, on every side.)
+    const L = Math.round(cx - bw / 2), T = Math.round(cy - bh / 2);
+    const piece = { ...structuredClone(b), id: uid(), src: c.toDataURL('image/png'), x: L, y: T,
+      w: Math.max(1, Math.round(cx + bw / 2) - L), h: Math.max(1, Math.round(cy + bh / 2) - T), fit: b.fit === 'fill' ? 'fill' : 'contain', groupId: group, animation: null };
+    for (const p of ['crop', 'uncropped', 'focusX', 'focusY', 'ratio', 'mask', 'focusBlur', 'reflect', 'anims', 'trigger', 'lp', 'morphId', 'zoomable', 'pano']) delete piece[p];
+    made.push(piece);
+  }
+  if (made.length < 2) throw new Error(t('Todas sus partes se tocan: no hay piezas sueltas que separar.'));
+  commit(() => {
+    const sl = currentSlide(), i = sl.blocks.findIndex(x => x.id === id); if (i < 0) return;
+    sl.blocks.splice(i, 1, ...made); setMulti(made.map(x => x.id));
+  });
+  return made.map(x => x.id);
 }
