@@ -88,6 +88,8 @@ export function openImageEditor(b0, tab = '') {
         `<button type="button" data-shape="${k}" aria-pressed="false" title="${esc(t(n))}">${shapeIcon(k)}<span>${esc(t(n))}</span></button>`).join('')}</div>
       <div class="ie-grid"><label class="fr-l ie-sl ie-radius-l" hidden>${t('Redondeo')}<input type="range" class="ie-radius" min="0" max="100" value="${b0.mask?.radius ?? 25}"></label>
         <label class="fr-l ie-sl">${t('Bordes difuminados')}<input type="range" class="ie-feather" min="0" max="100" value="${b0.mask?.feather ?? 0}"></label></div>
+      <div class="ie-grid ie-pos" hidden><label class="fr-l ie-sl">${t('Encuadre horizontal')}<input type="range" class="ie-pos-x" min="0" max="100" value="${b0.focusX ?? 50}"></label>
+        <label class="fr-l ie-sl">${t('Encuadre vertical')}<input type="range" class="ie-pos-y" min="0" max="100" value="${b0.focusY ?? 50}"></label></div>
       <h5 class="ie-sec">${t('Contorno y brillo')}</h5>
       <div class="ie-fx-row"><label class="fr-chk"><input type="checkbox" class="ie-stk-on"> ${t('Contorno de pegatina')}</label>
         <input type="color" class="ie-stk-c" value="${b0.sticker?.color || '#ffffff'}" aria-label="${esc(t('Color'))}"><input type="range" class="ie-stk-w" min="1" max="40" value="${b0.sticker?.width ?? 8}" aria-label="${esc(t('Grosor'))}"></div>
@@ -157,6 +159,9 @@ export function openImageEditor(b0, tab = '') {
     q('[data-do="flip-h"]').setAttribute('aria-pressed', String(!!b.flipH)); q('[data-do="flip-v"]').setAttribute('aria-pressed', String(!!b.flipV));
     qa('[data-shape]').forEach(x => x.setAttribute('aria-pressed', String((b.mask?.shape || '') === x.dataset.shape)));
     q('.ie-radius-l').hidden = b.mask?.shape !== 'round';
+    // (A picture filling its box — a circle or a star made it so — shows only part of it: which part, chosen here.)
+    q('.ie-pos').hidden = b.fit !== 'cover';
+    for (const [sel, v] of [['.ie-pos-x', b.focusX ?? 50], ['.ie-pos-y', b.focusY ?? 50]]) if (idle(q(sel))) q(sel).value = v;
     for (const [sel, v] of [['.ie-radius', b.mask?.radius ?? 25], ['.ie-feather', b.mask?.feather ?? 0], ['.ie-stk-w', b.sticker?.width ?? 8], ['.ie-glow-s', b.glow?.size ?? 20]]) if (idle(q(sel))) q(sel).value = v;
     q('.ie-stk-on').checked = !!b.sticker; q('.ie-glow-on').checked = !!b.glow; q('.ie-shadow-on').checked = !!b.shadow;
     q('[data-do="paste-look"]').disabled = !copied;
@@ -252,6 +257,8 @@ export function openImageEditor(b0, tab = '') {
     }
   })));
   q('.ie-radius').addEventListener('input', e => look(b => { if (b.mask) b.mask.radius = +e.target.value; }, true));
+  for (const [sel, k] of [['.ie-pos-x', 'focusX'], ['.ie-pos-y', 'focusY']])
+    q(sel).addEventListener('input', e => look(b => { const v = Math.round(+e.target.value); if (v === 50) delete b[k]; else b[k] = v; }, true));
   q('.ie-feather').addEventListener('input', e => look(b => { const m = { ...b.mask, feather: +e.target.value }; if (!m.feather) delete m.feather; if (m.shape || m.feather) b.mask = m; else delete b.mask; }, true));
   const sticker = () => ({ color: q('.ie-stk-c').value, width: +q('.ie-stk-w').value }), glow = () => ({ color: q('.ie-glow-c').value, size: +q('.ie-glow-s').value });
   q('.ie-stk-on').addEventListener('change', e => look(b => { if (e.target.checked) b.sticker = sticker(); else delete b.sticker; }));

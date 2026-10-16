@@ -4055,6 +4055,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     m.querySelector('.modal-close').click();
   });
 
+  await test('editar imagen: forma en una foto alargada — la caja cuadrada y su encuadre, ahí mismo', async () => {
+    reset(); const b = putPicture(testPicture((g, w, h) => { g.fillStyle = '#ff0000'; g.fillRect(0, 0, w / 2, h); g.fillStyle = '#0000ff'; g.fillRect(w / 2, 0, w / 2, h); }, 240, 80)); await sleep(30);
+    const m = await openEditor(), cur = () => slide().blocks.find(x => x.id === b.id); await tabTo(m, 'shape');
+    assert(m.querySelector('.ie-pos').hidden, 'sin forma, la foto entera: sin encuadre');
+    m.querySelector('[data-shape="circle"]').click(); await sleep(30);
+    assert(cur().w === cur().h && cur().fit === 'cover', 'círculo: la caja, cuadrada, la foto la llena: ' + [cur().w, cur().h, cur().fit]);
+    assert(!m.querySelector('.ie-pos').hidden, 'y el encuadre, a mano');
+    setRange(m, '.ie-pos-x', 0); await sleep(30); eq(cur().focusX, 0, 'a la izquierda');
+    const img = D.querySelector(`#stage .block[data-id="${b.id}"] img`); assert(/^0%/.test(img.style.objectPosition), 'en el lienzo: ' + img.style.objectPosition);
+    setRange(m, '.ie-pos-x', 50); await sleep(30); eq(cur().focusX, undefined, 'en medio: como sin tocar');
+    m.querySelector('.modal-close').click();
+  });
+
   await test('editar imagen: antes/después, copiar y pegar ajustes, aplicar a todas, voltear y enderezar', async () => {
     reset();
     const a = putPicture(grey(100)), b = putPicture(grey(100)); await sleep(30);
