@@ -4821,4 +4821,5 @@ export default {
   "Al empezar la diapositiva": "عند بدء الشريحة",
   "Así se mueve en cada parada al presentar.": "هكذا تتحرك في كل محطة عند العرض.",
   "Al presentar, el mapa sigue desde donde quedó el de la diapositiva anterior y vuela a la primera parada; si quedó en esa misma parada, sigue tal cual.": "عند العرض، تتابع الخريطة من حيث توقفت خريطة الشريحة السابقة وتطير إلى المحطة الأولى؛ وإذا كانت قد توقفت عند هذه المحطة نفسها، فتستمر كما هي.",
+  "Solo la bola del mundo, sobre el fondo de la diapositiva": "الكرة الأرضية فقط، فوق خلفية الشريحة",
 };

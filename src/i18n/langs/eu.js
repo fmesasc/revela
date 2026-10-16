@@ -4821,4 +4821,5 @@ export default {
   "Al empezar la diapositiva": "Diapositiba hastean",
   "Así se mueve en cada parada al presentar.": "Horrela mugitzen da geldialdi bakoitzean aurkeztean.",
   "Al presentar, el mapa sigue desde donde quedó el de la diapositiva anterior y vuela a la primera parada; si quedó en esa misma parada, sigue tal cual.": "Aurkeztean, mapak aurreko diapositibakoa geratu zen lekutik jarraitzen du eta lehen geldialdira hegan egiten du; geldialdi horretan bertan geratu bazen, bere horretan jarraitzen du.",
+  "Solo la bola del mundo, sobre el fondo de la diapositiva": "Lurra-bola soilik, diapositibaren atzeko planoaren gainean",
 };

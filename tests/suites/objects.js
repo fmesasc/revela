@@ -3624,6 +3624,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     G.setMap(b.id, { stops: b.stops, flyMs: 400 });
     const cfg = G.mapConfig(b);
     eq([cfg.motion, cfg.speed, cfg.start, cfg.pulse, cfg.stops[0].col].join(), 'spin,2,space,cur,#e63946', 'en la presentación');
+    // A globe without its space: only the globe, on the slide (and its pictures, PNG); not a flat map.
+    const k0 = G.shotKey(b, 0);
+    assert(!cfg.clear && /background:#0b1d33/.test(R.io.buildHTML(R.state.deck, { inApp: true })), 'con su espacio, por defecto');
+    G.setMap(b.id, { transparent: true }); const nb = R.state.deck.slides.flatMap(x => x.blocks).find(x => x.id === b.id);
+    assert(G.mapConfig(nb).clear && G.shotKey(nb, 0) !== k0, 'transparente: en la presentación, y sus imágenes se vuelven a hacer');
+    assert(/data-geomap="[^"]*" data-prevent-swipe[^>]*background:transparent/.test(R.io.buildHTML(R.state.deck, { inApp: true })), 'sin fondo detrás');
+    assert(!G.mapConfig({ ...nb, look: 'satellite' }).clear, 'solo el globo');
+    G.setMap(b.id, { transparent: false }); assert(!('transparent' in nb), 'quitado, no se guarda');
     // The next slide: a map that carries on from this one (left at Rome: its first stop).
     R.slides.addSlide('blank'); await sleep(10);
     const b2 = G.addMap({ look: 'globe', motion: 'spin', start: 'prev', stops: [{ name: 'Roma', lon: 12.5, lat: 41.9, zoom: 5 }, { name: 'Atenas', lon: 23.7, lat: 37.98, zoom: 6 }] });

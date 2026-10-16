@@ -19,7 +19,7 @@ import { toast } from '../shell/toast.js';
 let runtime = null;
 const rt = () => (runtime ||= geoMapRuntime(MAPLIBRE, MAPLIBRE_RTL, { offline: t('Sin conexión: el mapa no se puede cargar') }));
 const lang = () => deckTag(state.deck, currentLang()).split('-')[0];
-const SETTINGS = ['look', 'theme', 'route', 'routeColor', 'terrain', 'names', 'labels', 'showAll', 'curve', 'marker', 'arrive', 'past', 'motion', 'speed', 'start', 'pulse'];
+const SETTINGS = ['look', 'theme', 'route', 'routeColor', 'terrain', 'names', 'labels', 'showAll', 'curve', 'marker', 'arrive', 'past', 'motion', 'speed', 'start', 'pulse', 'transparent'];
 const pick = b => Object.fromEntries(SETTINGS.filter(k => b[k] !== undefined).map(k => [k, structuredClone(b[k])]));
 // (A little picture of each look, for choosing: drawn here, nothing to download.)
 const LOOK_ART = {
@@ -71,7 +71,8 @@ export function openMapEditor(b0, { isNew = false } = {}) {
         <div class="gm-looks" role="radiogroup" aria-label="${t('Estilo del mapa')}">${G.MAP_LOOKS.map(([v, l, h]) => `<button type="button" role="radio" class="gm-look" data-look="${v}" title="${esc(t(h))}">${LOOK_ART[v]}<span>${t(l)}</span></button>`).join('')}</div>
         <div class="gm-row gm-opts"><label class="fr-l gm-theme">${t('Colores del mapa')}<select class="gm-themesel">${G.MAP_THEMES.map(([v, l]) => `<option value="${v}">${t(l)}</option>`).join('')}</select></label>
           <label class="fr-chk gm-namesw"><input type="checkbox" class="gm-names"> ${t('Nombres de lugares')}</label>
-          <label class="fr-chk"><input type="checkbox" class="gm-terrain"> ${t('Relieve 3D')}</label></div>
+          <label class="fr-chk"><input type="checkbox" class="gm-terrain"> ${t('Relieve 3D')}</label>
+          <label class="fr-chk gm-clearw" title="${esc(t('Solo la bola del mundo, sobre el fondo de la diapositiva'))}"><input type="checkbox" class="gm-clear"> ${t('Fondo transparente')}</label></div>
         <div class="gm-view rv-dlg-map" style="aspect-ratio:${ratio.toFixed(4)}"></div>
         <p class="host-help gm-hint">${t('Arrastra para moverte; rueda para acercar; con el botón derecho (o Ctrl) inclina y gira. Luego «Usar la vista actual» en la parada.')}</p>
         <div class="gm-row gm-motion"><label class="fr-l">${t('En cada parada')}<select class="gm-motionsel">${G.MAP_MOTIONS.map(([v, l]) => `<option value="${v}">${t(l)}</option>`).join('')}</select></label>
@@ -107,6 +108,8 @@ export function openMapEditor(b0, { isNew = false } = {}) {
     q('.gm-arrive').value = d.arrive || 'drop'; q('.gm-past').value = d.past || ''; q('.gm-labels').checked = d.labels !== false; q('.gm-all').checked = !!d.showAll;
     q('.gm-pulse').value = d.pulse || ''; q('.gm-motionsel').value = d.motion || 'none'; q('.gm-speed').value = d.speed || 'normal'; q('.gm-start').value = d.start || '';
     q('.gm-speedw').hidden = !d.motion;
+    // (A globe without its space: only the globe; seen here over a checkerboard, as any see-through picture.)
+    q('.gm-clearw').hidden = d.look !== 'globe'; q('.gm-clear').checked = !!d.transparent; q('.gm-view').classList.toggle('gm-clearbg', G.isClear(d));
     // (On a flat map the «turning» is a slide sideways: said so.)
     q('.gm-motionsel option[value="spin"]').textContent = t(d.look === 'globe' ? 'Girar el planeta' : 'Desplazarse de lado');
     q('.gm-route').value = d.route; q('.gm-rcolor').value = d.routeColor; q('.gm-dur').value = flyMs / 1000; q('.gm-curve').value = String(d.curve || 1.42);
@@ -131,6 +134,7 @@ export function openMapEditor(b0, { isNew = false } = {}) {
   on('.gm-themesel', 'change', x => { d.theme = x.value; });
   on('.gm-names', 'change', x => { d.names = x.checked ? undefined : false; });
   on('.gm-terrain', 'change', x => { d.terrain = x.checked; });
+  on('.gm-clear', 'change', x => { d.transparent = x.checked || undefined; });
   on('.gm-mcolor', 'input', x => { d.marker = { ...d.marker, color: x.value }; });
   q('.gm-mcolor').addEventListener('change', sync);
   on('.gm-msize', 'change', x => { d.marker = { ...d.marker, size: +x.value }; });

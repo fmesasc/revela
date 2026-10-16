@@ -256,7 +256,8 @@ function groupsFor(b) {
     const edit = () => import('../dialogs/geomap.js').then(m => m.openMapEditor(b)), upd = props => import('../dialogs/geomap.js').then(m => m.updateMap(b, props));
     const mk = { kind: 'pin', color: '#e63946', size: 1, ...b.marker };
     G.push(['Mapa', [btn('edit_location_alt', 'Editar mapa y paradas', edit), ['select', 'Estilo', MAP_LOOKS.map(([v, l]) => [v, l]), b.look || 'map', v => upd({ look: v })],
-        btn('landscape', 'Relieve 3D', () => upd({ terrain: !b.terrain }), !!b.terrain)]],
+        btn('landscape', 'Relieve 3D', () => upd({ terrain: !b.terrain }), !!b.terrain),
+        ...(b.look === 'globe' ? [btn('blur_on', 'Fondo transparente', () => upd({ transparent: !b.transparent }), !!b.transparent)] : [])]],
       ['Movimiento', [['select', 'En cada parada', MAP_MOTIONS.map(([v, l]) => [v, v === 'spin' && b.look !== 'globe' ? 'Desplazarse de lado' : l]), b.motion || 'none', v => upd({ motion: v === 'none' ? undefined : v })],
         ['select', 'Al empezar la diapositiva', MAP_STARTS, b.start || '', v => upd({ start: v || undefined })]]],
       ['Marcadores', [['select', 'Marcador', MARKER_KINDS, mk.kind, v => upd({ marker: { ...mk, kind: v } })],

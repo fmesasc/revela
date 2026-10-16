@@ -1345,6 +1345,7 @@ body.presenting #stage .empty-hint{display:none}
 .gm-opts{align-items:center;min-height:36px}.gm-opts .fr-chk{margin:0}.gm-opts .fr-l{margin:0;max-width:200px}
 .gm-view{position:relative;width:100%;max-height:58vh;border-radius:8px;overflow:hidden;background:#cfd8dc;border:1px solid var(--line2)}
 .gm-view>.rvm-live{opacity:1}
+.gm-view.gm-clearbg{background:repeating-conic-gradient(#e3e7ea 0 25%,#fff 0 50%) 0 0/20px 20px}
 .gm-loading{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;font-size:14px;color:#29435c;background:repeating-linear-gradient(35deg,#dfe9d8 0 40px,#e7efe1 40px 80px);z-index:4}
 .gm-loading.gm-fail{color:#7a1f1f;background:#fbeaea}
 .gm-hint{margin:0!important}

@@ -259,7 +259,9 @@ export function geoMapRuntime(lib, rtl, words) {
     var c = { el: el, cfg: cfg, cur: 0, map: null, failed: false, dead: false, markers: [], token: 0, warms: opts.warm !== false && !opts.capture };
     var box = document.createElement('div'); box.className = 'rvm-live'; box.setAttribute('aria-hidden', 'true');
     box.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%';      // (MapLibre's own CSS makes its box position:relative)
-    box.style.background = cfg.look === 'map' ? '#e8e8e0' : '#05070d';
+    // (Behind the map, what shows while its tiles come: none for a globe without its space — cfg.clear: the slide.)
+    var bg = function () { return cfg.clear ? 'transparent' : cfg.look === 'map' ? '#e8e8e0' : '#05070d'; };
+    box.style.background = bg();
     var note = document.createElement('div'); note.className = 'rvm-note'; note.setAttribute('aria-live', 'polite');
     var credit = document.createElement('div'); credit.className = 'rvm-credit'; credit.textContent = cfg.short || ''; credit.hidden = true;
     el.appendChild(box); el.appendChild(note); el.appendChild(credit);
@@ -598,8 +600,8 @@ export function geoMapRuntime(lib, rtl, words) {
     };
     // New settings (the dialog, as they are edited): a new style if the look changed, else the line and the markers.
     c.update = function (next) {
-      var restyle = JSON.stringify([next.style, next.proj, next.dem, next.lang]) !== JSON.stringify([cfg.style, cfg.proj, cfg.dem, cfg.lang]);
-      cfg = c.cfg = next; credit.textContent = cfg.short || ''; box.style.background = cfg.look === 'map' ? '#e8e8e0' : '#05070d';
+      var restyle = JSON.stringify([next.style, next.proj, next.dem, next.lang, !!next.clear]) !== JSON.stringify([cfg.style, cfg.proj, cfg.dem, cfg.lang, !!cfg.clear]);
+      cfg = c.cfg = next; credit.textContent = cfg.short || ''; box.style.background = bg();
       c.cur = Math.min(c.cur, Math.max(0, cfg.stops.length - 1));
       if (!c.map) return;
       // (Edited in the dialog: what was being warmed is no longer the trip; warmed again once the edits pause.)
@@ -668,7 +670,8 @@ export function geoMapRuntime(lib, rtl, words) {
           var cw = g.measureText(cfg.credit).width + fs, ch = fs * 1.5;
           g.fillStyle = 'rgba(255,255,255,.75)'; g.fillRect(W - cw, H - ch, cw, ch); g.fillStyle = '#333'; g.fillText(cfg.credit, W - cw + 5 * k2, H - ch / 2);
         }
-        try { return cv.toDataURL('image/jpeg', 0.85); } catch (e) { return null; }
+        // (A globe without its space: a PNG, its see-through corners kept.)
+        try { return cfg.clear ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.85); } catch (e) { return null; }
         });
       });
     };

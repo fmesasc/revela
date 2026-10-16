@@ -7,7 +7,7 @@
 // read out for it, and the steps (animations) that take it from one stop to the next.
 //
 // block = { type: 'map', look, theme, route, routeColor, terrain, names, labels, showAll, curve, marker, arrive, past,
-//           motion, speed, start, pulse, stops: [{ id, name, note, lon, lat, zoom, pitch, bearing, cc, marker, shot, shotKey }] }
+//           motion, speed, start, pulse, transparent, stops: [{ id, name, note, lon, lat, zoom, pitch, bearing, cc, marker, shot, shotKey }] }
 // marker = { kind, color, size, icon }: the map's (every stop's, by default); a stop's own overrides some of it.
 // The first stop is where the map starts; every other one is an animation of the map (effect 'mapfly', a.stop: the
 // stop's id), so it is a click like any other step of the slide — reordered in the animation pane, played back by
@@ -63,6 +63,9 @@ const LOOK_IDS = MAP_LOOKS.map(l => l[0]), THEME_IDS = MAP_THEMES.map(l => l[0])
 // the system's «reduce motion».)
 export const MAP_MOTIONS = [['none', 'Quieto'], ['spin', 'Girar el planeta'], ['orbit', 'Dar vueltas alrededor'], ['drift', 'Acercarse despacio']];
 export const MAP_SPEEDS = [['slow', 'Lento'], ['normal', 'Normal'], ['fast', 'Rápido']];
+// The globe on the slide itself, without the space around it (transparent): only for the globe — the flat looks fill
+// their box.
+export const isClear = b => !!(b?.transparent && b.look === 'globe');
 export const MAP_STARTS = [['', 'En la primera parada'], ['space', 'Desde el espacio'], ['prev', 'Desde el mapa de la diapositiva anterior']];
 // Rings spreading from a marker, as a ripple: the stop arrived at, or every one in sight.
 export const MAP_PULSES = [['', 'Sin ondas'], ['cur', 'En la parada actual'], ['all', 'En todas']];
@@ -143,7 +146,7 @@ export function normalizeMap(b) {
   if (b.theme != null) b.theme = THEME_IDS.includes(b.theme) ? b.theme : 'liberty';
   b.route = ROUTE_IDS.includes(b.route) ? b.route : 'line';
   b.routeColor = /^#[0-9a-f]{6}$/i.test(b.routeColor || '') ? b.routeColor : '#e63946';
-  for (const k of ['terrain', 'showAll']) { if (b[k]) b[k] = true; else delete b[k]; }
+  for (const k of ['terrain', 'showAll', 'transparent']) { if (b[k]) b[k] = true; else delete b[k]; }
   for (const k of ['names', 'labels']) { if (b[k] === false) b[k] = false; else delete b[k]; }
   if (b.curve != null) b.curve = round(num(b.curve, 1, 3, 1.42), 2);
   b.marker = cleanMarker(b.marker, true);
@@ -277,7 +280,7 @@ export function mapConfig(b, lang = 'es') {
     lang: String(lang || 'es').split('-')[0].toLowerCase().replace(/[^a-z]/g, '').slice(0, 3) || 'es',
     color: b.routeColor || '#e63946', route: b.route || 'line', labels: b.labels !== false, all: !!b.showAll, curve: b.curve || 1.42,
     arrive: b.arrive || 'drop', dim: b.past === 'dim',
-    ...(b.motion && { motion: b.motion, speed: { slow: 0.5, fast: 2 }[b.speed] || 1 }), ...(b.start && { start: b.start }), ...(b.pulse && { pulse: b.pulse }),
+    ...(b.motion && { motion: b.motion, speed: { slow: 0.5, fast: 2 }[b.speed] || 1 }), ...(b.start && { start: b.start }), ...(isClear(b) && { clear: true }), ...(b.pulse && { pulse: b.pulse }),
     stops: stops.map((s, i) => ({ n: s.name || '', ...(s.note && { t: s.note }), c: [s.lon, s.lat], z: s.zoom, p: s.pitch || 0, b: s.bearing || 0, m: markerArt(markerOf(b, s), i + 1, s.cc), col: markerOf(b, s).color })),
     segs: routeSegments(b), credit: mapCredit(b), short: mapCreditShort(b) };
 }
@@ -287,7 +290,7 @@ export function shotKey(b, i, lang = 'es') {
   const s = b.stops[i]; if (!s) return '';
   const upTo = b.showAll ? b.stops : b.stops.slice(0, i + 1);
   return JSON.stringify([b.look, b.theme || '', b.route, b.routeColor, !!b.terrain, b.names !== false, b.labels !== false, !!b.showAll, b.past || '', Math.round(b.w), Math.round(b.h), lang,
-    upTo.map(x => [x.name, x.lon, x.lat, markerOf(b, x), x.cc || '']), i, s.zoom, s.pitch, s.bearing, s.note || '']);
+    upTo.map(x => [x.name, x.lon, x.lat, markerOf(b, x), x.cc || '']), i, s.zoom, s.pitch, s.bearing, s.note || '', ...(isClear(b) ? ['clear'] : [])]);
 }
 // Stops whose picture is missing or out of date.
 export const staleShots = (b, lang) => (b.stops || []).map((s, i) => (s.shot && s.shotKey === shotKey(b, i, lang) ? -1 : i)).filter(i => i >= 0);
