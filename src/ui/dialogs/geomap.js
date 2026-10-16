@@ -323,6 +323,28 @@ async function shoot(block, stops, progress = () => {}) {
   return failed;
 }
 
+// A map whose pictures are missing or out of date — one from a template, made by the AI, opened from another
+// language —: taken in the background, one map at a time, as soon as it is seen in the editor (ui/canvas/content.js),
+// into the same step (nothing to undo). Not on a deck that can't be edited, nor without a connection; tried once.
+const tried = new Set(); let queue = Promise.resolve();
+export function fillShots(slideId, id) {
+  // (By its slide too: with Morph the same map is on several slides, with the same id.)
+  const blk = () => state.deck.slides.find(s => s.id === slideId)?.blocks.find(x => x.id === id && x.type === 'map');
+  const b0 = blk(); if (!b0 || state.deck.final || state.ui.lock || navigator.onLine === false) return;
+  // (Looked at without copying its pictures — megabytes —: only whether there is one.)
+  const nb = G.normalizeMap(structuredClone({ ...b0, stops: b0.stops.map(x => ({ ...x, shot: x.shot ? 1 : '' })) })), todo = G.staleShots(nb, lang()); if (!todo.length) return;
+  const key = slideId + '|' + id + '|' + todo.map(i => G.shotKey(nb, i, lang())).join();
+  if (tried.has(key)) return;
+  tried.add(key);
+  queue = queue.then(async () => {
+    const b = blk(); if (!b) return;
+    const stops = structuredClone(b.stops);
+    await shoot(b, stops).catch(() => {});
+    const cur = blk(); if (!cur) return;
+    amend(() => { cur.stops.forEach((x, i) => { if (stops[i]?.id === x.id && stops[i].shot) { x.shot = stops[i].shot; x.shotKey = stops[i].shotKey; } }); });
+  });
+}
+
 // A change of the map's settings from the ribbon (its tab), applied at once; its pictures follow, a moment later,
 // in the same step to undo.
 let latest = 0;

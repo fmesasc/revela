@@ -293,6 +293,7 @@ export default {"biz_board":["Resultados trimestrais ao conselho","Azul-escuro e
 "showcase_animations":["Catálogo: animações","Todas as animações de objeto: entrada, ênfase, saída, trajetórias, desenhar, encadeadas, sons e várias num objeto"],
 "showcase_charts":["Catálogo: gráficos","Os 15 tipos de gráfico, dois por diapositivo, com séries, combinado, grelha, etiquetas e títulos dos eixos, e a tabela de opções"],
 "showcase_diagrams":["Catálogo: diagramas","Os 15 esquemas de diagrama escritos como estrutura, os 4 esquemas de cor e o aparecimento um a um ao apresentar"],
+"showcase_maps":["Catálogo: mapas","Mapas que viajam: globo sem fundo, viagem paragem a paragem, Transformar com o mesmo planeta, bordas esbatidas, oval com moldura, estilos, cores, marcadores e linhas"],
 "showcase_morph":["Catálogo: Transformar","Transformar passo a passo: texto que muda de tamanho e lugar, formas, barras que crescem, imagem, 3D e letras que se reordenam"],
 "showcase_objects":["Catálogo: multimédia e objetos","Código com passos, equações, ícones, cinco dispositivos, tabelas com estilos e fórmulas, zoom de diapositivo e conectores"],
 "showcase_polls":["Catálogo: votações e atividades","Os 11 tipos de votação e atividade pelo telemóvel, contagem decrescente nos três estilos, classificação e modo sala de aula"],

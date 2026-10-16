@@ -188,7 +188,10 @@ export function content(b) {
     const d = document.createElement('div'); d.className = 'lock-blk'; d.dataset.sig = lockSig(b); d.innerHTML = lockSVG(b); return d;
   }
   if (b.type === 'map') {        // (its first stop's picture: the live map is the dialog's and the presentation's)
-    const d = document.createElement('div'); d.className = 'map-blk'; d.dataset.sig = mapSig(b); d.innerHTML = mapPreviewHTML(b); return d;
+    const d = document.createElement('div'); d.className = 'map-blk'; d.dataset.sig = mapSig(b); d.innerHTML = mapPreviewHTML(b);
+    // (Its pictures, if it has none yet or they are out of date: taken in the background — dialogs/geomap.js fillShots.)
+    if ((b.stops || []).slice(0, b.mode === 'all' ? 1 : undefined).some(s => !s.shot)) { const sl = state.deck.slides.find(x => x.blocks.includes(b)); if (sl) setTimeout(() => import('../dialogs/geomap.js').then(m => m.fillShots(sl.id, b.id)), 1500); }
+    return d;
   }
   if (b.type === 'timer') {
     const d = document.createElement('div'); d.className = 'timer-blk'; d.dataset.sig = timerSig(b); d.innerHTML = timerSVG(b); return d;

@@ -748,4 +748,127 @@ export default {
     [1, 3, 6].forEach((k, i) => { zooms[i].target = deck.slides[k].id; });
     return deck;
   } },
+  // ---------------------------------------------------------------------------------------
+  // 11 · Maps that travel (Insertar ▸ Mapa): the three looks and four colours, every marker, the lines, the motion at a
+  // stop, the box's edges and frame, all the stops at once, and Morph carrying the same globe from slide to slide.
+  // An invented trip (a cartographer's), real places. The maps' pictures are taken when the deck is opened in the editor
+  // (ui/dialogs/geomap.js fillShots); presenting, the maps are live.
+  showcase_maps: { name: 'Catálogo: mapas', cat: 'showcase', summary: 'Mapas que viajan: globo sin fondo, viaje parada a parada, Transformar con el mismo planeta, bordes desvanecidos, óvalo con marco, estilos, colores, marcadores y líneas', make: () => {
+    const p = PALETTES.ocean, C = p.accents, BG = '#081422', W = '#eef4fb', DIM = '#9fb6cc', ACC = '#ff6b5e', H = pairStacks('modern').heading;
+    const title = (t, y = 120, size = 60, x = 90, w = 520) => text(t, x, y, w, size * 2.3, { fontFamily: H, fontSize: size, fontWeight: 800, lineHeight: 1.05, color: W });
+    const say = (t, x, y, w, h, props = {}) => text(t, x, y, w, h, { fontSize: 24, color: DIM, lineHeight: 1.4, ...props });
+    const opt = (label, value, x, y, w) => cap(label, value, x, y, w, W, { textAlign: 'left' });
+    // A map as the editor writes it: its stops, and a step (a click) for each one after the first.
+    const map = (x, y, w, h, props, stops) => {
+      const st = stops.map(q => ({ id: uid(), pitch: 0, bearing: 0, ...q })), { flyMs = 3000, entrance = null, ...rest } = props;
+      const steps = props.mode === 'all' ? [] : st.slice(1).map((q, i) => ({ effect: 'mapfly', order: i + 1, seq: i + 1, start: 'click', duration: flyMs, delay: 0, stop: q.id }));
+      const list = entrance ? [entrance, ...steps] : steps;
+      return { id: uid(), type: 'map', look: 'globe', route: 'none', routeColor: ACC, arrive: 'drop', marker: { kind: 'dot', color: ACC, size: 1 },
+        x, y, w, h, rotation: 0, ...rest, stops: st, animation: list[0] || null, ...(list.length > 1 && { anims: list.slice(1) }) };
+    };
+    const P = {
+      lis: { name: 'Lisboa', lon: -9.1393, lat: 38.7223, zoom: 11, cc: 'pt' }, cpt: { name: 'Ciudad del Cabo', lon: 18.4241, lat: -33.9249, zoom: 10.5, cc: 'za' },
+      bom: { name: 'Bombay', lon: 72.8777, lat: 19.076, zoom: 10.5, cc: 'in' }, sin: { name: 'Singapur', lon: 103.8198, lat: 1.3521, zoom: 10.5, cc: 'sg' },
+      tok: { name: 'Tokio', lon: 139.6917, lat: 35.6895, zoom: 10.5, cc: 'jp' },
+    };
+    const band = (t, y = 630) => text(t, 30, y, 1100, 58, { fontSize: 18, color: W, bg: '#081422d9', radius: 12, pad: [8, 14, 8, 14], vAlign: 'middle' });
+    return build({ name: 'Catálogo: mapas', palette: 'ocean', fonts: 'modern', title: { color: W } }, [
+      // 1 · Cover: the globe without its space, turning, every stop at once.
+      { layout: 'blank', bg: BG, extra: [glow(-300, -260, 900, C[0], BG, 35),
+        kicker('CATÁLOGO DE FUNCIONES · 11', 90, 170, 560, ACC),
+        title('Mapas que viajan', 210, 80, 84, 600),
+        say('La ruta inventada de una cartógrafa: cinco ciudades, del Atlántico al Pacífico. Cada diapositiva enseña una forma de usar los mapas.', 90, 420, 560, 130, { fontSize: 26 }),
+        map(680, 70, 560, 560, { transparent: true, mode: 'all', view: { lon: 60, lat: 18, zoom: 1.45, pitch: 0, bearing: 0 }, motion: 'spin', speed: 'slow', start: 'space', pulse: 'all', labels: false, names: false },
+          [P.lis, P.cpt, P.bom, P.sin, P.tok]),
+        opt('Globo sin fondo, todas las paradas, girando', "transparent · mode: 'all' · motion: 'spin'", 90, 590, 560)],
+        notes: 'Insertar ▸ Mapa. El globo no tiene el espacio negro alrededor (Fondo transparente), muestra todas las paradas a la vez y gira despacio. Al empezar la diapositiva baja desde el espacio. Pasa a la siguiente: con Transformar, es el mismo planeta.' },
+      // 2 · The trip, a click per stop: Morph carries the cover's globe down to the first one.
+      { layout: 'blank', bg: BG, autoAnimate: true, extra: [
+        map(0, 0, 1280, 720, { terrain: true, route: 'geodesic', marker: { kind: 'country', color: ACC, size: 1 }, pulse: 'cur', past: 'dim', motion: 'orbit', speed: 'slow', flyMs: 5000 }, [
+          { ...P.lis, note: 'Aquí empieza la ruta: el puerto desde el que salían las carabelas.' }, { ...P.cpt, note: 'Al pie de la montaña de la Mesa, donde se juntan dos océanos.' },
+          { ...P.bom, note: 'Siete islas unidas en una sola ciudad.' }, { ...P.sin, note: 'Una isla, una ciudad y un país a la vez.' }, { ...P.tok, note: 'Final de la ruta: la ciudad más grande del mundo.' }]),
+        band(`<b>Una a una, con un clic cada vez</b> · ${code("route: 'geodesic'")} · ${code("marker: 'country'")} · ${code("motion: 'orbit'")} · ${code("past: 'dim'")}`)],
+        notes: 'Con Transformar, el globo de la portada sigue en esta diapositiva y baja hasta Lisboa. Cada clic vuela a la siguiente parada por el camino más corto (A vuelo de pájaro); en cada una aparece su nota y la cámara da vueltas despacio. Clic en una bandera para ir allí.' },
+      // 3 · The box's edges, 1: faded at the sides — and Morph, from the full screen to its box.
+      { layout: 'blank', bg: BG, autoAnimate: true, extra: [
+        kicker('BORDES DEL RECUADRO · 1', 90, 150, 480, ACC), title('Bordes desvanecidos', 190, 54, 90, 480),
+        say('El mapa se funde con la diapositiva. Con Transformar, el recuadro encoge desde la pantalla completa mientras el planeta vuela hasta aquí.', 90, 340, 470, 170),
+        opt('Bordes', "edge: 'soft'", 90, 530, 230), opt('Relieve 3D', 'terrain: true', 330, 530, 230),
+        map(600, 60, 640, 600, { edge: 'soft', terrain: true, marker: { kind: 'country', color: ACC, size: 1.3 }, pulse: 'cur', motion: 'orbit', speed: 'slow' },
+          [{ ...P.tok, zoom: 11.2, pitch: 50, bearing: -25 }])],
+        notes: 'Bordes ▸ Bordes desvanecidos. No hace falta elegir nada para que siga desde el mapa anterior: con Transformar y el mismo tipo de mapa, Revela lo hace solo.' },
+      // 4 · The edges, 2: an oval that fades; the box moves to the other side.
+      { layout: 'blank', bg: BG, autoAnimate: true, extra: [
+        map(50, 50, 640, 620, { edge: 'oval', marker: { kind: 'star', color: '#ffd166', size: 1.4 }, pulse: 'cur', motion: 'drift' },
+          [{ name: 'Kioto', lon: 135.7681, lat: 35.0116, zoom: 12.2, pitch: 35, bearing: 10, cc: 'jp' }]),
+        kicker('BORDES DEL RECUADRO · 2', 730, 150, 480, ACC), title('Óvalo desvanecido', 190, 54, 730, 480),
+        say('Como una viñeta: el centro, nítido; los bordes, en la diapositiva. Aquí el mapa se acerca muy despacio mientras hablas.', 730, 340, 470, 170),
+        opt('Bordes', "edge: 'oval'", 730, 530, 230), opt('En cada parada', "motion: 'drift'", 970, 530, 250)],
+        notes: 'El recuadro cambia de sitio y de forma, y el planeta viaja de Tokio a Kioto mientras tanto. Acercarse despacio: hasta un nivel y medio más cerca.' },
+      // 5 · The edges, 3: a clean oval, a frame and a shadow; the relief, tilted.
+      { layout: 'blank', bg: BG, autoAnimate: true, extra: [
+        kicker('BORDES DEL RECUADRO · 3', 90, 150, 480, ACC), title('Óvalo con marco y sombra', 190, 54, 90, 520),
+        say('Un recorte limpio, con un marco del color que quieras. También hay esquinas redondeadas.', 90, 340, 480, 130),
+        opt('Bordes', "edge: 'circle'", 90, 480, 230), opt('Marco', "frame: { width: 10 }", 330, 480, 250),
+        opt('Sombra', 'shadow', 90, 560, 230), opt('Esquinas redondeadas', "edge: 'round'", 330, 560, 250),
+        { ...map(700, 100, 500, 500, { edge: 'circle', frame: { width: 10, color: '#ffffff' }, terrain: true, marker: { kind: 'flag', color: ACC, size: 1.2 }, pulse: 'cur', motion: 'orbit', speed: 'slow' },
+          [{ name: 'Monte Fuji', lon: 138.7274, lat: 35.3606, zoom: 11.6, pitch: 60, bearing: 20, cc: 'jp' }]), shadow: { x: 0, y: 18, blur: 36, color: '#000000aa' } }],
+        notes: 'Bordes ▸ Óvalo, Marco ▸ Grueso y la sombra (Organizar ▸ Sombra). El monte Fuji, con el relieve 3D y la cámara inclinada dando vueltas.' },
+      // 6 · The three looks.
+      { layout: 'blank', bg: BG, transition: 'fade', extra: [
+        kicker('ESTILO DEL MAPA', 90, 70, 480, ACC), title('Tres estilos', 100, 54, 90, 900),
+        ...[['map', 'Mapa', 'Calles y nombres, como un mapa de papel', 14], ['satellite', 'Satélite', 'Imágenes de satélite en plano', 14], ['globe', 'Globo 3D', 'La Tierra desde el espacio', 2.6]].map(([look, label, hint, z], i) => [
+          map(70 + i * 390, 230, 360, 300, { look, edge: 'round', theme: look === 'map' ? 'liberty' : undefined, marker: { kind: 'pin', color: ACC, size: 1 }, labels: false },
+            [{ name: 'Venecia', lon: 12.3359, lat: 45.4371, zoom: z, cc: 'it' }]),
+          cap(label, `look: '${look}'`, 70 + i * 390, 545, 360, W), say(hint, 70 + i * 390, 610, 360, 40, { fontSize: 18, textAlign: 'center' })]).flat()],
+        notes: 'Los tres estilos, sin clave ni pago: OpenFreeMap para el mapa de calles, Sentinel-2 cloudless de EOX para el satélite y el globo. Venecia en los tres.' },
+      // 7 · The street map's four colours.
+      { layout: 'blank', bg: BG, extra: [
+        kicker('COLORES DEL MAPA', 90, 70, 480, ACC), title('Cuatro colores', 100, 54, 90, 900),
+        ...[['liberty', 'Colores'], ['positron', 'Claro'], ['dark', 'Oscuro'], ['bright', 'Brillante']].map(([theme, label], i) => [
+          map(70 + i * 290, 240, 270, 270, { look: 'map', theme, edge: 'round', marker: { kind: 'none', color: ACC, size: 1 }, labels: false },
+            [{ name: 'París', lon: 2.3488, lat: 48.8534, zoom: 12.6, cc: 'fr' }]),
+          cap(label, `theme: '${theme}'`, 70 + i * 290, 530, 270, W)]).flat()],
+        notes: 'Solo para el estilo Mapa. París con los cuatro colores; el oscuro queda bien en diapositivas oscuras como esta.' },
+      // 8 · Every marker, all the stops at once.
+      { layout: 'blank', bg: BG, transition: 'fade', extra: [
+        map(50, 50, 760, 620, { look: 'map', theme: 'positron', edge: 'round', mode: 'all', arrive: 'grow', pulse: 'all', marker: { kind: 'pin', color: ACC, size: 1.2 } }, [
+          { name: 'Chincheta', lon: 2.1734, lat: 41.3851, zoom: 10, cc: 'es' }, { name: 'Punto', lon: -3.7038, lat: 40.4168, zoom: 10, cc: 'es', marker: { kind: 'dot' } },
+          { name: 'Bandera', lon: -0.3763, lat: 39.4699, zoom: 10, cc: 'es', marker: { kind: 'flag', color: '#2a9d8f' } }, { name: 'Bandera del país', lon: -5.9845, lat: 37.3891, zoom: 10, cc: 'es', marker: { kind: 'country' } },
+          { name: 'Número', lon: -2.935, lat: 43.263, zoom: 10, cc: 'es', marker: { kind: 'number', color: '#457b9d' } }, { name: 'Estrella', lon: -0.8891, lat: 41.6488, zoom: 10, cc: 'es', marker: { kind: 'star', color: '#e9c46a' } },
+          { name: 'Icono', lon: -4.4214, lat: 36.7213, zoom: 10, cc: 'es', marker: { kind: 'icon', icon: 'sun', color: '#f4a261' } }, { name: 'Solo el nombre', lon: -8.5448, lat: 42.8782, zoom: 10, cc: 'es', marker: { kind: 'none' } }]),
+        kicker('MARCADORES', 850, 80, 380, ACC), title('Todas a la vez', 110, 46, 850, 380),
+        say('Cada parada con su marcador. Clic en uno: el mapa va allí; otro clic, vuelve.', 850, 230, 380, 130),
+        opt('Al presentar', "mode: 'all'", 850, 380, 380), opt('Al llegar', "arrive: 'grow'", 850, 450, 380), opt('Ondas', "pulse: 'all'", 850, 520, 380),
+        opt('Marcador de una parada', "stops[i].marker.kind", 850, 590, 380)],
+        notes: 'Marcadores: chincheta, punto, bandera de tela, bandera del país, número, estrella, uno de los iconos de Revela o solo el nombre. Cada parada puede tener el suyo. Las ciudades son solo el sitio de cada ejemplo.' },
+      // 9 · The line between stops.
+      { layout: 'blank', bg: BG, transition: 'fade', extra: [
+        kicker('LÍNEA Y VUELO', 90, 50, 480, ACC), title('La línea entre paradas', 80, 46, 90, 900),
+        map(60, 170, 1160, 400, { look: 'satellite', edge: 'round', route: 'arc', curve: 2, showAll: true, past: 'dim', marker: { kind: 'number', color: ACC, size: 1.1 }, flyMs: 3500 }, [
+          { name: 'Roma', lon: 12.4964, lat: 41.9028, zoom: 4.4, cc: 'it' }, { name: 'Atenas', lon: 23.7275, lat: 37.9838, zoom: 5.2, cc: 'gr' },
+          { name: 'Estambul', lon: 28.9784, lat: 41.0082, zoom: 5.2, cc: 'tr' }, { name: 'El Cairo', lon: 31.2357, lat: 30.0444, zoom: 5.2, cc: 'eg' }]),
+        opt('Sin línea · Recta · En arco · A vuelo de pájaro', "route: 'none' | 'line' | 'arc' | 'geodesic'", 60, 590, 600),
+        opt('Alejándose mucho', 'curve: 2', 680, 590, 250), opt('Todas desde el principio', 'showAll: true', 950, 590, 270)],
+        notes: 'Cada clic, un vuelo de 3,5 s; la línea se dibuja mientras vuela, en arco. Las paradas ya visitadas quedan más tenues. Todas se ven desde el principio.' },
+      // 10 · All at once, a frame and a shadow, appearing with a fade.
+      { layout: 'blank', bg: BG, transition: 'fade', extra: [
+        kicker('ENTRA CON UN FUNDIDO', 90, 50, 600, ACC), title('Cinco cafés de Lisboa', 80, 46, 90, 900),
+        { ...map(90, 170, 1100, 450, { look: 'map', theme: 'dark', edge: 'round', frame: { width: 3, color: '#ffffff' }, mode: 'all', pulse: 'all', marker: { kind: 'icon', icon: 'coffee', color: ACC, size: 1.2 },
+          entrance: { effect: 'fade-in', order: 1, seq: 1, start: 'afterPrev', duration: 1200, delay: 300 } }, [
+          { name: 'A Brasileira', lon: -9.1426, lat: 38.7107, zoom: 15, cc: 'pt' }, { name: 'Café Nicola', lon: -9.1393, lat: 38.7138, zoom: 15, cc: 'pt' },
+          { name: 'Martinho da Arcada', lon: -9.1365, lat: 38.7079, zoom: 15, cc: 'pt' }, { name: 'Pastéis de Belém', lon: -9.2032, lat: 38.6975, zoom: 15, cc: 'pt' },
+          { name: 'Café Lisboa', lon: -9.1417, lat: 38.7105, zoom: 15, cc: 'pt' }]), shadow: { x: 0, y: 14, blur: 30, color: '#00000099' } },
+        say(`Animaciones ▸ Fundido · ${code("edge: 'round'")} · ${code("frame: { width: 3 }")} · ${code("theme: 'dark'")}`, 90, 640, 1100, 40, { fontSize: 18 })],
+        notes: 'Un mapa de calles oscuro, con todas las paradas a la vez, que aparece con un fundido como cualquier objeto. Ruta de cafés inventada; los cafés son reales.' },
+      // 11 · Closing: the globe again, from space.
+      { layout: 'blank', bg: BG, transition: 'fade', extra: [glow(500, 120, 900, C[0], BG, 25),
+        kicker('AL EMPEZAR LA DIAPOSITIVA', 90, 200, 560, ACC), title('Desde el espacio', 240, 64, 90, 560),
+        say('Cada mapa puede empezar en su primera parada, bajar desde el espacio o seguir desde el mapa de la diapositiva anterior.', 90, 410, 520, 130),
+        opt('Al empezar la diapositiva', "start: 'space' | 'prev'", 90, 560, 520),
+        map(690, 110, 500, 500, { transparent: true, start: 'space', motion: 'spin', speed: 'fast', marker: { kind: 'none', color: ACC, size: 1 }, labels: false, names: false },
+          [{ ...P.lis, zoom: 1.3 }])],
+        notes: 'El globo baja desde el espacio y gira deprisa (Velocidad: Rápido). Fin del recorrido.' },
+    ]);
+  } },
 };

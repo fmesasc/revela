@@ -20,7 +20,8 @@ export const RTL_LANGS = ['ar'];
 // objects (text, notes, table cells, chart labels and titles, poll questions and options,
 // diagram outlines, pictures' descriptions…). Not code, formulas nor credits; of an equation, only the words
 // inside it (mathTexts, below).
-export const TEXT_KEYS = new Set(['html', 'notes', 'name', 'rows', 'label', 'alt', 'options', 'question', 'text', 'seriesName', 'yTitle', 'xTitle', 'endText']);
+// (note: a map's stop's note, shown when the map gets there.)
+export const TEXT_KEYS = new Set(['html', 'notes', 'name', 'rows', 'label', 'alt', 'options', 'question', 'text', 'seriesName', 'yTitle', 'xTitle', 'endText', 'note']);
 // (A table's formula — =SUMA(ARRIBA), =B2*C2 — is not a text; a text that only starts with «=» — «= 52 años: la rueda
 // calendárica», under a sum — is: core/formulas.js isSheetFormula tells them apart.)
 const isText = v => typeof v === 'string' && /\p{L}/u.test(v.replace(/<[^>]*>/g, '')) && !isSheetFormula(v) && !/^(data:|https?:|assets\/)/.test(v);

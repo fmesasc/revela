@@ -293,6 +293,7 @@ export default {"biz_board":["Kwartaalresultaten voor de raad","Donkerblauw en g
 "showcase_animations":["Catalogus: animaties","Alle objectanimaties: ingang, nadruk, uitgang, bewegingspaden, tekenen, gekoppeld, geluiden en meerdere op één object"],
 "showcase_charts":["Catalogus: grafieken","De 15 grafiektypen, twee per dia, met reeksen, combinatie, raster, labels en astitels, plus de optietabel"],
 "showcase_diagrams":["Catalogus: diagrammen","De 15 diagramindelingen als overzicht geschreven, de 4 kleurenschema’s en één voor één verschijnen tijdens het presenteren"],
+"showcase_maps":["Catalogus: kaarten","Kaarten die reizen: globe zonder achtergrond, reis halte voor halte, Morphen met dezelfde planeet, vervaagde randen, ovaal met kader, stijlen, kleuren, markeringen en lijnen"],
 "showcase_morph":["Catalogus: Morphen","Morphen stap voor stap: tekst die van grootte en plaats verandert, vormen, groeiende balken, afbeelding, 3D en letters die van plaats wisselen"],
 "showcase_objects":["Catalogus: multimedia en objecten","Code met stappen, vergelijkingen, pictogrammen, vijf apparaten, tabellen met stijlen en formules, diazoom en verbindingslijnen"],
 "showcase_polls":["Catalogus: peilingen en activiteiten","De 11 soorten peilingen en activiteiten via de telefoon, aftellen in drie stijlen, ranglijst en klasmodus"],

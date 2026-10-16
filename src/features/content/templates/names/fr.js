@@ -293,6 +293,7 @@ export default {"biz_board":["Résultats trimestriels au conseil","Bleu foncé e
 "showcase_animations":["Catalogue : animations","Toutes les animations d’objet : entrée, emphase, sortie, trajectoires, dessin, enchaînées, sons et plusieurs sur un objet"],
 "showcase_charts":["Catalogue : graphiques","Les 15 types de graphique, deux par diapositive, avec séries, combiné, grille, étiquettes et titres d’axes, et le tableau des options"],
 "showcase_diagrams":["Catalogue : diagrammes","Les 15 dispositions de diagramme écrites comme un plan, les 4 jeux de couleurs et l’apparition un à un en présentation"],
+"showcase_maps":["Catalogue : cartes","Des cartes qui voyagent : globe sans fond, voyage étape par étape, Morphose avec la même planète, bords estompés, ovale encadré, styles, couleurs, repères et lignes"],
 "showcase_morph":["Catalogue : Morphose","Morphose pas à pas : texte qui change de taille et de place, formes, barres qui grandissent, image, 3D et lettres qui se réordonnent"],
 "showcase_objects":["Catalogue : multimédia et objets","Code par étapes, équations, icônes, cinq appareils, tableaux avec styles et formules, zoom de diapositive et connecteurs"],
 "showcase_polls":["Catalogue : sondages et activités","Les 11 types de sondage et d’activité depuis le mobile, compte à rebours dans ses trois styles, classement et mode classe"],

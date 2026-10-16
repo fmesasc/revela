@@ -293,6 +293,7 @@ export default {"biz_board":["Resultados trimestrais ao consello","Azul escuro e
 "showcase_animations":["Catálogo: animacións","Todas as animacións de obxecto: entrada, énfase, saída, traxectorias, debuxar, encadeadas, sons e varias nun obxecto"],
 "showcase_charts":["Catálogo: gráficos","Os 15 tipos de gráfico, dous por diapositiva, con series, combinado, grade, etiquetas e títulos de eixos, e a táboa de opcións"],
 "showcase_diagrams":["Catálogo: diagramas","Os 15 deseños de diagrama escritos como esquema, os 4 esquemas de cor e a aparición un a un ao presentar"],
+"showcase_maps":["Catálogo: mapas","Mapas que viaxan: globo sen fondo, viaxe parada a parada, Transformar co mesmo planeta, bordos esvaídos, óvalo con marco, estilos, cores, marcadores e liñas"],
 "showcase_morph":["Catálogo: Transformar","Transformar paso a paso: texto que cambia de tamaño e sitio, formas, barras que medran, imaxe, 3D e letras que se reordenan"],
 "showcase_objects":["Catálogo: multimedia e obxectos","Código con pasos, ecuacións, iconas, cinco dispositivos, táboas con estilos e fórmulas, zoom de diapositiva e conectores"],
 "showcase_polls":["Catálogo: votacións e actividades","Os 11 tipos de votación e actividade desde o móbil, conta atrás nos seus tres estilos, clasificación e modo aula"],

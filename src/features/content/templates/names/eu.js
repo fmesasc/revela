@@ -293,6 +293,7 @@ export default {"biz_board":["Hiruhileko emaitzak kontseiluari","Urdin iluna eta
 "showcase_animations":["Katalogoa: animazioak","Objektuen animazio guztiak: sarrera, enfasia, irteera, ibilbideak, marraztu, kateatuak, soinuak eta hainbat objektu bakarrean"],
 "showcase_charts":["Katalogoa: grafikoak","15 grafiko motak, bi diapositiba bakoitzeko, serieekin, konbinatuarekin, saretarekin, etiketekin eta ardatzen izenburuekin, eta aukeren taula"],
 "showcase_diagrams":["Katalogoa: diagramak","Eskema gisa idatzitako 15 diagrama-diseinuak, 4 kolore-eskemak eta aurkeztean banan-banan agertzea"],
+"showcase_maps":["Katalogoa: mapak","Bidaiatzen duten mapak: atzeko planorik gabeko globoa, bidaia geldialdiz geldialdi, Eraldatu planeta berarekin, ertz lausotuak, markodun obaloa, estiloak, koloreak, markatzaileak eta lerroak"],
 "showcase_morph":["Katalogoa: Eraldatu","Eraldatu urratsez urrats: tamaina eta lekua aldatzen dituen testua, formak, hazten diren barrak, irudia, 3D eta berrantolatzen diren letrak"],
 "showcase_objects":["Katalogoa: multimedia eta objektuak","Kodea urratsekin, ekuazioak, ikonoak, bost gailu, estilo eta formuladun taulak, diapositiba-zooma eta konektoreak"],
 "showcase_polls":["Katalogoa: bozketak eta jarduerak","Mugikorretik egiteko 11 bozketa eta jarduera mota, atzerako kontaketa bere hiru estiloetan, sailkapena eta ikasgela modua"],

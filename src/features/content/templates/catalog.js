@@ -299,7 +299,8 @@ export const CATALOG = {"biz_strategy":{"name":"Plan estratégico y OKR","summar
   "showcase_charts":{"name":"Catálogo: gráficos","summary":"Los 15 tipos de gráfico, dos por diapositiva, con series, combinado, cuadrícula, etiquetas y títulos de ejes, y la tabla de opciones","cat":"showcase","file":"showcase"},
   "showcase_diagrams":{"name":"Catálogo: diagramas","summary":"Los 15 diseños de diagrama escritos como esquema, los 4 esquemas de color y la aparición uno a uno al presentar","cat":"showcase","file":"showcase"},
   "showcase_polls":{"name":"Catálogo: votaciones y actividades","summary":"Los 11 tipos de votación y actividad desde el móvil, cuenta atrás en sus tres estilos, clasificación y modo aula","cat":"showcase","file":"showcase"},
-  "showcase_objects":{"name":"Catálogo: multimedia y objetos","summary":"Código con pasos, ecuaciones, iconos, cinco dispositivos, tablas con estilos y fórmulas, zoom de diapositiva y conectores","cat":"showcase","file":"showcase"}};
+  "showcase_objects":{"name":"Catálogo: multimedia y objetos","summary":"Código con pasos, ecuaciones, iconos, cinco dispositivos, tablas con estilos y fórmulas, zoom de diapositiva y conectores","cat":"showcase","file":"showcase"},
+  "showcase_maps":{"name":"Catálogo: mapas","summary":"Mapas que viajan: globo sin fondo, viaje parada a parada, Transformar con el mismo planeta, bordes desvanecidos, óvalo con marco, estilos, colores, marcadores y líneas","cat":"showcase","file":"showcase"}};
 export const BROKEN = [];
 export const LOADERS = {
   "biz": () => import('./biz.js'),
