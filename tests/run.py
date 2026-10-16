@@ -157,14 +157,19 @@ def math_keyboard_check(send, recv, port):
             time.sleep(0.2)
         return None
     recv(send('Emulation.setDeviceMetricsOverride', sid, width=1280, height=800, deviceScaleFactor=1, mobile=False))
-    recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html?test')); time.sleep(3)
-    ev("(()=>{const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.blocks.addMath();R.blocks.setMath('x');R.render();return 1})()"); time.sleep(0.5)
+    recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html?test'))
+    # (Until the editor is there, not a fixed 3 s: on GitHub's slower machines, with a larger app, 3 s were short
+    # some days — and the check failed looking for an equation that wasn't made yet.)
+    wait("!!window.__revela?.blocks", 60)
+    ev("(()=>{const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.blocks.addMath();R.blocks.setMath('x');R.render();return 1})()")
+    wait("!!document.querySelector('#stage .block')", 15); time.sleep(0.5)
     fails = []
     def check(ok, name):
         if not ok: fails.append('✗ ecuación: ' + name)
     rect = lambda js: _j.loads(ev(f"(()=>{{const e={js};if(!e)return 'null';const r=e.getBoundingClientRect();return JSON.stringify({{x:r.left+r.width/2,y:r.top+r.height/2}})}})()") or 'null')
     bid = ev("window.__revela.store.currentSlide().blocks.at(-1).id")
     r = rect(f"document.querySelector('#stage .block[data-id=\"{bid}\"]')")
+    if not r: return ['✗ ecuación: no se pudo crear la ecuación en el lienzo']
     click(r['x'], r['y'], 2)
     check(wait("!!document.querySelector('#math-modal math-field')"), 'doble clic abre el editor')
     check(wait("!!window.mathVirtualKeyboard?.visible"), 'el teclado virtual se muestra')
