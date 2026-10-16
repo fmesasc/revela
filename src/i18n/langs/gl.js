@@ -4822,4 +4822,10 @@ export default {
   "Así se mueve en cada parada al presentar.": "Así se move en cada parada ao presentar.",
   "Al presentar, el mapa sigue desde donde quedó el de la diapositiva anterior y vuela a la primera parada; si quedó en esa misma parada, sigue tal cual.": "Ao presentar, o mapa segue desde onde quedou o da diapositiva anterior e voa á primeira parada; se quedou nesa mesma parada, segue tal cal.",
   "Solo la bola del mundo, sobre el fondo de la diapositiva": "Só o globo terráqueo, sobre o fondo da diapositiva",
+  "Una a una, con un clic cada vez": "Unha a unha, cun clic cada vez",
+  "Todas a la vez, sin viajar": "Todas á vez, sen viaxar",
+  "Usar la vista actual para el mapa": "Usar a vista actual para o mapa",
+  "Que se vean todas": "Que se vexan todas",
+  "Marcadores de las paradas": "Marcadores das paradas",
+  "El mapa empezará con esta vista.": "O mapa comezará con esta vista.",
 };

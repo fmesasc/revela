@@ -3671,6 +3671,36 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); }
   });
 
+  await test('mapa: todas las paradas a la vez, sin viaje: ninguna en un paso, su vista, y un clic en un marcador va y vuelve', async () => {
+    reset(); const { G, W } = await mapSetup(); R.slides.addSlide('blank'); await sleep(10);
+    const b = G.addMap({ stops: [{ name: 'Lisboa', lon: -9.14, lat: 38.72, zoom: 10 }, { name: 'Tokio', lon: 139.69, lat: 35.69, zoom: 10 }, { name: 'Sídney', lon: 151.2, lat: -33.87, zoom: 10 }] });
+    G.setMap(b.id, { stops: b.stops, flyMs: 400 });
+    eq(b.anims?.length || 0, 1, 'una a una: un paso por vuelo');
+    G.setMap(b.id, { mode: 'all' });
+    assert(!b.animation && !b.anims, 'todas a la vez: ningún paso'); eq(b.alt, 'Mapa: Lisboa, Tokio, Sídney');
+    const v = G.mapView(b), cfg = G.mapConfig(b);
+    assert(v.lon > 40 && v.lon < 100 && v.zoom < 3, 'su vista las abarca todas: ' + JSON.stringify(v));
+    assert(cfg.all && String(cfg.home.c) === String([v.lon, v.lat]) && !cfg.segs.length, 'en la presentación: todas, sin línea, desde su vista');
+    eq(G.staleShots(b).join(), '0', 'una sola imagen: la del mapa');
+    G.setMap(b.id, { view: { lon: 10, lat: 20, zoom: 2.5 } }); eq(G.mapView(b).zoom, 2.5, 'o la vista elegida');
+    const html = R.io.buildHTML(R.state.deck, { inApp: true }), S = await W.eval("import('/src/core/vendor.js')");
+    assert(!/data-mapgo="/.test(html), 'sin pasos de vuelo');
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    try {
+      f.srcdoc = html.split(JSON.stringify(S.MAPLIBRE)).join(JSON.stringify('data:text/javascript;charset=utf-8,' + encodeURIComponent(mapStub) + '%2F%2F'));
+      for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
+      const F = f.contentWindow, RV = F.Reveal, el = F.document.querySelector('[data-geomap]');
+      RV.slide(1); for (let k = 0; k < 60 && !el.classList.contains('rvm-on'); k++) await sleep(50);
+      await sleep(100); const map = el._rvm.map;
+      eq(String(map.c), '10,20', 'empieza en la vista del mapa'); eq(map.z, 2.5);
+      eq([...el.querySelectorAll('.rvm-mk')].filter(x => !x.classList.contains('rvm-hide')).length, 3, 'con todas las paradas');
+      el.querySelectorAll('.rvm-mk .rvm-ic')[1].click(); await sleep(30);
+      eq(String(map.flights.at(-1).center), '139.69,35.69', 'clic en Tokio: allí');
+      el.querySelectorAll('.rvm-mk .rvm-ic')[1].click(); await sleep(30);
+      eq(String(map.flights.at(-1).center), '10,20', 'otra vez: de vuelta a la vista del mapa');
+    } finally { f.remove(); }
+  });
+
   // The flight ahead (io/runtime/geomap.js, fetchAhead()): its tiles worked out frame by frame and fetched into the
   // map's own memory before the click; and a floor of the whole world under every map (floor()).
   const FAR = [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 9, pitch: 40 }, { name: 'Tokio', lon: 139.69, lat: 35.69, zoom: 9 }, { name: 'Yokohama', lon: 139.64, lat: 35.44, zoom: 10 }];

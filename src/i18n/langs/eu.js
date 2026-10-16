@@ -4822,4 +4822,10 @@ export default {
   "Así se mueve en cada parada al presentar.": "Horrela mugitzen da geldialdi bakoitzean aurkeztean.",
   "Al presentar, el mapa sigue desde donde quedó el de la diapositiva anterior y vuela a la primera parada; si quedó en esa misma parada, sigue tal cual.": "Aurkeztean, mapak aurreko diapositibakoa geratu zen lekutik jarraitzen du eta lehen geldialdira hegan egiten du; geldialdi horretan bertan geratu bazen, bere horretan jarraitzen du.",
   "Solo la bola del mundo, sobre el fondo de la diapositiva": "Lurra-bola soilik, diapositibaren atzeko planoaren gainean",
+  "Una a una, con un clic cada vez": "Banan-banan, klik bakoitzeko",
+  "Todas a la vez, sin viajar": "Denak batera, bidaiatu gabe",
+  "Usar la vista actual para el mapa": "Erabili uneko ikuspegia maparako",
+  "Que se vean todas": "Denak ikusi daitezen",
+  "Marcadores de las paradas": "Geldialdien markatzaileak",
+  "El mapa empezará con esta vista.": "Mapa ikuspegi honekin hasiko da.",
 };

@@ -4822,4 +4822,10 @@ export default {
   "Así se mueve en cada parada al presentar.": "Zo beweegt hij bij elke halte tijdens het presenteren.",
   "Al presentar, el mapa sigue desde donde quedó el de la diapositiva anterior y vuela a la primera parada; si quedó en esa misma parada, sigue tal cual.": "Tijdens het presenteren gaat de kaart verder waar die van de vorige dia bleef en vliegt naar de eerste halte; stond hij al bij die halte, dan gaat hij gewoon door.",
   "Solo la bola del mundo, sobre el fondo de la diapositiva": "Alleen de wereldbol, op de achtergrond van de dia",
+  "Una a una, con un clic cada vez": "Een voor een, telkens met een klik",
+  "Todas a la vez, sin viajar": "Allemaal tegelijk, zonder reis",
+  "Usar la vista actual para el mapa": "Huidige weergave gebruiken voor de kaart",
+  "Que se vean todas": "Alle tonen",
+  "Marcadores de las paradas": "Haltemarkeringen",
+  "El mapa empezará con esta vista.": "De kaart begint met deze weergave.",
 };

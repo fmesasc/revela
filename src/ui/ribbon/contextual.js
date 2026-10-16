@@ -46,7 +46,7 @@ import { uncrop } from '../../features/document/crop.js';
 import { fitTextToBox } from '../canvas/canvas.js';
 import { editText } from '../canvas/content.js';
 import { MAP_SCOPES } from '../../features/content/maps.js';
-import { MAP_LOOKS, MAP_ROUTES, MARKER_KINDS, MARKER_SIZES, MAP_MOTIONS, MAP_STARTS } from '../../features/content/geomap.js';
+import { MAP_LOOKS, MAP_ROUTES, MARKER_KINDS, MARKER_SIZES, MAP_MOTIONS, MAP_STARTS, MAP_MODES } from '../../features/content/geomap.js';
 import { openObjectLink } from '../dialogs/objlink.js';
 import { t } from '../../i18n/index.js';
 import { press, common, MIXED } from './reflect.js';
@@ -260,7 +260,7 @@ function groupsFor(b) {
         ...(b.look === 'globe' ? [btn('blur_on', 'Fondo transparente', () => upd({ transparent: !b.transparent }), !!b.transparent)] : [])]],
       ['Movimiento', [['select', 'En cada parada', MAP_MOTIONS.map(([v, l]) => [v, v === 'spin' && b.look !== 'globe' ? 'Desplazarse de lado' : l]), b.motion || 'none', v => upd({ motion: v === 'none' ? undefined : v })],
         ['select', 'Al empezar la diapositiva', MAP_STARTS, b.start || '', v => upd({ start: v || undefined })]]],
-      ['Marcadores', [['select', 'Marcador', MARKER_KINDS, mk.kind, v => upd({ marker: { ...mk, kind: v } })],
+      ['Marcadores de las paradas', [['select', 'Al presentar', MAP_MODES, b.mode || '', v => upd({ mode: v || undefined })], ['select', 'Marcador', MARKER_KINDS, mk.kind, v => upd({ marker: { ...mk, kind: v } })],
         ['color', 'palette', 'Color del marcador', mk.color, v => upd({ marker: { ...mk, color: v } })],
         ['select', 'Tamaño', MARKER_SIZES, String(mk.size || 1), v => upd({ marker: { ...mk, size: +v } })],
         btn('visibility', 'Mostrar todas desde el principio', () => upd({ showAll: !b.showAll }), !!b.showAll)]],

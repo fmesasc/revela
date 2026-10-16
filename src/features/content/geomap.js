@@ -7,11 +7,12 @@
 // read out for it, and the steps (animations) that take it from one stop to the next.
 //
 // block = { type: 'map', look, theme, route, routeColor, terrain, names, labels, showAll, curve, marker, arrive, past,
-//           motion, speed, start, pulse, transparent, stops: [{ id, name, note, lon, lat, zoom, pitch, bearing, cc, marker, shot, shotKey }] }
+//           motion, speed, start, pulse, transparent, mode, view, stops: [{ id, name, note, lon, lat, zoom, pitch, bearing, cc, marker, shot, shotKey }] }
 // marker = { kind, color, size, icon }: the map's (every stop's, by default); a stop's own overrides some of it.
 // The first stop is where the map starts; every other one is an animation of the map (effect 'mapfly', a.stop: the
 // stop's id), so it is a click like any other step of the slide — reordered in the animation pane, played back by
-// going back. Each stop keeps a picture of itself (shot): the map as it looks there, for the editor, the thumbnails,
+// going back. Or (mode 'all') no trip at all: every stop marked on the map at once, the map at a view of its own
+// (view; by default, one that takes them all in) — a click on a marker flies there, and on it again, back. Each stop keeps a picture of itself (shot): the map as it looks there, for the editor, the thumbnails,
 // PDF, pictures and PowerPoint, and for presenting without a connection.
 
 import { state, commit, currentSlide, setSelection } from '../../core/store.js';
@@ -66,6 +67,8 @@ export const MAP_SPEEDS = [['slow', 'Lento'], ['normal', 'Normal'], ['fast', 'R�
 // The globe on the slide itself, without the space around it (transparent): only for the globe — the flat looks fill
 // their box.
 export const isClear = b => !!(b?.transparent && b.look === 'globe');
+// How the stops are shown when presenting: one after the other, a click each, flying; or all at once, no trip.
+export const MAP_MODES = [['', 'Una a una, con un clic cada vez'], ['all', 'Todas a la vez, sin viajar']];
 export const MAP_STARTS = [['', 'En la primera parada'], ['space', 'Desde el espacio'], ['prev', 'Desde el mapa de la diapositiva anterior']];
 // Rings spreading from a marker, as a ripple: the stop arrived at, or every one in sight.
 export const MAP_PULSES = [['', 'Sin ondas'], ['cur', 'En la parada actual'], ['all', 'En todas']];
@@ -156,6 +159,8 @@ export function normalizeMap(b) {
   if (b.speed !== 'slow' && b.speed !== 'fast') delete b.speed;
   if (b.start !== 'space' && b.start !== 'prev') delete b.start;
   if (b.pulse !== 'cur' && b.pulse !== 'all') delete b.pulse;
+  if (b.mode !== 'all') { delete b.mode; delete b.view; }
+  else if (b.view != null) { const v = cleanStop(b.view); b.view = { lon: v.lon, lat: v.lat, zoom: v.zoom, pitch: v.pitch, bearing: v.bearing }; }
   b.stops = (Array.isArray(b.stops) ? b.stops : []).slice(0, MAX_STOPS).map(cleanStop);
   const seen = new Set(); for (const s of b.stops) { while (seen.has(s.id)) s.id = uid(); seen.add(s.id); }
   return b;
@@ -177,7 +182,7 @@ export function addMap(props = {}) {
 // What a screen reader says (and the alt text PowerPoint gets): «Mapa: Madrid → París → Roma».
 export const mapAlt = b => {
   const names = (b?.stops || []).map(s => s.name).filter(Boolean);
-  return t('Mapa') + (names.length ? ': ' + names.join(' → ') : '');
+  return t('Mapa') + (names.length ? ': ' + names.join(b.mode === 'all' ? ', ' : ' → ') : '');
 };
 
 // The map's settings (and stops) applied, as one change: the alt text follows the stops unless the author wrote
@@ -198,7 +203,7 @@ export function setMap(id, props) {
 // animations (and their timing); one for a new stop goes after the others; the stops are given to the steps in their
 // order, so reordering the stops reorders the flights. dur: a new flight time for all of them.
 export function syncSteps(b, slide, dur = null) {
-  const want = b.stops.slice(1).map(x => x.id);
+  const want = b.mode === 'all' ? [] : b.stops.slice(1).map(x => x.id);
   let list = animsOf(b);
   const flights = list.filter(a => a.effect === 'mapfly');
   // (Too many: the last ones go; a stop that is now the first has no flight.)
@@ -280,20 +285,37 @@ export function mapConfig(b, lang = 'es') {
     lang: String(lang || 'es').split('-')[0].toLowerCase().replace(/[^a-z]/g, '').slice(0, 3) || 'es',
     color: b.routeColor || '#e63946', route: b.route || 'line', labels: b.labels !== false, all: !!b.showAll, curve: b.curve || 1.42,
     arrive: b.arrive || 'drop', dim: b.past === 'dim',
+    ...(b.mode === 'all' && { all: true, home: (v => ({ c: [v.lon, v.lat], z: v.zoom, p: v.pitch || 0, b: v.bearing || 0 }))(mapView(b)) }),
     ...(b.motion && { motion: b.motion, speed: { slow: 0.5, fast: 2 }[b.speed] || 1 }), ...(b.start && { start: b.start }), ...(isClear(b) && { clear: true }), ...(b.pulse && { pulse: b.pulse }),
     stops: stops.map((s, i) => ({ n: s.name || '', ...(s.note && { t: s.note }), c: [s.lon, s.lat], z: s.zoom, p: s.pitch || 0, b: s.bearing || 0, m: markerArt(markerOf(b, s), i + 1, s.cc), col: markerOf(b, s).color })),
-    segs: routeSegments(b), credit: mapCredit(b), short: mapCreditShort(b) };
+    segs: b.mode === 'all' ? [] : routeSegments(b), credit: mapCredit(b), short: mapCreditShort(b) };
 }
 // What a stop's picture shows (when it changes, the picture is taken again): the map's look, its size, the line and
 // the markers up to that stop (all of them, if they show from the start), and the stop's own view and note.
 export function shotKey(b, i, lang = 'es') {
   const s = b.stops[i]; if (!s) return '';
-  const upTo = b.showAll ? b.stops : b.stops.slice(0, i + 1);
+  const upTo = b.showAll || b.mode === 'all' ? b.stops : b.stops.slice(0, i + 1);
   return JSON.stringify([b.look, b.theme || '', b.route, b.routeColor, !!b.terrain, b.names !== false, b.labels !== false, !!b.showAll, b.past || '', Math.round(b.w), Math.round(b.h), lang,
-    upTo.map(x => [x.name, x.lon, x.lat, markerOf(b, x), x.cc || '']), i, s.zoom, s.pitch, s.bearing, s.note || '', ...(isClear(b) ? ['clear'] : [])]);
+    upTo.map(x => [x.name, x.lon, x.lat, markerOf(b, x), x.cc || '']), i, s.zoom, s.pitch, s.bearing, s.note || '', ...(isClear(b) ? ['clear'] : []), ...(b.mode === 'all' ? ['all', mapView(b)] : [])]);
 }
 // Stops whose picture is missing or out of date.
-export const staleShots = (b, lang) => (b.stops || []).map((s, i) => (s.shot && s.shotKey === shotKey(b, i, lang) ? -1 : i)).filter(i => i >= 0);
+// (All at once, without a trip: only the first one's — the map as it is, at its view —; no step shows the others.)
+export const staleShots = (b, lang) => (b.stops || []).slice(0, b.mode === 'all' ? 1 : undefined).map((s, i) => (s.shot && s.shotKey === shotKey(b, i, lang) ? -1 : i)).filter(i => i >= 0);
+
+// The view of a map with all its stops at once: its own, or one that takes them all in — the shortest stretch of
+// longitudes holding them (across the date line, if shorter), a little room around.
+export function mapView(b) {
+  if (b.view) return b.view;
+  const st = b.stops || [];
+  if (!st.length) return { lon: 0, lat: 25, zoom: 1.5, pitch: 0, bearing: 0 };
+  if (st.length === 1) return { lon: st[0].lon, lat: st[0].lat, zoom: st[0].zoom, pitch: 0, bearing: 0 };
+  const lons = st.map(s => s.lon).sort((x, y) => x - y);
+  let gap = -1, at = 0;
+  lons.forEach((l, i) => { const nx = i + 1 < lons.length ? lons[i + 1] : lons[0] + 360; if (nx - l > gap) { gap = nx - l; at = i; } });
+  const west = lons[(at + 1) % lons.length], east = west + 360 - gap, lats = st.map(s => s.lat), south = Math.min(...lats), north = Math.max(...lats);
+  const mid = unmerc([0, (merc([0, south])[1] + merc([0, north])[1]) / 2])[1];
+  return { lon: round(wrapLon((west + east) / 2)), lat: round(mid), zoom: round(Math.max(1, zoomForBox([south, north, west, east], b.w || 960, b.h || 540) - 0.4), 2), pitch: 0, bearing: 0 };
+}
 
 // The zoom that shows a place whole (its bounding box: south, north, west, east) in a map of w × h.
 export function zoomForBox([s, n, w, e], bw = 960, bh = 540) {

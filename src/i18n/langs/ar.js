@@ -4822,4 +4822,10 @@ export default {
   "Así se mueve en cada parada al presentar.": "هكذا تتحرك في كل محطة عند العرض.",
   "Al presentar, el mapa sigue desde donde quedó el de la diapositiva anterior y vuela a la primera parada; si quedó en esa misma parada, sigue tal cual.": "عند العرض، تتابع الخريطة من حيث توقفت خريطة الشريحة السابقة وتطير إلى المحطة الأولى؛ وإذا كانت قد توقفت عند هذه المحطة نفسها، فتستمر كما هي.",
   "Solo la bola del mundo, sobre el fondo de la diapositiva": "الكرة الأرضية فقط، فوق خلفية الشريحة",
+  "Una a una, con un clic cada vez": "واحدة تلو الأخرى، بنقرة لكل منها",
+  "Todas a la vez, sin viajar": "جميعها معًا، دون تنقّل",
+  "Usar la vista actual para el mapa": "استخدام العرض الحالي للخريطة",
+  "Que se vean todas": "إظهارها جميعًا",
+  "Marcadores de las paradas": "علامات المحطات",
+  "El mapa empezará con esta vista.": "ستبدأ الخريطة بهذا العرض.",
 };

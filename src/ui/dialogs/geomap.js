@@ -19,7 +19,7 @@ import { toast } from '../shell/toast.js';
 let runtime = null;
 const rt = () => (runtime ||= geoMapRuntime(MAPLIBRE, MAPLIBRE_RTL, { offline: t('Sin conexión: el mapa no se puede cargar') }));
 const lang = () => deckTag(state.deck, currentLang()).split('-')[0];
-const SETTINGS = ['look', 'theme', 'route', 'routeColor', 'terrain', 'names', 'labels', 'showAll', 'curve', 'marker', 'arrive', 'past', 'motion', 'speed', 'start', 'pulse', 'transparent'];
+const SETTINGS = ['look', 'theme', 'route', 'routeColor', 'terrain', 'names', 'labels', 'showAll', 'curve', 'marker', 'arrive', 'past', 'motion', 'speed', 'start', 'pulse', 'transparent', 'mode', 'view'];
 const pick = b => Object.fromEntries(SETTINGS.filter(k => b[k] !== undefined).map(k => [k, structuredClone(b[k])]));
 // (A little picture of each look, for choosing: drawn here, nothing to download.)
 const LOOK_ART = {
@@ -47,8 +47,11 @@ export function openMapEditor(b0, { isNew = false } = {}) {
         <div class="gm-results" role="list" aria-live="polite"></div>
         <button type="button" class="mini2 gm-here"><i class="ms">add_location_alt</i> ${t('Añadir la vista actual como parada')}</button>
         <h4>${t('Paradas')} <small class="gm-count"></small></h4>
+        <label class="fr-l gm-modew">${t('Al presentar')}<select class="gm-mode">${G.MAP_MODES.map(([v, l]) => `<option value="${v}">${t(l)}</option>`).join('')}</select></label>
+        <div class="gm-row gm-viewrow"><button type="button" class="mini2 gm-setview"><i class="ms">center_focus_strong</i> ${t('Usar la vista actual para el mapa')}</button>
+          <button type="button" class="mini2 gm-fitview"><i class="ms">fit_screen</i> ${t('Que se vean todas')}</button></div>
         <ol class="gm-stops"></ol>
-        <details class="gm-sec dk-more"><summary><i class="ms" aria-hidden="true">expand_more</i>${t('Marcadores')}</summary>
+        <details class="gm-sec dk-more"><summary><i class="ms" aria-hidden="true">expand_more</i>${t('Marcadores de las paradas')}</summary>
           <div class="gm-kinds" role="radiogroup" aria-label="${t('Marcador')}"></div>
           <div class="gm-row"><label class="fr-l">${t('Color')}<input type="color" class="gm-mcolor"></label>
             <label class="fr-l">${t('Tamaño')}<select class="gm-msize">${G.MARKER_SIZES.map(([v, l]) => `<option value="${v}">${t(l)}</option>`).join('')}</select></label>
@@ -57,9 +60,9 @@ export function openMapEditor(b0, { isNew = false } = {}) {
             <label class="fr-l">${t('Las ya visitadas')}<select class="gm-past"><option value="">${t('Se quedan')}</option><option value="dim">${t('Atenuadas')}</option></select></label></div>
           <label class="fr-l">${t('Ondas')}<select class="gm-pulse">${G.MAP_PULSES.map(([v, l]) => `<option value="${v}">${t(l)}</option>`).join('')}</select></label>
           <label class="fr-chk"><input type="checkbox" class="gm-labels"> ${t('Nombre junto al marcador')}</label>
-          <label class="fr-chk"><input type="checkbox" class="gm-all"> ${t('Mostrar todas las paradas desde el principio')}</label>
+          <label class="fr-chk gm-allw"><input type="checkbox" class="gm-all"> ${t('Mostrar todas las paradas desde el principio')}</label>
         </details>
-        <details class="gm-sec dk-more"><summary><i class="ms" aria-hidden="true">expand_more</i>${t('Línea y vuelo')}</summary>
+        <details class="gm-sec dk-more gm-flysec"><summary><i class="ms" aria-hidden="true">expand_more</i>${t('Línea y vuelo')}</summary>
           <div class="gm-row"><label class="fr-l">${t('Línea entre paradas')}<select class="gm-route">${G.MAP_ROUTES.map(([v, l]) => `<option value="${v}">${t(l)}</option>`).join('')}</select></label>
             <label class="fr-l">${t('Color')}<input type="color" class="gm-rcolor"></label></div>
           <div class="gm-row"><label class="fr-l">${t('Duración del vuelo (s)')}<input type="number" class="gm-dur" min="0.5" max="12" step="0.5"></label>
@@ -109,6 +112,9 @@ export function openMapEditor(b0, { isNew = false } = {}) {
     q('.gm-pulse').value = d.pulse || ''; q('.gm-motionsel').value = d.motion || 'none'; q('.gm-speed').value = d.speed || 'normal'; q('.gm-start').value = d.start || '';
     q('.gm-speedw').hidden = !d.motion;
     // (A globe without its space: only the globe; seen here over a checkerboard, as any see-through picture.)
+    // (All the stops at once: no trip — its line, its flights, «show them all from the start» go; the map's view comes.)
+    const all = d.mode === 'all'; q('.gm-mode').value = d.mode || ''; q('.gm-viewrow').hidden = !all; q('.gm-allw').hidden = all; q('.gm-flysec').hidden = all;
+    q('.gm-fitview').disabled = !d.view;
     q('.gm-clearw').hidden = d.look !== 'globe'; q('.gm-clear').checked = !!d.transparent; q('.gm-view').classList.toggle('gm-clearbg', G.isClear(d));
     // (On a flat map the «turning» is a slide sideways: said so.)
     q('.gm-motionsel option[value="spin"]').textContent = t(d.look === 'globe' ? 'Girar el planeta' : 'Desplazarse de lado');
@@ -145,6 +151,11 @@ export function openMapEditor(b0, { isNew = false } = {}) {
   on('.gm-all', 'change', x => { d.showAll = x.checked; });
   on('.gm-route', 'change', x => { d.route = x.value; });
   on('.gm-pulse', 'change', x => { d.pulse = x.value || undefined; });
+  // (The map's view, for all the stops at once: seen at once.)
+  const home = () => setTimeout(() => { ctl.update(G.mapConfig(draft(), lang())); ctl.go(0, false); }, 150);
+  on('.gm-mode', 'change', x => { d.mode = x.value || undefined; if (!d.mode) delete d.view; home(); });
+  q('.gm-setview').addEventListener('click', () => { const v = here(); set(() => { d.view = { lon: v.lon, lat: v.lat, zoom: v.zoom, pitch: v.pitch, bearing: v.bearing }; }); status(t('El mapa empezará con esta vista.')); });
+  q('.gm-fitview').addEventListener('click', () => { set(() => { delete d.view; }); home(); });
   // (A motion chosen: seen here a few seconds, then the map back at its stop. A start: tried at once.)
   let peek = 0;
   const tryMotion = () => {
@@ -249,13 +260,14 @@ export function openMapEditor(b0, { isNew = false } = {}) {
   let playing = 0;
   q('.gm-play').addEventListener('click', async () => {
     if (playing) { playing = 0; return; }
-    if (d.stops.length < (d.motion || d.start ? 1 : 2)) { status(t('Añade al menos dos paradas.')); return; }
+    if (d.stops.length < (d.motion || d.start || d.mode ? 1 : 2)) { status(t('Añade al menos dos paradas.')); return; }
     const me = playing = Date.now(); q('.gm-play span').textContent = t('Detener'); q('.gm-play .ms').textContent = 'stop_circle';
     clearTimeout(peek); ctl.update(G.mapConfig(draft(), lang())); ctl.moving(!!d.motion);
     if (d.start === 'space') await ctl.begin('space'); else ctl.go(0, false);
+    if (d.mode === 'all') await new Promise(r => setTimeout(r, d.motion ? 6000 : 1500));
     // (With a motion, a longer while at each stop, to see it.)
-    for (let i = 1; i < d.stops.length && playing === me; i++) { await new Promise(r => setTimeout(r, d.motion ? 3500 : 900)); if (playing !== me) break; await ctl.go(i, true, flyMs); }
-    if (d.motion && playing === me) await new Promise(r => setTimeout(r, 3500));
+    for (let i = 1; i < d.stops.length && playing === me && d.mode !== 'all'; i++) { await new Promise(r => setTimeout(r, d.motion ? 3500 : 900)); if (playing !== me) break; await ctl.go(i, true, flyMs); }
+    if (d.motion && playing === me && d.mode !== 'all') await new Promise(r => setTimeout(r, 3500));
     if (playing === me) playing = 0;
     ctl.moving(false);
     q('.gm-play span').textContent = t('Probar el recorrido'); q('.gm-play .ms').textContent = 'play_circle';

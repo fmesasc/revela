@@ -345,8 +345,9 @@ export function geoMapRuntime(lib, rtl, words) {
         e.classList.toggle('rvm-pulse', on && !opts.capture && (cfg.pulse === 'all' || (cfg.pulse === 'cur' && i === k && !part)));
       });
     }
-    function showNote(k, on) {
-      var s = cfg.stops[k];
+    // (any: a stop flown to by a click on its marker — with all the stops at once, no other shows its note.)
+    function showNote(k, on, any) {
+      var s = cfg.stops[k]; if (cfg.home && !any) on = false;
       if (on && s && s.t) note.innerHTML = '<b>' + esc(s.n || '') + '</b>' + esc(s.t).replace(/\n/g, '<br>');
       note.classList.toggle('rvm-show', !!(on && s && s.t));
     }
@@ -387,9 +388,11 @@ export function geoMapRuntime(lib, rtl, words) {
       if (!m.getLayer('rv-route')) m.addLayer({ id: 'rv-route', type: 'line', source: 'rv-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': cf.color, 'line-width': 4 } });
       paint(c.cur);
     }
-    var s0 = cfg.stops[0] || { c: [0, 25], z: 1.2, p: 0, b: 0 };
+    // Where stop k is seen from: its own view — or, the first, with all the stops at once (cfg.home), the map's.
+    var place = function (k) { return cfg.home && k === 0 ? cfg.home : cfg.stops[k]; };
+    var s0 = place(0) || { c: [0, 25], z: 1.2, p: 0, b: 0 };
     // (The Earth seen from space, over the first stop: where a slide that starts from space starts.)
-    var space = function () { var a = cfg.stops[0] || s0; return { center: [a.c[0], a.c[1] * 0.4], zoom: (cfg.proj === 'globe' ? 1.4 : 1) + zk(), pitch: 0, bearing: 0 }; };
+    var space = function () { var a = place(0) || s0; return { center: [a.c[0], a.c[1] * 0.4], zoom: (cfg.proj === 'globe' ? 1.4 : 1) + zk(), pitch: 0, bearing: 0 }; };
     // (A map started before its slide is shown — the next one's —, that starts from space: already there.)
     c.first = !!(opts.start && cfg.start === 'space' && !reduced());
     c.ready = load(cfg).then(function (ml) {
@@ -474,7 +477,7 @@ export function geoMapRuntime(lib, rtl, words) {
     function ahead(ms) {
       clearTimeout(c.at);
       c.at = setTimeout(function () {
-        var m = c.map, s = cfg.stops[c.first ? 0 : c.cur + 1];
+        var m = c.map, s = c.first ? place(0) : cfg.home ? null : cfg.stops[c.cur + 1];
         if (c.dead || !m) return;
         if (m.isMoving()) return ahead(300);
         if (!c.first && !mo.on) motion(true);                                // (arrived: it may keep moving)
@@ -487,7 +490,7 @@ export function geoMapRuntime(lib, rtl, words) {
       k = Math.max(0, Math.min(cfg.stops.length - 1, k | 0));
       var prev = c.cur, me = ++c.token, was = mo.on; c.cur = k; c.first = false; motion(false); mo.z = 0; shot(k);
       var m = c.map, s = cfg.stops[k]; if (!m || !s || !el.classList.contains('rvm-on')) { showNote(k, true); return Promise.resolve(); }
-      var to = camOf(s);
+      var to = camOf(place(k)); c.seen = -1;
       dur = dur || 3000;
       c.arriving = false; sign(false);
       if (!animate || reduced()) {
@@ -562,7 +565,7 @@ export function geoMapRuntime(lib, rtl, words) {
     // as if it were the same map. → a promise, once at the first stop.
     var START_MS = 4500;
     c.begin = function (kind, from) {
-      var a = cfg.stops[0];
+      var a = cfg.stops[0] && place(0);
       if (!a || reduced() || !(kind === 'space' || (kind === 'prev' && from))) { c.first = false; return c.go(0, false); }
       var me = ++c.token; c.first = true; c.cur = 0; motion(false); shot(0);
       return c.ready.then(function () {
@@ -578,19 +581,23 @@ export function geoMapRuntime(lib, rtl, words) {
       });
     };
     // A click on a marker: there, out of turn — the trip's steps carry on from where they were (the next click goes
-    // to the stop after the last one reached, from here); its note, once there; then the map's motion, if any.
+    // to the stop after the last one reached, from here); its note, once there; then the map's motion, if any. With
+    // all the stops at once, a click on the one flown to goes back to the map's view.
+    c.seen = -1;
     c.visit = function (i) {
       var m = c.map, s = cfg.stops[i]; if (!m || !s || c.first || !el.classList.contains('rvm-on')) return;
+      var back = cfg.home && c.seen === i;
       var me = ++c.token; motion(false); mo.z = 0; showNote(c.cur, false); sign(false);
       if (job && job.left) drop();
-      m.stop(); m.flyTo(Object.assign(camOf(s), { duration: reduced() ? 0 : 2500, curve: cfg.curve || 1.42 }));
-      m.once('moveend', function () { if (me !== c.token || c.dead) return; showNote(i, true); free(); job = null; ahead(0); });
+      c.seen = back ? -1 : i;
+      m.stop(); m.flyTo(Object.assign(camOf(back ? place(c.cur) : s), { duration: reduced() ? 0 : 2500, curve: cfg.curve || 1.42 }));
+      m.once('moveend', function () { if (me !== c.token || c.dead) return; if (!back) showNote(i, true, true); free(); job = null; ahead(0); });
     };
     // Where it was left, for the next slide's map (c.begin()): its camera — the zoom in the block's own terms —, the
     // stop it was at, how far it had neared it.
     c.state = function () {
       var m = c.map; if (!m || c.failed || !el.classList.contains('rvm-on')) return null;
-      var v = camNow(), s = c.first ? null : cfg.stops[c.cur]; v.zoom -= zk();
+      var v = camNow(), s = c.first ? null : place(c.cur); v.zoom -= zk();
       return { cam: v, at: s ? { c: s.c, z: s.z } : null, z: mo.z };
     };
     // Where the map is looking now, in the block's terms (for «Usar la vista actual»).
@@ -650,7 +657,7 @@ export function geoMapRuntime(lib, rtl, words) {
           }
           g.globalAlpha = 1;
         });
-        var s = cfg.stops[k];
+        var s = cfg.home ? null : cfg.stops[k];
         if (s && s.t) {
           var pad = 14 * k2, maxw = Math.min(W * 0.46, 420 * k2) - 28 * k2, lines = [];
           g.font = '400 ' + (16 * k2) + 'px system-ui,sans-serif';
