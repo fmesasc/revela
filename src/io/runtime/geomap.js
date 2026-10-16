@@ -96,9 +96,10 @@ export function geoMapRuntime(lib, rtl, words) {
   // ── Light, on a phone (or the scroll view — a phone held upright —, or a computer with little memory): each live map
   // is a WebGL canvas with its own tiles in the graphics card's memory, and scrolling down a deck with several maps a
   // slide had eight alive at once — Safari on an iPhone closed the page («ha generado problemas repetidamente»,
-  // Francisco, 2026-10-17). There only the maps of the slide in view are alive, let go of at once; nothing is fetched
-  // ahead (neither the next slide's map nor the next flight's tiles), no floor under the world, a small memory of
-  // tiles, and no relief (the heaviest: its heights and a picture of each tile drawn on them).
+  // Francisco, 2026-10-17). There only the maps of the slide in view are alive, let go of at once; the next slide's
+  // map isn't started ahead; and no relief (the heaviest: its heights and a picture of each tile drawn on them). The
+  // floor under the world (coarser: zoom 1) and the next flight's tiles (half of them: small) stay — without them the
+  // flights showed holes filling in on the way (Francisco, the same day): they weigh little.
   var lite = function () {
     var sv = window.Reveal && Reveal.isScrollView && Reveal.isScrollView();
     var phone = window.matchMedia && matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 820;
@@ -134,7 +135,7 @@ export function geoMapRuntime(lib, rtl, words) {
         if (this.map && this.map._rvCoarse != null && this.transform && this.transform.zoom < this.map._rvCoarse) ideal = coarser(ideal);
         if (ideal.length && ideal[0] && ideal[0].constructor && ideal[0].scaledTo) {
           if (!pinned) {
-            var Id = ideal[0].constructor, top = Math.max(src.minzoom || 0, Math.min(src.maxzoom == null ? 22 : src.maxzoom, (src.tileSize || 512) >= 512 ? 1 : 2));
+            var Id = ideal[0].constructor, top = Math.max(src.minzoom || 0, Math.min(src.maxzoom == null ? 22 : src.maxzoom, (src.tileSize || 512) >= 512 || lite() ? 1 : 2));
             pinned = [];
             [-1, 0, 1].forEach(function (w) {
               for (var z = src.minzoom || 0; z <= top; z++) for (var x = 0; x < 1 << z; x++) for (var y = 0; y < 1 << z; y++) pinned.push(new Id(z, w, z, x, y));
@@ -282,7 +283,7 @@ export function geoMapRuntime(lib, rtl, words) {
   // opts: interactive (drag, zoom, turn), keyboard, capture (keeps its picture to be read), onMove(view).
   function mount(el, cfg, opts) {
     opts = opts || {}; styles();
-    var c = { el: el, cfg: cfg, cur: 0, map: null, failed: false, dead: false, markers: [], token: 0, warms: opts.warm !== false && !opts.capture && !lite() };
+    var c = { el: el, cfg: cfg, cur: 0, map: null, failed: false, dead: false, markers: [], token: 0, warms: opts.warm !== false && !opts.capture };
     var box = document.createElement('div'); box.className = 'rvm-live'; box.setAttribute('aria-hidden', 'true');
     box.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%';      // (MapLibre's own CSS makes its box position:relative)
     // (Behind the map, what shows while its tiles come: none for a globe without its space — cfg.clear: the slide.)
@@ -424,7 +425,7 @@ export function geoMapRuntime(lib, rtl, words) {
       localNames(m, cf.lang);
       // (Raster tiles cross-fade with the coarser ones under them, which fades those out — the floor too: shown at once.)
       (m.getStyle().layers || []).forEach(function (l) { if (l.type === 'raster') try { m.setPaintProperty(l.id, 'raster-fade-duration', 0); } catch (e) {} });
-      if (!opts.capture && !lite()) floor(m);
+      if (!opts.capture) floor(m);
       if (!m.getSource('rv-route')) m.addSource('rv-route', { type: 'geojson', data: geo(c.cur) });
       if (!m.getSource('rv-room')) m.addSource('rv-room', { type: 'geojson', data: spots(c.cur) });
       if (!m.getLayer('rv-room')) try { m.addLayer({ id: 'rv-room', type: 'symbol', source: 'rv-room', layout: { 'text-field': ['get', 't'], 'text-font': ['Noto Sans Bold'], 'text-size': 17,
@@ -444,7 +445,7 @@ export function geoMapRuntime(lib, rtl, words) {
     c.ready = load(cfg).then(function (ml) {
       if (c.dead) return c;
       var v0 = c.first ? space() : { center: s0.c, zoom: s0.z + zk(), pitch: s0.p, bearing: s0.b };
-      var m = c.map = new ml.Map({ container: box, style: cfg.style, maxTileCacheSize: lite() ? 24 : null, center: v0.center, zoom: v0.zoom, pitch: v0.pitch, bearing: v0.bearing, maxPitch: 85,
+      var m = c.map = new ml.Map({ container: box, style: cfg.style, center: v0.center, zoom: v0.zoom, pitch: v0.pitch, bearing: v0.bearing, maxPitch: 85,
         interactive: opts.interactive !== false, attributionControl: { compact: true }, pixelRatio: pr(), fadeDuration: opts.capture ? 0 : 300,
         canvasContextAttributes: { antialias: true, preserveDrawingBuffer: !!opts.capture } });
       if (!opts.keyboard && m.keyboard) m.keyboard.disable();            // (the arrows are the presentation's)
