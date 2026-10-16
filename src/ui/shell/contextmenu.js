@@ -58,10 +58,14 @@ export function initContextMenu() {
     const blockEl = target && target.closest('.block'), word = blockEl && !extra ? spellAt(x, y) : null;
     if (word) { spellMenu(word, x, y).then(items => openStageMenu(x, y, target, touch, items)); return; }
     extra ||= [];
-    if (blockEl) {
-      if (!isSelected(blockEl.dataset.id)) commit(() => setSelection(blockEl.dataset.id), { history: false });
+    // (An object no longer on the slide in view — deleted, or another slide shown while the word's suggestions were
+    // looked up —: the slide's menu, or none after that wait.)
+    const b = blockEl && currentSlide()?.blocks.find(o => o.id === blockEl.dataset.id);
+    if (blockEl && !b && extra.length) return;
+    if (b) {
+      if (!isSelected(b.id)) commit(() => setSelection(b.id), { history: false });
       const td = target.closest('td[data-r]');
-      open(x, y, [...extra, ...forBlock(selectedBlock(), td ? { r: +td.dataset.r, c: +td.dataset.c } : null)]);
+      open(x, y, [...extra, ...forBlock(selectedBlock() || b, td ? { r: +td.dataset.r, c: +td.dataset.c } : null)]);
     } else {
       open(x, y, forCanvas());
     }

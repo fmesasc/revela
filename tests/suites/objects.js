@@ -387,6 +387,16 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(b.header, 'bandera header'); assert(/class="tbl has-header"/.test(R.io.buildHTML()), 'clase has-header');
   });
 
+  await test('menú contextual sobre un objeto que ya no está en la diapositiva', async () => {
+    reset(); const ghost = D.createElement('div'); ghost.className = 'block'; ghost.dataset.id = 'ya-no-esta';
+    D.getElementById('stage').appendChild(ghost);
+    try {
+      ghost.dispatchEvent(new frame.contentWindow.MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }));
+      const items = [...D.querySelectorAll('#context-menu .ctx-item')].map(x => x.textContent);
+      assert(items.length && !items.some(x => /Duplicar/.test(x)), 'el menú de la diapositiva, sin error');
+    } finally { ghost.remove(); D.body.click(); }
+  });
+
   await test('estilos de tabla: predefinidos y opciones', async () => {
     reset(); R.blocks.addTable(); const b = last(); select(b); await sleep(10);
     D.querySelector(`#stage .block[data-id="${b.id}"]`).dispatchEvent(new frame.contentWindow.MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }));
