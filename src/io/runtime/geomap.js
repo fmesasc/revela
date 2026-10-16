@@ -96,8 +96,9 @@ export function geoMapRuntime(lib, rtl, words) {
   // ── Light, on a phone (or the scroll view — a phone held upright —, or a computer with little memory): each live map
   // is a WebGL canvas with its own tiles in the graphics card's memory, and scrolling down a deck with several maps a
   // slide had eight alive at once — Safari on an iPhone closed the page («ha generado problemas repetidamente»,
-  // Francisco, 2026-10-17). There only the maps of the slide in view are alive, let go of at once; the next slide's
-  // map isn't started ahead; and no relief (the heaviest: its heights and a picture of each tile drawn on them). The
+  // Francisco, 2026-10-17). In the scroll view only the maps of the slide in view are alive, let go of at once;
+  // presenting slide by slide, those of the next one too, unless there are many (ahead2()) — without them the
+  // transition showed nothing where the map would be, and Morph had no Earth to carry (Francisco, the same day); and no relief (the heaviest: its heights and a picture of each tile drawn on them). The
   // floor under the world (coarser: zoom 1) and the next flight's tiles (half of them: small) stay — without them the
   // flights showed holes filling in on the way (Francisco, the same day): they weigh little.
   var lite = function () {
@@ -849,7 +850,11 @@ export function geoMapRuntime(lib, rtl, words) {
   function near(sec, cur) {
     if (!window.Reveal || !sec) return false;
     var all = Reveal.getSlides(), a = all.indexOf(sec.closest('section')), b = all.indexOf(cur);
-    return a >= 0 && b >= 0 && Math.abs(a - b) <= (lite() ? 0 : 1);
+    if (a < 0 || b < 0) return false;
+    // (Light: in the scroll view, only the slide in view; presenting slide by slide, it and the next — if there aren't
+    // too many maps between the two: ahead2().)
+    if (lite()) return a === b || (a === b + 1 && !scrollView() && ahead2(all[b], all[a]));
+    return Math.abs(a - b) <= 1;
   }
   // ── Morph (Transformar) between two slides with a map each, of the same look: the same Earth — the new one carries
   // on from where the other was left, as its box glides to its place (and back, going back). Its partner: the one
@@ -882,7 +887,7 @@ export function geoMapRuntime(lib, rtl, words) {
     // (What is heavy — starting the next slide's map, letting go of one two slides away — once the change is over and
     // this slide's map has got where it was going: in the middle of a transition or a flight it cost a few frames.
     // Right away at the start; after 10 s, anyway.)
-    if (!prev || lite()) return around(slide);
+    if (!prev || scrollView()) return around(slide);
     var t0 = Date.now();
     (function wait() {
       var busy = [].some.call(slide.querySelectorAll('[data-geomap]'), function (el) { var c = el._rvm; return c && c.map && !c.dead && (c.going || c.first || c.map.isMoving()); });
@@ -903,13 +908,19 @@ export function geoMapRuntime(lib, rtl, words) {
     });
     return best || cur;
   }
+  var scrollView = function () { return !!(window.Reveal && Reveal.isScrollView && Reveal.isScrollView()); };
+  var maps = function (s) { return s ? s.querySelectorAll('[data-geomap]').length : 0; };
+  // (Whether the next slide's maps may be started ahead — so the transition shows them, and Morph has one to carry the
+  // Earth into —: always, except light with more than five maps between this slide and the next.)
+  function ahead2(cur, next) { return !!next && (!lite() || maps(cur) + maps(next) <= 5); }
   function around(slide) {
     var cur = focus();
     mounted.slice().forEach(function (c) { if (!c.el.isConnected || !near(c.el.closest('section'), cur)) { if (!c.el.closest('.rv-dlg-map')) c.destroy(); } });
-    if (cur !== slide || lite()) return;
+    if (cur !== slide || scrollView()) return;
     // (A map on the next slide, started now — reveal.js has it laid out already —: its first view loaded and its
     // first flight fetched before it is shown. Not in the speaker view's previews: the presentation does it.)
     var all = Reveal.getSlides(), next = all[all.indexOf(slide) + 1];
+    if (!ahead2(slide, next)) next = null;
     if (next && !receiver) next.querySelectorAll('[data-geomap]').forEach(function (el) { ensure(el); });
     // (And one there that will carry on from a map here: kept looking where this one is — c.shadow().)
     slide.querySelectorAll('[data-geomap]').forEach(function (el) {
