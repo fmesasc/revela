@@ -13,6 +13,7 @@ import { alertDialog, confirmDialog } from './dialog.js';
 import { hasAccounts } from '../../io/cloud/account.js';
 import { openCloudShare } from './cloud.js';
 import { openQR, qrButton } from './qr.js';
+import { tipHTML } from './dlgkit.js';
 
 const copyBtn = sel => `<button type="button" class="mini2 sh-copy" data-copy="${sel}">${t('Copiar')}</button>`;
 
@@ -25,7 +26,6 @@ export function openShare() {
     <button class="modal-close">✕</button><h3>${t('Compartir')}</h3>
 ${hasAccounts() ? `<div class="sh-cloud"><div><b>${t('Con personas concretas')}</b><br><small>${t('Desde tu nube de Revela: cada persona con su permiso (ver, comentar o editar), y los cambios al momento.')}</small></div>
       <button type="button" class="fr-do sh-people"><i class="ms">person_add</i> ${t('Personas')}</button></div><h4>${t('O un enlace o archivo protegido')}</h4>` : ''}
-    <p class="host-help">${t('La presentación sale de tu navegador ya protegida: ni el servidor ni quien guarde el archivo pueden leerla sin el enlace completo o la contraseña, y no aparece en buscadores.')}</p>
     <fieldset><legend>${t('¿Quién puede abrirla?')}</legend>
       <label class="fr-chk"><input type="radio" name="sh-p" value="key" checked> ${t('Cualquiera que tenga el enlace o el archivo (sin contraseña)')}</label>
       <label class="fr-chk"><input type="radio" name="sh-p" value="password"> ${t('Solo quien sepa la contraseña (se pide al abrirla)')}</label>
@@ -34,6 +34,7 @@ ${hasAccounts() ? `<div class="sh-cloud"><div><b>${t('Con personas concretas')}<
         <input type="password" class="sh-pw2" placeholder="${t('Repite la contraseña')}" autocomplete="new-password">
         <p class="host-help">${t('Usa una frase larga: quien consiga el enlace o el archivo puede ir probando contraseñas sin límite.')}</p>
       </div>
+      ${tipHTML(t('La presentación sale de tu navegador ya protegida: ni el servidor ni quien guarde el archivo pueden leerla sin el enlace completo o la contraseña, y no aparece en buscadores.'))}
     </fieldset>
     <fieldset><legend>${t('Dónde')}</legend>
       <label class="fr-chk"><input type="radio" name="sh-w" value="file" checked> ${t('Archivo HTML: lo subes donde quieras (la web del centro, Moodle…)')}</label>
@@ -50,7 +51,7 @@ ${hasAccounts() ? `<div class="sh-cloud"><div><b>${t('Con personas concretas')}<
         </details>
       </div>
     </fieldset>
-    <div class="fr-actions"><button class="fr-do sh-go">${t('Compartir')}</button></div>
+    <div class="fr-actions" style="justify-content:flex-end"><button class="fr-do sh-go">${t('Compartir')}</button></div>
     <div class="sh-out"></div>
     <div class="sh-list"></div></div>`;
   document.body.appendChild(back);

@@ -10,6 +10,7 @@ import { slidePicture } from '../../io/export/images.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from './dialog.js';
 import { toast } from '../shell/toast.js';
+import { moreHTML, footHTML } from './dlgkit.js';
 
 export const SUBJECT_NAMES = { math: 'Matemáticas', lang: 'Lengua y literatura', science: 'Ciencias', social: 'Ciencias sociales e historia', arts: 'Arte y plástica', music: 'Música', pe: 'Educación física',
   tech: 'Tecnología e informática', languages: 'Idiomas', values: 'Valores, filosofía y religión', vocational: 'Formación profesional', business: 'Empresa', other: 'Otra' };
@@ -29,18 +30,20 @@ export async function openPublish() {
   document.getElementById('cm-modal')?.remove();
   const back = document.createElement('div'); back.id = 'cm-modal'; back.className = 'modal-backdrop';
   const opt = (o, names, cur) => Object.entries(names).map(([k, l]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${t(l)}</option>`).join('');
-  back.innerHTML = `<div class="modal" style="text-align:start;width:min(620px,96vw);max-width:none"><button class="modal-close" aria-label="${t('Cerrar')}">✕</button>
+  // What every publication needs, in view; the name shown and the licence (CC BY unless changed) under «Más opciones».
+  back.innerHTML = `<div class="modal dk" role="dialog" aria-modal="true" style="width:min(620px,96vw)"><button class="modal-close" aria-label="${t('Cerrar')}">✕</button>
     <h3>${t('Publicar en la comunidad')}</h3>
+    <div class="dk-body">
     <p class="host-help">${t('Otros docentes podrán encontrarla en revelaslides.com/community y usar una copia. La revisamos antes de publicarla.')}</p>
     <label class="fr-l">${t('Título')}<input type="text" class="cm-title" maxlength="120" value="${esc(state.deck.name || '')}"></label>
     <label class="fr-l">${t('Descripción (para quién es y qué incluye)')}<textarea class="cm-desc" rows="3" maxlength="600"></textarea></label>
     <div class="fr-row"><label class="fr-l">${t('Materia')}<select class="cm-subject">${opt(0, SUBJECT_NAMES, 'other')}</select></label>
       <label class="fr-l">${t('Nivel')}<select class="cm-level">${opt(0, LEVEL_NAMES, 'secondary')}</select></label></div>
-    <label class="fr-l">${t('Nombre que se mostrará (opcional)')}<input type="text" class="cm-author" maxlength="60" value="${esc(account()?.name || '')}"></label>
-    <fieldset class="cm-lic"><legend>${t('Licencia')}</legend>${cm.LICENSES.map((k, i) => `<label class="fr-chk"><input type="radio" name="cm-lic" value="${k}"${i ? '' : ' checked'}> <b>${LICENSE_NAMES[k][0]}</b> — ${t(LICENSE_NAMES[k][1])}</label>`).join('')}</fieldset>
     <label class="fr-chk"><input type="checkbox" class="cm-rights"> ${t('Confirmo que puedo publicarla: es mía, las imágenes y textos que lleva se pueden compartir, y no contiene datos personales de alumnos.')}</label>
-    <p class="cm-note host-help"></p>
-    <div class="fr-actions"><button type="button" class="mini2 cm-mine">${t('Mis publicaciones')}</button><button type="button" class="fr-do cm-go">${t('Enviar a revisión')}</button></div></div>`;
+    ${moreHTML(`<label class="fr-l">${t('Nombre que se mostrará (opcional)')}<input type="text" class="cm-author" maxlength="60" value="${esc(account()?.name || '')}"></label>
+    <fieldset class="cm-lic"><legend>${t('Licencia')}</legend>${cm.LICENSES.map((k, i) => `<label class="fr-chk"><input type="radio" name="cm-lic" value="${k}"${i ? '' : ' checked'}> <b>${LICENSE_NAMES[k][0]}</b> — ${t(LICENSE_NAMES[k][1])}</label>`).join('')}</fieldset>`)}
+    <p class="cm-note host-help" role="status"></p></div>
+    ${footHTML(`<span class="dk-foot-start"><button type="button" class="mini2 cm-mine">${t('Mis publicaciones')}</button></span><button type="button" class="fr-do cm-go">${t('Enviar a revisión')}</button>`)}</div>`;
   document.body.appendChild(back);
   const q = s => back.querySelector(s), close = () => back.remove();
   q('.modal-close').addEventListener('click', close); back.addEventListener('click', e => { if (e.target === back) close(); });

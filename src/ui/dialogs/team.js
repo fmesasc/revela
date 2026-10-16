@@ -11,6 +11,7 @@ import { t, currentLang } from '../../i18n/index.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { openAccount } from './account.js';
 import { ssoBox, wireSso } from './teamsso.js';
+import { tabsHTML, wireTabs, tipHTML } from './dlgkit.js';
 
 const errorText = e => (e.status === 402 && e.data?.error === 'no seats' ? t('No quedan puestos libres ({n}). Compra más puestos para invitar a más personas.').replace('{n}', e.data.seats)
   : e.status === 403 ? t('Solo la administración del equipo puede hacer esto.') : e.data?.error === 'last admin' ? t('El equipo necesita al menos una persona que lo administre.')
@@ -22,16 +23,17 @@ export async function openTeam() {
   if (!acc.account()) { await acc.refreshAccount().catch(() => null); if (!acc.account()) return openAccount(); }
   document.getElementById('team-modal')?.remove();
   const back = document.createElement('div'); back.id = 'team-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal cloud" style="text-align:start;width:min(720px,94vw);max-width:none"><button class="modal-close">✕</button><h3>${t('Mi equipo')}</h3><div class="tm-body"><p class="host-help">${t('Cargando…')}</p></div></div>`;
+  back.innerHTML = `<div class="modal cloud" style="text-align:start;width:min(720px,94vw);max-width:none"><button class="modal-close">✕</button><h3>${t('Mi equipo')}</h3><div class="tm-body dk-wrap"><p class="host-help">${t('Cargando…')}</p></div></div>`;
   document.body.appendChild(back);
-  const body = back.querySelector('.tm-body'), close = () => back.remove();
+  const body = back.querySelector('.tm-body'), modalEl = back.querySelector('.modal'), close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   const act = fn => async e => { const b = e.currentTarget; b.disabled = true; try { await fn(); await render(); } catch (err) { b.disabled = false; alertDialog(errorText(err)); } };
 
   async function render() {
-    let r; try { r = await acc.api('team'); } catch (e) { body.innerHTML = `<p class="host-help">${esc(errorText(e))}</p>`; return; }
+    let r; try { r = await acc.api('team'); } catch (e) { modalEl.classList.remove('dk'); body.innerHTML = `<p class="host-help">${esc(errorText(e))}</p>`; return; }
     if (!r.team) {
+      modalEl.classList.remove('dk'); modalEl.style.width = 'min(560px,94vw)';
       body.innerHTML = `<p class="host-help">${t('Un equipo (un centro educativo, una empresa) comparte el plan Pro pagado por puestos, un kit de marca y plantillas.')}</p>
         ${r.invites.length ? `<h4>${t('Invitaciones')}</h4>${r.invites.map(i => `<div class="sh-item"><span><b>${esc(i.name)}</b><br><small>${t('De')} ${esc(i.by || '')}</small></span><button type="button" class="fr-do" data-join="${esc(i.id)}">${t('Unirme')}</button></div>`).join('')}` : ''}
         <h4>${t('Crear un equipo')}</h4><div class="sh-row"><input type="text" class="tm-name" placeholder="${t('Nombre del centro o empresa')}" maxlength="80"><button type="button" class="fr-do tm-create">${t('Crear')}</button></div>`;
@@ -41,23 +43,30 @@ export async function openTeam() {
     }
     const T = r.team, admin = r.role === 'admin', me = acc.account()?.email, used = Object.keys(T.members).length + Object.keys(T.invited).length;
     const until = T.until ? new Date(T.until).toLocaleDateString(currentLang(), { dateStyle: 'long' }) : '';
-    body.innerHTML = `<p><b>${esc(T.name)}</b> · ${T.active ? `${t('Pro activo hasta')} ${esc(until)}` : t('Sin pagar: los miembros no tienen Pro')}</p>
-      <h4>${t('Personas')} (${used}/${T.seats} ${t('puestos')})</h4>
-      ${Object.entries(T.members).map(([e, m]) => `<div class="sh-item"><span>${esc(e)}${e === me ? ` (${t('tú')})` : ''}</span><small>${t(m.role === 'admin' ? 'Administración' : 'Miembro')}</small>
+    // (Tabs, one subject at a time — ui/dialogs/dlgkit.js; the use and the SSO load when their tab is shown. The tab
+    // seen last comes back when the dialog is drawn again after each change.)
+    const people = `${Object.entries(T.members).map(([e, m]) => `<div class="sh-item"><span>${esc(e)}${e === me ? ` (${t('tú')})` : ''}</span><small>${t(m.role === 'admin' ? 'Administración' : 'Miembro')}</small>
         ${admin || e === me ? `<button type="button" class="mini2" data-rm="${esc(e)}">${t(e === me ? 'Salir' : 'Quitar')}</button>` : ''}</div>`).join('')}
       ${Object.keys(T.invited).map(e => `<div class="sh-item"><span>${esc(e)}</span><small>${t('Invitación pendiente')}</small>${admin ? `<button type="button" class="mini2" data-rm="${esc(e)}">${t('Quitar')}</button>` : ''}</div>`).join('')}
-      ${admin && acc.account()?.billingTest ? `<p class="host-help acc-test" role="note">${t('Modo de prueba: no se cobra nada (tarjeta de prueba 4242 4242 4242 4242)')}</p>` : ''}
-      ${admin ? `<div class="sh-row"><input type="email" class="tm-email" placeholder="${t('correo@ejemplo.com')}"><select class="tm-role"><option value="member">${t('Miembro')}</option><option value="admin">${t('Administración')}</option></select><button type="button" class="mini2 tm-invite">${t('Invitar')}</button></div>
-        <div class="sh-row"><label class="fr-chk" style="margin:0">${t('Puestos')} <input type="number" class="tm-seats" min="3" max="1000" value="${Math.max(3, T.seats, used)}" style="width:6em"></label><button type="button" class="fr-do tm-buy">${t('Pagar los puestos')}</button>
-          ${T.active ? `<button type="button" class="mini2 tm-portal">${t('Gestionar la suscripción')}</button>` : ''}</div>
-        <details class="tm-usage"><summary>${t('Uso y gastos del equipo')}</summary><div class="tm-usage-body"><p class="host-help">${t('Cargando…')}</p></div></details>
-        ${ssoBox()}` : ''}
-      <h4>${t('Kit de marca del equipo')}</h4>
-      ${T.brand ? `<div class="sh-item"><span>${esc(T.brand.name || '')} ${(T.brand.colors || []).map(c => `<i class="tm-sw" style="background:${esc(c)}"></i>`).join('')}</span><button type="button" class="mini2 tm-use-brand">${t('Aplicar a esta presentación')}</button></div>` : `<p class="host-help">${t('Aún no hay kit de marca.')}</p>`}
-      ${admin ? `<button type="button" class="mini2 tm-set-brand">${t('Compartir un kit de marca con el equipo')}</button>` : ''}
-      <h4>${t('Plantillas del equipo')}</h4>
-      ${T.templates.length ? T.templates.map(x => `<div class="sh-item"><span>${esc(x.name)}</span><button type="button" class="mini2" data-tpl="${esc(x.id)}">${t('Usar')}</button>${admin ? `<button type="button" class="mini2" data-tpl-rm="${esc(x.id)}">✕</button>` : ''}</div>`).join('') : `<p class="host-help">${t('Aún no hay plantillas.')}</p>`}
-      ${admin ? `<button type="button" class="mini2 tm-publish">${t('Publicar esta presentación como plantilla')}</button><p class="host-help">${t('Consejo: bloquea el logotipo y los elementos fijos (panel Selección) antes de publicarla.')}</p>` : ''}`;
+      ${admin ? `<h4>${t('Invitar')}</h4><div class="sh-row"><input type="email" class="tm-email" placeholder="${t('correo@ejemplo.com')}"><select class="tm-role"><option value="member">${t('Miembro')}</option><option value="admin">${t('Administración')}</option></select><button type="button" class="fr-do tm-invite">${t('Invitar')}</button></div>` : ''}`;
+    const seats = `${acc.account()?.billingTest ? `<p class="host-help acc-test" role="note">${t('Modo de prueba: no se cobra nada (tarjeta de prueba 4242 4242 4242 4242)')}</p>` : ''}
+      <p>${T.active ? `${t('Pro activo hasta')} ${esc(until)}` : t('Sin pagar: los miembros no tienen Pro')}</p>
+      <div class="sh-row"><label class="fr-chk" style="margin:0">${t('Puestos')} <input type="number" class="tm-seats" min="3" max="1000" value="${Math.max(3, T.seats, used)}" style="width:6em"></label><button type="button" class="fr-do tm-buy">${t('Pagar los puestos')}</button>
+        ${T.active ? `<button type="button" class="mini2 tm-portal">${t('Gestionar la suscripción')}</button>` : ''}</div>`;
+    const brand = `${T.brand ? `<div class="sh-item"><span>${esc(T.brand.name || '')} ${(T.brand.colors || []).map(c => `<i class="tm-sw" style="background:${esc(c)}"></i>`).join('')}</span><button type="button" class="mini2 tm-use-brand">${t('Aplicar a esta presentación')}</button></div>` : `<p class="host-help">${t('Aún no hay kit de marca.')}</p>`}
+      ${admin ? `<button type="button" class="mini2 tm-set-brand">${t('Compartir un kit de marca con el equipo')}</button>` : ''}`;
+    const templates = `${T.templates.length ? T.templates.map(x => `<div class="sh-item"><span>${esc(x.name)}</span><button type="button" class="mini2" data-tpl="${esc(x.id)}">${t('Usar')}</button>${admin ? `<button type="button" class="mini2" data-tpl-rm="${esc(x.id)}">✕</button>` : ''}</div>`).join('') : `<p class="host-help">${t('Aún no hay plantillas.')}</p>`}
+      ${admin ? `<button type="button" class="mini2 tm-publish">${t('Publicar esta presentación como plantilla')}</button>${tipHTML(t('Consejo: bloquea el logotipo y los elementos fijos (panel Selección) antes de publicarla.'))}` : ''}`;
+    const tabs = [
+      { id: 'people', icon: 'group', label: `${t('Personas')} (${used}/${T.seats})`, html: people },
+      ...(admin ? [{ id: 'seats', icon: 'workspace_premium', label: t('Puestos'), html: seats }] : []),
+      { id: 'brand', icon: 'palette', label: t('Kit de marca del equipo'), html: brand },
+      { id: 'tpl', icon: 'dashboard', label: t('Plantillas del equipo'), html: templates },
+      ...(admin ? [{ id: 'usage', icon: 'monitoring', label: t('Uso y gastos del equipo'), html: `<details class="tm-usage dk-section"><summary>${t('Uso y gastos del equipo')}</summary><div class="tm-usage-body"><p class="host-help">${t('Cargando…')}</p></div></details>` },
+        { id: 'sso', icon: 'key', label: t('Inicio de sesión único (SSO)'), html: ssoBox().replace('class="tm-sso"', 'class="tm-sso dk-section"') }] : []),
+    ];
+    body.innerHTML = `<p class="tm-head dk-lead"><b>${esc(T.name)}</b> · ${T.active ? `${t('Pro activo hasta')} ${esc(until)}` : t('Sin pagar: los miembros no tienen Pro')}</p>${tabsHTML(tabs)}`;
+    modalEl.classList.add('dk'); modalEl.style.width = 'min(820px,96vw)';
     const q = s => body.querySelector(s);
     wireSso(body);
     body.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', act(async () => {
@@ -107,6 +116,7 @@ export async function openTeam() {
       const name = await promptDialog(t('Nombre de la plantilla:'), state.deck.name || ''); if (!name) return;
       await acc.api('team/template', { name, deck: snapshot(state.deck) });
     }));
+    wireTabs(body, 'revela.team.tab');
   }
   render();
 }

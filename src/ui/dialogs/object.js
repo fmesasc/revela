@@ -17,6 +17,7 @@ import { tablePresets, tableClass, tableVars, tableCSS, chartSVG } from '../../r
 import { withBlobs, blobURL } from '../../io/formats/blobmedia.js';
 import { currentPalette, deckFg, paletteColours } from '../../features/design/palettes.js';
 import { cutoutOrigins, cutoutPicture } from '../../features/document/imagetools.js';
+import { moreHTML, footHTML } from './dlgkit.js';
 
 // PowerPoint's «Correcciones» and «Color», as examples of the picture itself.
 export const IMG_PRESETS = [['Original', { brightness: 100, contrast: 100, saturate: 100, opacity: 100 }], ['Más claro', { brightness: 130, contrast: 100, saturate: 100, opacity: 100 }],
@@ -35,11 +36,12 @@ export function openImageAdjust(b) {
     <div class="ia-presets">${IMG_PRESETS.map(([n, v], i) => `<button type="button" data-ip="${i}" title="${esc(t(n))}"><img src="${esc(blobURL(b.src))}" alt="" style="filter:brightness(${v.brightness}%) contrast(${v.contrast}%) saturate(${v.saturate}%);opacity:${v.opacity / 100}"><span>${esc(t(n))}</span></button>`).join('')}</div>
     ${sl(t('Brillo'), 'brightness', 200)}${sl(t('Contraste'), 'contrast', 200)}
     ${sl(t('Saturación'), 'saturate', 200)}${sl(t('Opacidad'), 'opacity', 100)}
-    <div class="fr-actions"><button class="fr-do" data-reset>${t('Restablecer')}</button></div>
+    <div class="fr-actions"><button class="mini2" data-reset>${t('Restablecer')}</button><button type="button" class="fr-do" data-done>${t('Listo')}</button></div>
   </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
+  back.querySelector('[data-done]').addEventListener('click', close);   // (each change is already on the picture)
   back.addEventListener('click', e => { if (e.target === back) close(); });
   back.querySelectorAll('[data-adj]').forEach(r =>
     r.addEventListener('input', () => blocks.setImageAdj(r.dataset.adj, r.value)));
@@ -168,24 +170,28 @@ export function openChartData(b) {
   const lines = blocks.chartGridText(b).replace(/</g, '&lt;');
   const back = document.createElement('div');
   back.id = 'chart-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal ch-modal">
+  // The type, the data and the colour in view, with the preview; the axes' titles and ends under «Ejes» and the rest
+  // under «Más opciones» (each open if something in it is already set). The main button at the bottom, on the right.
+  const axesSet = !!(b.xTitle || b.yTitle || b.yMin != null || b.yMax != null || b.y2 || b.xMin != null || b.xMax != null);
+  const moreSet = !!(b.labelColor || b.combo || (b.data || []).some(d => d.color));
+  back.innerHTML = `<div class="modal ch-modal dk" role="dialog" aria-modal="true">
     <button class="modal-close">✕</button><h3>${t('Datos del gráfico')}</h3>
+    <div class="dk-body">
     <div class="ch-layout"><div class="ch-form">
     <label class="fr-l">${t('Tipo')} <select class="ch-type">
       <option value="bar">${t('Barras')}</option><option value="stacked">${t('Barras apiladas')}</option><option value="stacked100">${t('Barras apiladas al 100 %')}</option>
       <option value="hbar">${t('Barras horizontales')}</option><option value="histogram">${t('Histograma')}</option><option value="line">${t('Líneas')}</option><option value="area">${t('Área')}</option><option value="stackedArea">${t('Áreas apiladas')}</option>
       <option value="pie">${t('Circular')}</option><option value="doughnut">${t('Dona')}</option>
       <option value="scatter">${t('Dispersión')}</option><option value="radar">${t('Radar')}</option><option value="bubble">${t('Burbujas')}</option><option value="treemap">${t('Rectángulos (treemap)')}</option><option value="waterfall">${t('Cascada')}</option><option value="funnel">${t('Embudo')}</option><option value="map">${t('Mapa')}</option></select></label>
+    <label class="fr-l">${t('Datos: etiqueta y una columna por serie; primera fila opcional con los nombres')}
+      <textarea class="ch-data" rows="6" style="font-family:monospace">${lines}</textarea></label>
+    <div class="fr-actions" style="justify-content:flex-start;margin:-4px 0 12px"><button type="button" class="mini2 ch-file"><i class="ms">upload_file</i> ${t('Traer los datos de Excel o CSV…')}</button></div>
     <label class="fr-l">${t('Color (barras)')} <input type="color" class="ch-color" value="${b.color || '#3f6497'}"></label>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label class="fr-l">${t('Color del texto')} <input type="color" class="ch-ink" value="${b.labelColor || '#8a8a8a'}"></label>
-      <label class="fr-chk"><input type="checkbox" class="ch-ink-auto"${b.labelColor ? '' : ' checked'}> ${t('Automático (gris)')}</label></div>
-    <details class="ch-own"><summary>${t('Un color para cada barra, porción o paso')}</summary>
-      ${(b.data || []).map((d, i) => `<label class="fr-chk"><input type="checkbox" class="ch-own-on" data-i="${i}"${d.color ? ' checked' : ''}> <input type="color" class="ch-own-c" data-i="${i}" value="${d.color || b.color || '#3f6497'}"> ${String(d.label ?? '').replace(/</g, '&lt;')}</label>`).join('')}
-      <p class="host-help">${t('Para la primera serie. Si cambias las filas de datos, aplica primero y vuelve a abrir para elegir los colores.')}</p></details>
-    <label class="fr-chk"><input type="checkbox" class="ch-combo"${b.combo ? ' checked' : ''}> ${t('Combinado: series extra como líneas')}</label>
-    <label class="fr-chk"><input type="checkbox" class="ch-grid"${b.grid ? ' checked' : ''}> ${t('Líneas de cuadrícula con la escala')}</label>
     <label class="fr-chk"><input type="checkbox" class="ch-labels"${b.dataLabels ? ' checked' : ''}> ${t('Etiquetas de datos (valores)')}</label>
-    <label class="fr-l">${t('Título del eje horizontal')} <input type="text" class="ch-xt" value="${(b.xTitle || '').replace(/"/g, '&quot;')}"></label>
+    <label class="fr-chk"><input type="checkbox" class="ch-grid"${b.grid ? ' checked' : ''}> ${t('Líneas de cuadrícula con la escala')}</label>
+    <label class="fr-chk ch-pie"><input type="checkbox" class="ch-legend"${b.legend !== false ? ' checked' : ''}> ${t('Leyenda con el porcentaje de cada porción')}</label>
+    <label class="fr-l ch-hist">${t('Número de intervalos')} <input type="number" min="1" max="60" step="1" class="ch-bins" style="width:7em" value="${b.bins ?? ''}" placeholder="${t('Automático')}"></label>
+    ${moreHTML(`<label class="fr-l">${t('Título del eje horizontal')} <input type="text" class="ch-xt" value="${(b.xTitle || '').replace(/"/g, '&quot;')}"></label>
     <label class="fr-l">${t('Título del eje vertical')} <input type="text" class="ch-yt" value="${(b.yTitle || '').replace(/"/g, '&quot;')}"></label>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <label class="fr-l" title="${t('Vacío: automático')}">${t('Mínimo del eje de valores')} <input type="number" step="any" class="ch-ymin" style="width:7em" value="${b.yMin ?? ''}" placeholder="${t('Automático')}"></label>
@@ -199,16 +205,20 @@ export function openChartData(b) {
     <div class="ch-xy" style="display:flex;gap:8px;flex-wrap:wrap">
       <label class="fr-l">${t('Mínimo del eje horizontal')} <input type="number" step="any" class="ch-xmin" style="width:7em" value="${b.xMin ?? ''}" placeholder="${t('Automático')}"></label>
       <label class="fr-l">${t('Máximo del eje horizontal')} <input type="number" step="any" class="ch-xmax" style="width:7em" value="${b.xMax ?? ''}" placeholder="${t('Automático')}"></label></div>
-    <label class="fr-l ch-hist">${t('Número de intervalos')} <input type="number" min="1" max="60" step="1" class="ch-bins" style="width:7em" value="${b.bins ?? ''}" placeholder="${t('Automático')}"></label>
-    <label class="fr-chk ch-pie"><input type="checkbox" class="ch-legend"${b.legend !== false ? ' checked' : ''}> ${t('Leyenda con el porcentaje de cada porción')}</label>
-    <label class="fr-l">${t('Datos: etiqueta y una columna por serie; primera fila opcional con los nombres')}
-      <textarea class="ch-data" rows="6" style="font-family:monospace">${lines}</textarea></label>
-    <div class="fr-actions" style="justify-content:flex-start;margin-top:-4px"><button type="button" class="mini2 ch-file"><i class="ms">upload_file</i> ${t('Traer los datos de Excel o CSV…')}</button></div>
+    `, { label: t('Ejes'), open: axesSet })}
+    ${moreHTML(`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><label class="fr-l">${t('Color del texto')} <input type="color" class="ch-ink" value="${b.labelColor || '#8a8a8a'}"></label>
+      <label class="fr-chk"><input type="checkbox" class="ch-ink-auto"${b.labelColor ? '' : ' checked'}> ${t('Automático (gris)')}</label></div>
+    <details class="ch-own"><summary>${t('Un color para cada barra, porción o paso')}</summary>
+      ${(b.data || []).map((d, i) => `<label class="fr-chk"><input type="checkbox" class="ch-own-on" data-i="${i}"${d.color ? ' checked' : ''}> <input type="color" class="ch-own-c" data-i="${i}" value="${d.color || b.color || '#3f6497'}"> ${String(d.label ?? '').replace(/</g, '&lt;')}</label>`).join('')}
+      <p class="host-help">${t('Para la primera serie. Si cambias las filas de datos, aplica primero y vuelve a abrir para elegir los colores.')}</p></details>
+    <label class="fr-chk"><input type="checkbox" class="ch-combo"${b.combo ? ' checked' : ''}> ${t('Combinado: series extra como líneas')}</label>
+    `, { open: moreSet })}
     </div>
     <div class="ch-side"><div class="ch-pv-h">${t('Vista previa')}</div><div class="ch-pv-frame"><div class="ch-pv" role="img" aria-label="${t('Vista previa')}"></div></div>
       <p class="host-help ch-pv-note">${t('Así quedará en la diapositiva. No cambia nada hasta que pulses «Aplicar».')}</p></div>
     </div>
-    <div class="fr-actions"><button class="fr-do">${t('Aplicar')}</button></div>
+    </div>
+    ${footHTML(`<button class="fr-do">${t('Aplicar')}</button>`)}
   </div>`;
   document.body.appendChild(back);
   back.querySelector('.ch-type').value = b.chartType || 'bar';
@@ -303,11 +313,12 @@ export function openBoxStyle(b) {
     <label class="fr-l">${t('Relleno')} <input type="color" class="bx-fill" value="${b.bg || '#3f6497'}"></label>
     <label class="fr-l">${t('Borde')} <input type="color" class="bx-border" value="${b.borderColor || '#1e2a3a'}"></label>
     <label class="fr-l">${t('Redondeo (px)')} <input type="range" class="bx-radius" min="0" max="40" value="${b.radius || 0}"></label>
-    <div class="fr-actions"><button class="fr-do" data-clear>${t('Sin relleno/borde')}</button></div>
+    <div class="fr-actions"><button class="mini2" data-clear>${t('Sin relleno/borde')}</button><button type="button" class="fr-do" data-done>${t('Listo')}</button></div>
   </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
+  back.querySelector('[data-done]').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   back.querySelector('.bx-fill').addEventListener('input', e => blocks.setBoxStyle({ bg: e.target.value }));
   back.querySelector('.bx-border').addEventListener('input', e => blocks.setBoxStyle({ borderColor: e.target.value }));
@@ -387,11 +398,13 @@ export function openImageCrop(b) {
       <label class="fr-l">${t('Encuadre vertical')} <input type="range" data-focus="y" min="0" max="100" value="${b.focusY ?? 50}"></label></div>
     ${b.crop ? `<div class="fr-l" style="margin-top:8px">${t('Recortar los bordes (%)')}</div>
     ${sl(t('Arriba'), 'top')}${sl(t('Derecha'), 'right')}${sl(t('Abajo'), 'bottom')}${sl(t('Izquierda'), 'left')}` : ''}
-    <div class="fr-actions">${canCropOnSlide(b) ? `<button class="fr-do" data-onslide><i class="ms">crop</i> ${t('Recortar sobre la imagen')}</button>` : ''}<button class="fr-do" data-reset>${t('Restablecer')}</button></div>
+    <div class="fr-actions"><button class="mini2" data-reset>${t('Restablecer')}</button>${canCropOnSlide(b) ? `<button class="fr-do" data-onslide><i class="ms">crop</i> ${t('Recortar sobre la imagen')}</button>`
+      : `<button type="button" class="fr-do" data-done>${t('Listo')}</button>`}</div>
   </div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
+  back.querySelector('[data-done]')?.addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   back.querySelectorAll('[data-crop]').forEach(r =>
     r.addEventListener('input', () => blocks.setImageCrop(r.dataset.crop, r.value)));
@@ -458,7 +471,7 @@ export function openTableStyle(b) {
     return `<table class="${tableClass(m)}" style="${tableVars(m)}">${m.rows.map(r => `<tr>${r.map(() => '<td></td>').join('')}</tr>`).join('')}</table>`; };
   const back = document.createElement('div');
   back.id = 'ts-modal'; back.className = 'modal-backdrop';
-  back.innerHTML = `<div class="modal" style="text-align:start;min-width:320px">
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:320px;width:min(420px,94vw);max-width:94vw">
     <button class="modal-close">✕</button><h3>${t('Estilo de tabla')}</h3>
     <style>${tableCSS('.ts-grid ')} .ts-grid table.tbl td{height:9px;padding:0}</style>
     <div class="ts-grid">${Object.entries(presets).map(([k, p]) =>
@@ -470,10 +483,12 @@ export function openTableStyle(b) {
       <label><input type="checkbox" data-o="lines"> ${t('Solo líneas horizontales')}</label>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><label class="fr-l">${t('Color del texto')} <input type="color" class="ts-ink" value="${b.color || deckFg()}"></label>
-      <label class="fr-chk"><input type="checkbox" class="ts-ink-auto"${b.color ? '' : ' checked'}> ${t('El de la paleta')}</label></div></div>`;
+      <label class="fr-chk"><input type="checkbox" class="ts-ink-auto"${b.color ? '' : ' checked'}> ${t('El de la paleta')}</label></div>
+    <div class="fr-actions" style="justify-content:flex-end"><button type="button" class="fr-do" data-done>${t('Listo')}</button></div></div>`;
   document.body.appendChild(back);
   const close = () => back.remove();
   back.querySelector('.modal-close').addEventListener('click', close);
+  back.querySelector('[data-done]').addEventListener('click', close);   // (each choice is already on the table)
   back.addEventListener('click', e => { if (e.target === back) close(); });
   const sync = () => back.querySelectorAll('[data-o]').forEach(c => (c.checked = !!b[c.dataset.o]));
   // (Pointing at a style: the table on the slide shows it, as PowerPoint's live preview; leaving puts it back.)

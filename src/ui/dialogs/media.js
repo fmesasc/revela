@@ -11,6 +11,7 @@ import { commit, currentSlide } from '../../core/store.js';
 import { GIFUCT } from '../../core/vendor.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from './dialog.js';
+import { moreHTML, tipHTML, footHTML } from './dlgkit.js';
 
 const fmt = s => (Math.round(s * 10) / 10).toFixed(1);
 // A speed list: 1× (or «the video's», for a segment) and the others.
@@ -23,11 +24,14 @@ export function openMediaPlayback(b) {
   back.id = 'mp-modal'; back.className = 'modal-backdrop';
   let segs = (b.segments || []).map(s => ({ ...s }));
   const key = { color: b.key?.color || '#00ff00', tol: b.key?.tol ?? 0.3, soft: b.key?.soft ?? 0.1 };
-  back.innerHTML = `<div class="modal mp" style="text-align:start;min-width:320px;max-width:min(620px,96vw)">
-    <button class="modal-close">✕</button><h3>${t('Reproducción')}</h3>
+  // The picture and its timeline in view on one side (dlgkit's .dk-split: the segments and questions take «now» from it);
+  // how it plays and its segments on the other; the questions and the colour key folded unless already used.
+  back.innerHTML = `<div class="modal mp dk" role="dialog" aria-modal="true" style="width:min(940px,96vw)">
+    <button class="modal-close" aria-label="${t('Cerrar')}">✕</button><h3>${t('Reproducción')}</h3>
+    <div class="dk-body"><div class="dk-split"><div class="dk-aside">
     <div class="mp-view"></div>
     <div class="mp-bar"><button type="button" class="mini2 mp-play"><i class="ms">play_arrow</i></button>
-      <input type="range" class="mp-time" min="0" max="1" step="0.01" value="0"><span class="mp-now">0.0 s</span></div>
+      <input type="range" class="mp-time" min="0" max="1" step="0.01" value="0"><span class="mp-now">0.0 s</span></div></div><div>
     <fieldset><legend>${t('Al presentar')}</legend>
       <label class="fr-chk"><input type="checkbox" class="mp-auto"${b.autoplay ? ' checked' : ''}> ${t('Empezar solo al llegar a la diapositiva')}</label>
       <label class="fr-chk"><input type="checkbox" class="mp-loop"${b.loop ? ' checked' : ''}> ${t('Repetir en bucle')}</label>
@@ -36,17 +40,15 @@ export function openMediaPlayback(b) {
     </fieldset>
     <fieldset><legend>${t('Tramos (uno por clic)')}</legend>
       <p class="host-help">${t('Cada clic de «siguiente» reproduce el tramo siguiente y se para al final. Si empieza solo, el primer tramo se reproduce al llegar. Sin tramos, un clic lo reproduce entero.')}</p>
-      <p class="host-help">${t('Cada tramo puede ir a su velocidad: pasa deprisa (2×, 4×…) por lo que hay entre las partes que interesan y vuelve a la normal en ellas. «Igual» usa la velocidad de arriba.')}</p>
+      ${tipHTML(t('Cada tramo puede ir a su velocidad: pasa deprisa (2×, 4×…) por lo que hay entre las partes que interesan y vuelve a la normal en ellas. «Igual» usa la velocidad de arriba.'))}
       <div class="mp-segs"></div>
       <button type="button" class="mini2 mp-add">${t('Añadir tramo')}</button>
     </fieldset>
-    ${kind === 'video' ? `<fieldset><legend>${t('Preguntas en el vídeo')}</legend>
-      <p class="host-help">${t('Al presentar, el vídeo se para en ese segundo y hace la pregunta; al responder se ve la correcta y sigue. Pon un asterisco (*) delante de la respuesta correcta; sin asterisco, es una pregunta para pensar.')}</p>
+    ${kind === 'video' ? moreHTML(`<p class="host-help">${t('Al presentar, el vídeo se para en ese segundo y hace la pregunta; al responder se ve la correcta y sigue. Pon un asterisco (*) delante de la respuesta correcta; sin asterisco, es una pregunta para pensar.')}</p>
       <div class="mp-qs"></div>
       <div class="fr-actions" style="justify-content:flex-start;flex-wrap:wrap"><button type="button" class="mini2 mp-q-add">${t('Añadir una pregunta en este momento')}</button>
-        <button type="button" class="mini2 mp-q-ai"><i class="ms">auto_awesome</i> ${t('Proponer preguntas con IA')}</button></div></fieldset>` : ''}
-    <fieldset><legend>${t('Quitar un color (croma)')}</legend>
-      <label class="fr-chk"><input type="checkbox" class="mp-key"${b.key?.color ? ' checked' : ''}> ${t('Hacer transparente un color (pantalla verde, fondo liso…)')}</label>
+        <button type="button" class="mini2 mp-q-ai"><i class="ms">auto_awesome</i> ${t('Proponer preguntas con IA')}</button></div>`, { label: t('Preguntas en el vídeo'), open: !!b.questions?.length }) : ''}
+    ${moreHTML(`<label class="fr-chk"><input type="checkbox" class="mp-key"${b.key?.color ? ' checked' : ''}> ${t('Hacer transparente un color (pantalla verde, fondo liso…)')}</label>
       <div class="mp-keyopts">
         <input type="color" class="mp-kc" value="${key.color}"> <button type="button" class="mini2 mp-pick">${t('Elegir de la imagen')}</button>
         <label class="fr-l">${t('Tolerancia')} <input type="range" class="mp-tol" min="0" max="0.8" step="0.01" value="${key.tol}"></label>
@@ -54,9 +56,9 @@ export function openMediaPlayback(b) {
       </div>
       ${kind === 'gif' ? `<p class="host-help">${t('O quita el fondo con IA, fotograma a fotograma (en este navegador; tarda más cuantos más fotogramas tenga).')}</p>
         <button type="button" class="mini2 mp-ai">${t('Quitar fondo (IA)')}</button> <span class="mp-prog"></span>`
-      : `<p class="host-help">${t('Para un vídeo sin fondo, usa un color de fondo liso y el croma, o un vídeo WebM con transparencia.')}</p>`}
-    </fieldset>
-    <div class="fr-actions"><span></span><button class="fr-do mp-ok">${t('Aplicar')}</button></div></div>`;
+      : `<p class="host-help">${t('Para un vídeo sin fondo, usa un color de fondo liso y el croma, o un vídeo WebM con transparencia.')}</p>`}`, { label: t('Quitar un color (croma)'), open: !!b.key?.color })}
+    </div></div></div>
+    ${footHTML(`<button class="fr-do mp-ok">${t('Aplicar')}</button>`)}</div>`;
   document.body.appendChild(back);
   const q = s => back.querySelector(s);
   const opts = { kind, src: b.src, fit: 'contain', muted: true, loop: false, key: b.key?.color ? { ...key } : null, gifLib: GIFUCT };
@@ -200,8 +202,8 @@ export function openCameraEffects(b) {
     <label class="fr-l">${t('Fondo')} <select class="cam-bg">${opts(CAMERA_BACKGROUNDS, b.bg)}</select></label>
     <label class="fr-l cam-color-l">${t('Color del fondo')} <input type="color" class="cam-color" value="${/^#[0-9a-f]{6}$/i.test(b.bgColor || '') ? b.bgColor : DEFAULT_CAMERA_COLOR}"></label>
     <div class="fr-l cam-img-l"><button type="button" class="fr-do cam-img">${t('Cambiar imagen')}</button></div>
-    <p style="opacity:.75;font-size:13px;max-width:340px">${t('El fondo se separa de la persona en el propio navegador: la imagen de la cámara no sale de tu equipo.')}</p>
-    <label class="fr-l"><input type="checkbox" class="cam-live"${cameraLive() ? ' checked' : ''}> ${t('Ver la cámara en el editor')}</label>
+    <p class="host-help" style="max-width:340px">${t('El fondo se separa de la persona en el propio navegador: la imagen de la cámara no sale de tu equipo.')}</p>
+    <label class="fr-chk"><input type="checkbox" class="cam-live"${cameraLive() ? ' checked' : ''}> ${t('Ver la cámara en el editor')}</label>
   </div>`;
   document.body.appendChild(back);
   const $ = s => back.querySelector(s);

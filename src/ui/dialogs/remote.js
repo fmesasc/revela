@@ -40,7 +40,7 @@ export function openHostPanel(opts = {}) {
     <button class="host-cut" hidden>${t('Desconectar el móvil')}</button>
     <p class="host-help host-keep">${t('Puedes cerrar esta ventana: el móvil sigue conectado mientras presentas.')} <button type="button" class="mini2 host-stop">${t('Apagar el mando')}</button></p>
     <a class="host-link" target="_blank" rel="noopener">${t('Abrir el mando')} ↗</a>
-    <p class="host-help host-safe">${t('Solo un móvil a la vez puede controlar la presentación. El enlace del QR lleva una clave; quien escriba solo el código necesita tu permiso. Al desconectarlo, el enlace anterior deja de valer.')}</p>
+    <details class="dk-tip host-safe"><summary><i class="ms" aria-hidden="true">shield</i>${t('Más información')}</summary><p>${t('Solo un móvil a la vez puede controlar la presentación. El enlace del QR lleva una clave; quien escriba solo el código necesita tu permiso. Al desconectarlo, el enlace anterior deja de valer.')}</p></details>
   </div>`;
   document.body.appendChild(back);
   const q = sel => back.querySelector(sel);

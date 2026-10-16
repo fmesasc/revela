@@ -7,6 +7,7 @@ import { addTableRows } from '../../features/document/blocks.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { confirmDialog, promptDialog, alertDialog } from './dialog.js';
 import { toast } from '../shell/toast.js';
+import { tipHTML } from './dlgkit.js';
 
 const day = ts => new Date(ts).toLocaleDateString(currentLang(), { day: 'numeric', month: 'short' });
 const iso = ts => new Date(ts - new Date(ts).getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
@@ -24,7 +25,7 @@ export function openGradebook(start = {}) {
     <h3>${t('Cuaderno de clase')}</h3>
     <div class="gb-tabs" role="tablist">${[['report', t('Informe')], ['rubrics', t('Rúbricas')], ['groups', t('Grupos')]].map(([k, l]) => `<button type="button" class="mini2" data-tab="${k}" role="tab">${l}</button>`).join('')}</div>
     <div class="gb-body"></div>
-    <p class="host-help" style="font-size:12px">${t('Se guarda en este navegador: los nombres que escribe el alumnado y sus puntos no salen de aquí.')}</p></div>`;
+    <p class="host-help">${t('Se guarda en este navegador: los nombres que escribe el alumnado y sus puntos no salen de aquí.')}</p></div>`;
   document.body.appendChild(back);
   const close = () => back.remove(), body = back.querySelector('.gb-body');
   back.querySelector('.modal-close').addEventListener('click', close);
@@ -65,8 +66,8 @@ function paintReport(body, paint) {
         ${rep.sessions.map(s => `<td>${s.pct[st.key] == null ? '—' : (Math.round(s.pct[st.key] * 100) / 10).toLocaleString(currentLang())}</td>`).join('')}
         <td><b>${st.mark == null ? '—' : st.mark.toLocaleString(currentLang())}</b></td><td>${st.done}/${st.of}</td></tr>`).join('')}</tbody></table></div>`}
     ${hardest(gb.itemReport(groupId, range))}
-    <div class="fr-actions"><span class="host-help" style="margin:0">${t('Notas sobre 10. Clic en un alumno para cambiarle el nombre o unirlo con otro (el mismo alumno en otro dispositivo).')}</span>
-      <button type="button" class="mini2 gb-grade">${t('Evaluar con una rúbrica')}</button><button type="button" class="fr-do gb-csv"${rep.sessions.length ? '' : ' disabled'}>${t('Descargar CSV')}</button></div>`;
+    ${tipHTML(t('Notas sobre 10. Clic en un alumno para cambiarle el nombre o unirlo con otro (el mismo alumno en otro dispositivo).'))}
+    <div class="fr-actions" style="justify-content:flex-end"><button type="button" class="mini2 gb-grade">${t('Evaluar con una rúbrica')}</button><button type="button" class="fr-do gb-csv"${rep.sessions.length ? '' : ' disabled'}>${t('Descargar CSV')}</button></div>`;
   body.querySelector('.gb-group').addEventListener('change', e => { groupId = e.target.value; paint(); });
   body.querySelector('.gb-period').addEventListener('change', e => { period = e.target.value; paint(); });
   body.querySelector('.gb-from')?.addEventListener('change', e => { custom = { ...range, from: new Date(e.target.value).getTime() }; paint(); });

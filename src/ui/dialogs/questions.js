@@ -27,12 +27,14 @@ const leftList = left => (left.length ? `<p class="host-help"><b>${t('Lo que no 
 export function openQuestionImport() {
   const { q, close } = modal('qbank-modal', t('Importar preguntas'), `
     <p class="host-help">${t('Cada pregunta, en una diapositiva nueva con su votación (cuestionario, unir parejas, completar huecos o número), detrás de la diapositiva actual.')}</p>
+    <p class="host-help">Moodle XML · GIFT · Kahoot (.xlsx) · CSV</p>
+    <details class="dk-tip"><summary><i class="ms" aria-hidden="true">info</i>${t('Más información')}</summary>
     <ul class="host-help" style="padding-inline-start:1.2em;margin:4px 0">
       <li><b>Moodle XML</b> (.xml): ${t('opción múltiple, verdadero/falso, emparejamiento, respuesta corta, numérica y huecos (cloze) de respuesta corta.')}</li>
       <li><b>GIFT</b> (.gift, .txt): ${t('el formato de texto de Moodle: =correcta ~incorrecta, {T}/{F}, parejas con ->, respuesta corta y numérica con #.')}</li>
       <li><b>Kahoot</b> (.xlsx): ${t('su plantilla de hoja de cálculo (pregunta, respuestas 1 a 4, tiempo y respuestas correctas).')}</li>
       <li><b>CSV</b> (.csv, .xlsx): ${t('una pregunta por fila: pregunta, respuesta correcta, incorrecta 1, incorrecta 2, incorrecta 3. Separado por comas o punto y coma; la primera fila puede ser de títulos. Solo con la correcta, es de respuesta corta (varias válidas separadas por |).')}</li>
-    </ul>
+    </ul></details>
     <div class="fr-actions" style="justify-content:flex-start"><label class="mini2"><i class="ms">upload_file</i> ${t('Elegir archivo…')}<input type="file" class="qb-file" accept="${QUESTION_ACCEPT}" hidden></label></div>
     <div class="qb-preview" aria-live="polite"></div>
     <div class="fr-actions"><span></span><button type="button" class="fr-do qb-go" disabled>${t('Insertar')}</button></div>`);

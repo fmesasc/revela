@@ -47,7 +47,7 @@ export function openMapEditor(b0, { isNew = false } = {}) {
         <button type="button" class="mini2 gm-here"><i class="ms">add_location_alt</i> ${t('Añadir la vista actual como parada')}</button>
         <h4>${t('Paradas')} <small class="gm-count"></small></h4>
         <ol class="gm-stops"></ol>
-        <details class="gm-sec" open><summary>${t('Marcadores')}</summary>
+        <details class="gm-sec dk-more"><summary><i class="ms" aria-hidden="true">expand_more</i>${t('Marcadores')}</summary>
           <div class="gm-kinds" role="radiogroup" aria-label="${t('Marcador')}"></div>
           <div class="gm-row"><label class="fr-l">${t('Color')}<input type="color" class="gm-mcolor"></label>
             <label class="fr-l">${t('Tamaño')}<select class="gm-msize">${G.MARKER_SIZES.map(([v, l]) => `<option value="${v}">${t(l)}</option>`).join('')}</select></label>
@@ -57,7 +57,7 @@ export function openMapEditor(b0, { isNew = false } = {}) {
           <label class="fr-chk"><input type="checkbox" class="gm-labels"> ${t('Nombre junto al marcador')}</label>
           <label class="fr-chk"><input type="checkbox" class="gm-all"> ${t('Mostrar todas las paradas desde el principio')}</label>
         </details>
-        <details class="gm-sec"><summary>${t('Línea y vuelo')}</summary>
+        <details class="gm-sec dk-more"><summary><i class="ms" aria-hidden="true">expand_more</i>${t('Línea y vuelo')}</summary>
           <div class="gm-row"><label class="fr-l">${t('Línea entre paradas')}<select class="gm-route">${G.MAP_ROUTES.map(([v, l]) => `<option value="${v}">${t(l)}</option>`).join('')}</select></label>
             <label class="fr-l">${t('Color')}<input type="color" class="gm-rcolor"></label></div>
           <div class="gm-row"><label class="fr-l">${t('Duración del vuelo (s)')}<input type="number" class="gm-dur" min="0.5" max="12" step="0.5"></label>

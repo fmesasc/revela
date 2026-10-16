@@ -12,6 +12,7 @@ import { MOTIONS_3D, ARRIVALS_3D, modelAttrs } from '../../features/content/mode
 import { model3dRuntime } from '../../io/runtime/model3d.js';
 import { loadModelViewer } from '../../core/vendor.js';
 import { t } from '../../i18n/index.js';
+import { moreHTML, footHTML } from './dlgkit.js';
 
 // (The same one every time the dialog opens: each one listens to the whole page.)
 let runtime = null;
@@ -22,26 +23,17 @@ export async function openModel3D(b) {
   const back = document.createElement('div'); back.id = 'm3d-modal'; back.className = 'modal-backdrop';
   const o = { autoRotate: b.autoRotate !== false, spin: b.spin || 30, clip: b.clip || '', clipOnce: !!b.clipOnce, clipSpeed: b.clipSpeed || 1, motion: b.motion || 'none' };
   const w = { clip: '', end: '', endOnce: true, face: true, look: true, ...b.walk }, hasMove = !!b.animation;
-  back.innerHTML = `<div class="modal m3d" style="text-align:start;min-width:min(360px,94vw);max-width:min(620px,94vw)">
-    <button class="modal-close">✕</button><h3>${t('Movimiento 3D')}</h3>
-    <div class="m3d-view"></div>
+  // The model in view on one side while choosing (dlgkit's .dk-split); what most people set, then walking and what
+  // happens coming from the slide before, folded unless already used.
+  back.innerHTML = `<div class="modal m3d dk" role="dialog" aria-modal="true" style="width:min(900px,96vw)">
+    <button class="modal-close" aria-label="${t('Cerrar')}">✕</button><h3>${t('Movimiento 3D')}</h3>
+    <div class="dk-body"><div class="dk-split"><div class="dk-aside"><div class="m3d-view"></div></div><div>
     <fieldset><legend>${t('En reposo (animación del modelo)')}</legend>
       <label class="fr-l">${t('Animación')} <select class="m3d-clip"><option value="">${t('Ninguna')}</option><option value="*">${t('La primera')}</option></select></label>
       <label class="fr-chk"><input type="checkbox" class="m3d-once"${o.clipOnce ? ' checked' : ''}> ${t('Solo una vez (no repetir)')}</label>
       <label class="fr-l">${t('Velocidad')} <input type="range" class="m3d-speed" min="0.25" max="3" step="0.25" value="${o.clipSpeed}"></label>
       <p class="host-help m3d-noclips" hidden>${t('Este modelo no trae animaciones propias. Revela puede ponerle un esqueleto y animaciones: personas, animales, pájaros, peces, serpientes, arañas, pulpos u objetos (andar, volar, nadar, botar…).')}</p>
       <button type="button" class="mini2 m3d-rig"><i class="ms">accessibility_new</i> ${t('Esqueleto automático…')}</button>
-    </fieldset>
-    <fieldset class="m3d-walk"><legend>${t('Al moverse por la diapositiva')}</legend>
-      <p class="host-help">${t('Mientras se mueve (su trayectoria u otra animación) hace una animación, por ejemplo andar, y al llegar otra.')}</p>
-      <label class="fr-l">${t('Mientras se mueve')} <select class="m3d-wclip" data-keep="1"><option value="">${t('Nada (como siempre)')}</option></select></label>
-      <label class="fr-l">${t('Al terminar el recorrido')} <select class="m3d-wend" data-keep="1"><option value="">${t('Volver al reposo')}</option></select></label>
-      <label class="fr-chk"><input type="checkbox" class="m3d-wonce"${w.endOnce ? ' checked' : ''}> ${t('Una vez y volver al reposo')}</label>
-      <label class="fr-chk"><input type="checkbox" class="m3d-wface"${w.face ? ' checked' : ''}> ${t('Mirar hacia donde va')}</label>
-      <label class="fr-chk"><input type="checkbox" class="m3d-wlook"${w.look ? ' checked' : ''}> ${t('Al terminar, mirar al público')}</label>
-      <label class="fr-chk m3d-wpath"${hasMove ? ' hidden' : ''}><input type="checkbox" class="m3d-waddpath" checked> ${t('Darle un recorrido de izquierda a derecha (se cambia en Animaciones ▸ Trayectoria)')}</label>
-      <button type="button" class="mini2 m3d-wtry">${t('Probar andando')}</button>
-      <button type="button" class="mini2 m3d-wdraw" title="${t('Aplica lo elegido y dibuja en la diapositiva por dónde irá')}"><i class="ms">gesture</i> ${t('Dibujar su recorrido')}</button>
     </fieldset>
     <fieldset class="m3d-spinbox"><legend>${t('Giro')}</legend>
       <label class="fr-chk"><input type="checkbox" class="m3d-rot"${o.autoRotate ? ' checked' : ''}> ${t('Girar solo')}</label>
@@ -52,11 +44,21 @@ export async function openModel3D(b) {
       <select class="m3d-motion">${MOTIONS_3D.map(([k, l]) => `<option value="${k}"${o.motion === k ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>
       <button type="button" class="mini2 m3d-try">${t('Probar')}</button>
     </fieldset>
-    <fieldset><legend>${t('Si ya estaba en la diapositiva anterior')}</legend>
-      <p class="host-help">${t('Con Transformar, o el mismo modelo en las dos: cómo sigue al pasar de una a otra.')}</p>
-      <select class="m3d-arrive">${ARRIVALS_3D.map(([k, l]) => `<option value="${k}"${(b.arrive || 'keep') === k ? ' selected' : ''}>${t(l)}</option>`).join('')}</select>
-    </fieldset>
-    <div class="fr-actions"><span></span><button class="fr-do m3d-ok">${t('Aplicar')}</button></div></div>`;
+    ${moreHTML(`<p class="host-help">${t('Mientras se mueve (su trayectoria u otra animación) hace una animación, por ejemplo andar, y al llegar otra.')}</p>
+      <label class="fr-l">${t('Mientras se mueve')} <select class="m3d-wclip" data-keep="1"><option value="">${t('Nada (como siempre)')}</option></select></label>
+      <label class="fr-l">${t('Al terminar el recorrido')} <select class="m3d-wend" data-keep="1"><option value="">${t('Volver al reposo')}</option></select></label>
+      <label class="fr-chk"><input type="checkbox" class="m3d-wonce"${w.endOnce ? ' checked' : ''}> ${t('Una vez y volver al reposo')}</label>
+      <label class="fr-chk"><input type="checkbox" class="m3d-wface"${w.face ? ' checked' : ''}> ${t('Mirar hacia donde va')}</label>
+      <label class="fr-chk"><input type="checkbox" class="m3d-wlook"${w.look ? ' checked' : ''}> ${t('Al terminar, mirar al público')}</label>
+      <label class="fr-chk m3d-wpath"${hasMove ? ' hidden' : ''}><input type="checkbox" class="m3d-waddpath" checked> ${t('Darle un recorrido de izquierda a derecha (se cambia en Animaciones ▸ Trayectoria)')}</label>
+      <button type="button" class="mini2 m3d-wtry">${t('Probar andando')}</button>
+      <button type="button" class="mini2 m3d-wdraw" title="${t('Aplica lo elegido y dibuja en la diapositiva por dónde irá')}"><i class="ms">gesture</i> ${t('Dibujar su recorrido')}</button>`,
+      { label: t('Al moverse por la diapositiva'), cls: 'm3d-walk', open: !!b.walk })}
+    ${moreHTML(`<label class="fr-l">${t('Si ya estaba en la diapositiva anterior')}
+      <select class="m3d-arrive">${ARRIVALS_3D.map(([k, l]) => `<option value="${k}"${(b.arrive || 'keep') === k ? ' selected' : ''}>${t(l)}</option>`).join('')}</select></label>
+      <p class="host-help">${t('Con Transformar, o el mismo modelo en las dos: cómo sigue al pasar de una a otra.')}</p>`, { open: !!b.arrive && b.arrive !== 'keep' })}
+    </div></div></div>
+    ${footHTML(`<button class="fr-do m3d-ok">${t('Aplicar')}</button>`)}</div>`;
   document.body.appendChild(back);
   const q = s => back.querySelector(s);
   const close = () => { runtime.stop(mv); back.remove(); };

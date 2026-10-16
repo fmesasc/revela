@@ -4803,4 +4803,5 @@ export default {
   "Saldrían {n} piezas: demasiadas. Sube la separación para juntar las que están cerca (como mucho, {max}).": "{n} zati aterako lirateke: gehiegi. Igo bereizketa hurbil daudenak elkartzeko (gehienez {max}).",
   "Esta imagen no tiene partes transparentes: no hay piezas sueltas que separar.": "Irudi honek ez du zati gardenik: ez dago banatzeko zati solterik.",
   "Separando las piezas…": "Zatiak banatzen…",
+  "Ejes": "Ardatzak",
 };

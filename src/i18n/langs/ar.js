@@ -4803,4 +4803,5 @@ export default {
   "Saldrían {n} piezas: demasiadas. Sube la separación para juntar las que están cerca (como mucho, {max}).": "سينتج {n} قطعة: عدد كبير جدًا. زِد مسافة الفصل لضم القطع المتقاربة (بحد أقصى {max}).",
   "Esta imagen no tiene partes transparentes: no hay piezas sueltas que separar.": "هذه الصورة ليس فيها أجزاء شفافة: لا توجد قطع منفصلة لفصلها.",
   "Separando las piezas…": "جارٍ فصل القطع…",
+  "Ejes": "المحاور",
 };

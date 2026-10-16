@@ -4803,4 +4803,5 @@ export default {
   "Saldrían {n} piezas: demasiadas. Sube la separación para juntar las que están cerca (como mucho, {max}).": "Sairían {n} pezas: demasiadas. Sube a separación para xuntar as que están preto (como moito, {max}).",
   "Esta imagen no tiene partes transparentes: no hay piezas sueltas que separar.": "Esta imaxe non ten partes transparentes: non hai pezas soltas que separar.",
   "Separando las piezas…": "Separando as pezas…",
+  "Ejes": "Eixos",
 };

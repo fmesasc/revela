@@ -4803,4 +4803,5 @@ export default {
   "Saldrían {n} piezas: demasiadas. Sube la separación para juntar las que están cerca (como mucho, {max}).": "Dat zouden {n} stukken worden: te veel. Verhoog de afstand om dichtbije stukken samen te voegen (hooguit {max}).",
   "Esta imagen no tiene partes transparentes: no hay piezas sueltas que separar.": "Deze afbeelding heeft geen transparante delen: er zijn geen losse stukken om te splitsen.",
   "Separando las piezas…": "Stukken splitsen…",
+  "Ejes": "Assen",
 };
