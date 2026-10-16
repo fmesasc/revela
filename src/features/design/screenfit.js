@@ -1,7 +1,8 @@
 // Fitting the slides to a screen of another proportion when presenting
 // (Ver ▸ Ajuste a la pantalla, and the presentation settings), deck.reveal.fit:
-//   'bands' — the slide letterboxed in black;
-//   'fill'  — the bands show the slide's own background carried out (default);
+//   'bands' — the slide letterboxed in black (default: what other programs do — Francisco, 2026-10-17; until then
+//             the default was 'fill');
+//   'fill'  — the bands show the slide's own background carried out;
 //   'adapt' — the slide takes the screen's proportion and its objects are laid
 //             out again on it, never distorted.
 // fitSize and adaptLayout also run inside the presentation (embedded with
@@ -10,12 +11,12 @@
 import { state, commit } from '../../core/store.js';
 import { canvasOn } from './canvasmode.js';
 
-export const FIT_MODES = ['fill', 'bands', 'adapt'];
+export const FIT_MODES = ['bands', 'fill', 'adapt'];
 export const FIT_LABELS = { bands: 'Franjas negras', fill: 'Rellenar con el fondo', adapt: 'Adaptar a la pantalla' };
 
 // The deck's choice, and the mode it presents with (canvas mode has no single
 // slide to adapt: it fills).
-export const fitChoice = (deck = state.deck) => (FIT_MODES.includes(deck.reveal?.fit) ? deck.reveal.fit : 'fill');
+export const fitChoice = (deck = state.deck) => (FIT_MODES.includes(deck.reveal?.fit) ? deck.reveal.fit : 'bands');
 export function fitMode(deck = state.deck) {
   const mode = fitChoice(deck);
   return mode === 'adapt' && canvasOn(deck) ? 'fill' : mode;
@@ -24,7 +25,7 @@ export function setFitMode(mode) {
   if (!FIT_MODES.includes(mode)) return;
   commit(() => {
     const r = { ...(state.deck.reveal || {}) };
-    if (mode === 'fill') delete r.fit; else r.fit = mode;
+    if (mode === 'bands') delete r.fit; else r.fit = mode;
     if (Object.keys(r).length) state.deck.reveal = r; else delete state.deck.reveal;
   });
 }

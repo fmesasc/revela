@@ -701,7 +701,7 @@ export const slidePathsFor = deck => slidePaths(deck);
 export const rv = deck => deck.reveal || {};
 export const REVEAL_DEFAULTS = { controls: true, controlsLayout: 'bottom-right', progress: true, navigationMode: 'default', view: 'slides',
   mouseWheel: false, shuffle: false, hideInactiveCursor: true, jumpToSlide: true, previewLinks: false, rtl: false, center: true,
-  autoAnimateDuration: 1.0, autoAnimateEasing: 'ease', autoSlideStoppable: true, fragmentInURL: true, zoom: true, search: true, parallax: '', fit: 'fill' };
+  autoAnimateDuration: 1.0, autoAnimateEasing: 'ease', autoSlideStoppable: true, fragmentInURL: true, zoom: true, search: true, parallax: '', fit: 'bands' };
 // Morph (reveal.js auto-animate) with objects turned or flipped. reveal measures each pair by its bounding box (turned:
 // the box of the turned shape) and ends with «transform: none» on the arriving object, which stays until the next
 // slide — so a turned object arrived straight (going back from a slide where an arrow points right to one where it

@@ -1853,21 +1853,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const big = F.adaptLayout([{ id: 'x', x: 0, y: 10, w: 1100, h: 700 }], 1280, 720, 1280, 720);
     eq(JSON.stringify(big.x), '{"x":0,"y":10,"w":1100,"h":700}', 'en la misma proporción no cambia nada');
     eq(F.fitMode({ reveal: { fit: 'adapt' }, canvas: { on: true }, slides: [] }), 'fill', 'el modo lienzo rellena en lugar de adaptar');
-    eq(F.fitMode({ slides: [] }), 'fill', 'por defecto, rellenar con el fondo');
+    eq(F.fitMode({ slides: [] }), 'bands', 'por defecto, franjas negras (como otros programas)');
   });
 
   await test('ajuste a la pantalla: el HTML lleva el modo; la cinta y la configuración lo cambian, con vista previa en tres pantallas', async () => {
     const d = fitDeck(); R.store.replaceDeck(d); R.render();
     let html = R.io.buildHTML();
-    assert(/<div class="reveal" data-fit="fill">/.test(html), 'por defecto, rellenar');
+    assert(/<div class="reveal" data-fit="bands">/.test(html) && /\.reveal-viewport\{background:#000!important\}/.test(html) && !/data-fill=/.test(html), 'por defecto, franjas negras');
+    D.querySelector('#ribbon [data-fit]').value = 'fill'; D.querySelector('#ribbon [data-fit]').dispatchEvent(new Event('change'));
+    eq(R.state.deck.reveal?.fit, 'fill', 'la lista de la cinta lo guarda'); html = R.io.buildHTML();
     assert(/data-rv-id="fg"/.test(html) && /<section[^>]*data-fill="g"[^>]*data-rv-id="fg"/.test(html), 'el degradado se lleva a las franjas');
     assert(/section\[data-fill=g\]>\.stage\{background:transparent!important\}/.test(html), 'una sola capa de degradado, sin costuras');
     assert(/function screenFitRuntime/.test(html) && /\}\)\("fill", 1280, 720, function fitSize/.test(html), 'con su código');
     assert(!/data-fid=/.test(html), 'sin datos de reparto si no adapta');
-    D.querySelector('#ribbon [data-fit]').value = 'bands'; D.querySelector('#ribbon [data-fit]').dispatchEvent(new Event('change'));
-    eq(R.state.deck.reveal?.fit, 'bands', 'la lista de la cinta lo guarda');
-    html = R.io.buildHTML();
-    assert(/data-fit="bands"/.test(html) && /\.reveal-viewport\{background:#000!important\}/.test(html) && !/data-fill=/.test(html), 'franjas negras');
     R.store.commit(() => { R.state.deck.reveal = { fit: 'adapt' }; }); html = R.io.buildHTML();
     assert(/data-fid="tt" data-fb="80,60,600,90" data-fx="text"/.test(html), 'adaptar: cada objeto dice qué es y dónde');
     assert(/data-fid="g1"[^>]*data-fg="G"/.test(html) && /data-fid="k"[^>]*data-fx="conn"[^>]*data-fc="a b "/.test(html), 'grupos y conectores');
@@ -1876,14 +1874,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(sel.value, 'adapt', 'la configuración muestra el modo');
     eq([...m.querySelectorAll('.fit-prev figcaption')].map(x => x.textContent).join(), 'Pantalla 16:9,Pantalla 16:10,Pantalla 4:3', 'tres pantallas');
     assert(frames.length === 3 && [...frames].every(f => /data-fit="adapt"/.test(f.srcdoc)), 'vista previa con el modo elegido');
-    sel.value = 'fill'; sel.dispatchEvent(new Event('change'));
-    assert([...frames].every(f => /data-fit="fill"/.test(f.srcdoc)), 'cambia al elegir otro');
+    sel.value = 'bands'; sel.dispatchEvent(new Event('change'));
+    assert([...frames].every(f => /data-fit="bands"/.test(f.srcdoc)), 'cambia al elegir otro');
     for (let i = 0; i < 80 && !frames[2].contentWindow?.Reveal?.isReady?.(); i++) await sleep(100);
     const fw = frames[2].contentWindow;
     assert(fw.Reveal?.isReady?.() && !fw.Reveal.isScrollView?.(), 'la vista previa es la presentación (no la vista para móviles)');
     m.querySelector('.set-ok').click(); await sleep(10);
-    assert(!R.state.deck.reveal?.fit, 'rellenar es lo de siempre: no se guarda');
-    eq(D.querySelector('#ribbon [data-fit]').value, 'fill', 'y la cinta lo refleja');
+    assert(!R.state.deck.reveal?.fit, 'franjas negras es lo de siempre: no se guarda');
+    eq(D.querySelector('#ribbon [data-fit]').value, 'bands', 'y la cinta lo refleja');
   });
 
   await test('ajuste a la pantalla medido en Chrome: 16:9 en 1920×1200, 1440×900 y 1024×768 (negro, relleno, adaptado)', async () => {

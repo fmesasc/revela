@@ -3820,6 +3820,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const { w: SW, h: SH } = R.state.deck.size;
     const stops = [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 6 }, { name: 'Roma', lon: 12.5, lat: 41.9, zoom: 6 }];
     const full = G.addMap({ x: 0, y: 0, w: SW, h: SH, stops });
+    R.store.commit(() => { R.state.deck.reveal = { fit: 'fill' }; });      // (rellenar con el fondo: no es lo de siempre desde el 2026-10-17)
     const S = await W.eval("import('/src/core/vendor.js')");
     const play = async (vw, vh, run) => {
       const html = R.io.buildHTML(R.state.deck, { inApp: true });
