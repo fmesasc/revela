@@ -11,6 +11,8 @@ import { t } from '../../i18n/index.js';
 import { blockHTML, slideInnerHTML, magnifyInsetHTML } from '../formats/html.js';
 import { download, slug } from '../files.js';
 import { watermarkHTML } from '../../features/document/watermark.js';
+import { specOf, applyLook } from '../../render/imagelook.js';
+import { applyAdjustments, fitRect } from './objects.js';
 
 
 // Fill in what the exported page draws with scripts, for rasterising: KaTeX
@@ -85,8 +87,29 @@ async function fitPictures(holder) {
 // leaving the rest out moves nothing.)
 const h2c = (el, opts) => window.html2canvas(el, { ...opts,
   ignoreElements: n => !(n.closest('head') || /^(STYLE|LINK)$/.test(n.tagName) || n.contains(el) || el.contains(n)) || !!opts.ignoreElements?.(n) });
+// html2canvas draws no CSS filter either: a picture with corrections or a filter (render/imagelook.js) is drawn here
+// with them, on its own pixels, and goes in with its filter taken off. (One from another site that doesn't allow
+// reading its pixels stays as it is.)
+async function bakeLooks(holder) {
+  for (const img of holder.querySelectorAll('img')) {
+    const f = img.style.filter || ''; if (!f || f === 'none') continue;
+    const n = re => +(f.match(re)?.[1] ?? 100), adj = { brightness: n(/brightness\(([\d.]+)%\)/), contrast: n(/contrast\(([\d.]+)%\)/), saturate: n(/saturate\(([\d.]+)%\)/) };
+    const look = specOf(f.match(/url\(["']?#([\w-]+)/)?.[1] || '');
+    if (!look && adj.brightness === 100 && adj.contrast === 100 && adj.saturate === 100) continue;
+    try {
+      await img.decode();
+      const nw = img.naturalWidth, nh = img.naturalHeight; if (!nw || !nh) continue;
+      const c = Object.assign(document.createElement('canvas'), { width: nw, height: nh }), g = c.getContext('2d'); g.drawImage(img, 0, 0);
+      // (Its pixels per slide pixel as drawn in its box: the softness as wide as on the slide.)
+      const k = nw / (fitRect(getComputedStyle(img).objectFit || 'contain', nw, nh, img.clientWidth || nw, img.clientHeight || nh)[2] || nw);
+      g.putImageData(applyLook(applyAdjustments(g.getImageData(0, 0, nw, nh), adj), look, k), 0, 0);
+      img.src = c.toDataURL('image/png'); await img.decode().catch(() => {}); img.style.filter = 'none';
+    } catch {}
+  }
+}
 export async function rasterize(holder, opts) {
   await loadScript(HTML2CANVAS, 'html2canvas');
+  await bakeLooks(holder);
   await fitPictures(holder);
   const clipped = [...holder.querySelectorAll('[style]')].filter(isClipped);
   if (!clipped.length) return h2c(holder, opts);

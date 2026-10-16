@@ -3864,4 +3864,100 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // En la presentación exportada es una imagen más.
     assert(/<img[^>]+data:image\/svg\+xml/.test(R.io.buildHTML()), 'exportado, va como imagen');
   });
+
+  // «Editar imagen» (ui/dialogs/imageedit.js): a picture, two colours side by side or a red square on green.
+  const testPicture = (draw, w = 120, h = 80) => { const c = D.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); return c.toDataURL('image/png'); };
+  const putPicture = src => { const b = { id: 'ie' + Math.random().toString(36).slice(2, 7), type: 'image', x: 100, y: 100, w: 240, h: 160, rotation: 0, animation: null, src, fit: 'contain' };
+    R.store.commit(() => slide().blocks.push(b)); select(b); return b; };
+  const pixelOf = async (src, x, y) => { const bmp = await createImageBitmap(await (await fetch(src)).blob()), c = D.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+    const g = c.getContext('2d'); g.drawImage(bmp, 0, 0); return { px: [...g.getImageData(x, y, 1, 1).data], w: bmp.width, h: bmp.height }; };
+  const openEditor = async () => {
+    D.querySelector('#ribbon [data-tab="ctx"]').click(); await sleep(40);
+    [...D.querySelectorAll('#ribbon [data-page="ctx"] button')].find(x => x.querySelector('span')?.textContent === 'Editar imagen')?.click();
+    await until(() => D.getElementById('imged-modal')); await sleep(40); return D.getElementById('imged-modal');
+  };
+  const tabTo = async (m, id) => { m.querySelector(`.dk-tab[data-tab="${id}"]`).click(); await sleep(40); };
+
+  await test('editar imagen: filtros con su miniatura, en el lienzo, la presentación, la imagen exportada y Ctrl+Z', async () => {
+    reset(); const W = frame.contentWindow;
+    const b = putPicture(testPicture((g, w, h) => { g.fillStyle = '#ff0000'; g.fillRect(0, 0, w / 2, h); g.fillStyle = '#0000ff'; g.fillRect(w / 2, 0, w / 2, h); }));
+    await sleep(30);
+    const m = await openEditor(); assert(m, 'Imagen ▸ Editar imagen abre el editor');
+    assert(['adjust', 'filters', 'crop', 'background', 'extend', 'layers'].every(k => m.querySelector(`.dk-tab[data-tab="${k}"]`)), 'con sus seis pestañas');
+    await tabTo(m, 'filters');
+    assert(m.querySelectorAll('[data-fx]').length >= 13 && /url\(/.test(m.querySelector('[data-fx="noir"] img').style.filter), 'la galería: la imagen con cada filtro');
+    m.querySelector('[data-fx="bw"]').click(); await sleep(30);
+    const cur = () => slide().blocks.find(x => x.id === b.id);
+    eq(cur().fx?.name, 'bw', 'elegido: blanco y negro');
+    const img = D.querySelector(`#stage .block[data-id="${b.id}"] img`), id = img?.style.filter.match(/url\("?#([\w-]+)/)?.[1];
+    assert(id && D.getElementById(id)?.querySelector('feColorMatrix'), 'en el lienzo: su filtro SVG');
+    assert(m.querySelector('.ie-pic').style.filter.includes(id), 'y en la vista del editor');
+    const html = R.io.buildHTML(); assert(html.includes(`<filter id="${id}"`) && html.includes(`url(#${id})`), 'en la presentación exportada, con su filtro');
+    const baked = await R.objects.bakeImage(cur(), 1), bp = baked.getContext('2d').getImageData(40, 80, 1, 1).data;
+    assert(Math.abs(bp[0] - bp[1]) < 12 && Math.abs(bp[1] - bp[2]) < 12, '«Guardar como imagen»: gris, ' + [...bp].slice(0, 3));
+    const I = await W.eval("import('/src/io/export/images.js')"), shot = await I.slideImageBlob(slide(), 'png'), url = URL.createObjectURL(shot);
+    const { px } = await pixelOf(url, 300, 360); URL.revokeObjectURL(url);
+    assert(Math.abs(px[0] - px[1]) < 16 && Math.abs(px[1] - px[2]) < 16 && px[0] > 30, 'la diapositiva como imagen (PNG, PDF): también gris, ' + px.slice(0, 3));
+    // Strength, duotone and its colours, warmth: each one changes the look.
+    const amt = m.querySelector('.ie-amt'); amt.value = 50; amt.dispatchEvent(new Event('input')); await sleep(20);
+    eq(cur().fx.amount, 50, 'intensidad');
+    m.querySelector('[data-fx="duotone"]').click(); await sleep(60);
+    assert(cur().fx.name === 'duotone' && cur().fx.dark && !m.querySelector('.ie-duo').hidden, 'duotono, con sus dos colores');
+    R.store.undo(); await sleep(60);
+    eq(cur().fx?.name, 'bw', 'Ctrl+Z: el filtro de antes'); assert(m.querySelector('[data-fx="bw"]').getAttribute('aria-pressed') === 'true', 'y el editor lo sigue');
+    m.querySelector('[data-fx=""]').click(); await sleep(20); assert(!cur().fx, '«Ninguno» lo quita');
+    await tabTo(m, 'adjust');
+    const warm = m.querySelector('[data-adj="warmth"]'); warm.value = 60; warm.dispatchEvent(new Event('input')); await sleep(30);
+    eq(cur().adj.warmth, 60, 'calidez'); assert(/url\(/.test(D.querySelector(`#stage .block[data-id="${b.id}"] img`).style.filter), 'la calidez, también un filtro');
+    m.querySelector('.ie-reset').click(); await sleep(20); assert(!cur().adj, 'restablecer');
+    m.querySelector('.modal-close').click(); assert(!D.getElementById('imged-modal'), 'se cierra');
+  });
+
+  await test('editar imagen: ampliar sin IA a otra forma (un color, espejo) y deshacerlo', async () => {
+    reset(); const W = frame.contentWindow, T = await W.eval("import('/src/features/document/imagetools.js')");
+    eq(JSON.stringify(T.extendSize(100, 50, { ratio: 'margin', margin: 10 })), '[120,70,10,10]', 'un margen: igual por los cuatro lados');
+    eq(T.extendSize(160, 90, { ratio: '16:9' }), null, 'la misma forma: nada que hacer');
+    const src0 = testPicture((g, w, h) => { g.fillStyle = '#ff0000'; g.fillRect(0, 0, w, h); }), b = putPicture(src0); await sleep(30);
+    const m = await openEditor(); await tabTo(m, 'extend'); await sleep(60);
+    const set = (s, v) => { const e = m.querySelector(s); e.value = v; e.dispatchEvent(new Event('input')); };
+    set('.ie-ratio', '16:9'); set('.ie-fill', 'color'); set('.ie-color', '#00ff00');
+    assert(await until(() => m.querySelector('.ie-pic.ie-ext')), 'la vista muestra cómo quedará');
+    m.querySelector('[data-do="extend"]').click();
+    const cur = () => slide().blocks.find(x => x.id === b.id);
+    assert(await until(() => cur().src !== src0), 'ampliada');
+    const { px, w, h } = await pixelOf(cur().src, 2, 40);
+    assert(Math.abs(w / h - 16 / 9) < 0.02 && w > 120 && h === 80, 'más grande, 16:9: ' + w + '×' + h);
+    assert(px[1] > 200 && px[0] < 60, 'el borde nuevo, del color elegido: ' + px.slice(0, 3));
+    assert(cur().h === 160 && Math.abs(cur().w - 284) <= 2 && cur().x < 100, 'la caja crece alrededor y la foto no cambia de tamaño: ' + [cur().x, cur().w, cur().h]);
+    R.store.undo(); await sleep(30); eq(cur().src, src0, 'Ctrl+Z: como estaba'); eq(cur().w, 240, 'y su caja');
+    // Mirrored edges: the picture's own colour reaches the new edge.
+    set('.ie-fill', 'mirror'); m.querySelector('[data-do="extend"]').click();
+    assert(await until(() => cur().src !== src0), 'en espejo');
+    const e = await pixelOf(cur().src, 1, 40); assert(e.px[0] > 200 && e.px[1] < 60, 'sus bordes, reflejados: ' + e.px.slice(0, 3));
+    m.querySelector('.modal-close').click();
+  });
+
+  await test('editar imagen: capas — la figura encima y el fondo con su hueco relleno, dos objetos en su sitio', async () => {
+    reset(); const W = frame.contentWindow, T = await W.eval("import('/src/features/document/imagetools.js')"), was = T.layerKit.cutout;
+    const src0 = testPicture((g, w, h) => { g.fillStyle = '#00c000'; g.fillRect(0, 0, w, h); g.fillStyle = '#ff0000'; g.fillRect(45, 25, 30, 30); });
+    // (The background removal's AI, played: the red square alone.)
+    T.layerKit.cutout = async () => testPicture(g => { g.fillStyle = '#ff0000'; g.fillRect(45, 25, 30, 30); });
+    try {
+      const b = putPicture(src0), n = slide().blocks.length; await sleep(30);
+      const m = await openEditor(); await tabTo(m, 'layers');
+      m.querySelector('[data-do="layers"]').click();
+      assert(await until(() => slide().blocks.length === n + 1), 'dos objetos');
+      const [bg, top] = slide().blocks.slice(-2);
+      eq(bg.id, b.id, 'el de abajo es la foto (con lo que tenía)'); assert(top.type === 'image' && top.id !== b.id, 'encima, la figura');
+      assert(['x', 'y', 'w', 'h'].every(k => bg[k] === top[k]), 'los dos en el mismo sitio');
+      eq(JSON.stringify(R.state.ui.multi), JSON.stringify([bg.id, top.id]), 'seleccionados juntos');
+      const fig = await pixelOf(top.src, 5, 5), mid = await pixelOf(top.src, 60, 40);
+      assert(fig.px[3] === 0 && mid.px[0] > 200 && mid.px[3] === 255, 'la figura: solo el cuadrado, el resto transparente');
+      const hole = await pixelOf(bg.src, 60, 40);
+      assert(hole.px[1] > 150 && hole.px[0] < 80, 'el fondo: donde estaba la figura, lo de alrededor (verde): ' + hole.px.slice(0, 3));
+      assert(!D.getElementById('imged-modal'), 'el editor se cierra para verlos');
+      R.store.undo(); await sleep(30);
+      eq(slide().blocks.length, n, 'Ctrl+Z: una sola imagen'); eq(slide().blocks.at(-1).src, src0, 'la de antes');
+    } finally { T.layerKit.cutout = was; }
+  });
 }

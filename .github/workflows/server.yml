@@ -71,6 +71,7 @@ on:
       - 'src/render/diagrams.js'
       - 'src/render/icons.js'
       - 'src/render/svg.js'
+      - 'src/render/imagelook.js'
   workflow_dispatch:
 
 permissions:

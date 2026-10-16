@@ -49,6 +49,7 @@ const SYN = {
   'a:model-ai': '3d|crear 3d|generar 3d|ia 3d|modelar|blender|ai 3d|generate 3d|text to 3d',
   'a:insert-math': 'fórmula|fórmulas|ecuación|latex|tex|matemáticas|integral|fracción|raíz|math|maths|equation|formula|équation|gleichung|formel|equazione',
   'ctx:Editar con IA': 'borrar objeto|quitar objeto|borrador mágico|magic eraser|ampliar imagen|expandir|outpaint|más resolución|upscale|mejorar foto|retocar|generative fill|relleno generativo',
+  'ctx:Editar imagen': 'filtro|filtros|efectos de foto|editar foto|retocar foto|calidez|viñeta|duotono|sepia|blanco y negro|extender imagen|ampliar lienzo|capas|separar figura|photo filter|filters|edit photo|photo editor|duotone|vignette|extend image|layers|magic grab|filtre|filter|filtri',
   'ctx:Quitar fondo': 'quitar fondo|eliminar fondo|borrar fondo|fondo transparente|recortar persona|remove background|background remover|transparent background|supprimer l arrière plan|hintergrund entfernen',
   'ctx:Opacidad': 'transparencia|transparente|translúcido|opacidad|transparency|transparent|opacity|alpha|transparence|transparenz|trasparenza',
   'a:insert-hf': 'pie de página|pie|encabezado|número de diapositiva|numerar|numeración|numerar diapositivas|número de página|paginar|footer|header|slide number|page number|numbering|pied de page|fußzeile|piè di pagina|rodapé|peu de pàgina',
@@ -184,7 +185,7 @@ const SYN = {
 };
 // The selected object's tab: commands that need an object (shown greyed, with what to select, when there isn't one).
 const NEEDS = {
-  image: ['Imagen', 'Selecciona una imagen', [['Archivo', 'swap_horiz', 'Cambiar imagen'], ['Ajustar', 'auto_fix_high', 'Quitar fondo'], ['Ajustar', 'magic_button', 'Editar con IA'], ['Ajustar', 'crop', 'Recortar'], ['Ajustar', 'tune', 'Ajustes de imagen'], ['Lupa', 'loupe', 'Ampliar una zona de la imagen']]],
+  image: ['Imagen', 'Selecciona una imagen', [['Ajustar', 'photo_filter', 'Editar imagen'], ['Archivo', 'swap_horiz', 'Cambiar imagen'], ['Ajustar', 'auto_fix_high', 'Quitar fondo'], ['Ajustar', 'magic_button', 'Editar con IA'], ['Ajustar', 'crop', 'Recortar'], ['Ajustar', 'tune', 'Ajustes de imagen'], ['Lupa', 'loupe', 'Ampliar una zona de la imagen']]],
   any: ['Objeto', 'Selecciona un objeto', [['Organizar', 'opacity', 'Opacidad'], ['Organizar', 'shadow', 'Sombra'], ['Organizar', 'lock_open', 'Bloquear'], ['Organizar', 'flip', 'Voltear'],
     ['Organizar', 'rotate_left', 'Quitar el giro'], ['Accesibilidad', 'accessibility', 'Texto alternativo']]],
   model: ['Modelo 3D', 'Selecciona un modelo 3D', [['Animación', 'motion_photos_on', 'Movimiento 3D'], ['Animación', 'autorenew', 'Girar solo'], ['Esqueleto', 'accessibility_new', 'Esqueleto automático'],

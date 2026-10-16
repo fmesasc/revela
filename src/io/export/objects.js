@@ -3,13 +3,14 @@
 //
 // html2canvas draws the objects, but it ignores CSS filters and clip-path, so
 // photos are first "baked": their adjustments (brightness, contrast,
-// saturation, transparency) and crop are applied on a canvas, and the result
+// saturation, transparency; and render/imagelook.js's filters) and crop are applied on a canvas, and the result
 // replaces the photo. Rotation and flips are left to html2canvas.
 
 import { state, currentSlide } from '../../core/store.js';
 import { opacityOf } from '../../core/model.js';
 import { JSZIP, loadScript } from '../../core/vendor.js';
 import { tableCSS, levelCSS, shapeSVG, iconSVG, chartSVG, inkSVG } from '../../render/svg.js';
+import { lookSpec, applyLook } from '../../render/imagelook.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { t } from '../../i18n/index.js';
 import { blockHTML } from '../formats/html.js';
@@ -77,7 +78,8 @@ export async function bakeImage(b, scale = 1) {
   ctx.clip();
   ctx.drawImage(img, ...fitRect(b.fit || 'contain', img.naturalWidth, img.naturalHeight, W, H));
   ctx.restore();
-  if (b.adj) ctx.putImageData(applyAdjustments(ctx.getImageData(0, 0, W, H), b.adj), 0, 0);
+  const look = lookSpec(b);                              // (its warmth, filter, sharpness, vignette: render/imagelook.js)
+  if (b.adj || look) ctx.putImageData(applyLook(b.adj ? applyAdjustments(ctx.getImageData(0, 0, W, H), b.adj) : ctx.getImageData(0, 0, W, H), look, scale), 0, 0);
   return c;
 }
 
@@ -105,7 +107,7 @@ export function boundsOf(blocks) {
 export async function selectionCanvas(blocks, { scale = 2, background = null, slide = currentSlide(), deck = state.deck } = {}) {
   const box = boundsOf(blocks);
   const baked = await Promise.all(blocks.map(async b => (b.type === 'image' && b.src
-    ? { ...b, src: (await bakeImage(b, scale)).toDataURL('image/png'), adj: null, crop: null, fit: 'fill' }
+    ? { ...b, src: (await bakeImage(b, scale)).toDataURL('image/png'), adj: null, fx: null, crop: null, fit: 'fill' }
     : b)));
   const bg = background === 'slide' ? slide?.background || '#ffffff' : background;
   const holder = document.createElement('div'); holder.className = 'rst';   // (.rst: the images' size rule below must not reach html2canvas's own iframe)

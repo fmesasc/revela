@@ -18,7 +18,7 @@ import { withBlobs, blobURL } from '../../io/formats/blobmedia.js';
 import { currentPalette, deckFg, paletteColours } from '../../features/design/palettes.js';
 
 // PowerPoint's «Correcciones» and «Color», as examples of the picture itself.
-const IMG_PRESETS = [['Original', { brightness: 100, contrast: 100, saturate: 100, opacity: 100 }], ['Más claro', { brightness: 130, contrast: 100, saturate: 100, opacity: 100 }],
+export const IMG_PRESETS = [['Original', { brightness: 100, contrast: 100, saturate: 100, opacity: 100 }], ['Más claro', { brightness: 130, contrast: 100, saturate: 100, opacity: 100 }],
   ['Más oscuro', { brightness: 75, contrast: 100, saturate: 100, opacity: 100 }], ['Más contraste', { brightness: 100, contrast: 145, saturate: 100, opacity: 100 }],
   ['Suave', { brightness: 108, contrast: 80, saturate: 90, opacity: 100 }], ['Blanco y negro', { brightness: 100, contrast: 110, saturate: 0, opacity: 100 }],
   ['Colores vivos', { brightness: 100, contrast: 110, saturate: 170, opacity: 100 }], ['Desvaída', { brightness: 110, contrast: 90, saturate: 60, opacity: 60 }]];

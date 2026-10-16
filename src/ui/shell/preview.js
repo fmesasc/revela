@@ -14,6 +14,7 @@ import { levelVars, masterBlocksFor, styled } from '../../features/document/mast
 import { state } from '../../core/store.js';
 import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, underArea, viewOf, MAG_SKIP } from '../../features/document/magnify.js';
 import { lockSVG } from '../../render/svg.js';
+import { ensureLook } from '../../render/imagelook.js';
 import { mapPreviewHTML } from '../../features/content/geomap.js';
 import { shadowCSS, borderCSS, levelCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, shapeTextHTML, hasShapeText, deviceCSS, tableClass, tableVars, tableCSS } from '../../render/svg.js';
 
@@ -54,6 +55,7 @@ export function blockPreview(b, slide, { small = false } = {}) {
     const img = document.createElement('img'); img.loading = 'lazy'; img.decoding = 'async'; img.alt = '';
     if (small && needsSmall(b.src)) img.src = smallImage(b.src, u => { img.src = u; }) || 'data:,';   // (empty until its copy is made)
     else img.src = blobURL(b.src || '');
+    ensureLook(b);
     img.style.cssText = `width:100%;height:100%;object-fit:${b.fit || 'contain'};object-position:${imgFocus(b)};filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}`;
     el.replaceChildren(img);
   } else if (b.type === 'video') {

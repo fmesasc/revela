@@ -23,6 +23,7 @@ import { selfPacedRuntime } from '../runtime/selfpaced.js';
 import { activityGame, GAME_WORDS } from '../runtime/games.js';
 import { lockSHA256, lockNorm, lockRuntime, LOCK_CSS } from '../runtime/lock.js';
 import { lockSVG, lockCodes, lockDigits } from '../../render/svg.js';
+import { looksSVG } from '../../render/imagelook.js';
 import { slideTitle } from '../../features/document/a11y.js';
 import { deckTag, langAttr } from '../../features/document/proofing.js';
 import { blobMedia } from './blobmedia.js';
@@ -870,7 +871,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal.rv-canvas .slides>section.present{pointer-events:auto}
  html.rv-canvas-overview .reveal.rv-canvas .slides>section{pointer-events:auto;cursor:zoom-in}
  .reveal.rv-canvas .rv-world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;z-index:1;pointer-events:none;transition:transform var(--rv-fly,1.4s) cubic-bezier(.65,0,.35,1)}` : ''}${noCopy ? '\n .reveal{-webkit-user-select:none;user-select:none} .reveal img{-webkit-user-drag:none} @media print{body{display:none!important}}' : ''}
-</style>${deck.css ? `\n<style>/* the presentation's own CSS (developer mode) */\n${scopedCSS(deck.css, '.reveal .stage')}</style>` : ''}</head><body>
+</style>${deck.css ? `\n<style>/* the presentation's own CSS (developer mode) */\n${scopedCSS(deck.css, '.reveal .stage')}</style>` : ''}</head><body>${looksSVG([...deck.slides, deck.master, ...(deck.layouts || [])].flatMap(s => s?.blocks || []))}
 <div class="reveal${canvas ? ' rv-canvas' : ''}" data-fit="${fit}"><div class="slides">${canvas && deck.canvas.image?.src ? `<div class="rv-world"><img alt="" src="${esc(deck.canvas.image.src)}" style="max-width:none;max-height:none;margin:0;position:absolute;left:${deck.canvas.image.x}px;top:${deck.canvas.image.y}px;width:${deck.canvas.image.w}px;height:${deck.canvas.image.h}px"></div>` : ''}${backdropHTML(bd)}
 ${slides}
 </div>${footerText}${logoHTML}</div>${watermarkPage(deck, who)}${bgmHTML}

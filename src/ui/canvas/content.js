@@ -16,6 +16,7 @@ import { shownRows } from '../../core/formulas.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, amend, currentSlide } from '../../core/store.js';
 import { lockSVG, lockSig } from '../../render/svg.js';
+import { ensureLook } from '../../render/imagelook.js';
 import { borderCSS, tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, timerSVG, deviceStyle, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
 import { collectFigures, captionLine, figIndexTitle } from '../../features/document/captions.js';
 import { blockPreview } from '../shell/preview.js';
@@ -59,6 +60,7 @@ export const connectorHTML = b => {
 export function applyImgStyle(img, b) {
   img.style.objectFit = b.fit || 'contain';
   img.style.objectPosition = imgFocus(b);
+  ensureLook(b);
   img.style.filter = imgFilter(b);
   img.style.opacity = imgOpacity(b);
   img.style.clipPath = imgClip(b);

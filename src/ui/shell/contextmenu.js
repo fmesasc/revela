@@ -279,6 +279,7 @@ function forBlock(b, cell = null) {
       null);
   } else if (b.type === 'image') {
     items.push(
+      ['Editar imagen…', () => import('../dialogs/imageedit.js').then(m => m.openImageEditor(b))],
       ['Cambiar imagen…', () => changeImage(b)],
       ['Ajustar: contener', () => setFit(b, 'contain')],
       ['Ajustar: rellenar', () => setFit(b, 'cover')],

@@ -10,11 +10,12 @@ const KINDS = [['erase', 'Borrar algo de la foto'], ['enhance', 'Mejorar la foto
   ['expand', 'Ampliar por los bordes'], ['edit', 'Cambiar algo (dilo con tus palabras)']];
 const SHAPES = [['16:9', 'Panorámica 16:9 (la diapositiva)'], ['4:3', '4:3'], ['1:1', 'Cuadrada'], ['9:16', 'Vertical 9:16'], ['21:9', 'Muy panorámica 21:9']];
 
-export function openImageAI(b) {
+// kind: the edit chosen when it opens (Editar imagen ▸ Ampliar ▸ «Con IA»: 'expand').
+export function openImageAI(b, { kind: first = 'erase' } = {}) {
   document.getElementById('imgai-modal')?.remove();
   const back = document.createElement('div'); back.id = 'imgai-modal'; back.className = 'modal-backdrop';
   back.innerHTML = `<div class="modal" style="text-align:start;width:min(480px,94vw)"><button class="modal-close">✕</button><h3>${t('Editar la imagen con IA')}</h3>
-    <div class="ia-kinds">${KINDS.map(([k, l], i) => `<label class="fr-chk"><input type="radio" name="ia-kind" value="${k}"${i ? '' : ' checked'}> ${esc(t(l))}</label>`).join('')}</div>
+    <div class="ia-kinds">${KINDS.map(([k, l]) => `<label class="fr-chk"><input type="radio" name="ia-kind" value="${k}"${k === first ? ' checked' : ''}> ${esc(t(l))}</label>`).join('')}</div>
     <label class="fr-l ia-what-l">${t('¿Qué?')}<input type="text" class="ia-what" maxlength="300"></label>
     <label class="fr-l ia-shape-l" hidden>${t('Nueva forma')}<select class="ia-shape">${SHAPES.map(([v, l]) => `<option value="${v}">${esc(t(l))}</option>`).join('')}</select></label>
     <p class="host-help">${t('La IA rehace la imagen: revisa el resultado (puedes deshacerlo con Ctrl+Z). Cuenta como crear una imagen.')}</p>

@@ -1,11 +1,13 @@
 import { plainText } from '../core/text.js';
 import { shownRows } from '../core/formulas.js';
 import { MORE_ICONS } from './icons.js';
+import { lookId } from './imagelook.js';
 
-// Image filter/opacity, shared by the canvas, thumbnails and export.
+// Image filter/opacity, shared by the canvas, thumbnails and export. (Its warmth, filter, sharpness… are an SVG
+// filter after the four: render/imagelook.js, whose <filter> each place draws — ensureLook, looksSVG.)
 export function imgFilter(b) {
-  const a = b.adj || {};
-  return `brightness(${a.brightness ?? 100}%) contrast(${a.contrast ?? 100}%) saturate(${a.saturate ?? 100}%)`;
+  const a = b.adj || {}, id = lookId(b);
+  return `brightness(${a.brightness ?? 100}%) contrast(${a.contrast ?? 100}%) saturate(${a.saturate ?? 100}%)${id ? ` url(#${id})` : ''}`;
 }
 // Which part of a picture shows when it fills its box ("cover"): its focus, 50 % 50 % by default.
 export const imgFocus = b => `${b.focusX ?? 50}% ${b.focusY ?? 50}%`;

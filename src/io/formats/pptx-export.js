@@ -411,7 +411,7 @@ function masterObject(b) {
     return { text: { text: '', options: { ...pos, shape: SHAPE_MAP[b.shape], fill: b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497', ...see } : { type: 'none' },
       ...(b.strokeWidth ? { line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth * 0.75, ...dashOf(b.dash), ...see } } : {}) } } };
   }
-  if (b.type === 'image' && /^data:image\/(png|jpe?g|gif)/.test(b.src || '') && !b.crop && !b.adj) return { image: { ...pos, data: b.src } };
+  if (b.type === 'image' && /^data:image\/(png|jpe?g|gif)/.test(b.src || '') && !b.crop && !b.adj && !b.fx) return { image: { ...pos, data: b.src } };
   return null;
 }
 // Every layout, used or not (a template brings them all to PowerPoint); and, for the slides without one, «Revela»: the
