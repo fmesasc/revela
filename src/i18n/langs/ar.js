@@ -4674,6 +4674,8 @@ export default {
   "Sombras": "الظلال",
   "Sus bordes, como en un espejo": "حوافها، كما في المرآة",
   "Nada (transparente)": "لا شيء (شفاف)",
+  "Hay que añadir mucho: el espejo repetiría la foto varias veces. Mejor «desenfocada» o «Con IA…».": "يجب إضافة الكثير: ستكرر المرآة الصورة عدة مرات. الأفضل «مموّهة» أو «بالذكاء الاصطناعي…».",
+  "En espejo queda bien si en los bordes solo hay fondo (césped, cielo, una pared). Si algo importante toca el borde, prueba «desenfocada» o «Con IA…».": "تبدو المرآة جيدة إذا كانت الحواف خلفية فقط (عشب، سماء، جدار). إذا لمس شيء مهم الحافة، جرّب «مموّهة» أو «بالذكاء الاصطناعي…».",
   "Un margen alrededor": "هامش من كل الجهات",
   "Vivo": "زاهٍ",
   "Ajustes copiados: abre otra imagen y pulsa «Pegar ajustes».": "تم نسخ الإعدادات: افتح صورة أخرى واضغط «لصق الإعدادات».",

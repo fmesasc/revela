@@ -4674,6 +4674,8 @@ export default {
   "Sombras": "Sombras",
   "Sus bordes, como en un espejo": "Os seus bordos, en espello",
   "Nada (transparente)": "Nada (transparente)",
+  "Hay que añadir mucho: el espejo repetiría la foto varias veces. Mejor «desenfocada» o «Con IA…».": "Hai que engadir moito: o espello repetiría a foto varias veces. Mellor «desenfocada» ou «Con IA…».",
+  "En espejo queda bien si en los bordes solo hay fondo (césped, cielo, una pared). Si algo importante toca el borde, prueba «desenfocada» o «Con IA…».": "En espello queda ben se nos bordos só hai fondo (céspede, ceo, unha parede). Se algo importante toca o bordo, proba «desenfocada» ou «Con IA…».",
   "Un margen alrededor": "Unha marxe arredor",
   "Vivo": "Vivo",
   "Ajustes copiados: abre otra imagen y pulsa «Pegar ajustes».": "Axustes copiados: abre outra imaxe e preme «Pegar axustes».",

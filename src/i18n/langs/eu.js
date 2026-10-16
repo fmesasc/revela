@@ -4674,6 +4674,8 @@ export default {
   "Sombras": "Itzalak",
   "Sus bordes, como en un espejo": "Bere ertzak, ispiluan bezala",
   "Nada (transparente)": "Ezer ez (gardena)",
+  "Hay que añadir mucho: el espejo repetiría la foto varias veces. Mejor «desenfocada» o «Con IA…».": "Asko gehitu behar da: ispiluak argazkia hainbat aldiz errepikatuko luke. Hobe «lausotua» edo «AArekin…».",
+  "En espejo queda bien si en los bordes solo hay fondo (césped, cielo, una pared). Si algo importante toca el borde, prueba «desenfocada» o «Con IA…».": "Ispiluan ondo geratzen da ertzetan atzealdea besterik ez badago (belarra, zerua, horma bat). Zerbait garrantzitsuk ertza ukitzen badu, probatu «lausotua» edo «AArekin…».",
   "Un margen alrededor": "Marjina bat inguruan",
   "Vivo": "Bizia",
   "Ajustes copiados: abre otra imagen y pulsa «Pegar ajustes».": "Doikuntzak kopiatuta: ireki beste irudi bat eta sakatu «Itsatsi doikuntzak».",

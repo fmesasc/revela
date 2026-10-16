@@ -4674,6 +4674,8 @@ export default {
   "Sombras": "Schaduwen",
   "Sus bordes, como en un espejo": "De randen, gespiegeld",
   "Nada (transparente)": "Niets (transparant)",
+  "Hay que añadir mucho: el espejo repetiría la foto varias veces. Mejor «desenfocada» o «Con IA…».": "Er moet veel bij: de spiegel zou de foto meerdere keren herhalen. Beter «vervaagd» of «Met AI…».",
+  "En espejo queda bien si en los bordes solo hay fondo (césped, cielo, una pared). Si algo importante toca el borde, prueba «desenfocada» o «Con IA…».": "Spiegelen werkt goed als er aan de randen alleen achtergrond is (gras, lucht, een muur). Raakt iets belangrijks de rand, probeer dan «vervaagd» of «Met AI…».",
   "Un margen alrededor": "Een marge rondom",
   "Vivo": "Levendig",
   "Ajustes copiados: abre otra imagen y pulsa «Pegar ajustes».": "Instellingen gekopieerd: open een andere afbeelding en klik op «Instellingen plakken».",

@@ -3931,7 +3931,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(cur().h === 160 && Math.abs(cur().w - 284) <= 2 && cur().x < 100, 'la caja crece alrededor y la foto no cambia de tamaño: ' + [cur().x, cur().w, cur().h]);
     R.store.undo(); await sleep(30); eq(cur().src, src0, 'Ctrl+Z: como estaba'); eq(cur().w, 240, 'y su caja');
     // Mirrored edges: the picture's own colour reaches the new edge.
-    set('.ie-fill', 'mirror'); m.querySelector('[data-do="extend"]').click();
+    set('.ie-fill', 'mirror');
+    assert(await until(() => /espejo/.test(m.querySelector('.ie-note').textContent)), 'en espejo: el consejo, mientras es la elección');
+    m.querySelector('[data-do="extend"]').click();
     assert(await until(() => cur().src !== src0), 'en espejo');
     const e = await pixelOf(cur().src, 1, 40); assert(e.px[0] > 200 && e.px[1] < 60, 'sus bordes, reflejados: ' + e.px.slice(0, 3));
     m.querySelector('.modal-close').click();

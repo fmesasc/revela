@@ -403,8 +403,13 @@ export function openImageEditor(b0, tab = '') {
   async function previewExtend() {
     const b = cur(); if (!b || !still || shown !== 'extend') return;
     const n = ++pending, img = await loadPicture(b.src).catch(() => null); if (!img || n !== pending || shown !== 'extend') return;
-    const made = extendCanvas(img, visiblePart(b, img.naturalWidth, img.naturalHeight).src, { ...extOpts(), max: 640 });
-    note.textContent = made ? '' : t('La imagen ya tiene esa forma.');
+    const part = visiblePart(b, img.naturalWidth, img.naturalHeight).src, made = extendCanvas(img, part, { ...extOpts(), max: 640 });
+    // (In a mirror, what touches an edge is repeated: right for grass or sky, odd for a person — and the more is added,
+    // the more copies. Said while it is the choice, the more plainly when the picture would come back several times.)
+    const many = made && (made.pad[0] > part[2] * 0.6 || made.pad[1] > part[3] * 0.6);
+    note.textContent = !made ? t('La imagen ya tiene esa forma.') : extOpts().fill !== 'mirror' ? ''
+      : many ? t('Hay que añadir mucho: el espejo repetiría la foto varias veces. Mejor «desenfocada» o «Con IA…».')
+      : t('En espejo queda bien si en los bordes solo hay fondo (césped, cielo, una pared). Si algo importante toca el borde, prueba «desenfocada» o «Con IA…».');
     extendPreview = made ? made.canvas.toDataURL('image/png') : ''; paint();   // (PNG: its transparency shown as such)
   }
   if (still) {
