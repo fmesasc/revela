@@ -4826,6 +4826,8 @@ export default {
   "Todas a la vez, sin viajar": "جميعها معًا، دون تنقّل",
   "Bordes desvanecidos": "حواف متلاشية",
   "Óvalo desvanecido": "شكل بيضاوي متلاشٍ",
+  "Sin marco": "بلا إطار",
+  "Color del marco": "لون الإطار",
   "Usar la vista actual para el mapa": "استخدام العرض الحالي للخريطة",
   "Que se vean todas": "إظهارها جميعًا",
   "Marcadores de las paradas": "علامات المحطات",

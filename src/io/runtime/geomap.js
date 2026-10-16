@@ -24,6 +24,7 @@ export function geoMapRuntime(lib, rtl, words) {
     + '.rvm-fade .maplibregl-canvas-container{position:absolute;inset:0}'
     + '.rvm-live .maplibregl-canvas-container{-webkit-mask-image:var(--rvm-mask);mask-image:var(--rvm-mask);-webkit-mask-composite:source-in;mask-composite:intersect}'
     + '.rvm-fade>.rvm-note{left:16%;top:16%}'
+    + '.rvm-glide{-webkit-mask-image:var(--rvm-mask);mask-image:var(--rvm-mask);-webkit-mask-composite:source-in;mask-composite:intersect}.rvm-glide .maplibregl-canvas-container{-webkit-mask-image:none;mask-image:none}'
     + '.rvm-live .maplibregl-ctrl-attrib{font:11px/1.3 system-ui,sans-serif;text-align:end;max-width:calc(100% - 20px)}'
     + '.rvm-credit{position:absolute;right:calc(34px - var(--rvm-r,0px));bottom:calc(6px - var(--rvm-b,0px));max-width:calc(100% - 48px);padding:1px 6px;border-radius:8px;background:rgba(255,255,255,.7);color:#333;'
     + 'font:10px/1.4 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;z-index:1}'
@@ -290,6 +291,7 @@ export function geoMapRuntime(lib, rtl, words) {
     // (--rvm-*), the stop's note stays on the slide. Not with black bands chosen (data-fit="bands"), nor in the
     // editor, nor for the pictures.
     function bleed() {
+      if (c.staged) return;
       var ex = [0, 0, 0, 0], root = window.Reveal && Reveal.getScale && el.hasAttribute('data-bleed') && !opts.capture && el.closest('.reveal');
       // (Not in reveal.js's scroll view — a phone held upright —: there the slides are read one after the other, a page
       // each, and a map the height of several screens would be too much for a phone; it stays in its box.)
@@ -309,7 +311,7 @@ export function geoMapRuntime(lib, rtl, words) {
     bleed();
     // (Its box resized under it — a slide adapted to the screen's proportion stretches a map that spans it:
     // screenfit.js —: the map follows, its centre and zoom kept, so what is new is more map around.)
-    if (window.ResizeObserver && !opts.capture) { c.ro = new ResizeObserver(function () { if (!c.dead) c.resize(); }); c.ro.observe(el); }
+    if (window.ResizeObserver && !opts.capture) { c.ro = new ResizeObserver(function () { if (!c.dead) { if (c.staged) c.center(); else c.resize(); } }); c.ro.observe(el); }
     function offline(on) {
       c.failed = on; el.classList.toggle('rvm-offline', on);
       var n = el.querySelector(':scope > .rvm-off');
@@ -496,7 +498,8 @@ export function geoMapRuntime(lib, rtl, words) {
     }
     // Go to stop k: flying (dur ms; the line to it drawn on the way, if it is the next one), or at once.
     // → a promise, once there.
-    c.go = function (k, animate, dur) {
+    // (wait: how long it may wait for the flight's tiles — WAIT; less at a slide's start, which shouldn't seem to stall.)
+    c.go = function (k, animate, dur, wait) {
       k = Math.max(0, Math.min(cfg.stops.length - 1, k | 0));
       var prev = c.cur, me = ++c.token, was = mo.on; c.cur = k; c.first = false; motion(false); mo.z = 0; shot(k);
       var m = c.map, s = cfg.stops[k]; if (!m || !s || !el.classList.contains('rvm-on')) { showNote(k, true); return Promise.resolve(); }
@@ -536,7 +539,7 @@ export function geoMapRuntime(lib, rtl, words) {
       var t = setTimeout(function () { if (me === c.token) sign(true); }, 300), t0 = Date.now();
       // (And the floor: on a slow computer the map may still be fetching it when the presenter clicks.)
       var floorReady = function () { return floorIn(m) || Date.now() - t0 > WAIT ? Promise.resolve() : later(100).then(floorReady); };
-      return Promise.race([fetchAhead(to).ready.then(floorReady), later(WAIT)]).then(function () { clearTimeout(t); return fly(); });
+      return Promise.race([fetchAhead(to).ready.then(floorReady), later(wait || WAIT)]).then(function () { clearTimeout(t); return fly(); });
     };
     // ── At a stop the map keeps moving (cfg.motion), from its arrival to the next click: the globe turning west to east,
     // as the Earth does (a flat map, sliding sideways), the camera going round the place, tilting to see it, or nearing
@@ -582,7 +585,8 @@ export function geoMapRuntime(lib, rtl, words) {
       var me = ++c.token; c.first = true; c.cur = k; motion(false); shot(k);
       return c.ready.then(function () {
         var m = c.map; if (!m || c.failed || me !== c.token || !el.classList.contains('rvm-on')) return;
-        var cam = kind === 'space' ? space() : Object.assign({}, from.cam, { zoom: from.cam.zoom + zk() });
+        // (Through Morph, the very same Earth: as big on the screen as it was — its box grows or shrinks round it, glide().)
+        var cam = kind === 'space' ? space() : Object.assign({}, from.cam, { zoom: from.morph ? from.px : from.cam.zoom + zk() });
         // (Drawn there at once, before the screen shows it: with Morph, the box glides from the other one's — no
         // flash of this map's own first view.)
         m.stop(); m.jumpTo(cam); try { m.redraw(); } catch (e) {} c.arriving = false;
@@ -592,14 +596,55 @@ export function geoMapRuntime(lib, rtl, words) {
           return;
         }
         c.cur = k - 1; paint(k - 1); showNote(k, false); if (c.settled) ahead(0);
-        return later(kind === 'space' ? 600 : 150).then(function () { if (me === c.token) return c.go(k, true, START_MS); });
+        return later(kind === 'space' ? 600 : 150).then(function () { if (me === c.token) return c.go(k, true, START_MS, 700); });
       });
     };
     // The map of the next slide, that will carry on from this one (Morph): kept looking where this one is, while it
     // waits out of sight — its tiles fetched by the time it is shown. (st: c.state() of this one.)
     c.shadow = function (st) {
       var m = c.map; if (!m || c.failed || c.dead || !st || (el.closest('section') && el.closest('section').classList.contains('present'))) return;
-      m.stop(); m.jumpTo(Object.assign({}, st.cam, { zoom: st.cam.zoom + zk() }));
+      m.stop(); m.jumpTo(Object.assign({}, st.cam, { zoom: st.px })); showNote(c.cur, false);
+    };
+    // Its canvas as big as the larger of two boxes (w × h: the other map's) — the box only shows its middle —: while it
+    // waits for Morph its tiles are fetched for all of it, and while its box grows or shrinks (glide()) the canvas
+    // isn't resized at every frame (each time cleared, drawn again a frame later: a blink, tiles missing).
+    c.stage = function (w, h) {
+      var W = Math.max(el.clientWidth, w || 0), H = Math.max(el.clientHeight, h || 0);
+      c.staged = { w: W, h: H }; box.style.width = W + 'px'; box.style.height = H + 'px'; c.center();
+      if (c.map) c.map.resize();
+    };
+    c.center = function () { if (!c.staged) return; box.style.left = ((el.clientWidth - c.staged.w) / 2).toFixed(2) + 'px'; box.style.top = ((el.clientHeight - c.staged.h) / 2).toFixed(2) + 'px'; };
+    c.unstage = function () {
+      if (!c.staged) return; c.staged = null; box.style.left = box.style.top = '0'; box.style.width = box.style.height = '100%'; c.resize();
+      try { if (c.map) c.map.redraw(); } catch (e) {}
+    };
+    // Morph: the box goes from where the other map's was to its own place and size — itself, not stretched as reveal.js
+    // would stretch it (a squashed globe) —, the map resized on the way (its centre and scale kept: the Earth stays as
+    // it was, the box opening or closing round it); its space fading in or out if the other had none, or this one.
+    // (from: the other one's element; ms: Morph's duration.)
+    c.glide = function (from, ms) {
+      var st = el.style, keep = { left: st.left, top: st.top, width: st.width, height: st.height, background: st.background, transition: st.transition };
+      var a = ['left', 'top', 'width', 'height'].map(function (k) { return parseFloat(from.style[k]) || 0; }), b = ['left', 'top', 'width', 'height'].map(function (k) { return parseFloat(keep[k]) || 0; });
+      var hex = function (h) { var n = parseInt(String(h).slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+      var fromClear = /transparent/.test(from.style.background), clr = cfg.clear || cfg.fade ? null : hex(bg());
+      if (reduced() || !ms || a.join() === b.join() && fromClear === !clr) return;
+      var t0 = performance.now(), me = c.glides = (c.glides || 0) + 1;
+      // (Its box has its steps' timing as CSS transitions — a flight's 6 s —: none while it moves.)
+      st.background = 'transparent'; st.transition = 'none';
+      if (!c.staged || c.staged.w < Math.max(a[2], b[2]) || c.staged.h < Math.max(a[3], b[3])) c.stage(Math.max(a[2], b[2]), Math.max(a[3], b[3]));
+      if (cfg.fade) el.classList.add('rvm-glide');
+      (function frame(now) {
+        if (c.dead || me !== c.glides) return;
+        var f = Math.min(1, (now - t0) / ms), e = ease(f);
+        ['left', 'top', 'width', 'height'].forEach(function (k, i) { st[k] = (a[i] + (b[i] - a[i]) * e).toFixed(2) + 'px'; });
+        if (clr && !cfg.fade) box.style.background = 'rgba(' + clr.join(',') + ',' + (fromClear ? e : 1).toFixed(3) + ')';
+        c.center();
+        if (f < 1) requestAnimationFrame(frame);
+        else {
+          st.left = keep.left; st.top = keep.top; st.width = keep.width; st.height = keep.height; st.background = keep.background;
+          el.classList.remove('rvm-glide'); paintBg(); c.unstage(); setTimeout(function () { st.transition = keep.transition; }, 50);
+        }
+      })(t0);
     };
     // A click on a marker: there, out of turn — the trip's steps carry on from where they were (the next click goes
     // to the stop after the last one reached, from here); its note, once there; then the map's motion, if any. With
@@ -618,8 +663,8 @@ export function geoMapRuntime(lib, rtl, words) {
     // stop it was at, how far it had neared it.
     c.state = function () {
       var m = c.map; if (!m || c.failed || !el.classList.contains('rvm-on')) return null;
-      var v = camNow(), s = c.first ? null : place(c.cur); v.zoom -= zk();
-      return { cam: v, at: s ? { c: s.c, z: s.z } : null, z: mo.z };
+      var v = camNow(), s = c.first ? null : place(c.cur), px = v.zoom; v.zoom -= zk();
+      return { cam: v, px: px, at: s ? { c: s.c, z: s.z } : null, z: mo.z };
     };
     // Where the map is looking now, in the block's terms (for «Usar la vista actual»).
     c.view = function () {
@@ -762,7 +807,17 @@ export function geoMapRuntime(lib, rtl, words) {
     mounted.slice().forEach(function (c) { if (!c.el.isConnected || !near(c.el.closest('section'), slide)) { if (!c.el.closest('.rv-dlg-map')) c.destroy(); } });
     slide.querySelectorAll('[data-geomap]').forEach(function (el) {
       var p = prev && partner(el, prev), from = p && p._rvm && p._rvm.state();
+      if (from) from.morph = true;
+      if (!p && el._rvm && el._rvm.staged) el._rvm.unstage();     // (staged for a Morph that didn't come: as it is)
       settle(el, false, true, from); if (el._rvm) el._rvm.resize();
+      // (reveal.js sets up its Morph right after this event: then, this box taken out of it — glide() moves it.)
+      if (p && el._rvm) Promise.resolve().then(function () {
+        // (Nor anything inside either map — reveal.js pairs a marker's flag with the other's, by its picture, and then fades
+        // everything else in the box in from nothing.)
+        [el, p].forEach(function (x) { x.removeAttribute('data-auto-animate-target'); [].forEach.call(x.querySelectorAll('[data-auto-animate-target]'), function (y) { y.removeAttribute('data-auto-animate-target'); }); });
+        var sec = el.closest('section'), d = parseFloat(sec.getAttribute('data-auto-animate-duration')) || (Reveal.getConfig().autoAnimateDuration) || 1;
+        el._rvm.glide(p, d * 1000);
+      });
     });
     // (A map on the next slide, started now — reveal.js has it laid out already —: its first view loaded and its
     // first flight fetched before it is shown. Not in the speaker view's previews: the presentation does it.)
@@ -773,6 +828,7 @@ export function geoMapRuntime(lib, rtl, words) {
       var c = el._rvm, f = next && !receiver && c ? [].slice.call(next.querySelectorAll('[data-geomap]')).filter(function (x) { return partner(x, slide) === el && x._rvm; })[0] : null;
       if (!c) return;
       c.follower = f && f._rvm.cfg.start !== 'space' ? function () { if (f._rvm) f._rvm.ready.then(function () { if (f._rvm) f._rvm.shadow(c.state()); }); } : null;
+      if (c.follower && !f._rvm.staged) f._rvm.stage(parseFloat(el.style.width), parseFloat(el.style.height));
       if (c.follower) c.ready.then(function () { if (c.follower) c.follower(); });
     });
   }

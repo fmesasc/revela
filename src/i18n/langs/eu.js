@@ -4826,6 +4826,8 @@ export default {
   "Todas a la vez, sin viajar": "Denak batera, bidaiatu gabe",
   "Bordes desvanecidos": "Ertz lausotuak",
   "Óvalo desvanecido": "Obalo lausotua",
+  "Sin marco": "Markorik gabe",
+  "Color del marco": "Markoaren kolorea",
   "Usar la vista actual para el mapa": "Erabili uneko ikuspegia maparako",
   "Que se vean todas": "Denak ikusi daitezen",
   "Marcadores de las paradas": "Geldialdien markatzaileak",

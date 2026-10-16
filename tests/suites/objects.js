@@ -3677,6 +3677,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/border-radius:\d+px/.test(G.mapEdgeCSS({ edge: 'round', w: 600, h: 400 })), 'esquinas redondeadas');
     assert(/--rvm-mask:linear-gradient\(90deg,transparent,#000 9\.33%/.test(G.mapEdgeCSS({ edge: 'soft', w: 600, h: 400 })), 'bordes desvanecidos: lo mismo en los cuatro lados');
     assert(/radial-gradient\(closest-side/.test(G.mapEdgeCSS({ edge: 'oval', w: 600, h: 400 })), 'óvalo');
+    eq(G.mapEdgeCSS({ edge: 'circle', w: 600, h: 400 }), 'border-radius:50%;', 'óvalo nítido');
+    eq(JSON.stringify(G.normalizeMap({ type: 'map', frame: { width: 99, color: 'rojo' }, stops: [] }).frame), '{"width":40,"color":"#ffffff"}', 'marco: grosor y color, saneados');
+    assert(!('frame' in G.normalizeMap({ type: 'map', frame: { width: 0 }, stops: [] })), 'sin grosor, sin marco');
+    assert(/rv-map-frame[^>]*border:8px solid #112233;border-radius:inherit/.test(G.mapFrameHTML({ edge: 'circle', frame: { width: 8, color: '#112233' } })), 'el marco sigue la forma del recuadro');
+    eq(G.mapFrameHTML({ edge: 'soft', frame: { width: 8, color: '#112233' } }), '', 'con los bordes desvanecidos, sin marco');
     const b1 = G.addMap({ look: 'globe', x: 700, y: 100, w: 500, h: 500, stops: [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 4 }] });
     R.slides.addSlide('blank'); await sleep(10);
     const b2 = G.addMap({ look: 'globe', edge: 'soft', x: 0, y: 0, w: 1280, h: 720, stops: [{ name: 'Atenas', lon: 23.7, lat: 37.98, zoom: 6, shot: 'data:image/png;base64,iVBORw0KGgo=' }] });
@@ -3699,7 +3704,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(String(e2._rvm.map.c), '-3.7,40.4', 'el mapa de la siguiente espera donde está este (para tener sus imágenes)');
       assert(e2.classList.contains('rvm-fade'), 'con sus bordes desvanecidos');
       const m2 = e2._rvm.map, real = () => m2.flights.filter(x => x.duration > 1), n0 = real().length, v0 = m2.moves.length;
-      RV.slide(2); for (let k = 0; k < 80 && real().length === n0; k++) await sleep(50);
+      RV.slide(2); await sleep(30);
+      const w0 = parseFloat(e2.style.width); assert(w0 < 900, 'el recuadro sale del sitio y el tamaño del otro (sin estirar el mapa): ' + w0);
+      for (let k = 0; k < 80 && real().length === n0; k++) await sleep(50);
+      for (let k = 0; k < 40 && e2.style.width !== '1280px'; k++) await sleep(50);
+      eq(e2.style.width, '1280px', 'y acaba en el suyo');
       assert(m2.moves.slice(v0).some(c => String(c) === '-3.7,40.4'), 'al transformar: desde donde quedó el otro');
       const fl = real().at(-1); eq(String(fl?.center), '23.7,37.98', 'y de allí, volando, a su parada'); eq(fl?.duration, 4500);
       for (let k = 0; k < 60 && !e3._rvm?.map; k++) await sleep(50);

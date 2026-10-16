@@ -4826,6 +4826,8 @@ export default {
   "Todas a la vez, sin viajar": "Allemaal tegelijk, zonder reis",
   "Bordes desvanecidos": "Vervaagde randen",
   "Óvalo desvanecido": "Vervaagd ovaal",
+  "Sin marco": "Geen kader",
+  "Color del marco": "Kaderkleur",
   "Usar la vista actual para el mapa": "Huidige weergave gebruiken voor de kaart",
   "Que se vean todas": "Alle tonen",
   "Marcadores de las paradas": "Haltemarkeringen",

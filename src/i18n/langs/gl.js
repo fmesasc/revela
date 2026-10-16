@@ -4826,6 +4826,8 @@ export default {
   "Todas a la vez, sin viajar": "Todas á vez, sen viaxar",
   "Bordes desvanecidos": "Bordos esvaídos",
   "Óvalo desvanecido": "Óvalo esvaído",
+  "Sin marco": "Sen marco",
+  "Color del marco": "Cor do marco",
   "Usar la vista actual para el mapa": "Usar a vista actual para o mapa",
   "Que se vean todas": "Que se vexan todas",
   "Marcadores de las paradas": "Marcadores das paradas",
