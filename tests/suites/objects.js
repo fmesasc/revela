@@ -3726,7 +3726,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(e2.style.width, '1280px', 'y acaba en el suyo');
       assert(m2.moves.slice(v0).some(c => String(c) === '-3.7,40.4'), 'al transformar: desde donde quedó el otro');
       const fl = real().at(-1); eq(String(fl?.center), '23.7,37.98', 'y de allí, volando, a su parada'); eq(fl?.duration, 4500);
-      for (let k = 0; k < 60 && !e3._rvm?.map; k++) await sleep(50);
+      // (The next slide's map, started once this one has got there — not in the middle of its flight.)
+      assert(!e3._rvm, 'el de la siguiente, aún no: en pleno vuelo');
+      for (let k = 0; k < 200 && !e3._rvm?.map; k++) await sleep(50);
       const m3 = e3._rvm.map; RV.slide(3); await sleep(300);
       assert(!m3.flights.some(x => x.duration > 1), 'otro tipo de mapa: no sigue del anterior, empieza en su parada');
     } finally { f.remove(); }
@@ -3803,6 +3805,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(tm.v.loads.length > n0, 'aterrizado: el vuelo siguiente (a Yokohama), a por sus teselas');
       // A click before they are in: it waits (a small sign), then flies.
       await sleep(300); RV.prev(); await sleep(600); F.__slowTiles = Date.now() + 1500;
+      // (Its memory emptied — with room for the floor too, the flight's tiles would still be there.)
+      for (const x of [tm.v, tm.r]) { x._outOfViewCache.data = {}; x._outOfViewCache.order = []; }
       const r0 = real().length; RV.next(); await sleep(500);
       assert(el.querySelector('.rvm-wait') && el.getAttribute('aria-busy') === 'true', 'si aún no está listo, una señal discreta…');
       eq(real().length, r0, '…y aún no vuela');

@@ -116,6 +116,10 @@ export function geoMapRuntime(lib, rtl, words) {
       tm._rvFloor = 1;
       var pinned = null;
       tm._updateRetainedTiles = function (ideal, zoom) {
+        // (Only while it flies — and until it has been fetched once —: kept, the whole world is drawn under the view at
+        // every frame, and on relief that made a map turning at a stop go at half speed, measured. In between it waits in
+        // the memory — room kept for it below —, back in an instant for the next flight: fly(), floorOn().)
+        if (this.map && this.map._rvFloorOff) { tm._rvPinned = null; return orig.call(this, ideal, zoom); }
         if (this.map && this.map._rvCoarse != null && this.transform && this.transform.zoom < this.map._rvCoarse) ideal = coarser(ideal);
         if (ideal.length && ideal[0] && ideal[0].constructor && ideal[0].scaledTo) {
           if (!pinned) {
@@ -140,7 +144,7 @@ export function geoMapRuntime(lib, rtl, words) {
       var size = tm.updateCacheSize;
       // (Added as MapLibre sets its size — not after: setting it smaller first would let the flight's tiles go.)
       if (typeof size === 'function') tm.updateCacheSize = function (tr) {
-        var cache = this._outOfViewCache, set = cache.setMaxSize, own = cache.hasOwnProperty('setMaxSize'), room = this._rvRoom || 0;
+        var cache = this._outOfViewCache, set = cache.setMaxSize, own = cache.hasOwnProperty('setMaxSize'), room = (this._rvRoom || 0) + (pinned ? pinned.length : 0);
         cache.setMaxSize = function (n) { return set.call(cache, n + room); };
         try { size.call(this, tr); } finally { if (own) cache.setMaxSize = set; else delete cache.setMaxSize; }
       };
@@ -154,7 +158,9 @@ export function geoMapRuntime(lib, rtl, words) {
       var tm = tms[id];
       // (Only the sources shown now: one the style hides at this zoom — a relief shading of the whole world, on the
       // street map — holds no tiles, its floor neither.)
-      return !tm._rvPinned || !(tm.used || tm.usedForTerrain) || tm._rvPinned.every(function (p) { var t = tm._inViewTiles.getTileById(p.key); return t && (t.hasData() || t.state === 'errored'); });
+      // (Its floor just turned on — floorOn() —, not yet back in the view: not yet.)
+      if (!tm._rvPinned) return !tm._rvFloor || !!m._rvFloorOff || !(tm.used || tm.usedForTerrain);
+      return !(tm.used || tm.usedForTerrain) || tm._rvPinned.every(function (p) { var t = tm._inViewTiles.getTileById(p.key); return t && (t.hasData() || t.state === 'errored'); });
     });
   }
   // In the middle of a flight — a zoom level or more under both its ends —, each tile one level coarser: a quarter of
@@ -218,7 +224,8 @@ export function geoMapRuntime(lib, rtl, words) {
     return new Promise(function (ok) {
       (function chunk() {
         if (!alive() || m.isMoving()) return ok(null);
-        var end = Math.min(n, i + 12), here = camera(m);
+        // (A few milliseconds at a time, between frames: the map may be turning meanwhile, smoothly.)
+        var t0 = performance.now(), here = camera(m);
         m._ease = function (frame, finish, o) { frame(o.easing(1)); finish(); };     // (the flight, put at its point at once)
         // (Back, after each few, to where the map is then: it may be turning meanwhile — motion() —, and the flight
         // worked out from where it was is near enough.)
@@ -226,7 +233,7 @@ export function geoMapRuntime(lib, rtl, words) {
         // card whether it is hidden behind a mountain, waiting for its answer: seconds, measured.)
         m.fire = function () { return m; };
         try {
-          for (; i < end; i++) {
+          for (; i < n && (i === 0 || performance.now() - t0 < 5); i++) {
             var f = (i + 1) / n;
             m.jumpTo(from);
             if (f < 1) m.flyTo(Object.assign({}, to, { duration: 1, curve: curve, essential: true, easing: function () { return f; } })); else m.jumpTo(to);
@@ -277,8 +284,15 @@ export function geoMapRuntime(lib, rtl, words) {
     // Zoom is kept for the block's own size (cfg.w × cfg.h): a smaller or bigger box shows the same area — all of it,
     // and more around it if the box took another proportion (a slide adapted to the screen: screenfit.js).
     var zk = function () { return Math.log2(Math.max(1e-3, Math.min((el.clientWidth || cfg.w) / cfg.w, (el.clientHeight || cfg.h) / cfg.h))); };
+    // (gov: how much of that it draws — less if the computer can't keep up: govern().)
+    var gov = { k: 1, d: [], last: 0 };
     var pr = function () {
       if (opts.pixelRatio) return opts.pixelRatio;
+      return Math.max(least(), full() * gov.k);
+    };
+    // (Never fewer than three quarters of the screen's own (CSS) pixels — nor than one per slide pixel.)
+    var least = function () { return Math.min(full(), Math.max(1, 0.75 * full() / (window.devicePixelRatio || 1))); };
+    var full = function () {
       // (As many pixels as the screen shows of it: a slide shrunk to a phone's width needs no more than the phone has.)
       var k = (window.devicePixelRatio || 1) * ((window.Reveal && Reveal.getScale && Reveal.getScale()) || 1);
       return Math.max(1, Math.min(3, k, 4096 / Math.max(1, box.clientWidth || el.clientWidth || cfg.w)));
@@ -374,7 +388,18 @@ export function geoMapRuntime(lib, rtl, words) {
           e.classList.add('rvm-go'); e.title = s.n || '';
           e.addEventListener('click', function (ev) { ev.stopPropagation(); c.visit(i); });
         }
-        c.markers.push(new ml.Marker({ element: e, anchor: 'center' }).setLngLat(s.c).addTo(c.map));
+        var mk = new ml.Marker({ element: e, anchor: 'center' }).setLngLat(s.c).addTo(c.map);
+        // (On relief MapLibre asks, at every frame, whether each marker is behind a mountain — reading back from the
+        // graphics card, which then has to stop and wait: the turning map went at half speed, measured. Asked only
+        // with the map still — its own turning is a jump a frame, each one «the end of a move».)
+        var occ = mk._updateOpacity;
+        if (typeof occ === 'function') mk._updateOpacity = function () {
+          var m = c.map; if (!m || !m.terrain || !(mo.on || m.isMoving())) return occ.apply(mk, arguments);
+          // (Meanwhile only what costs nothing: whether it is on the far side of the globe.)
+          var tr = m.transform, hid = !!(tr && tr.isLocationOccluded && tr.isLocationOccluded(mk.getLngLat())), o = String(hid ? mk._opacityWhenCovered : mk._opacity);
+          if (e.style.opacity !== o) { e.style.opacity = o; e.classList.toggle('maplibregl-marker-covered', hid); }
+        };
+        c.markers.push(mk);
       });
     }
     // The style's own layers, once it is there (again after a change of style): globe or flat, the atmosphere, the
@@ -414,9 +439,10 @@ export function geoMapRuntime(lib, rtl, words) {
       if (!opts.keyboard && m.keyboard) m.keyboard.disable();            // (the arrows are the presentation's)
       paintBg();
       m.on('style.load', dress);
+      if (!opts.capture) m.on('render', govern);
       if (opts.onMove) m.on('moveend', function () { opts.onMove(c.view()); });
       m.on('moveend', function (e) { if (e && e.originalEvent && c.settled) ahead(300); });   // (moved by hand: from there)
-      m.on('moveend', function () { if (c.follower && Date.now() - (c.told || 0) > 1000) { c.told = Date.now(); c.follower(); } });
+      m.on('moveend', function () { if (c.follower && !mo.on && Date.now() - (c.told || 0) > 1000) { c.told = Date.now(); c.follower(); } });
       // (A hand on the map: it stops moving on its own — motion() —, and goes on a moment after it lets go.)
       var hold = function () { mo.rest = performance.now() + 2500; };
       box.addEventListener('pointerdown', hold); box.addEventListener('wheel', hold, { passive: true });
@@ -429,7 +455,7 @@ export function geoMapRuntime(lib, rtl, words) {
           var at = box.querySelector('.maplibregl-ctrl-attrib'); if (at) at.classList.remove('maplibregl-compact-show');
           credit.hidden = !cfg.short; ok(c);
           // (Its first view loaded, the flight ahead: fetchAhead().)
-          m.once('idle', function () { c.settled = true; ahead(0); });
+          m.once('idle', function () { c.settled = true; floorOn(false); ahead(0); });
         });
         m.on('error', function () { if (!done && navigator.onLine === false) offline(true); });
       });
@@ -440,6 +466,8 @@ export function geoMapRuntime(lib, rtl, words) {
     // at most WAIT ms; then it flies anyway, over the floor (floor()) where a tile is still missing.
     var job = null, WAIT = 4000;
     var camNow = function () { return camera(c.map); };
+    // (The world's floor under the view: floor() — on for a flight, off at a stop.)
+    var floorOn = function (on) { var m = c.map; if (!m || !!m._rvFloorOff === !on) return; m._rvFloorOff = !on; m.triggerRepaint(); };
     var camKey = function (a) { return [a.center[0], a.center[1], a.zoom, a.pitch, a.bearing].map(function (v) { return Math.round(v * 1e4) / 1e4; }).join(','); };
     var camOf = function (s) { return { center: s.c, zoom: s.z + zk(), pitch: s.p || 0, bearing: s.b || 0 }; };
     var fetches = function () { return c.warms && !reduced() && navigator.onLine !== false; };
@@ -511,10 +539,10 @@ export function geoMapRuntime(lib, rtl, words) {
         if (c.settled) { free(); job = null; ahead(0); }
         return Promise.resolve();
       }
-      c.arriving = true;
+      c.arriving = true; c.going = me; floorOn(true);                   // (going: on its way — until it gets there)
       showNote(k, false); paint(k === prev + 1 ? prev : k);
       var fly = function () {
-        if (me !== c.token) return;
+        if (me !== c.token) { if (c.going === me) { c.going = 0; floorOn(false); } return; }
         sign(false);
         c.flight = Date.now();
         // (Tiles still on their way, given up: the flight's own requests would queue behind them — and the flight
@@ -525,17 +553,19 @@ export function geoMapRuntime(lib, rtl, words) {
         var t0 = performance.now();
         return new Promise(function (ok) {
           (function step() {
-            if (me !== c.token) { m._rvCoarse = null; return ok(); }
+            if (me !== c.token) { m._rvCoarse = null; if (c.going === me) { c.going = 0; floorOn(false); } return ok(); }
             var f = Math.min(1, (performance.now() - t0) / dur);
             if (k === prev + 1) paint(k, ease(f) || 0.001);
             if (f < 1) requestAnimationFrame(step);
-            else { m._rvCoarse = null; m.triggerRepaint(); paint(k); showNote(k, true); ok(); free(); job = null; ahead(0); }
+            else { m._rvCoarse = null; if (c.going === me) { c.going = 0; floorOn(false); } m.triggerRepaint(); paint(k); showNote(k, true); ok(); free(); job = null; ahead(0); }
           })();
         });
       };
       // (A click while it flies: on from where it is, at once — over the floor where it must. And while it turned
       // on its own: the flight worked out from where it stopped is another one, and most of its tiles are in.)
-      if (!fetches() || m.isMoving() || was) return fly();
+      // (Its floor back first — a frame or a few, still —: coming back in the middle of the flight, it cost a jolt.)
+      if (m.isMoving()) return fly();
+      if (!fetches() || was) { var tf = Date.now(); return (function back() { return floorIn(m) || Date.now() - tf > 300 ? fly() : later(16).then(back); })(); }
       var t = setTimeout(function () { if (me === c.token) sign(true); }, 300), t0 = Date.now();
       // (And the floor: on a slow computer the map may still be fetching it when the presenter clicks.)
       var floorReady = function () { return floorIn(m) || Date.now() - t0 > WAIT ? Promise.resolve() : later(100).then(floorReady); };
@@ -570,6 +600,17 @@ export function geoMapRuntime(lib, rtl, words) {
         mo.z += dz; v.zoom += dz; v.bearing += 1.5 * k * dt;
       } else return motion(false);
       m.jumpTo(v);
+    }
+    // ── Smoothness first: while it moves (on its own or flying), frames that take too long — a big screen at a high
+    // pixel density, the relief seen tilted: four times the pixels, and many more tiles — make it draw fewer pixels,
+    // a fifth less each time, down to least(). Measured over a second of moving
+    // frames; it stays at what it came down to. (Satellite tiles are no sharper than that anyway: what it loses is little.)
+    function govern() {
+      var now = performance.now(), dt = now - gov.last; gov.last = now;
+      if (dt > 150 || (!mo.on && !c.map.isMoving())) { gov.d.length = 0; return; }
+      gov.d.push(dt); if (gov.d.length < 40) return;
+      var s = gov.d.slice().sort(function (a, b) { return a - b; }), med = s[20]; gov.d.length = 0;
+      if (med > 22 && full() * gov.k > least() * 1.01) { gov.k = Math.max(least() / full(), gov.k * 0.8); try { c.map.setPixelRatio(pr()); } catch (e) {} }
     }
     // The dialog's try-out: the motion on (or off) as in the presentation.
     c.moving = function (on) { c.live = !!on; motion(on && c.settled && !c.first); };
@@ -656,8 +697,8 @@ export function geoMapRuntime(lib, rtl, words) {
       var me = ++c.token; motion(false); mo.z = 0; showNote(c.cur, false); sign(false);
       if (job && job.left) drop();
       c.seen = back ? -1 : i;
-      m.stop(); m.flyTo(Object.assign(camOf(back ? place(c.cur) : s), { duration: reduced() ? 0 : 2500, curve: cfg.curve || 1.42 }));
-      m.once('moveend', function () { if (me !== c.token || c.dead) return; if (!back) showNote(i, true, true); free(); job = null; ahead(0); });
+      m.stop(); floorOn(true); m.flyTo(Object.assign(camOf(back ? place(c.cur) : s), { duration: reduced() ? 0 : 2500, curve: cfg.curve || 1.42 }));
+      m.once('moveend', function () { if (me !== c.token || c.dead) return; floorOn(false); if (!back) showNote(i, true, true); free(); job = null; ahead(0); });
     };
     // Where it was left, for the next slide's map (c.begin()): its camera — the zoom in the block's own terms —, the
     // stop it was at, how far it had neared it.
@@ -812,7 +853,6 @@ export function geoMapRuntime(lib, rtl, words) {
   }
   function inSlide(slide, prev) {
     if (!slide) return;
-    mounted.slice().forEach(function (c) { if (!c.el.isConnected || !near(c.el.closest('section'), slide)) { if (!c.el.closest('.rv-dlg-map')) c.destroy(); } });
     slide.querySelectorAll('[data-geomap]').forEach(function (el) {
       var p = prev && partner(el, prev), from = p && p._rvm && p._rvm.state();
       if (from) from.morph = true;
@@ -827,6 +867,21 @@ export function geoMapRuntime(lib, rtl, words) {
         el._rvm.glide(p, d * 1000);
       });
     });
+    // (What is heavy — starting the next slide's map, letting go of one two slides away — once the change is over and
+    // this slide's map has got where it was going: in the middle of a transition or a flight it cost a few frames.
+    // Right away at the start; after 10 s, anyway.)
+    if (!prev) return around(slide);
+    var t0 = Date.now();
+    (function wait() {
+      var busy = [].some.call(slide.querySelectorAll('[data-geomap]'), function (el) { var c = el._rvm; return c && c.map && !c.dead && (c.going || c.first || c.map.isMoving()); });
+      if (Date.now() - t0 < 1100 || (busy && Date.now() - t0 < 10000)) return setTimeout(wait, 250);
+      around(slide);
+    })();
+  }
+  function around(slide) {
+    var cur = Reveal.getCurrentSlide();
+    mounted.slice().forEach(function (c) { if (!c.el.isConnected || !near(c.el.closest('section'), cur)) { if (!c.el.closest('.rv-dlg-map')) c.destroy(); } });
+    if (cur !== slide) return;
     // (A map on the next slide, started now — reveal.js has it laid out already —: its first view loaded and its
     // first flight fetched before it is shown. Not in the speaker view's previews: the presentation does it.)
     var all = Reveal.getSlides(), next = all[all.indexOf(slide) + 1];
