@@ -4655,6 +4655,7 @@ export default {
   "Luces": "الإضاءات",
   "Nitidez": "الحدة",
   "No se ha encontrado nada que separar del fondo.": "لم يُعثر على شيء لفصله عن الخلفية.",
+  "Esta imagen ya no tiene fondo: no hay nada que separar.": "هذه الصورة بلا خلفية أصلًا: لا يوجد ما يُفصل.",
   "No se pudo leer la imagen": "تعذّرت قراءة الصورة",
   "Noir": "نوار",
   "Pastel": "باستيل",

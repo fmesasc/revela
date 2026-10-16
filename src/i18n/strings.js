@@ -4679,6 +4679,7 @@ export const ROWS = [
   ['Luces', 'Highlights', 'Hautes lumières', 'Lichter', 'Luci', 'Luzes', 'Llums'],
   ['Nitidez', 'Sharpness', 'Netteté', 'Schärfe', 'Nitidezza', 'Nitidez', 'Nitidesa'],
   ['No se ha encontrado nada que separar del fondo.', 'Nothing was found to separate from the background.', 'Rien n\'a été trouvé à séparer de l\'arrière-plan.', 'Es wurde nichts gefunden, das sich vom Hintergrund trennen lässt.', 'Non è stato trovato nulla da separare dallo sfondo.', 'Não se encontrou nada para separar do fundo.', 'No s\'ha trobat res per separar del fons.'],
+  ['Esta imagen ya no tiene fondo: no hay nada que separar.', 'This picture has no background already: there is nothing to separate.', 'Cette image n\'a déjà plus de fond : il n\'y a rien à séparer.', 'Dieses Bild hat bereits keinen Hintergrund: Es gibt nichts zu trennen.', 'Questa immagine non ha già uno sfondo: non c\'è niente da separare.', 'Esta imagem já não tem fundo: não há nada para separar.', 'Aquesta imatge ja no té fons: no hi ha res per separar.'],
   ['No se pudo leer la imagen', 'Couldn\'t read the picture', 'Impossible de lire l\'image', 'Das Bild konnte nicht gelesen werden', 'Impossibile leggere l\'immagine', 'Não foi possível ler a imagem', 'No s\'ha pogut llegir la imatge'],
   ['Noir', 'Noir', 'Noir', 'Noir', 'Noir', 'Noir', 'Noir'],
   ['Pastel', 'Pastel', 'Pastel', 'Pastell', 'Pastello', 'Pastel', 'Pastel'],

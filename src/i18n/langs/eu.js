@@ -4655,6 +4655,7 @@ export default {
   "Luces": "Argiak",
   "Nitidez": "Zorroztasuna",
   "No se ha encontrado nada que separar del fondo.": "Ez da aurkitu atzealdetik bereizteko ezer.",
+  "Esta imagen ya no tiene fondo: no hay nada que separar.": "Irudi honek ez du atzealderik jada: ez dago ezer bereizteko.",
   "No se pudo leer la imagen": "Ezin izan da irudia irakurri",
   "Noir": "Noir",
   "Pastel": "Pastel",

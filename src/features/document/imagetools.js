@@ -128,20 +128,32 @@ export function fillHoles(d, known, W, H) {
   return d;
 }
 // The picture's two layers → { subject, background } (data URLs, the picture's size), or an error if nothing stands out.
+// The AI sees the picture squared and on white: it squeezes whatever it gets into a square (a wide logo came out
+// smudged), and a see-through part reaches it as black (its gaps came out as black lines). What it keeps is then
+// limited to what the picture shows — a picture with no background of its own has nothing to separate.
 export async function pictureLayers(src) {
-  const [img, cut] = await Promise.all([loadPicture(src), layerKit.cutout(src).then(loadPicture)]);
-  const W = img.naturalWidth, H = img.naturalHeight, top = canvasOf(W, H), base = canvasOf(W, H);
-  top.getContext('2d').drawImage(cut, 0, 0, W, H);
+  const img = await loadPicture(src), W = img.naturalWidth, H = img.naturalHeight, n = W * H, S = Math.max(W, H);
+  const sq = canvasOf(S, S), sg = sq.getContext('2d'); sg.fillStyle = '#fff'; sg.fillRect(0, 0, S, S);
+  sg.drawImage(img, (S - W) / 2, (S - H) / 2);
+  const cut = await layerKit.cutout(sq.toDataURL('image/png')).then(loadPicture), k = cut.naturalWidth / S;
+  const top = canvasOf(W, H), base = canvasOf(W, H), tg = top.getContext('2d');
+  tg.drawImage(cut, (S - W) / 2 * k, (S - H) / 2 * k, W * k, H * k, 0, 0, W, H);
+  tg.globalCompositeOperation = 'destination-in'; tg.drawImage(img, 0, 0); tg.globalCompositeOperation = 'source-over';
   const g = base.getContext('2d'); g.drawImage(img, 0, 0);
-  const m = top.getContext('2d').getImageData(0, 0, W, H).data, n = W * H;
-  let on = 0; for (let i = 0; i < n; i++) if (m[i * 4 + 3] > 20) on++;
-  if (on < n * 0.003 || on > n * 0.97) throw new Error(t('No se ha encontrado nada que separar del fondo.'));
+  const px = g.getImageData(0, 0, W, H), d = px.data, m = tg.getImageData(0, 0, W, H).data;
+  let on = 0, shown = 0; for (let i = 0; i < n; i++) { if (m[i * 4 + 3] > 20) on++; if (d[i * 4 + 3] > 20) shown++; }
+  if (on < shown * 0.003) throw new Error(t('No se ha encontrado nada que separar del fondo.'));
+  if (on > shown * 0.97) throw new Error(shown < n * 0.97 ? t('Esta imagen ya no tiene fondo: no hay nada que separar.') : t('No se ha encontrado nada que separar del fondo.'));
   // (The subject's place a little larger, so that its outline — a halo of its colours — goes too.)
   const r = Math.max(2, Math.round(Math.min(W, H) * 0.012)), grow = new Uint8ClampedArray(n * 4);
   for (let i = 0; i < n; i++) grow[i * 4] = m[i * 4 + 3] > 20 ? 255 : 0;
   boxBlur(grow, W, H, r, 1);
   const known = new Float32Array(n); for (let i = 0; i < n; i++) known[i] = grow[i * 4] > 4 ? 0 : 1;
-  const px = g.getImageData(0, 0, W, H); fillHoles(px.data, known, W, H); g.putImageData(px, 0, 0);
+  // (Filled premultiplied: a see-through neighbour gives its transparency, not its hidden colour — black, a grey smudge.)
+  for (let i = 0; i < n; i++) { const a = d[i * 4 + 3] / 255; d[i * 4] *= a; d[i * 4 + 1] *= a; d[i * 4 + 2] *= a; }
+  const f = fillHoles(Float32Array.from(d), known, W, H);
+  for (let i = 0; i < n; i++) { const a = f[i * 4 + 3], u = a > 0 ? 255 / a : 0; d[i * 4] = f[i * 4] * u; d[i * 4 + 1] = f[i * 4 + 1] * u; d[i * 4 + 2] = f[i * 4 + 2] * u; d[i * 4 + 3] = a; }
+  g.putImageData(px, 0, 0);
   return { subject: top.toDataURL('image/png'), background: encode(base, src) };
 }
 // Split picture `id`: the picture becomes its background (it keeps its animations, links…), and a copy with the subject

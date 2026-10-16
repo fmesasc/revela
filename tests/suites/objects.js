@@ -3940,8 +3940,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   await test('editar imagen: capas — la figura encima y el fondo con su hueco relleno, dos objetos en su sitio', async () => {
     reset(); const W = frame.contentWindow, T = await W.eval("import('/src/features/document/imagetools.js')"), was = T.layerKit.cutout;
     const src0 = testPicture((g, w, h) => { g.fillStyle = '#00c000'; g.fillRect(0, 0, w, h); g.fillStyle = '#ff0000'; g.fillRect(45, 25, 30, 30); });
-    // (The background removal's AI, played: the red square alone.)
-    T.layerKit.cutout = async () => testPicture(g => { g.fillStyle = '#ff0000'; g.fillRect(45, 25, 30, 30); });
+    // (The background removal's AI, played: what is red in the picture it is given — which is squared, on white — alone.)
+    T.layerKit.cutout = async src => { const img = await T.loadPicture(src), c = W.document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const g = c.getContext('2d'); g.drawImage(img, 0, 0); const p = g.getImageData(0, 0, c.width, c.height);
+      for (let i = 0; i < p.data.length; i += 4) if (!(p.data[i] > 200 && p.data[i + 1] < 80)) p.data[i + 3] = 0;
+      g.putImageData(p, 0, 0); return c.toDataURL('image/png'); };
     try {
       const b = putPicture(src0), n = slide().blocks.length; await sleep(30);
       const m = await openEditor(); await tabTo(m, 'layers');
@@ -3958,6 +3961,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(!D.getElementById('imged-modal'), 'el editor se cierra para verlos');
       R.store.undo(); await sleep(30);
       eq(slide().blocks.length, n, 'Ctrl+Z: una sola imagen'); eq(slide().blocks.at(-1).src, src0, 'la de antes');
+      // A picture with no background of its own (a logo already cut out): nothing to separate, said — not two layers.
+      const logo = putPicture(testPicture(g => { g.fillStyle = '#ff0000'; g.fillRect(45, 25, 30, 30); })), k = slide().blocks.length;
+      let said = ''; try { await T.splitLayers(logo.id); } catch (e) { said = e.message; }
+      assert(/no tiene fondo/.test(said) && slide().blocks.length === k, 'sin fondo: lo dice y no separa: ' + said);
     } finally { T.layerKit.cutout = was; }
   });
 }

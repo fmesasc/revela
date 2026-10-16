@@ -4655,6 +4655,7 @@ export default {
   "Luces": "Luces",
   "Nitidez": "Nitidez",
   "No se ha encontrado nada que separar del fondo.": "Non se atopou nada que separar do fondo.",
+  "Esta imagen ya no tiene fondo: no hay nada que separar.": "Esta imaxe xa non ten fondo: non hai nada que separar.",
   "No se pudo leer la imagen": "Non se puido ler a imaxe",
   "Noir": "Noir",
   "Pastel": "Pastel",

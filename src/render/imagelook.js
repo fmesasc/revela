@@ -20,7 +20,7 @@ const bright = k => diag(k, k, k);
 const lift = o => diag(1 - o, 1 - o, 1 - o, o);                  // (the blacks raised: a faded print)
 const gray = rgb([0.2126, 0.7152, 0.0722, 0.2126, 0.7152, 0.0722, 0.2126, 0.7152, 0.0722]);
 const sepia = rgb([0.393, 0.769, 0.189, 0.349, 0.686, 0.168, 0.272, 0.534, 0.131]);
-const warm = w => diag(1 + 0.15 * w, 1 + 0.03 * w, 1 - 0.15 * w);
+const warm = w => diag(1 + 0.2 * w, 1 + 0.04 * w, 1 - 0.24 * w);
 const hex = c => { const m = /^#?([0-9a-f]{6})$/i.exec(c || ''); const n = m ? parseInt(m[1], 16) : 0; return [(n >> 16) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; };
 const tint = (c, a) => { const [r, g, b] = hex(c); return rgb([1 - a, 0, 0, 0, 1 - a, 0, 0, 0, 1 - a], [r * a, g * a, b * a]); };
 // The picture's light as a scale from one colour (its shadows) to the other (its highlights).
@@ -36,13 +36,13 @@ export function hueMatrix(deg) {
 export const DUOTONE = { dark: '#2b1a5e', light: '#ffb38a' };
 // The gallery: [id, name (Spanish: the interface translates it), its matrix, its own vignette (0…1)].
 export const FILTERS = [
-  ['vivid', 'Vivo', () => chain(sat(1.55), contrast(1.1))],
-  ['warm', 'Cálido', () => chain(warm(0.7), sat(1.1))],
-  ['cool', 'Frío', () => chain(warm(-0.7), sat(0.95))],
-  ['golden', 'Dorado', () => chain(warm(0.4), contrast(1.05), tint('#ffb347', 0.12))],
-  ['sunset', 'Atardecer', () => chain(sat(1.1), contrast(1.05), tint('#ff5e62', 0.14))],
-  ['rose', 'Rosa', () => chain(bright(1.04), tint('#ff9ec7', 0.14))],
-  ['retro', 'Retro', () => chain(warm(0.2), sat(0.75), contrast(0.88), tint('#c8a06a', 0.18), lift(0.05)), 0.35],
+  ['vivid', 'Vivo', () => chain(sat(1.8), contrast(1.15))],
+  ['warm', 'Cálido', () => chain(warm(0.9), sat(1.15), tint('#ff9a3c', 0.1))],
+  ['cool', 'Frío', () => chain(warm(-0.9), sat(0.95), tint('#4f9dff', 0.1))],
+  ['golden', 'Dorado', () => chain(warm(0.5), contrast(1.05), tint('#ffb347', 0.28))],
+  ['sunset', 'Atardecer', () => chain(sat(1.15), contrast(1.08), warm(0.3), tint('#ff5e62', 0.3))],
+  ['rose', 'Rosa', () => chain(sat(0.85), bright(1.05), tint('#ff5fa8', 0.35))],
+  ['retro', 'Retro', () => chain(warm(0.2), sat(0.75), contrast(0.88), tint('#c8a06a', 0.28), lift(0.06)), 0.35],
   ['sepia', 'Sepia', () => sepia],
   ['bw', 'Blanco y negro', () => chain(gray, contrast(1.1))],
   ['noir', 'Noir', () => chain(gray, contrast(1.6), bright(0.92)), 0.45],

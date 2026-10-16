@@ -4655,6 +4655,7 @@ export default {
   "Luces": "Hoge lichten",
   "Nitidez": "Scherpte",
   "No se ha encontrado nada que separar del fondo.": "Er is niets gevonden om van de achtergrond te scheiden.",
+  "Esta imagen ya no tiene fondo: no hay nada que separar.": "Deze afbeelding heeft al geen achtergrond: er is niets te scheiden.",
   "No se pudo leer la imagen": "De afbeelding kon niet worden gelezen",
   "Noir": "Noir",
   "Pastel": "Pastel",
