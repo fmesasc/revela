@@ -7,7 +7,7 @@
 // read out for it, and the steps (animations) that take it from one stop to the next.
 //
 // block = { type: 'map', look, theme, route, routeColor, terrain, names, labels, showAll, curve, marker, arrive, past,
-//           stops: [{ id, name, note, lon, lat, zoom, pitch, bearing, cc, marker, shot, shotKey }] }
+//           motion, speed, start, pulse, stops: [{ id, name, note, lon, lat, zoom, pitch, bearing, cc, marker, shot, shotKey }] }
 // marker = { kind, color, size, icon }: the map's (every stop's, by default); a stop's own overrides some of it.
 // The first stop is where the map starts; every other one is an animation of the map (effect 'mapfly', a.stop: the
 // stop's id), so it is a click like any other step of the slide — reordered in the animation pane, played back by
@@ -55,6 +55,18 @@ export const MAP_THEMES = [['liberty', 'Colores'], ['positron', 'Claro'], ['dark
 export const MAP_ROUTES = [['none', 'Sin línea'], ['line', 'Recta'], ['arc', 'En arco'], ['geodesic', 'A vuelo de pájaro']];
 export const MAP_CURVES = [['1', 'Directo'], ['1.42', 'Normal'], ['2', 'Alejándose mucho']];
 const LOOK_IDS = MAP_LOOKS.map(l => l[0]), THEME_IDS = MAP_THEMES.map(l => l[0]), ROUTE_IDS = MAP_ROUTES.map(l => l[0]);
+// What the map does while it waits at a stop (none, by default): the globe turning — a flat map, sliding sideways —,
+// the camera going round the place, tilted, or nearing it slowly; at what pace. And how the slide starts: at the
+// first stop, or flying down to it from the Earth seen from space, or from where the previous slide's map was left —
+// a map that carries on from slide to slide (if it was left at that very stop, it simply goes on as it was). (Only in
+// the presentation and in the dialog's try-out: the pictures — PDF, PowerPoint, thumbnails — are still; never with
+// the system's «reduce motion».)
+export const MAP_MOTIONS = [['none', 'Quieto'], ['spin', 'Girar el planeta'], ['orbit', 'Dar vueltas alrededor'], ['drift', 'Acercarse despacio']];
+export const MAP_SPEEDS = [['slow', 'Lento'], ['normal', 'Normal'], ['fast', 'Rápido']];
+export const MAP_STARTS = [['', 'En la primera parada'], ['space', 'Desde el espacio'], ['prev', 'Desde el mapa de la diapositiva anterior']];
+// Rings spreading from a marker, as a ripple: the stop arrived at, or every one in sight.
+export const MAP_PULSES = [['', 'Sin ondas'], ['cur', 'En la parada actual'], ['all', 'En todas']];
+const MOTION_IDS = MAP_MOTIONS.map(l => l[0]);
 export const MAX_STOPS = 40;
 export const FLY_MS = 3000;
 
@@ -137,6 +149,10 @@ export function normalizeMap(b) {
   b.marker = cleanMarker(b.marker, true);
   b.arrive = MARKER_ARRIVALS.some(a => a[0] === b.arrive) ? b.arrive : 'drop';
   if (b.past === 'dim') b.past = 'dim'; else delete b.past;
+  if (!MOTION_IDS.includes(b.motion) || b.motion === 'none') delete b.motion;
+  if (b.speed !== 'slow' && b.speed !== 'fast') delete b.speed;
+  if (b.start !== 'space' && b.start !== 'prev') delete b.start;
+  if (b.pulse !== 'cur' && b.pulse !== 'all') delete b.pulse;
   b.stops = (Array.isArray(b.stops) ? b.stops : []).slice(0, MAX_STOPS).map(cleanStop);
   const seen = new Set(); for (const s of b.stops) { while (seen.has(s.id)) s.id = uid(); seen.add(s.id); }
   return b;
@@ -261,7 +277,8 @@ export function mapConfig(b, lang = 'es') {
     lang: String(lang || 'es').split('-')[0].toLowerCase().replace(/[^a-z]/g, '').slice(0, 3) || 'es',
     color: b.routeColor || '#e63946', route: b.route || 'line', labels: b.labels !== false, all: !!b.showAll, curve: b.curve || 1.42,
     arrive: b.arrive || 'drop', dim: b.past === 'dim',
-    stops: stops.map((s, i) => ({ n: s.name || '', ...(s.note && { t: s.note }), c: [s.lon, s.lat], z: s.zoom, p: s.pitch || 0, b: s.bearing || 0, m: markerArt(markerOf(b, s), i + 1, s.cc) })),
+    ...(b.motion && { motion: b.motion, speed: { slow: 0.5, fast: 2 }[b.speed] || 1 }), ...(b.start && { start: b.start }), ...(b.pulse && { pulse: b.pulse }),
+    stops: stops.map((s, i) => ({ n: s.name || '', ...(s.note && { t: s.note }), c: [s.lon, s.lat], z: s.zoom, p: s.pitch || 0, b: s.bearing || 0, m: markerArt(markerOf(b, s), i + 1, s.cc), col: markerOf(b, s).color })),
     segs: routeSegments(b), credit: mapCredit(b), short: mapCreditShort(b) };
 }
 // What a stop's picture shows (when it changes, the picture is taken again): the map's look, its size, the line and

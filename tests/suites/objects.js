@@ -3612,6 +3612,57 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     });
   });
 
+  // What the map does at a stop (motion), how its slide starts (from space, from the previous slide's map), ripples
+  // on its markers, a click on a marker (io/runtime/geomap.js motion(), c.begin(), c.visit()).
+  await test('mapa: gira en cada parada, empieza desde el espacio o sigue desde el mapa anterior, ondas y clic en un marcador', async () => {
+    reset(); const { G, W } = await mapSetup(); R.slides.addSlide('blank'); await sleep(10);
+    const bad = G.normalizeMap({ type: 'map', motion: 'loco', speed: 'x', start: 'luna', pulse: 'mucho', stops: [] });
+    eq([bad.motion, bad.speed, bad.start, bad.pulse].join(), ',,,', 'valores raros, fuera');
+    const ok = G.normalizeMap({ type: 'map', motion: 'none', speed: 'normal', stops: [] });
+    assert(!('motion' in ok) && !('speed' in ok), 'lo de siempre no se guarda');
+    const b = G.addMap({ look: 'globe', motion: 'spin', speed: 'fast', start: 'space', pulse: 'cur', stops: [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 4 }, { name: 'Roma', lon: 12.5, lat: 41.9, zoom: 5 }] });
+    G.setMap(b.id, { stops: b.stops, flyMs: 400 });
+    const cfg = G.mapConfig(b);
+    eq([cfg.motion, cfg.speed, cfg.start, cfg.pulse, cfg.stops[0].col].join(), 'spin,2,space,cur,#e63946', 'en la presentación');
+    // The next slide: a map that carries on from this one (left at Rome: its first stop).
+    R.slides.addSlide('blank'); await sleep(10);
+    const b2 = G.addMap({ look: 'globe', motion: 'spin', start: 'prev', stops: [{ name: 'Roma', lon: 12.5, lat: 41.9, zoom: 5 }, { name: 'Atenas', lon: 23.7, lat: 37.98, zoom: 6 }] });
+    G.setMap(b2.id, { stops: b2.stops, flyMs: 400 });
+    const html = R.io.buildHTML(R.state.deck, { inApp: true }), S = await W.eval("import('/src/core/vendor.js')");
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    try {
+      f.srcdoc = html.split(JSON.stringify(S.MAPLIBRE)).join(JSON.stringify('data:text/javascript;charset=utf-8,' + encodeURIComponent(mapStub) + '%2F%2F'));
+      for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
+      const F = f.contentWindow, RV = F.Reveal, [el, el2] = F.document.querySelectorAll('[data-geomap]');
+      for (let k = 0; k < 60 && !el.classList.contains('rvm-on'); k++) await sleep(50);
+      const map = el._rvm.map, real = () => map.flights.filter(x => x.duration > 1);
+      assert(map.z < 3, 'antes de llegar, ya desde el espacio: zoom ' + map.z);
+      RV.slide(1); await sleep(100);
+      for (let k = 0; k < 60 && !real().length; k++) await sleep(50);
+      eq(real().length && String(real()[0].center), '-3.7,40.4', 'al llegar, baja desde el espacio a la primera parada'); eq(real()[0].duration, 4500);
+      eq(el.querySelector('.rvm-mk').classList.contains('rvm-hide'), true, 'su marcador, al aterrizar');
+      for (let k = 0; k < 120 && el.querySelector('.rvm-mk').classList.contains('rvm-hide'); k++) await sleep(50);
+      assert(el.querySelector('.rvm-mk.rvm-cur.rvm-pulse'), 'con ondas, la parada actual');
+      await sleep(300); const lon0 = map.c[0]; await sleep(500);
+      assert(map.c[0] < lon0 - 0.5 && map.c[1] === 40.4, `en la parada, el globo gira solo (hacia el este): ${lon0} → ${map.c[0]}`);
+      // A click on a marker: there (here, the first one: the second isn't shown yet).
+      const v0 = map.flights.length; el.querySelector('.rvm-mk .rvm-ic').click(); await sleep(50);
+      eq(String(map.flights.at(-1)?.center), '-3.7,40.4', 'clic en un marcador: vuela a él'); assert(map.flights.length > v0);
+      eq(el._rvm.cur, 0, 'sin cambiar los pasos'); eq(RV.getIndices().h, 1, 'ni de diapositiva');
+      // The next click: at once, though it was turning.
+      const r0 = real().length; RV.next(); await sleep(60);
+      eq(real().length, r0 + 1, 'un clic mientras gira: vuela en el acto'); eq(String(real().at(-1).center), '12.5,41.9');
+      await sleep(700); await sleep(400);
+      // The next slide's map: left at Rome, it goes on from just where this one is.
+      RV.next(); await sleep(30); const was = String(map.c.map(x => x.toFixed(2)));
+      for (let k = 0; k < 60 && !el2._rvm?.map; k++) await sleep(50);
+      await sleep(150); const m2 = el2._rvm.map;
+      assert(Math.abs(m2.c[0] - map.c[0]) < 3 && Math.abs(m2.c[1] - 41.9) < 0.01, `la diapositiva siguiente sigue el mapa donde estaba: ${was} → ${m2.c}`);
+      assert(!m2.flights.some(x => x.duration > 1), 'sin volar: era la misma parada');
+      const l2 = m2.c[0]; await sleep(500); assert(m2.c[0] < l2, 'y sigue girando');
+    } finally { f.remove(); }
+  });
+
   // The flight ahead (io/runtime/geomap.js, fetchAhead()): its tiles worked out frame by frame and fetched into the
   // map's own memory before the click; and a floor of the whole world under every map (floor()).
   const FAR = [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 9, pitch: 40 }, { name: 'Tokio', lon: 139.69, lat: 35.69, zoom: 9 }, { name: 'Yokohama', lon: 139.64, lat: 35.44, zoom: 10 }];

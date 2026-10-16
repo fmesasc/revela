@@ -6,12 +6,15 @@
 // In the presentation each stop after the first is a step (a .mapflyfragment, data-mapgo="k"): showing it flies
 // there — the line to it drawing itself on the way —, hiding it (going back) flies back; arriving at the slide puts
 // the map where its latest visible step left it, at once. Until the map has loaded — and without a connection, for
-// good, with a discreet notice — the stop's picture taken in the editor stands in for it.
+// good, with a discreet notice — the stop's picture taken in the editor stands in for it. At a stop the map may keep
+// moving (cfg.motion: the globe turning, the camera going round, nearing slowly — motion()); the slide may start
+// from the Earth seen from space or from where the previous slide's map was left (cfg.start — c.begin()); and a
+// click on a marker flies there, out of turn (c.visit()).
 //
 // lib: MapLibre's address without .js / .css; rtl: the plugin for right-to-left place names; words: { offline }.
 export function geoMapRuntime(lib, rtl, words) {
   words = words || {};
-  var gl = null, mounted = [];
+  var gl = null, mounted = [], left = null;           // (left: where the last map shown was left — c.state())
   var CSS = '.rvm-live{position:absolute;inset:0;opacity:0;transition:opacity .5s}.rvm-on>.rvm-live{opacity:1}.rvm-on>.rv-map-shot{visibility:hidden!important}'
     // (The credits: a short line always in sight, the whole of them behind MapLibre's ⓘ — never a wide bar over the map.)
     + '.rvm-live .maplibregl-ctrl-attrib{font:11px/1.3 system-ui,sans-serif;text-align:end;max-width:calc(100% - 20px)}'
@@ -23,17 +26,21 @@ export function geoMapRuntime(lib, rtl, words) {
     + '.rvm-ic>img{box-sizing:border-box;border:2px solid #fff;border-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,.45);object-fit:cover}'
     + '.rvm-mk>span{position:absolute;transform:translateY(-50%);font:600 15px/1.2 system-ui,sans-serif;color:#1d1f24;background:rgba(255,255,255,.92);padding:3px 8px;border-radius:12px;'
     + 'box-shadow:0 1px 4px rgba(0,0,0,.3);white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;transition:opacity .4s}'
+    + '.rvm-go>.rvm-ic,.rvm-go>span{pointer-events:auto;cursor:pointer}'
     + '.rvm-mk.rvm-hide{visibility:hidden}.rvm-mk.rvm-hide>*{opacity:0}.rvm-mk.rvm-past>*{opacity:.45}'
     + '.rvm-in-drop{animation:rvmDrop .8s cubic-bezier(.3,.7,.4,1) both}.rvm-in-grow{animation:rvmGrow .5s cubic-bezier(.3,1.5,.6,1) both}'
     + '@keyframes rvmDrop{0%{transform:translateY(-60px);opacity:0}45%{transform:none;opacity:1}62%{transform:translateY(-12px)}80%{transform:none}90%{transform:translateY(-3px)}100%{transform:none}}'
     + '@keyframes rvmGrow{from{transform:scale(0);opacity:0}to{transform:none;opacity:1}}'
+    // (Ripples from the place itself — a pin's tip, a dot's middle —, in the marker's colour, behind it.)
+    + '.rvm-pulse::before{content:"";position:absolute;left:-18px;top:-18px;width:36px;height:36px;border-radius:50%;box-sizing:border-box;border:3px solid var(--rvm-c,#e63946);'
+    + 'animation:rvmPulse 2s ease-out infinite;pointer-events:none}@keyframes rvmPulse{from{transform:scale(.25);opacity:.95}to{transform:scale(2.6);opacity:0}}'
     + '.rvm-note{position:absolute;left:14px;top:14px;max-width:min(46%,420px);padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.94);color:#1d1f24;'
     + 'text-align:start;font:400 16px/1.35 system-ui,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.3);opacity:0;transform:translateY(-8px);transition:opacity .4s,transform .4s;pointer-events:none;z-index:2}'
     + '.rvm-note.rvm-show{opacity:1;transform:none}.rvm-note b{display:block;font-size:18px;margin-bottom:2px}'
     + '.rvm-off{position:absolute;right:calc(8px - var(--rvm-r,0px));top:calc(8px - var(--rvm-t,0px));padding:3px 9px;border-radius:10px;background:rgba(20,24,30,.72);color:#fff;font:12px/1.3 system-ui,sans-serif;z-index:3;pointer-events:none}'
     + '.rvm-wait{position:absolute;left:calc(10px - var(--rvm-l,0px));bottom:calc(10px - var(--rvm-b,0px));width:18px;height:18px;border-radius:50%;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;'
     + 'box-shadow:0 0 4px rgba(0,0,0,.4);animation:rvmSpin .9s linear infinite;z-index:3;pointer-events:none}@keyframes rvmSpin{to{transform:rotate(360deg)}}'
-    + '@media (prefers-reduced-motion:reduce){.rvm-ic,.rvm-note,.rvm-live{transition:none}.rvm-in-drop,.rvm-in-grow{animation:none}}';
+    + '@media (prefers-reduced-motion:reduce){.rvm-ic,.rvm-note,.rvm-live{transition:none}.rvm-in-drop,.rvm-in-grow{animation:none}.rvm-pulse::before{display:none}}';
   function styles() {
     if (document.getElementById('rvm-css')) return;
     var st = document.createElement('style'); st.id = 'rvm-css'; st.textContent = CSS; document.head.appendChild(st);
@@ -192,18 +199,21 @@ export function geoMapRuntime(lib, rtl, words) {
     var S = u1 < 1e-6 ? Math.abs(Math.log(w1 / w0)) / rho : (r(true) - r(false)) / rho;
     return Math.ceil((isFinite(S) ? S : 2) / step);
   }
+  function camera(m) { var p = m.getCenter(); return { center: [p.lng, p.lat], zoom: m.getZoom(), pitch: m.getPitch(), bearing: m.getBearing() }; }
   // Every tile of the flight from the map's view to `to` (camera), each source's in the order the flight needs them.
   // n points along it; worked out a few at a time (a task each), so the page never stalls; → a promise.
   function flightTiles(m, to, curve, n, alive) {
     var tms = m.style.tileManagers, ids = Object.keys(tms).filter(function (id) { return tms[id]._rvFloor; }), out = {}, seen = {};
     ids.forEach(function (id) { out[id] = []; seen[id] = {}; });
-    var p = m.getCenter(), from = { center: [p.lng, p.lat], zoom: m.getZoom(), pitch: m.getPitch(), bearing: m.getBearing() }, i = 0;
+    var from = camera(m), i = 0;
     var lod = Math.min(from.zoom, to.zoom) - 1;
     return new Promise(function (ok) {
       (function chunk() {
         if (!alive() || m.isMoving()) return ok(null);
-        var end = Math.min(n, i + 12);
+        var end = Math.min(n, i + 12), here = camera(m);
         m._ease = function (frame, finish, o) { frame(o.easing(1)); finish(); };     // (the flight, put at its point at once)
+        // (Back, after each few, to where the map is then: it may be turning meanwhile — motion() —, and the flight
+        // worked out from where it was is near enough.)
         // (Nor a word of it to anyone: the markers would follow each point — and on relief each asks the graphics
         // card whether it is hidden behind a mountain, waiting for its answer: seconds, measured.)
         m.fire = function () { return m; };
@@ -216,7 +226,7 @@ export function geoMapRuntime(lib, rtl, words) {
               wanted(m, tms[id], id, m.terrain, lod).forEach(function (t) { if (!seen[id][t.key]) { seen[id][t.key] = 1; out[id].push(t); } });
             });
           }
-        } finally { delete m._ease; delete m.fire; m.jumpTo(from); }
+        } finally { delete m._ease; delete m.fire; m.jumpTo(here); }
         if (i < n) setTimeout(chunk, 0); else ok(out);
       })();
     });
@@ -330,6 +340,7 @@ export function geoMapRuntime(lib, rtl, words) {
           ic.classList.remove('rvm-in-drop', 'rvm-in-grow'); void ic.offsetWidth; ic.classList.add('rvm-in-' + cfg.arrive);
         }
         e.classList.toggle('rvm-hide', !on); e.classList.toggle('rvm-cur', i === k); e.classList.toggle('rvm-past', !!cfg.dim && i < k);
+        e.classList.toggle('rvm-pulse', on && !opts.capture && (cfg.pulse === 'all' || (cfg.pulse === 'cur' && i === k && !part)));
       });
     }
     function showNote(k, on) {
@@ -345,7 +356,11 @@ export function geoMapRuntime(lib, rtl, words) {
         var html = a ? '<i class="rvm-ic" style="left:' + (-a.ax * a.w) + 'px;top:' + (-a.ay * a.h) + 'px;width:' + a.w + 'px;height:' + a.h + 'px;transform-origin:' + (a.ax * 100) + '% ' + (a.ay * 100) + '%">'
           + (a.flag ? '<img alt="" src="' + esc(a.flag) + '">' : a.svg) + '</i>' : '';
         if (cfg.labels && s.n) html += '<span style="' + (a ? 'left:' + ((1 - a.ax) * a.w + 5) + 'px;top:' + ((0.5 - a.ay) * a.h) + 'px' : 'left:0;top:0;transform:translate(-50%,-50%)') + '">' + esc(s.n) + '</span>';
-        e.innerHTML = html;
+        e.innerHTML = html; e.style.setProperty('--rvm-c', s.col || '#e63946');
+        if (opts.interactive !== false && !opts.capture) {
+          e.classList.add('rvm-go'); e.title = s.n || '';
+          e.addEventListener('click', function (ev) { ev.stopPropagation(); c.visit(i); });
+        }
         c.markers.push(new ml.Marker({ element: e, anchor: 'center' }).setLngLat(s.c).addTo(c.map));
       });
     }
@@ -371,20 +386,28 @@ export function geoMapRuntime(lib, rtl, words) {
       paint(c.cur);
     }
     var s0 = cfg.stops[0] || { c: [0, 25], z: 1.2, p: 0, b: 0 };
+    // (The Earth seen from space, over the first stop: where a slide that starts from space starts.)
+    var space = function () { var a = cfg.stops[0] || s0; return { center: [a.c[0], a.c[1] * 0.4], zoom: (cfg.proj === 'globe' ? 1.4 : 1) + zk(), pitch: 0, bearing: 0 }; };
+    // (A map started before its slide is shown — the next one's —, that starts from space: already there.)
+    c.first = !!(opts.start && cfg.start === 'space' && !reduced());
     c.ready = load(cfg).then(function (ml) {
       if (c.dead) return c;
-      var m = c.map = new ml.Map({ container: box, style: cfg.style, center: s0.c, zoom: s0.z + zk(), pitch: s0.p, bearing: s0.b, maxPitch: 85,
+      var v0 = c.first ? space() : { center: s0.c, zoom: s0.z + zk(), pitch: s0.p, bearing: s0.b };
+      var m = c.map = new ml.Map({ container: box, style: cfg.style, center: v0.center, zoom: v0.zoom, pitch: v0.pitch, bearing: v0.bearing, maxPitch: 85,
         interactive: opts.interactive !== false, attributionControl: { compact: true }, pixelRatio: pr(), fadeDuration: opts.capture ? 0 : 300,
         canvasContextAttributes: { antialias: true, preserveDrawingBuffer: !!opts.capture } });
       if (!opts.keyboard && m.keyboard) m.keyboard.disable();            // (the arrows are the presentation's)
       m.on('style.load', dress);
       if (opts.onMove) m.on('moveend', function () { opts.onMove(c.view()); });
       m.on('moveend', function (e) { if (e && e.originalEvent && c.settled) ahead(300); });   // (moved by hand: from there)
+      // (A hand on the map: it stops moving on its own — motion() —, and goes on a moment after it lets go.)
+      var hold = function () { mo.rest = performance.now() + 2500; };
+      box.addEventListener('pointerdown', hold); box.addEventListener('wheel', hold, { passive: true });
       markers(ml);
       return new Promise(function (ok) {
         var done = false, t = setTimeout(function () { if (!done) offline(true); }, navigator.onLine === false ? 0 : 12000);
         m.on('load', function () {
-          done = true; clearTimeout(t); offline(false); el.classList.add('rvm-on'); c.go(c.cur, false);
+          done = true; clearTimeout(t); offline(false); el.classList.add('rvm-on'); if (!c.first) c.go(c.cur, false);
           // (MapLibre opens its compact credits at first: closed to their ⓘ, the short line says who to thank.)
           var at = box.querySelector('.maplibregl-ctrl-attrib'); if (at) at.classList.remove('maplibregl-compact-show');
           credit.hidden = !cfg.short; ok(c);
@@ -399,7 +422,7 @@ export function geoMapRuntime(lib, rtl, words) {
     // in the flight MapLibre finds them there. A click before they are all in waits for them — a small sign says so —
     // at most WAIT ms; then it flies anyway, over the floor (floor()) where a tile is still missing.
     var job = null, WAIT = 4000;
-    var camNow = function () { var m = c.map, p = m.getCenter(); return { center: [p.lng, p.lat], zoom: m.getZoom(), pitch: m.getPitch(), bearing: m.getBearing() }; };
+    var camNow = function () { return camera(c.map); };
     var camKey = function (a) { return [a.center[0], a.center[1], a.zoom, a.pitch, a.bearing].map(function (v) { return Math.round(v * 1e4) / 1e4; }).join(','); };
     var camOf = function (s) { return { center: s.c, zoom: s.z + zk(), pitch: s.p || 0, bearing: s.b || 0 }; };
     var fetches = function () { return c.warms && !reduced() && navigator.onLine !== false; };
@@ -444,21 +467,23 @@ export function geoMapRuntime(lib, rtl, words) {
       });
       return j;
     }
-    // After arriving, the next flight. (ms: after a moment — moved by hand, once it is left still.)
+    // After arriving, the next flight — or the first stop's, for a slide that starts from elsewhere —; and the map's
+    // own motion, if it has one. (ms: after a moment — moved by hand, once it is left still.)
     function ahead(ms) {
       clearTimeout(c.at);
       c.at = setTimeout(function () {
-        var m = c.map, s = cfg.stops[c.cur + 1];
-        if (c.dead || !m || !s || !fetches()) return;
+        var m = c.map, s = cfg.stops[c.first ? 0 : c.cur + 1];
+        if (c.dead || !m) return;
         if (m.isMoving()) return ahead(300);
-        fetchAhead(camOf(s));
+        if (!c.first && !mo.on) motion(true);                                // (arrived: it may keep moving)
+        if (s && fetches()) fetchAhead(camOf(s));
       }, ms || 0);
     }
     // Go to stop k: flying (dur ms; the line to it drawn on the way, if it is the next one), or at once.
     // → a promise, once there.
     c.go = function (k, animate, dur) {
       k = Math.max(0, Math.min(cfg.stops.length - 1, k | 0));
-      var prev = c.cur, me = ++c.token; c.cur = k; shot(k);
+      var prev = c.cur, me = ++c.token, was = mo.on; c.cur = k; c.first = false; motion(false); mo.z = 0; shot(k);
       var m = c.map, s = cfg.stops[k]; if (!m || !s || !el.classList.contains('rvm-on')) { showNote(k, true); return Promise.resolve(); }
       var to = camOf(s);
       dur = dur || 3000;
@@ -490,12 +515,81 @@ export function geoMapRuntime(lib, rtl, words) {
           })();
         });
       };
-      // (A click while it flies: on from where it is, at once — over the floor where it must.)
-      if (!fetches() || m.isMoving()) return fly();
+      // (A click while it flies: on from where it is, at once — over the floor where it must. And while it turned
+      // on its own: the flight worked out from where it stopped is another one, and most of its tiles are in.)
+      if (!fetches() || m.isMoving() || was) return fly();
       var t = setTimeout(function () { if (me === c.token) sign(true); }, 300), t0 = Date.now();
       // (And the floor: on a slow computer the map may still be fetching it when the presenter clicks.)
       var floorReady = function () { return floorIn(m) || Date.now() - t0 > WAIT ? Promise.resolve() : later(100).then(floorReady); };
       return Promise.race([fetchAhead(to).ready.then(floorReady), later(WAIT)]).then(function () { clearTimeout(t); return fly(); });
+    };
+    // ── At a stop the map keeps moving (cfg.motion), from its arrival to the next click: the globe turning west to east,
+    // as the Earth does (a flat map, sliding sideways), the camera going round the place, tilting to see it, or nearing
+    // it slowly, turning a little, until it is one and a half levels closer. A frame at a time, on from wherever the
+    // map is — so what a hand does to it is kept, and the motion goes on from there. Not while the map is moved by
+    // hand or flies, nor on a slide out of sight, nor in the pictures; never with «reduce motion».
+    var mo = { on: false, raf: 0, last: 0, rest: 0, z: 0 };
+    var moves = function () { return !!(cfg.motion && (opts.motion || c.live) && !opts.capture && !reduced()); };
+    function motion(on) {
+      cancelAnimationFrame(mo.raf); mo.on = false; mo.last = 0;
+      if (on && moves() && c.map && !c.dead) { mo.on = true; mo.raf = requestAnimationFrame(tick); }
+    }
+    function tick(now) {
+      if (!mo.on || c.dead) return;
+      mo.raf = requestAnimationFrame(tick);
+      var m = c.map, dt = mo.last ? Math.min(0.1, (now - mo.last) / 1000) : 0; mo.last = now;
+      if (!dt || now < mo.rest || m.isMoving() || document.hidden || (window.Reveal && el.closest('section') && !el.closest('section.present'))) return;
+      var v = camNow(), k = cfg.speed || 1, s = cfg.stops[c.cur] || {};
+      if (cfg.motion === 'spin') {
+        // (6° a second with the whole globe in sight — a turn a minute —, as fast for the eye closer in.)
+        var lon = v.center[0] - 6 * k * dt * Math.pow(2, -Math.max(0, v.zoom - zk() - 1.5));
+        v.center = [(lon + 540) % 360 - 180, v.center[1]];
+      } else if (cfg.motion === 'orbit') {
+        v.bearing = (v.bearing + 6 * k * dt + 540) % 360 - 180;
+        v.pitch += (Math.max(s.p || 0, 50) - v.pitch) * Math.min(1, dt * 0.8);
+      } else if (cfg.motion === 'drift') {
+        var dz = Math.min(0.08 * k * dt, 1.5 - mo.z); if (dz <= 0) return motion(false);
+        mo.z += dz; v.zoom += dz; v.bearing += 1.5 * k * dt;
+      } else return motion(false);
+      m.jumpTo(v);
+    }
+    // The dialog's try-out: the motion on (or off) as in the presentation.
+    c.moving = function (on) { c.live = !!on; motion(on && c.settled && !c.first); };
+    // The slide's start (cfg.start; settle()): down to the first stop from the Earth seen from space, or from where
+    // the previous slide's map was left (from: c.state() of that one). Left at this very stop, it goes on as it was —
+    // as if it were the same map. → a promise, once at the first stop.
+    var START_MS = 4500;
+    c.begin = function (kind, from) {
+      var a = cfg.stops[0];
+      if (!a || reduced() || !(kind === 'space' || (kind === 'prev' && from))) { c.first = false; return c.go(0, false); }
+      var me = ++c.token; c.first = true; c.cur = 0; motion(false); shot(0);
+      return c.ready.then(function () {
+        var m = c.map; if (!m || c.failed || me !== c.token || !el.classList.contains('rvm-on')) return;
+        var cam = kind === 'space' ? space() : Object.assign({}, from.cam, { zoom: from.cam.zoom + zk() });
+        m.stop(); m.jumpTo(cam); c.arriving = false;
+        if (kind === 'prev' && from.at && Math.abs(from.at.c[0] - a.c[0]) < 1e-4 && Math.abs(from.at.c[1] - a.c[1]) < 1e-4 && Math.abs(from.at.z - a.z) < 0.01) {
+          c.first = false; paint(0); showNote(0, true); mo.z = from.z || 0; if (c.settled) { free(); job = null; ahead(0); }
+          return;
+        }
+        c.cur = -1; paint(-1); showNote(0, false); if (c.settled) ahead(0);
+        return later(kind === 'space' ? 600 : 150).then(function () { if (me === c.token) return c.go(0, true, START_MS); });
+      });
+    };
+    // A click on a marker: there, out of turn — the trip's steps carry on from where they were (the next click goes
+    // to the stop after the last one reached, from here); its note, once there; then the map's motion, if any.
+    c.visit = function (i) {
+      var m = c.map, s = cfg.stops[i]; if (!m || !s || c.first || !el.classList.contains('rvm-on')) return;
+      var me = ++c.token; motion(false); mo.z = 0; showNote(c.cur, false); sign(false);
+      if (job && job.left) drop();
+      m.stop(); m.flyTo(Object.assign(camOf(s), { duration: reduced() ? 0 : 2500, curve: cfg.curve || 1.42 }));
+      m.once('moveend', function () { if (me !== c.token || c.dead) return; showNote(i, true); free(); job = null; ahead(0); });
+    };
+    // Where it was left, for the next slide's map (c.begin()): its camera — the zoom in the block's own terms —, the
+    // stop it was at, how far it had neared it.
+    c.state = function () {
+      var m = c.map; if (!m || c.failed || !el.classList.contains('rvm-on')) return null;
+      var v = camNow(), s = c.first ? null : cfg.stops[c.cur]; v.zoom -= zk();
+      return { cam: v, at: s ? { c: s.c, z: s.z } : null, z: mo.z };
     };
     // Where the map is looking now, in the block's terms (for «Usar la vista actual»).
     c.view = function () {
@@ -515,6 +609,7 @@ export function geoMapRuntime(lib, rtl, words) {
       if (restyle) { try { c.map.setTerrain(null); } catch (e) {} c.map.setStyle(cfg.style, { diff: false }); }
       else try { if (c.map.getLayer('rv-route')) c.map.setPaintProperty('rv-route', 'line-color', cfg.color); } catch (e) {}
       load(cfg).then(function (ml) { c.arriving = false; markers(ml); paint(c.cur); });
+      if (!moves()) motion(false); else if (!mo.on && c.settled && !c.first && !c.map.isMoving()) motion(true);
     };
     // The picture of stop k, as presented: the map once everything has loaded, and over it the markers, the note and
     // the credits (they are HTML on the live map: drawn here). → a JPEG data: URL, or null if it couldn't be taken.
@@ -579,7 +674,7 @@ export function geoMapRuntime(lib, rtl, words) {
     };
     c.resize = function () { bleed(); if (c.map) { try { c.map.setPixelRatio(pr()); } catch (e) {} c.map.resize(); } };
     c.destroy = function () {
-      c.dead = true; c.token++; if (c.ro) c.ro.disconnect(); mounted = mounted.filter(function (x) { return x !== c; }); clearTimeout(c.at); job = null;
+      c.dead = true; c.token++; motion(false); if (c.ro) c.ro.disconnect(); mounted = mounted.filter(function (x) { return x !== c; }); clearTimeout(c.at); job = null;
       if (c.map) try { c.map.remove(); } catch (e) {}
       box.remove(); note.remove(); credit.remove(); el.classList.remove('rvm-on', 'rvm-offline'); el.style.overflow = 'hidden'; el.removeAttribute('data-bled'); var n = el.querySelector(':scope > .rvm-off'); if (n) n.remove();
       el._rvm = null;
@@ -595,10 +690,11 @@ export function geoMapRuntime(lib, rtl, words) {
     if (el._rvm) return el._rvm;
     var cfg; try { cfg = JSON.parse(el.getAttribute('data-geomap')); } catch (e) { return null; }
     if (!cfg || !cfg.stops || !cfg.stops.length) return null;
-    el._rvm = mount(el, cfg, { interactive: true, warm: !receiver });
+    el._rvm = mount(el, cfg, { interactive: true, warm: !receiver, motion: true, start: true });
     return el._rvm;
   }
-  function settle(el, animate) {
+  // (entering: the slide has just been arrived at — its map may start from elsewhere: c.begin().)
+  function settle(el, animate, entering) {
     var c = ensure(el); if (!c) return;
     var sec = el.closest('section');
     var shown = sec ? [].slice.call(sec.querySelectorAll('[data-mapgo]')).filter(function (f) {
@@ -608,6 +704,7 @@ export function geoMapRuntime(lib, rtl, words) {
     var last = shown[shown.length - 1], k = last ? +last.getAttribute('data-mapgo') || 0 : 0;
     var dur = last ? secs(getComputedStyle(last).getPropertyValue('--anim-dur')) || 3000 : 0;
     var wait = last && animate ? secs(getComputedStyle(last).getPropertyValue('--anim-del')) : 0;
+    if (entering && !last && c.cfg.start) { c.begin(c.cfg.start, left); return; }
     if (wait) setTimeout(function () { c.go(k, true, dur); }, wait); else c.go(k, animate, dur);
   }
   function near(sec, cur) {
@@ -618,7 +715,7 @@ export function geoMapRuntime(lib, rtl, words) {
   function inSlide(slide) {
     if (!slide) return;
     mounted.slice().forEach(function (c) { if (!c.el.isConnected || !near(c.el.closest('section'), slide)) { if (!c.el.closest('.rv-dlg-map')) c.destroy(); } });
-    slide.querySelectorAll('[data-geomap]').forEach(function (el) { settle(el, false); if (el._rvm) el._rvm.resize(); });
+    slide.querySelectorAll('[data-geomap]').forEach(function (el) { settle(el, false, true); if (el._rvm) el._rvm.resize(); });
     // (A map on the next slide, started now — reveal.js has it laid out already —: its first view loaded and its
     // first flight fetched before it is shown. Not in the speaker view's previews: the presentation does it.)
     var all = Reveal.getSlides(), next = all[all.indexOf(slide) + 1];
@@ -632,7 +729,12 @@ export function geoMapRuntime(lib, rtl, words) {
   }
   if (window.Reveal && document.querySelector('[data-geomap]')) {
     Reveal.on('ready', function (e) { inSlide(e.currentSlide); });
-    Reveal.on('slidechanged', function (e) { inSlide(e.currentSlide); });
+    // (Where the map of the slide left was, for one that carries on from it: c.begin().)
+    Reveal.on('slidechanged', function (e) {
+      var was = e.previousSlide && [].slice.call(e.previousSlide.querySelectorAll('[data-geomap]')).map(function (el) { return el._rvm && el._rvm.state(); }).filter(Boolean)[0];
+      if (was) left = was;
+      inSlide(e.currentSlide);
+    });
     Reveal.on('fragmentshown', fromFragments); Reveal.on('fragmenthidden', fromFragments);
     Reveal.on('resize', function () { mounted.forEach(function (c) { c.resize(); }); });
     document.addEventListener('click', function (e) {
