@@ -278,6 +278,14 @@ export async function editImage(b, kind, { what = '', aspect = null } = {}) {
   });
   return src;
 }
+// A picture made from words alone, as a data URL (Editar imagen ▸ Fondo ▸ «Inventado con IA»): it costs what making an
+// image costs. ratioFor: the image model's proportion nearest to w×h.
+export async function imageFromPrompt(prompt, aspect = '16:9') {
+  const img = await imageRequest({ prompt, aspect });
+  if (!img?.b64_json) throw new Error('EMPTY');
+  return `data:${img.media_type || 'image/png'};base64,${img.b64_json}`;
+}
+export const ratioFor = (w, h) => nearestRatio(w / h);
 function placeImage(img, prompt, aspect) {
   if (!img?.b64_json) throw new Error('EMPTY');
   const src = `data:${img.media_type || 'image/png'};base64,${img.b64_json}`;

@@ -33,7 +33,7 @@ export function blockPreview(b, slide, { small = false } = {}) {
   const el = document.createElement('div');
   el.className = 'pv-block';
   el.style.cssText = `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px;`
-    + `transform:rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''};${b.shadow ? `filter:${shadowCSS(b)};` : ''}`
+    + `transform:rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''};${shadowCSS(b) ? `filter:${shadowCSS(b)};` : ''}`
     + (opacityOf(b) < 1 ? `opacity:${opacityOf(b)};` : '');           // (the master's objects in the editor are drawn this way too)
   if (b.type === 'text') {
     el.innerHTML = `<div${b.levels ? ' class="lv"' : ''} style="font-size:${wordartSize(b)}px;color:${b.color || 'inherit'};${b.levels ? levelVars(b) : ''}`

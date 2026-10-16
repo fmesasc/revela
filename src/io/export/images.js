@@ -11,7 +11,7 @@ import { t } from '../../i18n/index.js';
 import { blockHTML, slideInnerHTML, magnifyInsetHTML } from '../formats/html.js';
 import { download, slug } from '../files.js';
 import { watermarkHTML } from '../../features/document/watermark.js';
-import { specOf, applyLook } from '../../render/imagelook.js';
+import { specOf, applyLook, decorate } from '../../render/imagelook.js';
 import { applyAdjustments, fitRect } from './objects.js';
 
 
@@ -115,7 +115,8 @@ async function bakeLooks(holder) {
       if (clip) { const [t, r = t, b = t, l = r] = clip; g.beginPath(); g.rect(W * l, H * t, W * (1 - l - r), H * (1 - t - b)); g.clip(); }
       g.drawImage(img, (bw - w) * (pos[0] ?? 0.5) * k, (bh - h) * (pos[1] ?? 0.5) * k, w * k, h * k);
       g.putImageData(applyLook(applyAdjustments(g.getImageData(0, 0, W, H), adj), look, k), 0, 0);
-      let out = c, pad = 0;
+      // (A shadow's style, a reflection: past the box, the picture larger by that much on each side.)
+      let { canvas: out, pad: [pl, pt, pr, pb] } = decorate(c, look, k), pad = 0;
       if (sh) {
         const { x, y, blur } = sh; pad = Math.ceil(Math.abs(x) + Math.abs(y) + blur * 2);
         out = Object.assign(document.createElement('canvas'), { width: W + 2 * pad * k, height: H + 2 * pad * k });
@@ -125,7 +126,8 @@ async function bakeLooks(holder) {
       img.src = out.toDataURL('image/png'); await img.decode().catch(() => {});
       Object.assign(img.style, { filter: 'none', clipPath: 'none', objectFit: 'fill', objectPosition: '50% 50%' });
       // (Shadowed: the picture larger by the shadow's room on each side, so that the box stays where it was.)
-      if (pad) Object.assign(img.style, { left: `${img.offsetLeft - pad}px`, top: `${img.offsetTop - pad}px`, width: `${bw + 2 * pad}px`, height: `${bh + 2 * pad}px`, maxWidth: 'none', maxHeight: 'none' });
+      if (pad) pl = pt = pr = pb = pad;
+      if (pl || pt || pr || pb) Object.assign(img.style, { left: `${img.offsetLeft - pl}px`, top: `${img.offsetTop - pt}px`, width: `${bw + pl + pr}px`, height: `${bh + pt + pb}px`, maxWidth: 'none', maxHeight: 'none' });
     } catch {}
   }
 }

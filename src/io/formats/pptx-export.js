@@ -20,7 +20,7 @@ import { lockSVG } from '../../render/svg.js';
 import { chartSVG, chartSeries, histogramBins, bubblePoints, scatterSeries, pieColours, iconSVG, inkSVG, timerSVG, shapeTextStyle, cellBg } from '../../render/svg.js';
 import { blockImage, magnifyImage } from '../export/images.js';
 import { bakeImage } from '../export/objects.js';
-import { hasLook } from '../../render/imagelook.js';
+import { hasLook, hasDecor } from '../../render/imagelook.js';
 import { magGeometry, viewOf, underArea, targetImage, imageCrop } from '../../features/document/magnify.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../features/document/master.js';
 import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
@@ -168,9 +168,9 @@ function addMagnifier(slide, b, pptx, raster, blocks) {
   else if (raster.has(b.id)) slide.addImage({ ...pos, data: raster.get(b.id), objectName: id });
   if (st.width) rect(box, Math.max(0, st.radius - st.width / 2), `${id}-frame`);
 }
-const picSizes = new Map(), picCrops = new Map();       // (for the export under way: images' natural sizes, and their srcRect)
+const picSizes = new Map(), picCrops = new Map(), picPads = new Map();   // (for the export under way: images' natural sizes, their srcRect, how far a baked one goes past its box)
 async function naturalSizes(deck) {
-  picSizes.clear(); picCrops.clear();
+  picSizes.clear(); picCrops.clear(); picPads.clear();
   const all = [deck.master, ...(deck.layouts || []), ...deck.slides].flatMap(s => s?.blocks || []);
   // (Pictures, by their id; a diagram's pictures, by their address.)
   const imgs = all.filter(b => b.type === 'image' && b.src).map(b => [b.id, b.src])
@@ -189,7 +189,8 @@ function runLang(b) {
   return { lang: v === 'none' ? deckTag(state.deck, currentLang()) : v };
 }
 function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), link = null) {
-  const pos = { x: IN(b.x), y: IN(b.y), w: IN(b.w), h: IN(b.h) }, hl = link ? { hyperlink: link } : {};   // (an object that is a link)
+  const pp = picPads.get(b.id) || [0, 0, 0, 0];
+  const pos = { x: IN(b.x - pp[0]), y: IN(b.y - pp[1]), w: IN(b.w + pp[0] + pp[2]), h: IN(b.h + pp[1] + pp[3]) }, hl = link ? { hyperlink: link } : {};   // (an object that is a link)
   if (b.rotation) pos.rotate = b.rotation;
   // (Its opacity, as PowerPoint's transparency of the fill and the line, 0–100.)
   const see = opacityOf(b) < 1 ? { transparency: Math.round((1 - opacityOf(b)) * 100) } : {};
@@ -414,7 +415,7 @@ function masterObject(b) {
     return { text: { text: '', options: { ...pos, shape: SHAPE_MAP[b.shape], fill: b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497', ...see } : { type: 'none' },
       ...(b.strokeWidth ? { line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth * 0.75, ...dashOf(b.dash), ...see } } : {}) } } };
   }
-  if (b.type === 'image' && /^data:image\/(png|jpe?g|gif)/.test(b.src || '') && !b.crop && !hasLook(b)) return { image: { ...pos, data: b.src } };
+  if (b.type === 'image' && /^data:image\/(png|jpe?g|gif)/.test(b.src || '') && !b.crop && !hasLook(b) && !hasDecor(b)) return { image: { ...pos, data: b.src } };
   return null;
 }
 // Every layout, used or not (a template brings them all to PowerPoint); and, for the slides without one, «Revela»: the
@@ -506,7 +507,9 @@ export async function buildPptx(deck = state.deck, { progress = null } = {}) {
     if (b.type === 'magnify' && !magCrop(b, slideBlocks(s, deck))) return magnifyImage(b, s, deck);
     // (A picture with a look — its corrections, filter, shape, outline… render/imagelook.js —: PowerPoint has nearly none
     // of them, so it goes as it shows, in its box. Not an animated GIF: its frames would be lost.)
-    if (b.type === 'image' && b.src && hasLook(b) && !/^data:image\/gif/.test(b.src)) return bakeImage(b, 2).then(c => c.toDataURL('image/png'));
+    // (Its shadow's style or its reflection too, past its box: the picture placed that much larger — picPads.)
+    if (b.type === 'image' && b.src && (hasLook(b) || hasDecor(b)) && !/^data:image\/gif/.test(b.src))
+      return bakeImage(b, 2, { decor: true }).then(c => { if (c.pad.some(Boolean)) picPads.set(b.id, c.pad); return c.toDataURL('image/png'); });
     return null;
   };
   // A few at a time: most of a picture's time is html2canvas waiting (its copy of the page loading, the fonts), and
@@ -589,7 +592,7 @@ const named = (slide, name, b = null, media = null) => new Proxy(slide, {
     if (!/^add(Text|Shape|Image|Media|Table|Chart)$/.test(k)) return f.bind(t);
     return (...args) => {
       const i = args.length - 1;
-      if (args[i] && typeof args[i] === 'object' && !Array.isArray(args[i])) args[i] = { ...args[i], objectName: args[i].objectName || name, ...(b?.shadow && k !== 'addTable' && k !== 'addChart' && { shadow: pptShadow(b.shadow) }) };
+      if (args[i] && typeof args[i] === 'object' && !Array.isArray(args[i])) args[i] = { ...args[i], objectName: args[i].objectName || name, ...(b?.shadow && k !== 'addTable' && k !== 'addChart' && !(b.type === 'image' && hasDecor(b)) && { shadow: pptShadow(b.shadow) }) };   // (a picture's styled shadow: baked in it)
       if (k === 'addImage' && media && args[i]?.data) args[i].data = standIn(args[i].data, media);
       return f.apply(t, args);
     };

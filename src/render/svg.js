@@ -1,7 +1,7 @@
 import { plainText } from '../core/text.js';
 import { shownRows } from '../core/formulas.js';
 import { MORE_ICONS } from './icons.js';
-import { lookId } from './imagelook.js';
+import { lookId, hasDecor } from './imagelook.js';
 
 // Image filter/opacity, shared by the canvas, thumbnails and export. (Its warmth, filter, sharpness… are an SVG
 // filter after the four: render/imagelook.js, whose <filter> each place draws — ensureLook, looksSVG.)
@@ -13,7 +13,7 @@ export function imgFilter(b) {
 export const imgFocus = b => `${b.focusX ?? 50}% ${b.focusY ?? 50}%`;
 export function imgOpacity(b) { return (b.adj?.opacity ?? 100) / 100; }
 export function imgClip(b) {
-  const c = b.crop; if (!c) return 'none';
+  const c = b.crop; if (!c || hasDecor(b)) return 'none';             // (with a shadow's style or a reflection: in its filter)
   return `inset(${c.top || 0}% ${c.right || 0}% ${c.bottom || 0}% ${c.left || 0}%)`;
 }
 
@@ -1060,7 +1060,9 @@ export const levelCSS = (pre = '') => [1, 2, 3, 4, 5].map(n => {
 // colour (with alpha). drop-shadow follows the real outline of any object —
 // a shape, a picture's transparency or the letters of a text without fill.
 export const DEFAULT_SHADOW = { x: 4, y: 6, blur: 10, color: '#00000066' };
-export const shadowCSS = b => (b.shadow ? `drop-shadow(${b.shadow.x ?? 4}px ${b.shadow.y ?? 6}px ${b.shadow.blur ?? 10}px ${b.shadow.color || '#00000066'})` : '');
+// (A picture's styled shadow — curled, lifted, cast — or any shadow of a picture with a reflection: drawn by its own
+// filter, render/imagelook.js.)
+export const shadowCSS = b => (b.shadow && !(b.type === 'image' && hasDecor(b)) ? `drop-shadow(${b.shadow.x ?? 4}px ${b.shadow.y ?? 6}px ${b.shadow.blur ?? 10}px ${b.shadow.color || '#00000066'})` : '');
 
 // Countdown timer (Insert ▸ Countdown): a ring that empties, big numbers or a
 // bar, with the time left. The presentation's runtime (io/runtime/timer.js)

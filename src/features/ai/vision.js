@@ -145,3 +145,21 @@ export async function transcribeImage(b, { hint = '', onUsage = null, signal = n
   }
   return { hash: srcHash(b.src), language: r.language, code: r.code, confidence: r.confidence, model, v: CODE_V, date: new Date().toISOString().slice(0, 10) };
 }
+
+// ---- The text in a picture (Editar imagen ▸ Capas ▸ «Sacar el texto»): every line read, in reading order, with where
+// it is ([left, top, right, bottom] in thousandths of the picture), its colour and whether it is bold — so that it can be
+// put back as a text box over the picture, where it was (features/document/imagetools.js textBoxFor).
+const READ_TEXT = 'You read the text written in a picture (a photo of a sign, a poster, a slide, a screenshot, a whiteboard…). Transcribe every piece of readable text exactly as written — same language, accents, capitals and numbers, nothing translated or corrected — as lines in reading order. For each line give "box": [left, top, right, bottom] in thousandths of the picture\'s width and height (0–1000), "color": the colour of its letters as #rrggbb, and "bold": true or false. Answer only JSON: {"lines":[{"text":"…","box":[0,0,0,0],"color":"#000000","bold":false}]}. If there is no readable text: {"lines":[]}.';
+export async function readImageText(b, { onUsage = null, signal = null, model = CODE_MODEL } = {}) {
+  const shot = await downscale(b.src, CODE_SHOT);
+  const res = await chat([{ role: 'system', content: READ_TEXT }, { role: 'user', content: [{ type: 'text', text: 'Read the text in this picture.' }, { type: 'image_url', image_url: { url: shot.url } }] }],
+    { json: true, maxTokens: 2400, force: model, onUsage, signal, feature: 'vision' });
+  let j = {}; try { j = parseJSON(res) || {}; } catch {}
+  const num = v => Math.max(0, Math.min(1000, +v));
+  const lines = (Array.isArray(j.lines) ? j.lines : []).map(l => ({
+    text: String(l?.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 500),
+    box: Array.isArray(l?.box) && l.box.length === 4 && l.box.every(v => Number.isFinite(+v)) && +l.box[2] > +l.box[0] && +l.box[3] > +l.box[1] ? l.box.map(num) : null,
+    color: /^#[0-9a-f]{6}$/i.test(l?.color || '') ? l.color.toLowerCase() : '', bold: l?.bold === true,
+  })).filter(l => l.text).slice(0, 80);
+  return { lines };
+}

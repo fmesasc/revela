@@ -4251,4 +4251,193 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       m.querySelector('.modal-close').click();
     } finally { T.layerKit.cutout = was; }
   });
+
+  // The slide as a PNG (html2canvas, the looks baked) → a pixel reader in slide coordinates.
+  const slidePNG = async () => {
+    const I = await frame.contentWindow.eval("import('/src/io/export/images.js')"), url = URL.createObjectURL(await I.slideImageBlob(slide(), 'png'));
+    const bmp = await createImageBitmap(await (await fetch(url)).blob()), c = D.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; URL.revokeObjectURL(url);
+    const g = c.getContext('2d'); g.drawImage(bmp, 0, 0); const k = bmp.width / R.state.deck.size.w;
+    return (x, y) => [...g.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data];
+  };
+  const filterOf = b => D.getElementById(D.querySelector(`#stage .block[data-id="${b.id}"] img`)?.style.filter.match(/url\("?#([\w-]+)/)?.[1] || '-');
+  const stripes = testPicture((g, w, h) => { for (let x = 0; x < w; x += 4) { g.fillStyle = x % 8 ? '#ffffff' : '#000000'; g.fillRect(x, 0, 4, h); } });
+
+  await test('editar imagen: efectos — glitch, ilustración, textura, destello y movimiento, en el lienzo, la presentación y el PNG; pixelar', async () => {
+    reset(); const b = putPicture(testPicture((g, w, h) => { g.fillStyle = '#ff0000'; g.fillRect(0, 0, w / 2, h); g.fillStyle = '#0000ff'; g.fillRect(w / 2, 0, w / 2, h); }));
+    await sleep(30); const cur = () => slide().blocks.find(x => x.id === b.id), m = await openEditor(); await tabTo(m, 'effects');
+    assert(m.querySelectorAll('[data-efx]').length === 6 && /url\(/.test(m.querySelector('[data-efx="glitch"] img').style.filter), 'la galería: la imagen con cada efecto');
+    m.querySelector('[data-efx="glitch"]').click(); await sleep(30);
+    eq(cur().efx?.name, 'glitch', 'glitch'); assert(!m.querySelector('.ie-efx-amt-l').hidden, 'con su intensidad');
+    assert(filterOf(cur())?.querySelector('feBlend[mode="screen"]') && filterOf(cur()).querySelectorAll('feOffset[y]').length > 3, 'en el lienzo: los colores separados y las bandas');
+    assert(R.io.buildHTML().includes(`<filter id="${filterOf(cur()).id}"`), 'y en la presentación');
+    // (Its red, slid to the right: past the middle, the red and blue are both there — magenta —, in the picture and the PNG.)
+    const rows = []; for (let y = 1; y < 160; y += 6) rows.push(await bakedPx(cur(), 121, y));
+    assert(rows.some(p => p[0] > 200 && p[2] > 200 && p[1] < 60), 'glitch en la imagen: rojo y azul juntos junto a la raya');
+    m.querySelector('[data-efx="texture"]').click(); await sleep(20); setRange(m, '.ie-efx-tex', 'canvas'); await sleep(20);
+    eq(cur().efx.kind, 'canvas', 'textura: lienzo'); assert(filterOf(cur())?.querySelector('feTile'), 'su baldosa, en el filtro');
+    const tx = await Promise.all([[10, 10], [13, 11], [16, 14], [20, 9]].map(([x, y]) => bakedPx(cur(), x, y))); assert(new Set(tx.map(p => p[0] + p[1] + p[2])).size > 1, 'la textura cambia el rojo liso: ' + tx.map(p => p.slice(0, 3)));
+    setRange(m, '.ie-efx-amt', 100); await sleep(20); eq(cur().efx.amount, 100, 'intensidad');
+    m.querySelector('[data-efx="leak"]').click(); await sleep(20); setRange(m, '.ie-efx-leak', 'warm'); await sleep(20);
+    const lk = await bakedPx(cur(), 225, 140); assert(lk[1] > 60, 'destello cálido: el azul de la esquina, aclarado de amarillo: ' + lk.slice(0, 3));
+    m.querySelector('[data-efx="illustr"]').click(); await sleep(20); assert(filterOf(cur())?.querySelector('feFuncR[type="discrete"]'), 'ilustración: colores en escalones');
+    m.querySelector('[data-efx="motion"]').click(); await sleep(20);
+    const mo = await bakedPx(cur(), 120, 80); assert(mo[0] > 60 && mo[2] > 60, 'movimiento: rojo y azul, mezclados en la raya: ' + mo.slice(0, 3));
+    const png = await slidePNG(), pm = png(220, 180); assert(pm[0] > 60 && pm[2] > 60, 'y así en el PNG de la diapositiva: ' + pm.slice(0, 3));
+    R.store.undo(); await sleep(30); eq(cur().efx?.name, 'illustr', 'Ctrl+Z: el efecto de antes');
+    m.querySelector('[data-efx=""]').click(); await sleep(20); assert(!cur().efx, '«Ninguno» lo quita');
+    // Pixelado: what it would be, shown; then a new picture, in squares; a see-through logo keeps its transparency.
+    R.store.commit(() => { cur().src = stripes; }); await sleep(20); const src0 = cur().src; setRange(m, '.ie-px', 60);
+    assert(await until(() => m.querySelector('.ie-pic.ie-ext')), 'pixelado: lo que haría, en la vista');
+    m.querySelector('[data-do="pixelate"]').click(); assert(await until(() => cur().src !== src0), 'pixelar: otra imagen');
+    const a = await pixelOf(cur().src, 1, 1), c = await pixelOf(cur().src, 4, 3); eq(a.px.join(), c.px.join(), 'en cuadros (las rayas, mezcladas)'); assert(a.px[0] > 20 && a.px[0] < 235, 'gris: ' + a.px);
+    R.store.undo(); await sleep(20); eq(cur().src, src0, 'Ctrl+Z');
+    m.querySelector('.modal-close').click();
+    const T = await frame.contentWindow.eval("import('/src/features/document/imagetools.js')");
+    const logo = putPicture(testPicture(g => { g.fillStyle = '#000000'; g.fillRect(30, 30, 60, 20); })); await sleep(20);
+    await T.pixelateImage(logo.id, 20); const lp = slide().blocks.find(x => x.id === logo.id).src;
+    assert(/^data:image\/png/.test(lp) && (await pixelOf(lp, 2, 2)).px[3] === 0, 'pixelar un logo: sigue siendo transparente (PNG)');
+  });
+
+  await test('editar imagen: sombra curvada, levantada y en ángulo, y reflejo — en el lienzo, la presentación, el PNG y PowerPoint', async () => {
+    reset(); R.store.commit(() => { slide().background = '#ffffff'; });
+    const b = putPicture(testPicture((g, w, h) => { g.fillStyle = '#0000ff'; g.fillRect(0, 0, w, h); })); await sleep(30);
+    const cur = () => slide().blocks.find(x => x.id === b.id), m = await openEditor(); await tabTo(m, 'shape');
+    m.querySelector('.ie-shadow-on').click(); await sleep(20);
+    eq(JSON.stringify(cur().shadow), JSON.stringify({ x: 4, y: 6, blur: 10, color: '#00000066' }), 'sombra: la de siempre (DEFAULT_SHADOW)');
+    assert(/drop-shadow/.test(D.querySelector(`#stage .block[data-id="${b.id}"]`).style.filter), 'normal: drop-shadow, como antes');
+    setRange(m, '.ie-shadow-st', 'curl'); await sleep(30);
+    eq(cur().shadow.style, 'curl', 'curvada');
+    assert(!/drop-shadow/.test(D.querySelector(`#stage .block[data-id="${b.id}"]`).style.filter), 'ya no es un drop-shadow…');
+    const f = filterOf(cur()); assert(f && +f.getAttribute('height') > 1 && f.querySelector('feImage + feComposite[in="so"]'), '…sino su filtro, más alto que la caja');
+    const html = R.io.buildHTML(); assert(html.includes(`<filter id="${f.id}"`) && !/<img[^>]+drop-shadow/.test(html), 'en la presentación: su filtro, sin drop-shadow');
+    let px = await slidePNG(); const corner = px(104, 263), mid = px(220, 263);
+    assert(corner[0] < 235 && mid[0] > corner[0] + 10, 'PNG: sombra bajo las esquinas, no en medio: ' + corner[0] + ' / ' + mid[0]);
+    setRange(m, '.ie-shadow-st', 'lift'); await sleep(20); setRange(m, '.ie-shadow-d', 80); await sleep(20);
+    eq(cur().shadow.dist, 80, 'levantada, más lejos'); assert(filterOf(cur())?.querySelector('feMorphology[operator="erode"]'), 'más pequeña que la foto');
+    px = await slidePNG(); assert(px(220, 270)[0] < 235, 'PNG: la sombra, bajo la foto');
+    setRange(m, '.ie-shadow-st', 'angle'); await sleep(20);
+    assert(filterOf(cur())?.querySelector('feDisplacementMap'), 'en ángulo: proyectada en el suelo');
+    px = await slidePNG(); const cast = px(400, 210), near = px(350, 250), far = px(370, 120);
+    assert(cast[0] < 235 && near[0] < 235 && far[0] > 245, 'PNG: a la derecha, abajo, la sombra; arriba, nada: ' + [cast[0], near[0], far[0]]);
+    const k = await R.objects.bakeImage(cur(), 1, { decor: true }); assert(k.pad[2] > 50 && k.width > 240, '«Guardar como imagen» y PowerPoint: la sombra, fuera de la caja');
+    m.querySelector('.ie-shadow-on').click(); await sleep(20); assert(!cur().shadow, 'sin sombra');
+    // The reflection: under it, fading; a crop moves it up, to under what is shown.
+    m.querySelector('.ie-refl-on').click(); await sleep(20);
+    eq(JSON.stringify(cur().reflect), JSON.stringify({ size: 40, opacity: 35, gap: 0 }), 'reflejo');
+    px = await slidePNG(); const r1 = px(220, 265), r2 = px(220, 320);
+    assert(r1[2] > 200 && r1[0] < 200 && r1[0] < r2[0], 'PNG: debajo, el azul, cada vez más claro: ' + r1.slice(0, 3) + ' / ' + r2.slice(0, 3));
+    setRange(m, '.ie-refl-s', 80); await sleep(20); eq(cur().reflect.size, 80, 'su tamaño');
+    R.store.commit(() => { cur().crop = { top: 0, right: 0, bottom: 25, left: 0 }; });
+    await sleep(30); eq(D.querySelector(`#stage .block[data-id="${b.id}"] img`).style.clipPath, 'none', 'recortada: el recorte, en el filtro (un clip-path cortaría el reflejo)');
+    px = await slidePNG(); const shown = px(220, 215), refl = px(220, 230);
+    assert(shown[0] < 40 && shown[2] > 200 && refl[2] > 200 && refl[0] > 100 && refl[0] < 240, 'el reflejo, bajo lo que se ve: ' + shown.slice(0, 3) + ' / ' + refl.slice(0, 3));
+    for (let i = 0; i < 4 && cur().reflect; i++) { R.store.undo(); await sleep(20); } assert(!cur().reflect && !cur().crop, 'Ctrl+Z');
+    // A shadow written as before (true: an old presentation's) is still the plain one.
+    R.store.commit(() => { cur().shadow = true; }); await sleep(20);
+    assert(/drop-shadow/.test(D.querySelector(`#stage .block[data-id="${b.id}"]`).style.filter), 'b.shadow de antes: como siempre');
+    m.querySelector('.modal-close').click();
+  });
+
+  await test('editar imagen: enfoque — todo desenfocado menos una zona, que se pone con un clic; en el lienzo y el PNG', async () => {
+    reset(); const b = putPicture(stripes); await sleep(30);
+    const cur = () => slide().blocks.find(x => x.id === b.id), m = await openEditor(); await tabTo(m, 'background');
+    m.querySelector('.ie-fb-on').click(); await sleep(20);
+    eq(JSON.stringify(cur().focusBlur), JSON.stringify({ x: 50, y: 50, size: 35, blur: 60 }), 'enfoque, en el centro');
+    assert(filterOf(cur())?.querySelector('feComposite[operator="out"]'), 'en el lienzo: su filtro');
+    const r = m.querySelector('.ie-pic').getBoundingClientRect();
+    m.querySelector('.ie-stage').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, clientX: r.left + r.width * 0.2, clientY: r.top + r.height * 0.5 }));
+    await sleep(30); eq(cur().focusBlur.x, 20, 'un clic en la foto: la zona nítida, ahí');
+    setRange(m, '.ie-fb-b', 100); await sleep(20); eq(cur().focusBlur.blur, 100, 'más desenfoque');
+    const sharp = [await bakedPx(cur(), 44, 80), await bakedPx(cur(), 52, 80)], soft = [await bakedPx(cur(), 196, 80), await bakedPx(cur(), 204, 80)];
+    assert(Math.abs(sharp[0][0] - sharp[1][0]) > 150, 'nítida donde se puso: ' + sharp.map(p => p[0]));
+    assert(Math.abs(soft[0][0] - soft[1][0]) < 60, 'borrosa lejos: ' + soft.map(p => p[0]));
+    const png = await slidePNG(), a = png(144, 180), c = png(152, 180), d = png(296, 180), e = png(304, 180);
+    assert(Math.abs(a[0] - c[0]) > 120 && Math.abs(d[0] - e[0]) < 60, 'y así en el PNG: ' + [a[0], c[0], d[0], e[0]]);
+    m.querySelector('.ie-fb-on').click(); await sleep(20); assert(!cur().focusBlur, 'se quita');
+    m.querySelector('.modal-close').click();
+  });
+
+  await test('editar imagen: cambiar el fondo (IA simulada) — un color, un degradado, desenfocado, otra imagen o inventado con IA; un logo, tal cual', async () => {
+    reset(); const W = frame.contentWindow, T = await W.eval("import('/src/features/document/imagetools.js')"), was = T.layerKit.cutout, realFetch = W.fetch;
+    let cuts = 0;
+    // (The AI, played: the red of what it is given is the subject.)
+    T.layerKit.cutout = async src => { cuts++; const img = await T.loadPicture(src), c = D.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const g = c.getContext('2d'); g.drawImage(img, 0, 0); const p = g.getImageData(0, 0, c.width, c.height);
+      for (let i = 0; i < p.data.length; i += 4) if (!(p.data[i] > 200 && p.data[i + 1] < 80)) p.data[i + 3] = 0;
+      g.putImageData(p, 0, 0); return c.toDataURL('image/png'); };
+    const AI = R.ai; let asked = null;
+    try {
+      const src0 = testPicture((g, w, h) => { g.fillStyle = '#00ff00'; g.fillRect(0, 0, w, h); g.fillStyle = '#ff0000'; g.fillRect(45, 25, 30, 30); });
+      const b = putPicture(src0); await sleep(30); const cur = () => slide().blocks.find(x => x.id === b.id), m = await openEditor(); await tabTo(m, 'background');
+      setRange(m, '.ie-nb', 'color'); setRange(m, '.ie-nb-c1', '#0000ff');
+      m.querySelector('[data-do="nb-preview"]').click(); assert(await until(() => m.querySelector('.ie-pic.ie-ext')), 'vista previa');
+      m.querySelector('[data-do="nb-apply"]').click(); assert(await until(() => cur().src !== src0), 'un color: otra imagen');
+      let bg = await pixelOf(cur().src, 5, 5), fig = await pixelOf(cur().src, 60, 40);
+      assert(bg.px[2] > 200 && bg.px[1] < 60, 'el fondo, azul: ' + bg.px); assert(fig.px[0] > 200 && fig.px[1] < 60, 'la figura, igual'); eq(bg.w, 120, 'del mismo tamaño');
+      eq(cuts, 1, 'la figura, recortada una vez (vista previa y cambio)');
+      R.store.undo(); await sleep(20); eq(cur().src, src0, 'Ctrl+Z');
+      setRange(m, '.ie-nb', 'gradient'); setRange(m, '.ie-nb-c1', '#000000'); setRange(m, '.ie-nb-c2', '#ffffff'); setRange(m, '.ie-nb-ang', 90);
+      assert(!m.querySelector('.ie-nb-c2').hidden && !m.querySelector('.ie-nb-ang-l').hidden, 'degradado: dos colores y un ángulo');
+      m.querySelector('[data-do="nb-apply"]').click(); assert(await until(() => cur().src !== src0), 'degradado');
+      assert((await pixelOf(cur().src, 3, 70)).px[0] < 40 && (await pixelOf(cur().src, 116, 70)).px[0] > 215, 'de negro (izquierda) a blanco (derecha)');
+      R.store.undo(); await sleep(20);
+      setRange(m, '.ie-nb', 'blur'); m.querySelector('[data-do="nb-apply"]').click(); assert(await until(() => cur().src !== src0), 'desenfocado');
+      bg = await pixelOf(cur().src, 5, 5); fig = await pixelOf(cur().src, 60, 40);
+      assert(bg.px[1] > 150 && bg.px[0] < 120, 'el fondo, verde (sin el rojo de la figura): ' + bg.px); assert(fig.px[0] > 200 && fig.px[1] < 60, 'la figura, nítida');
+      R.store.undo(); await sleep(20);
+      const other = await T.loadPicture(testPicture((g, w, h) => { g.fillStyle = '#ffff00'; g.fillRect(0, 0, w, h); }, 50, 50));
+      await T.changeBackground(b.id, { kind: 'picture', picture: other }); bg = await pixelOf(cur().src, 5, 5);
+      assert(bg.px[0] > 200 && bg.px[1] > 200 && bg.px[2] < 60, 'otra imagen, llenando el fondo: ' + bg.px);
+      R.store.undo(); await sleep(20);
+      // Invented by the image model (its request played): asks for the description, says it spends credits.
+      setRange(m, '.ie-nb', 'ai'); assert(!m.querySelector('.ie-nb-ai-say').hidden && /créditos/.test(m.querySelector('.ie-nb-ai-say').textContent), '«con IA»: dice que gasta créditos');
+      assert(/créditos/.test(m.querySelector('.ie-nb option[value="ai"]').textContent), 'también en la lista');
+      AI.setAiKey('sk-or-prueba'); AI.acceptPrivacy();
+      const forest = testPicture((g, w, h) => { g.fillStyle = '#008800'; g.fillRect(0, 0, w, h); }, 64, 48).split(',')[1];
+      W.fetch = async (url, o) => { if (String(url).includes('openrouter.ai/api/v1/images')) { asked = JSON.parse(o.body); return new W.Response(JSON.stringify({ data: [{ b64_json: forest, media_type: 'image/png' }] })); } return realFetch(url, o); };
+      m.querySelector('.ie-nb-ai').value = 'un bosque de hayas';
+      m.querySelector('[data-do="nb-apply"]').click(); assert(await until(() => cur().src !== src0), 'inventado con IA');
+      assert(/un bosque de hayas/.test(asked?.prompt) && asked.aspect_ratio === '3:2', 'pide la descripción, en la proporción de la foto: ' + asked?.aspect_ratio);
+      bg = await pixelOf(cur().src, 5, 5); assert(bg.px[1] > 100 && bg.px[0] < 60, 'el fondo inventado: ' + bg.px);
+      // A logo has no background of its own: put on the colour as it is, no AI; blurring «its» background, said.
+      m.querySelector('.modal-close').click();
+      const logo = putPicture(testPicture(g => { g.fillStyle = '#ff0000'; g.fillRect(30, 30, 60, 20); })); await sleep(20); cuts = 0;
+      await T.changeBackground(logo.id, { kind: 'color', color: '#0000ff' }); const ls = slide().blocks.find(x => x.id === logo.id).src;
+      eq(cuts, 0, 'un logo: sin IA'); assert((await pixelOf(ls, 2, 2)).px[2] > 200 && (await pixelOf(ls, 60, 40)).px[0] > 200, 'tal cual sobre el color');
+      R.store.undo(); await sleep(20); let said = ''; try { await T.changeBackground(logo.id, { kind: 'blur' }); } catch (e) { said = e.message; } assert(/no tiene fondo/.test(said), 'desenfocar su fondo: lo dice: ' + said);
+    } finally { T.layerKit.cutout = was; W.fetch = realFetch; AI.disconnectAi(); }
+  });
+
+  await test('editar imagen: sacar el texto con IA (simulada) — un cuadro de texto encima o al lado; borrarlo de la imagen; sin IA, pide conectarla', async () => {
+    reset(); const W = frame.contentWindow, realFetch = W.fetch, AI = R.ai; let chats = 0, images = 0;
+    const b = putPicture(testPicture((g, w, h) => { g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h); g.fillStyle = '#c00000'; g.font = '20px sans-serif'; g.fillText('HOLA', 10, 40); })); await sleep(30);
+    const cur = () => slide().blocks.find(x => x.id === b.id), n0 = slide().blocks.length;
+    const answer = { lines: [{ text: 'Hola mundo', box: [100, 250, 600, 500], color: '#c00000', bold: true }, { text: 'Segunda línea', box: [100, 550, 700, 750], color: '#c00000', bold: false }] };
+    W.fetch = async (url, o) => { const u = String(url);
+      if (u.includes('openrouter.ai/api/v1/chat')) { chats++; return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(answer) } }] })); }
+      if (u.includes('openrouter.ai/api/v1/images')) { images++; return new W.Response(JSON.stringify({ data: [{ b64_json: testPicture((g, w, h) => { g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h); }).split(',')[1], media_type: 'image/png' }] })); }
+      return realFetch(url, o); };
+    try {
+      // Not connected: the button opens the way to connect it, and nothing is read.
+      AI.disconnectAi(); let m = await openEditor(); assert(m, 'el editor, abierto'); await tabTo(m, 'layers'); assert(m.querySelector('[data-do="read-text"]'), 'con su botón');
+      assert(/con IA/.test(m.querySelector('[data-do="read-text"]').textContent), 'el botón dice «con IA»');
+      m.querySelector('[data-do="read-text"]').click();
+      assert(await until(() => D.getElementById('ai-modal') || D.getElementById('account-modal')), 'sin IA: se abre la ventana para conectarla');
+      eq(chats, 0, 'y no se pide nada'); D.getElementById('ai-modal')?.remove(); D.getElementById('account-modal')?.remove();
+      AI.setAiKey('sk-or-prueba'); AI.acceptPrivacy();
+      m.querySelector('[data-do="read-text"]').click();
+      assert(await until(() => slide().blocks.length === n0 + 1), 'un cuadro de texto nuevo');
+      let tb = slide().blocks.at(-1);
+      eq(tb.type, 'text', 'de texto'); assert(/<b>Hola mundo<\/b>/.test(tb.html) && /Segunda línea/.test(tb.html), 'con lo leído, cada línea en la suya: ' + tb.html);
+      assert(tb.x >= b.x && tb.x < b.x + b.w / 2 && tb.y > b.y && tb.y < b.y + b.h / 2 && tb.color === '#c00000', 'encima, donde estaba, en su color: ' + [tb.x, tb.y, tb.color]);
+      eq(R.state.ui.selection, tb.id, 'y elegido'); eq(images, 0, 'sin borrar el de la imagen, no se pide otra');
+      R.store.undo(); await sleep(20); eq(slide().blocks.length, n0, 'Ctrl+Z');
+      (await W.eval("import('/src/ui/dialogs/imageedit.js')")).openImageEditor(cur(), 'layers'); await sleep(60); m = D.getElementById('imged-modal'); await tabTo(m, 'layers'); setRange(m, '.ie-tx-place', 'beside'); m.querySelector('.ie-tx-erase').checked = true;
+      const src0 = cur().src; m.querySelector('[data-do="read-text"]').click();
+      assert(await until(() => slide().blocks.length === n0 + 1 && cur().src !== src0), 'al lado, y el texto borrado de la imagen');
+      tb = slide().blocks.find(x => x.type === 'text' && /Hola mundo/.test(x.html || ''));
+      assert(tb.x >= b.x + b.w && !tb.color, 'al lado de la imagen, en el color de la diapositiva: ' + tb.x);
+      eq(images, 1, 'borrarlo: la IA de imágenes, una vez');
+    } finally { W.fetch = realFetch; AI.disconnectAi(); D.getElementById('imged-modal')?.querySelector('.modal-close')?.click(); }
+  });
 }

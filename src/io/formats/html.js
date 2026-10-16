@@ -68,7 +68,7 @@ const tfCSS = b => b.animation
 const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
   + `height:${b.h}px;${tfCSS(b)}`
   + (opacityOf(b) < 1 ? `opacity:${+opacityOf(b).toFixed(3)};` : '')
-  + (b.shadow ? `filter:${shadowCSS(b)};` : '')
+  + (shadowCSS(b) ? `filter:${shadowCSS(b)};` : '')   // (a picture's styled shadow: in its own filter)
   + animVars(b);
 // Timing (and motion path) of one of an object's animations (its first by
 // default), also for its caption and for the layers of the next ones.

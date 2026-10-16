@@ -2,7 +2,9 @@
 // - extend: more picture around it, to a shape or a margin, filled with a blurred copy of it, its edges mirrored or a
 //   colour — without AI (the AI's way is Editar con IA ▸ Ampliar por los bordes);
 // - split into layers (Canva's «Magic Grab»): the main subject cut out (the same AI as «Quitar fondo») on top, and under
-//   it the picture with the subject's place filled from what is around it, both where the picture was.
+//   it the picture with the subject's place filled from what is around it, both where the picture was;
+// - change the background: the subject on a colour, a gradient, itself blurred, another picture or one made by AI;
+// - pixelate it all; and «Sacar el texto»'s text box, where the AI read the text (textBoxFor).
 
 import { BG_REMOVAL } from '../../core/vendor.js';
 import { commit, currentSlide, state } from '../../core/store.js';
@@ -408,4 +410,101 @@ export async function photoColours(src, n = 6) {
   }
   const hx = c => '#' + c.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
   return cs.map((c, j) => [hx(c), count[j]]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).map(x => x[0]);
+}
+
+// ---- Cambiar el fondo: the subject (as «Quitar fondo» finds it) on another background, one new picture ---------------
+// The background: a colour, a gradient (two colours and an angle, CSS's: 90° from left to right), the picture itself
+// blurred (the subject's place filled first, so that no halo of it is blurred in), another picture (filling it), or
+// one the image model makes from a description («con IA»: the UI asks for it, features/ai/openrouter.js imageFromPrompt).
+export const BG_KINDS = [['color', 'Un color'], ['gradient', 'Un degradado'], ['blur', 'La misma foto, desenfocada'], ['picture', 'Otra imagen'], ['ai', 'Inventado con IA (gasta créditos)']];
+// A picture's subject → { img, top (a canvas, the picture's size: the subject alone), own }. A picture with see-through
+// parts (a logo, a cut-out) has no background of its own: it is its own subject, as it is (own) — no AI. The last few,
+// this session, so that a preview and then the change cut it out once.
+const subjects = new Map();
+export function pictureSubject(src) {
+  if (!subjects.has(src)) {
+    if (subjects.size > 3) subjects.delete(subjects.keys().next().value);
+    subjects.set(src, (async () => {
+      const img = await loadPicture(src), W = img.naturalWidth, H = img.naturalHeight;
+      if (seeThrough(img) > 0.03) { const c = canvasOf(W, H); c.getContext('2d').drawImage(img, 0, 0); return { img, top: c, own: true }; }
+      const top = await subjectCanvas(img), m = top.getContext('2d').getImageData(0, 0, W, H).data; let on = 0;
+      for (let i = 3; i < m.length; i += 4) if (m[i] > 20) on++;
+      if (on < W * H * 0.003 || on > W * H * 0.97) throw new Error(t('No se ha encontrado nada que separar del fondo.'));
+      return { img, top, own: false };
+    })().catch(e => { subjects.delete(src); throw e; }));
+  }
+  return subjects.get(src);
+}
+// The subject S on its new background, W×H. opts: { kind, color, color2, angle, blur (0…100), picture (an Image) }.
+export function backdropCanvas(S, opts, W, H) {
+  const c = canvasOf(W, H), g = c.getContext('2d'), kind = opts.kind || 'color', hexOk = v => (/^#[0-9a-f]{6}$/i.test(v || '') ? v : '#ffffff');
+  if (kind === 'gradient') {
+    const a = (+opts.angle || 0) * Math.PI / 180, dx = Math.sin(a), dy = -Math.cos(a), L = (Math.abs(W * dx) + Math.abs(H * dy)) / 2;
+    const gr = g.createLinearGradient(W / 2 - dx * L, H / 2 - dy * L, W / 2 + dx * L, H / 2 + dy * L);
+    gr.addColorStop(0, hexOk(opts.color)); gr.addColorStop(1, hexOk(opts.color2)); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  } else if (kind === 'blur') {
+    if (S.own) throw new Error(t('Esta imagen ya no tiene fondo: no hay nada que desenfocar.'));
+    // (Small — fast, and the same in the preview —: the subject's place, a little larger, filled from around it, blurred.)
+    const k = Math.min(1, 160 / Math.max(W, H)), w = Math.max(4, Math.round(W * k)), h = Math.max(4, Math.round(H * k)), sm = canvasOf(w, h), q = sm.getContext('2d');
+    q.drawImage(S.img, 0, 0, w, h); const px = q.getImageData(0, 0, w, h), d = px.data;
+    const mc = canvasOf(w, h), mg = mc.getContext('2d'); mg.drawImage(S.top, 0, 0, w, h);
+    const m = mg.getImageData(0, 0, w, h).data, grow = new Uint8ClampedArray(w * h * 4);
+    for (let i = 0; i < w * h; i++) grow[i * 4] = m[i * 4 + 3] > 20 ? 255 : 0;
+    boxBlur(grow, w, h, Math.max(1, Math.round(Math.min(w, h) * 0.03)), 1);
+    const known = new Float32Array(w * h); for (let i = 0; i < known.length; i++) known[i] = grow[i * 4] > 4 ? 0 : 1;
+    fillHoles(d, known, w, h);
+    blurAll(d, w, h, Math.max(1, Math.round(Math.min(w, h) * (0.01 + Math.max(0, Math.min(100, opts.blur ?? 70)) / 100 * 0.06))));
+    q.putImageData(px, 0, 0); g.imageSmoothingQuality = 'high'; g.drawImage(sm, 0, 0, W, H);
+  } else if ((kind === 'picture' || kind === 'ai') && opts.picture) {
+    const p = opts.picture, s = Math.max(W / p.naturalWidth, H / p.naturalHeight);   // (filling it, centred)
+    g.imageSmoothingQuality = 'high'; g.drawImage(p, (W - p.naturalWidth * s) / 2, (H - p.naturalHeight * s) / 2, p.naturalWidth * s, p.naturalHeight * s);
+  } else { g.fillStyle = hexOk(opts.color); g.fillRect(0, 0, W, H); }
+  g.drawImage(S.top, 0, 0, W, H);
+  return c;
+}
+// What it would look like (a PNG data URL, at most `max` px), or the change itself: picture `id`'s new source (one step).
+export async function previewBackground(src, opts, max = 640) {
+  const S = await pictureSubject(src), k = Math.min(1, max / Math.max(S.img.naturalWidth, S.img.naturalHeight));
+  return backdropCanvas(S, opts, Math.round(S.img.naturalWidth * k), Math.round(S.img.naturalHeight * k)).toDataURL('image/jpeg', 0.85);
+}
+export async function changeBackground(id, opts) {
+  const b = pictureOf(id); if (!b) return null;
+  const S = await pictureSubject(b.src), k = Math.min(1, MAX / Math.max(S.img.naturalWidth, S.img.naturalHeight));
+  const c = backdropCanvas(S, opts, Math.round(S.img.naturalWidth * k), Math.round(S.img.naturalHeight * k));
+  // (No transparency left: a photo as a JPEG; a logo, which was a PNG, stays one — its sharp edges.)
+  const src = S.own ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.92);
+  commit(() => { const x = pictureOf(id); if (x) x.src = src; });
+  return src;
+}
+
+// ---- Pixelado: the whole picture in big squares (Efectos), one new picture. size 0…100 ---------------------------
+export function pixelateData(data, size = 30) { return hideData(data, new Float32Array(data.width * data.height).fill(1), { mode: 'pixel', strength: size }); }
+export async function pixelateImage(id, size) {
+  const b = pictureOf(id); if (!b) return null;
+  const P = await pixelsOf(b.src); pixelateData(P.data, size); return setPixels(id, P);
+}
+
+// ---- Sacar el texto: what the vision AI read in the picture (features/ai/vision.js readImageText) as a text box --------
+// lines: [{ text, box: [l, t, r, b] in thousandths of the picture, color, bold }]; iw×ih, the picture's size.
+// place 'over': on the picture, where the text was, in its colour; 'beside': next to it (on the right, or below, or
+// on the left — where there is room on the slide), in the slide's colour. → the text box's properties.
+export function textBoxFor(b, lines, iw, ih, place = 'over', size = state.deck.size) {
+  const v = visiblePart(b, iw, ih), [sx, sy, sw, sh] = v.src, [bx, by, bw, bh] = v.box, kx = bw / sw, ky = bh / sh;
+  const at = (px, py) => [b.x + bx + (px - sx) * kx, b.y + by + (py - sy) * ky];
+  const boxes = lines.filter(l => l.box).map(l => { const [x0, y0] = at(l.box[0] / 1000 * iw, l.box[1] / 1000 * ih), [x1, y1] = at(l.box[2] / 1000 * iw, l.box[3] / 1000 * ih); return [x0, y0, x1, y1]; });
+  const hs = boxes.map(r => r[3] - r[1]).filter(h => h > 2).sort((a, c) => a - c);
+  // (A line's box is about 1.2 times its letters' size.)
+  const fontSize = Math.round(Math.max(12, Math.min(96, hs.length ? hs[hs.length >> 1] * 0.8 : 28)));
+  const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const html = lines.map(l => `<div>${l.bold ? `<b>${esc(l.text)}</b>` : esc(l.text)}</div>`).join('');
+  const tall = Math.round(lines.length * fontSize * 1.3 + 16);
+  const colours = lines.map(l => l.color).filter(Boolean), color = colours.sort((a, c) => colours.filter(x => x === c).length - colours.filter(x => x === a).length)[0];
+  if (place === 'over' && boxes.length) {
+    const x0 = Math.min(...boxes.map(r => r[0])) - 8, y0 = Math.min(...boxes.map(r => r[1])) - 8, x1 = Math.max(...boxes.map(r => r[2])) + 8, y1 = Math.max(...boxes.map(r => r[3])) + 8;
+    return { html, fontSize, ...(color && { color }), x: Math.round(x0), y: Math.round(y0), w: Math.round(Math.max(60, x1 - x0)), h: Math.round(Math.max(tall, y1 - y0)) };
+  }
+  const right = size.w - (b.x + b.w), left = b.x, below = size.h - (b.y + b.h), gap = 20;
+  if (right >= 220) return { html, fontSize, x: Math.round(b.x + b.w + gap), y: Math.round(b.y), w: Math.round(Math.min(560, right - 2 * gap)), h: Math.min(Math.round(size.h - b.y), Math.max(tall, 60)) };
+  if (below >= 100 || below >= left) return { html, fontSize, x: Math.round(b.x), y: Math.round(b.y + b.h + gap), w: Math.round(b.w), h: Math.max(60, Math.min(tall, Math.round(below - gap))) };
+  return { html, fontSize, x: gap, y: Math.round(b.y), w: Math.round(Math.max(160, left - 2 * gap)), h: Math.max(tall, 60) };
 }

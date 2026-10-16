@@ -10,7 +10,7 @@ import { state, currentSlide } from '../../core/store.js';
 import { opacityOf } from '../../core/model.js';
 import { JSZIP, loadScript } from '../../core/vendor.js';
 import { tableCSS, levelCSS, shapeSVG, iconSVG, chartSVG, inkSVG } from '../../render/svg.js';
-import { lookSpec, applyLook, NO_LOOK } from '../../render/imagelook.js';
+import { lookSpec, applyLook, decorate, NO_LOOK } from '../../render/imagelook.js';
 import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
 import { t } from '../../i18n/index.js';
 import { blockHTML } from '../formats/html.js';
@@ -65,7 +65,9 @@ export function applyAdjustments(data, adj = {}) {
 
 // A photo block as it looks on the slide (fit, crop, adjustments), without its
 // rotation or flip, at `scale` × its size. Transparent where there is no photo.
-export async function bakeImage(b, scale = 1) {
+// decor: with its shadow's style and its reflection (render/imagelook.js), past its box: the canvas larger, and
+// canvas.pad = [left, top, right, bottom] in slide px.
+export async function bakeImage(b, scale = 1, { decor = false } = {}) {
   const img = await loadImage(b.src);
   const W = Math.max(1, Math.round(b.w * scale)), H = Math.max(1, Math.round(b.h * scale));
   const c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -80,7 +82,8 @@ export async function bakeImage(b, scale = 1) {
   ctx.restore();
   const look = lookSpec(b);                              // (its warmth, filter, sharpness, vignette: render/imagelook.js)
   if (b.adj || look) ctx.putImageData(applyLook(b.adj ? applyAdjustments(ctx.getImageData(0, 0, W, H), b.adj) : ctx.getImageData(0, 0, W, H), look, scale), 0, 0);
-  return c;
+  if (!decor || !look?.dec) return Object.assign(c, { pad: [0, 0, 0, 0] });
+  const { canvas, pad } = decorate(c, look, scale); return Object.assign(canvas, { pad });
 }
 
 // The photo exactly as it was inserted.
@@ -105,10 +108,13 @@ export function boundsOf(blocks) {
 
 // background: null (transparent), 'slide' (the slide's) or a colour.
 export async function selectionCanvas(blocks, { scale = 2, background = null, slide = currentSlide(), deck = state.deck } = {}) {
-  const box = boundsOf(blocks);
-  const baked = await Promise.all(blocks.map(async b => (b.type === 'image' && b.src
-    ? { ...b, src: (await bakeImage(b, scale)).toDataURL('image/png'), ...NO_LOOK, crop: null, fit: 'fill' }
-    : b)));
+  // (A picture with a shadow's style or a reflection: baked with them, its box that much larger.)
+  const baked = await Promise.all(blocks.map(async b => {
+    if (b.type !== 'image' || !b.src) return b;
+    const c = await bakeImage(b, scale, { decor: true }), [l, t, r, d] = c.pad;
+    return { ...b, src: c.toDataURL('image/png'), ...NO_LOOK, crop: null, fit: 'fill', shadow: l || t || r || d ? null : b.shadow, x: b.x - l, y: b.y - t, w: b.w + l + r, h: b.h + t + d };
+  }));
+  const box = boundsOf(baked);
   const bg = background === 'slide' ? slide?.background || '#ffffff' : background;
   const holder = document.createElement('div'); holder.className = 'rst';   // (.rst: the images' size rule below must not reach html2canvas's own iframe)
   holder.style.cssText = `position:fixed;left:-99999px;top:0;width:${box.w}px;height:${box.h}px;overflow:hidden;`
