@@ -131,7 +131,7 @@ export default {
         bubble(200, 360, 150), bubble(1060, 200, 110), bubble(1110, 560, 70), bubble(120, 620, 40),
         text('Tus manos son<br>el primer cuidado', 240, 220, 800, 200, { fontFamily: H, fontSize: 72, fontWeight: 700, color: INK, textAlign: 'center', lineHeight: 1.08 }),
         text('Momento justo · técnica completa · uñas cortas y sin anillos', 240, 440, 800, 50, { fontSize: 26, color: TEAL, textAlign: 'center' }),
-        rise(bubble(640, 700, 30), 300, 'afterPrev', 3000)],
+        rise(bubble(1000, 700, 30), 300, 'afterPrev', 3000)],
         notes: 'Cierre con las tres ideas: el momento, la técnica completa y unas manos preparadas (uñas cortas, sin anillos ni pulseras). Recordad el taller de la lámpara UV a la salida.' },
     ]), INK));
   } },
@@ -165,7 +165,7 @@ export default {
     const wave = (list, first) => list.map((i, k) => { const [x, y] = pos(i);
       return withAnims(dot(x, y, 22, RED, { stroke: '#ffffff', strokeWidth: 3 }), A('zoom-in', { start: k ? 'withPrev' : first, duration: 350, ...(k ? {} : { sound: 'pop' }) })); });
     const all = IDS.map((_, i) => i).filter(i => i !== IDX);
-    const UNVAX = [IDX + 1, 7, 41, 55];   // (the 5 % who aren't vaccinated, plus the case who arrives)
+    const UNVAX = [IDX + 1, 7, 55];   // (the 5 % who aren't vaccinated: 3 of the other 59; the case who arrives is grey too)
     const panel = (html, y = 196) => card(html, 860, y, 340, 380, '#fbf3d2', { fontSize: 23, color: INK, borderColor: '#b9a466', lineHeight: 1.4 });
     return numbered(tc(build({ name: 'La inmunidad de grupo', palette: 'warm', fonts: 'classic', title: { color: INK, size: 46 }, body: { color: INK } }, [
       { layout: 'blank', ...P, transition: 'fade', extra: [
@@ -203,7 +203,7 @@ export default {
         text('Una región ficticia: seis puntos menos de cobertura bastaron para multiplicar los casos por cincuenta.', 80, 610, 1120, 50, { fontSize: 22, color: DIM, fontStyle: 'italic', textAlign: 'center' })],
         notes: 'Datos inventados con un patrón que se ha visto en brotes reales: la bajada de cobertura precede a los casos con uno o dos años de retraso, y la campaña de recaptación los frena.' },
       { title: 'El calendario, de un vistazo', layout: 'titleOnly', ...P, extra: [
-        dg('timeline', '2 meses\n  Hexavalente, neumococo, meningococo B\n4 meses\n  Las mismas, segunda dosis\n11 meses\n  Refuerzo de hexavalente y neumococo\n12 meses\n  Triple vírica, meningococo C\n3–4 años\n  Triple vírica y varicela\n12 años\n  VPH y meningococo ACWY',
+        dg('timeline', '2 meses\n  Hexavalente, neumococo, meningococo B\n4 meses\n  Las mismas, segunda dosis\n11 meses\n  Refuerzo de hexavalente y neumococo\n12–15 meses\n  Triple vírica, meningococo y varicela\n3–4 años\n  Triple vírica y varicela\n12 años\n  VPH y meningococo ACWY',
           80, 190, 1120, 380, { colors: 'accent', oneByOne: true, fontScale: 0.9 }),
         text('Calendario orientativo: cada comunidad publica el suyo y se actualiza cada año.', 80, 600, 1120, 40, { fontSize: 20, color: DIM, textAlign: 'center' })],
         notes: 'Línea del tiempo que se despliega hito a hito («Uno a uno al presentar»). No memorizar: lo importante es que la cartilla esté al día y saber dónde consultar el calendario oficial vigente.' },
@@ -293,10 +293,10 @@ export default {
         notes: 'El total de la tabla es una fórmula (=SUMA(ARRIBA)): cambia una puntuación y se recalcula. Este paciente suma 13: riesgo moderado; la flecha lo señala con un clic. Puntos de corte orientativos: cada centro usa los de su protocolo.' },
       { title: 'El reloj de los cambios posturales', layout: 'titleOnly', ...P, extra: [
         img(CLOCK, 110, 180, 420, 420, 'Reloj de doce horas dividido en seis turnos de dos horas con colores por postura'),
-        withAnims(img(HAND, 110, 180, 420, 420, 'Aguja del reloj'), A('spin360', { start: 'click', duration: 6000 })),
         ...chain([[BLUE, 'Boca arriba', 'Cabecero a 30° como máximo'], [CYAN, 'De lado, derecho', 'Inclinado 30°, sin apoyar la cadera'], [YEL, 'De lado, izquierdo', 'Almohada entre las rodillas']].map(([c, h, d], i) =>
           text(`<div style="font-size:26px;font-weight:700"><span style="color:${c}">■</span> ${h}</div><div style="color:${DIM}">${d}</div>`, 620, 190 + i * 110, 560, 96, { fontSize: 21, color: FG })), 'fade-left', 'afterPrev'),
-        anim(card(`Cada <b style="color:${YEL}">2 a 4 horas</b>, según el riesgo y la superficie. Anota cada cambio en el registro.`, 620, 520, 570, 100, '#13244a', { fontSize: 22, color: FG, vAlign: 'middle' }), 1, 'fade-up')],
+        withAnims(img(HAND, 110, 180, 420, 420, 'Aguja del reloj'), A('spin360', { start: 'click', duration: 6000 })),
+        withAnims(card(`Cada <b style="color:${YEL}">2 a 4 horas</b>, según el riesgo y la superficie. Anota cada cambio en el registro.`, 620, 520, 570, 100, '#13244a', { fontSize: 22, color: FG, vAlign: 'middle' }), A('fade-up', { start: 'withPrev', duration: 500 }))],
         notes: 'Reloj de cambios posturales (SVG propio con sectores). Las posturas entran solas; con un clic la aguja da la vuelta completa al día (efecto «Dar una vuelta») y aparece la frecuencia. Muchas unidades lo cuelgan junto a la cama.' },
       { title: 'Cuatro estadios, cada vez más hondo', layout: 'titleOnly', ...P, extra: [
         img(SKIN, 90, 180, 1100, 300, 'Corte de la piel en capas con los cuatro estadios de úlcera de profundidad creciente'),
@@ -305,7 +305,7 @@ export default {
         notes: 'Un corte de piel dibujado en SVG con sus capas. Con un clic, los cuatro estadios se describen uno tras otro. Recordar que el estadio I es reversible: detectarlo a tiempo es el objetivo de la vigilancia diaria de la piel.' },
       { title: 'Lo que consigue un programa de prevención', layout: 'titleOnly', ...P, extra: [
         chartBlock({ x: 80, y: 170, w: 780, h: 460, chartType: 'line', color: CYAN, grid: true, labelColor: FG, yTitle: '% de pacientes con úlcera nueva', dataLabels: true,
-          data: ['T1 24', 'T2 24', 'T3 24', 'T4 24', 'T1 25', 'T2 25', 'T3 25', 'T4 25'].map((l, i) => ({ label: l, value: [7.9, 8.4, 7.6, 6.1, 4.8, 4.1, 3.6, 3.3][i] })) }),
+          data: ['T1 24', 'T2 24', 'T3 24', 'T4 24', 'T1 25', 'T2 25', 'T3 25', 'T4 25'].map((l, i) => ({ label: l, value: [7.9, 8.4, 7.6, 7.8, 6.2, 4.6, 3.8, 3.3][i] })) }),
         withAnims(stat('−58 %', 'úlceras nuevas en dos años', 900, 220, 300, YEL, FG, 84), A('zoom-in', { start: 'afterPrev', duration: 600, sound: 'chime' })),
         anim(text('El programa empezó en el 4.º trimestre de 2024: Braden al ingreso, superficies especiales y registro de cambios.', 900, 430, 300, 200, { fontSize: 20, color: DIM, lineHeight: 1.4 }), 1, 'fade-up')],
         notes: 'Datos inventados de una unidad ficticia, con una forma realista: el descenso tarda un par de trimestres en notarse. La cifra entra sola con campanilla.' },
@@ -371,10 +371,10 @@ export default {
         anim(text(`Atajo: con <b>microgotero</b>, gotas por minuto = mL por hora.`, 90, 590, 1100, 50, { fontSize: 24, color: ORANGE, textAlign: 'center' }), 2, 'fade-in')],
         notes: 'La ecuación entra sola. Primer clic: qué es cada letra. Segundo: el atajo del microgotero (60 gotas/mL ÷ 60 min = 1), muy útil en pediatría.' },
       { title: 'Ejemplo: 1000 mL en 8 horas', layout: 'titleOnly', ...P, extra: [
-        anim(mathBlock({ x: 90, y: 190, w: 700, h: 90, fontSize: 40, color: DIM, latex: 't = 8 \\times 60 = 480\\ \\text{min}' }), 1, 'fade-up'),
-        anim(mathBlock({ x: 90, y: 300, w: 700, h: 120, fontSize: 44, color: INK, latex: '\\frac{1000 \\times 20}{480} = 41{,}7' }), 2, 'fade-up'),
+        withAnims(mathBlock({ x: 90, y: 190, w: 700, h: 90, fontSize: 40, color: DIM, latex: 't = 8 \\times 60 = 480\\ \\text{min}' }), A('fade-up', { start: 'click', duration: 500 })),
+        withAnims(mathBlock({ x: 90, y: 300, w: 700, h: 120, fontSize: 44, color: INK, latex: '\\frac{1000 \\times 20}{480} = 41{,}7' }), A('fade-up', { start: 'click', duration: 500 })),
         withAnims(text('≈ 42 gotas/min', 90, 450, 700, 90, { fontFamily: H, fontSize: 60, fontWeight: 700, color: BLUE }), A('zoom-in', { start: 'click', sound: 'chime', duration: 500 })),
-        anim(text('Redondea al entero: no se puede contar media gota.', 90, 560, 700, 50, { fontSize: 22, color: DIM }), 3, 'fade-in'),
+        withAnims(text('Redondea al entero: no se puede contar media gota.', 90, 560, 700, 50, { fontSize: 22, color: DIM }), A('fade-in', { start: 'afterPrev', duration: 500 })),
         shape('rounded', 860, 180, 330, 440, '#ffffff', { radius: 22, stroke: '#b7c6d6', strokeWidth: 2 }),
         text('Macrogotero', 860, 210, 330, 40, { fontSize: 22, color: DIM, textAlign: 'center' }),
         icon('droplet', 965, 270, 120, CYAN),
@@ -447,8 +447,8 @@ export default {
         text('Taller para la comunidad · 2 horas · con maniquí', 90, 630, 900, 50, { fontSize: 24, color: '#ffffff' })],
         notes: 'Portada con el lenguaje de las señales de emergencia: verde, pictograma blanco y flecha. La señal del DEA es un SVG propio que entra y late. Pregunta: ¿sabéis dónde está el desfibrilador más cercano a vuestra casa?' },
       SL({ title: 'La cadena de supervivencia', layout: 'titleOnly', extra: [
-        dg('chevrons', 'Reconocer\n  y llamar al 112\nRCP\n  inmediata\nDesfibrilar\n  cuanto antes\nSoporte\n  avanzado\nCuidados\n  tras la parada', 90, 200, 1100, 270, { colors: 'accent', oneByOne: true, fontScale: 1.3 }),
-        anim(card(`Los tres primeros eslabones están en manos de <b style="color:${GREEN}">quien está al lado</b>, no de la ambulancia.`, 90, 510, 1100, 110, '#ffffff', { fontSize: 28, color: INK, vAlign: 'middle', borderColor: GREEN }), 6, 'fade-up')],
+        withAnims(dg('chevrons', 'Reconocer\n  y llamar al 112\nRCP\n  inmediata\nDesfibrilar\n  cuanto antes\nSoporte\n  avanzado\nCuidados\n  tras la parada', 90, 200, 1100, 270, { colors: 'accent', oneByOne: true, fontScale: 1.3 }), A('fade-in', { start: 'afterPrev', duration: 400 })),
+        withAnims(card(`Los tres primeros eslabones están en manos de <b style="color:${GREEN}">quien está al lado</b>, no de la ambulancia.`, 90, 510, 1100, 110, '#ffffff', { fontSize: 28, color: INK, vAlign: 'middle', borderColor: GREEN }), A('fade-up', { start: 'click', duration: 500 }))],
         notes: 'Los cinco eslabones aparecen uno a uno con cada clic («Uno a uno al presentar»); el último clic subraya que los tres primeros dependen del testigo.' }),
       SL({ title: 'Cada minuto cuenta', layout: 'titleOnly', extra: [
         withAnims(stat('−10 %', 'de probabilidad de sobrevivir por cada minuto sin RCP', 90, 190, 340, RED, INK, 96), A('zoom-in', { start: 'afterPrev', sound: 'drumroll', duration: 700 })),
@@ -458,9 +458,9 @@ export default {
         notes: 'La cifra aparece sola con redoble. Las curvas son esquemáticas (valores relativos inventados a partir del orden de magnitud que se cita en las guías): lo que importa es la diferencia de pendiente.' }),
       SL({ title: 'Comprimir bien', layout: 'titleOnly', extra: [
         img(CHEST, 90, 330, 560, 300, 'Tórax de perfil con la profundidad de compresión'),
-        withAnims(img(HANDS, 270, 196, 160, 300, 'Brazos estirados y manos entrelazadas sobre el esternón'), path(Array.from({ length: 16 }, (_, i) => [0, i % 2 ? 0 : 26]), { start: 'click', duration: 4400, sound: 'click' })),
         ...chain([['100–120', 'compresiones por minuto'], ['5–6 cm', 'de profundidad en el adulto'], ['Dejar', 'que el pecho vuelva arriba del todo'], ['30 : 2', 'si sabes y quieres ventilar']].map(([n, t], i) =>
-          card(`<span style="font-family:${H};font-size:36px;font-weight:800;color:${i === 1 ? RED : GREEN}">${n}</span>&nbsp; ${t}`, 700, 180 + i * 115, 500, 96, '#ffffff', { fontSize: 22, color: INK, vAlign: 'middle', borderColor: '#cfe0d4' })), 'fade-left', 'afterPrev')],
+          card(`<span style="font-family:${H};font-size:36px;font-weight:800;color:${i === 1 ? RED : GREEN}">${n}</span>&nbsp; ${t}`, 700, 180 + i * 115, 500, 96, '#ffffff', { fontSize: 22, color: INK, vAlign: 'middle', borderColor: '#cfe0d4' })), 'fade-left', 'afterPrev'),
+        withAnims(img(HANDS, 270, 196, 160, 300, 'Brazos estirados y manos entrelazadas sobre el esternón'), path(Array.from({ length: 16 }, (_, i) => [0, i % 2 ? 0 : 26]), { start: 'click', duration: 4400, sound: 'click' }))],
         notes: 'Las cuatro claves entran solas. Con un clic, las manos comprimen ocho veces a unos 110 por minuto (una trayectoria de ida y vuelta, con sonido al empezar). Contad en voz alta mientras se mueven.' }),
       SL({ title: 'El desfibrilador hace el resto', layout: 'titleOnly', extra: [
         img(TORSO, 110, 180, 380, 416, 'Torso de frente'),
@@ -486,7 +486,7 @@ export default {
         options: ['Comprobar que la zona es segura', 'Ver si responde y respira con normalidad', 'Llamar al 112 y pedir un DEA', 'Empezar las compresiones', 'Colocar el DEA en cuanto llegue'] })],
         notes: 'Actividad «Ordenar» con nota: los pasos llegan desordenados a cada móvil. Comentad los errores más frecuentes (empezar sin llamar, buscar el pulso demasiado tiempo).' }),
       { layout: 'blank', bg: GREEN, transition: 'zoom', extra: [
-        ...[['phone', 'Llama', 90], ['heart-pulse', 'Comprime', 490], ['bolt', 'Desfibrila', 890]].flatMap(([ic, t, x], i) => sign(ic, t, x, 150).map(b => withAnims(b, A('zoom-in', { start: i ? 'afterPrev' : 'afterPrev', duration: 400 })))),
+        ...[['phone', 'Llama', 90], ['heart-pulse', 'Comprime', 490], ['bolt', 'Desfibrila', 890]].flatMap(([ic, t, x], i) => sign(ic, t, x, 150).map((b, k) => withAnims(b, A('zoom-in', { start: k ? 'withPrev' : 'afterPrev', duration: 400 })))),
         text('Nadie lo hace mal si lo intenta: lo único que no sirve es no hacer nada.', 90, 520, 1100, 80, { fontSize: 30, color: '#ffffff', textAlign: 'center' })],
         notes: 'Cierre con tres señales que entran solas: llama, comprime, desfibrila. La última frase es el mensaje para quitar el miedo a actuar.' },
     ]), INK));
@@ -515,7 +515,7 @@ export default {
         string([[440, 128], [700, 90], [1025, 116]], 'afterPrev', 900), string([[1025, 116], [1215, 250], [1020, 396]], 'afterPrev', 700)],
         notes: 'Portada de tablero de corcho: textura SVG propia, papeles con sombra y chinchetas (elipses con degradado). El hilo rojo se dibuja solo uniendo las pistas. Caso ficticio: lugares, personas y cifras inventados.' },
       { title: 'Lo que sabemos el lunes a las 9:00', layout: 'titleOnly', ...P, extra: [
-        ...[['Sábado 14:00', 'Banquete: 64 comensales', 0], ['Domingo 2:00', 'Primeros vómitos y diarrea', 1], ['Domingo 8:00', 'Urgencias avisa de 9 casos del mismo banquete', 2], ['Lunes 9:00', 'Salud pública abre la investigación', 3]].flatMap(([h, d, i]) => {
+        ...[['Sábado 14:00', 'Banquete: 64 comensales', 0], ['Sábado 20:00', 'Primeros vómitos y diarrea', 1], ['Domingo 8:00', 'Urgencias avisa de 9 casos del mismo banquete', 2], ['Lunes 9:00', 'Salud pública abre la investigación', 3]].flatMap(([h, d, i]) => {
           const x = 90 + i * 280, y = 200 + (i % 2) * 150, rot = [-2, 2, -1, 3][i];
           return [withAnims(sheet(x, y, 250, 200, rot, i === 3 ? NOTE : PAPER), A('fade-down', { start: i ? 'afterPrev' : 'click', duration: 400 })),
             withAnims(text(`<div style="font-family:${MONO};font-size:20px;color:${RED};font-weight:700">${h}</div><div style="margin-top:10px">${d}</div>`, x + 18, y + 30, 214, 150, { fontSize: 22, color: INK, rotation: rot }), A('fade-down', { start: 'withPrev', duration: 400 })),
@@ -525,7 +525,7 @@ export default {
         notes: 'Un clic y las cuatro notas se clavan en el corcho en orden (con sonido de chincheta); el hilo las une al final. El papel de la enfermera de salud pública: entrevistas, encuesta y muestras.' },
       { title: 'Definir el caso y preguntar a todos', layout: 'titleOnly', ...P, extra: [
         sheet(90, 180, 520, 450, -1), ...pin(350, 196),
-        text(`<div style="font-family:${H};font-size:30px;font-weight:700;color:${RED}">Definición de caso</div><div style="margin-top:14px">Persona que comió en el banquete del sábado y tuvo <b>diarrea o vómitos</b> entre el domingo a las 0:00 y el lunes a las 24:00.</div>`, 120, 220, 460, 300, { fontSize: 25, color: INK, lineHeight: 1.45, rotation: -1 }),
+        text(`<div style="font-family:${H};font-size:30px;font-weight:700;color:${RED}">Definición de caso</div><div style="margin-top:14px">Persona que comió en el banquete del sábado y tuvo <b>diarrea o vómitos</b> entre el sábado a las 14:00 y el lunes a las 24:00.</div>`, 120, 220, 460, 300, { fontSize: 25, color: INK, lineHeight: 1.45, rotation: -1 }),
         text('Clara, sencilla y la misma para todos.', 120, 540, 460, 50, { fontSize: 21, color: DIM, fontStyle: 'italic', rotation: -1 }),
         sheet(660, 170, 530, 480, 1.5), ...pin(925, 186, BLUE),
         text(`<div style="font-family:${MONO};font-size:20px;font-weight:700">ENCUESTA A COMENSALES · Nº 37</div>`
@@ -549,7 +549,7 @@ export default {
             ['Agua del grifo', '15', '40', '=REDONDEAR(B5/C5*100;1)', '8', '24', '=REDONDEAR(E5/F5*100;1)', '=REDONDEAR(D5/G5;1)']] }),
         withAnims(shape('rounded', 80, 350, 1120, 58, 'none', { stroke: RED, strokeWidth: 4, radius: 30, sketch: true }), A('zoom-in', { start: 'click', duration: 500, sound: 'pop' })),
         text('Tasa de ataque = enfermos ÷ personas que comieron × 100. Todas las columnas calculadas son fórmulas.', 90, 615, 1100, 40, { fontSize: 20, color: '#2b2620', bg: '#fffdf6cc', radius: 6, pad: [4, 10, 4, 10] })],
-        notes: 'Tabla con fórmulas: tasas de ataque y riesgo relativo se calculan solas. Un clic rodea a mano alzada (trazo «a mano») la fila del arroz: la tasa entre quienes lo comieron es seis veces mayor.' },
+        notes: 'Tabla con fórmulas: tasas de ataque y riesgo relativo se calculan solas. Un clic rodea a mano alzada («Trazo a mano») la fila del arroz: la tasa entre quienes lo comieron es seis veces mayor.' },
       { title: 'El riesgo relativo', layout: 'titleOnly', ...P, extra: [
         sheet(110, 180, 620, 430, -1), ...pin(420, 196),
         withAnims(mathBlock({ x: 140, y: 230, w: 560, h: 130, fontSize: 46, color: INK, latex: 'RR = \\frac{TA_{\\text{expuestos}}}{TA_{\\text{no expuestos}}}' }), A('fade-in', { start: 'afterPrev', duration: 600 })),
@@ -564,7 +564,7 @@ export default {
           code: 'import pandas as pd\n\nencuesta = pd.read_csv("encuesta_banquete.csv")\n\ndef tasa_ataque(grupo):\n    return 100 * grupo["enfermo"].mean()\n\nfor alimento in ["ensaladilla", "arroz", "tarta", "agua"]:\n    si = tasa_ataque(encuesta[encuesta[alimento] == 1])\n    no = tasa_ataque(encuesta[encuesta[alimento] == 0])\n    print(f"{alimento:12} RR = {si / no:4.1f}")' }),
         sheet(880, 220, 320, 320, 2, NOTE), ...pin(1040, 234, BLUE),
         text('Con 64 encuestas basta una hoja de cálculo; con miles, un programa ahorra horas y errores.', 905, 270, 270, 240, { fontSize: 23, color: INK, rotation: 2, lineHeight: 1.4 })],
-        notes: 'Código con pasos de resaltado: leer la encuesta, definir la tasa de ataque y recorrer los alimentos (tres clics). Archivo de ejemplo: no existe, es para ilustrar.' },
+        notes: 'Código con pasos de resaltado: al llegar se resalta la lectura de la encuesta; dos clics para definir la tasa de ataque y recorrer los alimentos. Archivo de ejemplo: no existe, es para ilustrar.' },
       { layout: 'blank', ...P, extra: [shape('rect', 50, 40, 1180, 640, PAPER, { shadow: true }), pollBlock({ kind: 'choice', fontSize: 34, x: 80, y: 70, w: 1120, h: 580, question: 'Con lo que has visto, ¿qué alimento investigarías primero?', options: ['Ensaladilla', 'Arroz con pollo', 'Tarta de queso', 'Agua del grifo'] })],
         notes: 'Votación en directo. Si alguien elige la ensaladilla (el «sospechoso habitual»), es buen momento para insistir en que los datos mandan.' },
       { title: 'Conclusión y medidas', layout: 'titleOnly', ...P, extra: [
@@ -781,7 +781,7 @@ export default {
         note(860, 140, 330, 300, 3), magnet(1025, 150, BLUE),
         marker('En un relevo sin estructura es fácil que se quede por el camino algún dato importante.', 885, 190, 280, 240, 28, BLACK, { rotation: 3 }),
         text('Cifras orientativas de estudios sobre eventos adversos y traspasos de información.', 100, 600, 1000, 40, { fontSize: 18, color: DIM })],
-        notes: 'La cifra está escrita «a rotulador» y la rodea un trazo a mano (forma con trazo a mano alzada) que aparece solo. Las cifras son orientativas: dan idea del orden de magnitud que recogen los estudios.' },
+        notes: 'La cifra está escrita «a rotulador» y la rodea un trazo a mano (forma con «Trazo a mano») que aparece solo. Las cifras son orientativas: dan idea del orden de magnitud que recogen los estudios.' },
       { title: 'Cuatro letras, siempre en orden', layout: 'titleOnly', ...P, extra: S4.flatMap(([l, w, q, c], i) => { const x = 80 + i * 285, rot = [-2, 1.5, -1, 2][i];
         return [withAnims(note(x, 200, 255, 330, rot, c), A('fade-down', { start: i ? 'afterPrev' : 'click', duration: 400 })),
           withAnims(magnet(x + 128, 208, [RED, BLUE, GREEN, BLACK][i]), A('zoom-in', { start: 'withPrev', duration: 300, sound: 'pop' })),
@@ -823,7 +823,7 @@ export default {
         marker('Lo que no se dice<br>en el relevo,<br>no existe.', 90, 150, 760, 380, 76, BLUE),
         withAnims(scribble(96, 560, 450, GREEN, 5), A('draw', { start: 'afterPrev', duration: 900 })),
         ...S4.map(([l, , , c], i) => note(940 + (i % 2) * 130, 190 + Math.floor(i / 2) * 150, 110, 110, [-5, 4, 6, -3][i], c)),
-        ...S4.map(([l], i) => marker(l, 940 + (i % 2) * 130, 205 + Math.floor(i / 2) * 150, 110, 80, 56, BLACK, { textAlign: 'center', rotation: [-5, 4, -3, 6][i] }))],
+        ...S4.map(([l], i) => marker(l, 940 + (i % 2) * 130, 205 + Math.floor(i / 2) * 150, 110, 80, 56, BLACK, { textAlign: 'center', rotation: [-5, 4, 6, -3][i] }))],
         notes: 'Cierre en la pizarra con un subrayado verde que se dibuja solo. Proponed colgar una tarjeta SBAR en el control de enfermería.' },
     ]), BLACK));
   } },
@@ -868,7 +868,7 @@ export default {
         anim(text('Los efectos llegan el mismo día y hasta tres días después: la vigilancia no acaba cuando baja el termómetro.', 920, 450, 280, 180, { fontSize: 20, color: DIM, lineHeight: 1.4 }), 2, 'fade-up')],
         notes: 'Dispersión con escala propia en los dos ejes: 19 días de verano de un hospital ficticio (datos inventados). La pendiente se empina a partir de un umbral, que es lo que usan los planes para fijar los avisos.' },
       { title: 'A quién hay que proteger primero', layout: 'titleOnly', ...P, extra: [
-        dg('cards', 'Mayores de 75\n  Sobre todo si viven solos\nBebés y niños pequeños\n  Se deshidratan antes\nEnfermedades crónicas\n  Corazón, riñón, diabetes\nCiertos fármacos\n  Diuréticos, psicofármacos\nTrabajo al sol\n  Campo, obra, reparto\nSin hogar\n  Sin sombra ni agua a mano', 80, 170, 1120, 470, { colors: 'colorful', oneByOne: true, fontScale: 1.1 })],
+        dg('cards', 'Mayores de 75\n  Sobre todo si viven solos\nBebés y niños pequeños\n  Se deshidratan antes\nEnfermedades crónicas\n  Corazón, riñón, diabetes\nCiertos fármacos\n  Diuréticos, psicofármacos\nTrabajo al sol\n  Campo, obra, reparto\nSin hogar\n  Sin sombra ni agua a mano', 80, 170, 1120, 470, { colors: 'colorful', oneByOne: true, fontScale: 1 })],
         notes: 'Tarjetas que aparecen una a una. En primaria, cada centro mantiene un listado de personas vulnerables a las que llamar cuando hay aviso.' },
       { title: 'Agotamiento o golpe de calor', layout: 'titleOnly', ...P, extra: [
         card(`<div style="font-size:32px;font-weight:800;color:${ORA}">Agotamiento por calor</div><div style="margin-top:12px">${ul('Sudor abundante, piel fría y húmeda', 'Cansancio, mareo, calambres', 'Temperatura normal o algo alta')}</div><div style="margin-top:10px;font-weight:700">A la sombra, agua y descanso</div>`,
