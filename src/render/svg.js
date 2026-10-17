@@ -615,7 +615,11 @@ function twoLines(s, n = 2) {
 function fitLabels(labels, room, fs, b, min = 2.2, most = 2) {
   const widest = ls => Math.max(0, ...ls.flat().map(l => textWidth(l, 1, b)));
   const fewest = at => labels.map(l => { let ls = [String(l ?? '')]; for (let n = 2; n <= most && widest([ls]) * at > room; n++) ls = twoLines(l, n); return ls; });
-  const size = Math.max(min, Math.min(fs, room / (widest(fewest(fs)) || 1)));
+  // (A single word that can't be split — «Constantinopla» — may take letters a little smaller than the least, down to
+  // 1.6, rather than be cut.)
+  const longWord = Math.max(0, ...labels.flatMap(l => String(l ?? '').split(/\s+/)).map(w => textWidth(w, 1, b)));
+  const floor = longWord ? Math.max(1.6, Math.min(min, room / longWord)) : min;
+  const size = Math.max(floor, Math.min(fs, room / (widest(fewest(fs)) || 1)));
   // (A hair of room: the widest label sets the size, so it measures exactly the room — and a rounding error cut it, «Orquest…».)
   const cut = l => { if (textWidth(l, size, b) <= room * (1 + 1e-6)) return l; const t = [...l]; while (t.length > 1 && textWidth(t.join('') + '…', size, b) > room) t.pop(); return t.join('').trimEnd() + '…'; };
   return { lines: fewest(size).map(ls => ls.map(cut)), fs: size };

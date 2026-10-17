@@ -272,9 +272,11 @@ export default {
       { title: '¿Qué hay dentro?', layout: 'titleOnly', bg: BG, autoAnimate: true, transition: 'zoom', extra: [
         keep(shape('triangle', 90, 190, 600, 420, GOLD, { fill2: '#9c6e2a', gradAngle: 90 }), pyr),
         shape('rect', 60, 610, 660, 70, '#6e4a1f', { opacity: 85 }),
-        ink([[300, 470], [400, 640]], INK, 6), ink([[352, 556], [422, 420]], INK, 10), ink([[352, 556], [380, 484]], INK, 4),
-        shape('rect', 410, 398, 64, 30, '#2a2014'), shape('rect', 362, 470, 48, 26, '#2a2014'), shape('rect', 392, 628, 64, 26, '#2a2014'),
-        ...[[1, 482, 380, 'Cámara del Rey', 'El sarcófago de granito del faraón.'], [2, 300, 462, 'Cámara de la Reina', 'Su nombre es un error: no era de ninguna reina.'], [3, 440, 470, 'Gran Galería', 'Un pasillo de 47 m de largo y 8,6 m de alto.'], [4, 470, 630, 'Cámara subterránea', 'Excavada en la roca, quedó sin terminar.']]
+        // (cross-section, north on the left: the entrance and the descending passage, the ascending passage, the Grand Gallery
+        // up to the King's Chamber, the level passage to the Queen's Chamber on the axis, and the chamber under the rock)
+        ink([[130, 560], [390, 650]], INK, 6), ink([[210, 588], [300, 545]], INK, 6), ink([[300, 545], [402, 496]], INK, 12), ink([[300, 548], [378, 548]], INK, 4),
+        shape('rect', 400, 478, 70, 28, '#2a2014'), shape('rect', 375, 536, 44, 24, '#2a2014'), shape('rect', 380, 638, 64, 26, '#2a2014'),
+        ...[[1, 482, 448, 'Cámara del Rey', 'El sarcófago de granito del faraón.'], [2, 430, 540, 'Cámara de la Reina', 'Su nombre es un error: no era de ninguna reina.'], [3, 288, 468, 'Gran Galería', 'Un pasillo de 47 m de largo y 8,6 m de alto.'], [4, 456, 636, 'Cámara subterránea', 'Excavada en la roca, quedó sin terminar.']]
           .flatMap(([n, bx, by, h, d], i) => [on(badge(n, bx, by, 40, '#c1272d'), 'zoom-in', { sound: 'pop' }),
             along(text(`<div style="display:flex;gap:14px;align-items:center"><span style="flex:0 0 40px;height:40px;border-radius:20px;background:#c1272d;color:#fff;font-weight:800;text-align:center;line-height:40px">${n}</span><span><b style="color:${GOLD}">${h}</b><br><span style="font-size:20px">${d}</span></span></div>`,
               740, 190 + i * 112, 460, 100, { fontSize: 25, color: CREAM, vAlign: 'middle' }), 'fade-left')])],
@@ -323,7 +325,8 @@ export default {
         img(TWO_RIVERS, 90, 175, 640, 470, 'Mapa del Tigris y el Éufrates hasta el golfo Pérsico'),
         { ...ink([[120, 300], [210, 230], [330, 205], [470, 215], [590, 280], [660, 380]], '#3e8f47', 14, { opacity: 70 }), animation: A('draw', { duration: 2200 }) },
         ...[['Nínive', 296, 282], ['Babilonia', 300, 470], ['Uruk', 470, 566], ['Ur', 560, 590]].flatMap(([c, x, y], i) => [after(shape('ellipse', x - 9, y - 9, 18, 18, BURNT, { stroke: '#ffffff', strokeWidth: 3 }), 'zoom-in', { sound: 'pop', duration: 300 }),
-          along(text(c, c === 'Ur' ? x - 70 : x + 14, y - 18, c === 'Ur' ? 56 : 160, 36, { fontSize: 22, fontWeight: 700, color: DARK, textAlign: c === 'Ur' ? 'right' : 'left' }), 'fade-in')]),
+          // (Uruk and Ur are close together by the river: their names go under the dots, centred)
+          along(text(c, ...(i > 1 ? [x - 50, y + 12, 100] : [x + 14, y - 18, 160]), 36, { fontSize: 22, fontWeight: 700, color: DARK, textAlign: i > 1 ? 'center' : 'left' }), 'fade-in')]),
         text('<b style="color:#3e8f47">La Media Luna Fértil</b><br>En griego, <i>Mesopotamia</i> significa «tierra entre ríos». Sus crecidas regaban campos en un clima seco.', 770, 190, 420, 200, { fontSize: 25, color: DARK }),
         on(card('Sin piedra ni madera, todo se construía con <b>barro</b>: casas, murallas, templos… ¡y libros!', 770, 430, 420, 170, '#ffffff', { fontSize: 24, color: DARK, borderColor: CLAY, radius: 10 }), 'fade-up')],
         notes: 'Primer clic: se dibuja la Media Luna Fértil y aparecen las ciudades una tras otra. Ur y Uruk están entre las primeras ciudades del mundo.' },
@@ -458,15 +461,16 @@ export default {
       { title: 'Todos los caminos llevan a Roma', layout: 'titleOnly', bg: MARBLE, autoAnimate: true, extra: [
         keep(text('SPQR', 1000, 60, 200, 70, { fontFamily: H, fontSize: 48, fontWeight: 800, color: RED, letterSpacing: 4, textAlign: 'right' }), spqr),
         dg('radial', 'Roma\n  Vía Apia\n  Vía Flaminia\n  Vía Aurelia\n  Vía Emilia\n  Vía Augusta\n  Vía de la Plata', 70, 170, 680, 500, { colors: 'accent', oneByOne: true }),
-        on(stat('≈ 80.000 km', 'de calzadas principales: dos vueltas a la Tierra', 800, 190, 400, RED, INK, 62), 'zoom-in', { sound: 'pop' }),
+        // (fixed: the diagram «one by one» always plays after the other animations of the slide)
+        stat('≈ 80.000 km', 'de calzadas principales: dos vueltas a la Tierra', 800, 190, 400, RED, INK, 62),
         img(MILESTONE, 800, 420, 140, 228, 'Miliario: piedra que marca las millas'),
-        on(text('<b>Miliarios</b>: cada mil pasos (≈ 1,5 km) una piedra decía la distancia a la ciudad más cercana.', 960, 440, 240, 210, { fontSize: 21, color: INK }), 'fade-left')],
-        notes: 'Transformar: SPQR vuela a la esquina. Diagrama radial uno a uno. La Vía Augusta y la Vía de la Plata cruzaban Hispania. Longitud aproximada de la red principal.' },
+        text('<b>Miliarios</b>: cada mil pasos (≈ 1,5 km) una piedra decía la distancia a la ciudad más cercana.', 960, 440, 240, 210, { fontSize: 21, color: INK })],
+        notes: 'Transformar: SPQR vuela a la esquina. Diagrama radial uno a uno. Las vías Apia, Flaminia y Aurelia salían de Roma; la Emilia seguía a la Flaminia hacia el norte de Italia, y la Augusta y la de la Plata cruzaban Hispania. Longitud aproximada de la red principal.' },
       { title: 'Cómo se hace una calzada', layout: 'titleOnly', bg: '#efe9df', extra: [
         ...[['Statumen', 'piedras grandes', 540, 90, '#8a7f72'], ['Rudus', 'piedra y cal', 470, 70, '#a99b8a'], ['Nucleus', 'grava y arena', 410, 60, '#c8b9a2'], ['Summa crusta', 'losas encajadas', 360, 50, '#6f6a66']]
           .flatMap(([h, d, y, hh, c], i) => [(i ? after : on)(shape('rect', 90, y, 700, hh, c, { stroke: '#4a443f', strokeWidth: 2 }), 'fade-down', { duration: 450, sound: 'click' }),
             along(text(`<b style="color:${RED}">${h}</b> · ${d}`, 830, y + hh / 2 - 22, 370, 44, { fontSize: 22, color: INK, vAlign: 'middle' }), 'fade-left')]),
-        ...[0, 1, 2, 3, 4, 5, 6].map(i => shape('rect', 90 + i * 100, 360, 3, 50, '#3e3a36')),
+        ...[0, 1, 2, 3, 4, 5, 6].map(i => along(shape('rect', 90 + i * 100, 360, 3, 50, '#3e3a36'), 'fade-down', { duration: 450 })),   // (the joints of the slabs, with the top layer)
         withAnims(model('kn-soldier', 60, 150, 170, 220, { walk: { clip: soldier.walk, face: true }, caption: '' }), path([[260, 0], [560, 0]], { duration: 4200 })),
         text('Algunas tenían más de un metro de grosor. Por eso muchas siguen bajo nuestras carreteras.', 90, 650, 1100, 40, { fontSize: 22, color: '#6b5f58', fontStyle: 'italic' })],
         notes: 'Primer clic: la calzada se construye capa a capa, de abajo arriba (encadenadas con sonido). Segundo clic: el legionario 3D marcha por ella. Las capas varían según el terreno; este es el modelo clásico.' },
@@ -573,7 +577,7 @@ export default {
         on(shape('uparrow', 930, 220, 60, 200, GOLD), 'fade-up'), along(text('<b>Hacia arriba</b><br>Trabajo, tributos y lealtad', 1005, 250, 200, 140, { fontSize: 22, color: GOLD }), 'fade-up'),
         on(shape('downarrow', 930, 440, 60, 200, '#7aa2f7'), 'fade-down'), along(text('<b>Hacia abajo</b><br>Tierras (feudos) y protección', 1005, 470, 200, 140, { fontSize: 22, color: '#7aa2f7' }), 'fade-down'),
         text('Cada uno debía algo al de arriba… y recibía algo a cambio.', 90, 650, 820, 40, { fontSize: 22, color: '#9aa0aa', fontStyle: 'italic' })],
-        notes: 'Primer clic: la pirámide se levanta de abajo arriba. Segundo: lo que sube (trabajo, impuestos, lealtad). Tercero: lo que baja; el de arriba daba tierras (feudos) y protección. Al menos 9 de cada 10 personas eran campesinos.' },
+        notes: 'Primer clic: la pirámide se levanta de abajo arriba. Segundo: lo que sube (trabajo, impuestos, lealtad). Tercero: lo que baja; el de arriba daba tierras (feudos) y protección. Más de 8 de cada 10 personas eran campesinos.' },
       { title: `<span style="color:${RED}">Las partes del castillo</span>`, layout: 'titleOnly', bg: '#e9eef3', extra: [
         img(CASTLE_DAY, 90, 170, 760, 480, 'Castillo con torre del homenaje, almenas, muralla, puente levadizo y foso'),
         ...PARTS.flatMap(([h, d, px, py], i) => [on(badge(i + 1, 90 + 760 * px / 100 - 20, 170 + 480 * py / 100 - 20, 40, RED), 'zoom-in', { sound: 'pop' }),
@@ -592,16 +596,16 @@ export default {
         notes: 'Un clic: el sol recorre el cielo y las horas del día van apareciendo a su paso (todas a la vez que el sol, con retrasos). Horario orientativo de un castillo noble.' },
       { title: '¿Quién era quién?', layout: 'titleOnly', bg: NIGHT, extra: [
         chartBlock({ x: 80, y: 170, w: 760, h: 480, chartType: 'treemap', color: STONE,
-          data: [{ label: 'Campesinos y siervos', value: 85, color: '#6b7280' }, { label: 'Artesanos y mercaderes', value: 8, color: '#8a6d3b' }, { label: 'Clero', value: 4, color: RED }, { label: 'Nobles y caballeros', value: 3, color: BLUE }] }),
+          data: [{ label: 'Campesinos y siervos', value: 85, color: '#6b7280' }, { label: 'Artesanos', value: 8, color: '#8a6d3b' }, { label: 'Clero', value: 4, color: RED }, { label: 'Nobles', value: 3, color: BLUE }] }),   // (short names: the small pieces cut longer ones with «…»)
         on(stat('85 %', 'de la gente trabajaba la tierra y nunca se alejaba más de 20 km de su aldea', 880, 200, 330, GOLD, PARCH, 84), 'zoom-in', { sound: 'drumroll' })],
-        notes: 'Gráfico de rectángulos: el área de cada uno es su parte de la población. Porcentajes aproximados para la Europa del siglo XII.' },
+        notes: 'Gráfico de rectángulos: el área de cada uno es su parte de la población. Porcentajes aproximados para la Europa del siglo XII. Con los artesanos van también los mercaderes; con los nobles, los caballeros.' },
       { title: `<span style="color:${RED}">Escudos de armas</span>`, layout: 'titleOnly', bg: PARCH, extra: [
         ...[[`<rect width="200" height="240" fill="${RED}"/><rect x="100" width="100" height="240" fill="${GOLD}"/>`, 'Partido', 'Dividido en dos mitades'],
           [`<rect width="200" height="240" fill="${BLUE}"/><path d="M0 170 L100 70 L200 170 V210 L100 110 L0 210Z" fill="#f2f2f2"/>`, 'Con chevrón', 'Una banda en forma de tejado'],
           [`<rect width="200" height="240" fill="#2e7d32"/><rect x="80" width="40" height="240" fill="${GOLD}"/><rect y="80" width="200" height="40" fill="${GOLD}"/>`, 'Con cruz', 'Muy usada por las órdenes militares']]
           .flatMap(([svg, h, d], i) => [on(img(SHIELD(svg), 110 + i * 250, 180, 200, 240, 'Escudo ' + h.toLowerCase()), 'flip', { start: i ? 'afterPrev' : 'click' }),
             text(`<b>${h}</b><br>${d}`, 90 + i * 250, 440, 240, 90, { fontSize: 21, color: INK, textAlign: 'center' })]),
-        card(`<div style="font-family:${H};font-size:34px;color:${RED}">La regla de oro</div>Nunca <b>metal sobre metal</b> (oro, plata) ni <b>color sobre color</b> (rojo, azul, verde, negro): así se distinguía de lejos en la batalla.`, 870, 180, 330, 360, '#ffffff', { fontSize: 22, color: INK, borderColor: GOLD, radius: 6 }),
+        card(`<div style="font-family:${H};font-size:34px;color:${RED}">La regla de oro</div>Nunca <b>metal sobre metal</b> (oro, plata) ni <b>color sobre color</b> (rojo, azul, verde, negro): así se distinguía de lejos en la batalla.`, 870, 180, 330, 290, '#ffffff', { fontSize: 22, color: INK, borderColor: GOLD, radius: 6 }),
         text('Diseña el tuyo: elige dos esmaltes, una partición y una figura.', 90, 580, 760, 60, { fontSize: 26, color: '#6b5a3a', fontStyle: 'italic' })],
         notes: 'Los escudos giran al entrar, uno tras otro. Los yelmos cerrados tapaban la cara: el escudo decía quién eras. Actividad: diseñar su escudo personal en una cuartilla.' },
       { layout: 'blank', bg: NIGHT, extra: [quiz('¿Qué recibía un caballero de su señor a cambio de su lealtad?', ['Un sueldo mensual', 'Un feudo: tierras', 'Un título universitario', 'Nada'], 1)],
@@ -648,9 +652,9 @@ export default {
         notes: 'Un clic: se dibuja la ruta y el barco la recorre de Noruega a Terranova; las fechas aparecen a su paso. Navegaban mirando el sol, las estrellas, las aves y el color del agua.' },
       { title: 'El drakkar: rápido y ligero', layout: 'titleOnly', bg: BG, extra: [...fjord().slice(0, 2),
         img(LONGSHIP, 90, 200, 620, 384, 'Barco vikingo'),
-        ...[['≈ 23 m', 'de largo: como dos autobuses'], ['≈ 60', 'remeros cuando no había viento'], ['< 1 m', 'de calado: subía por los ríos hasta París']].map(([n, l], i) =>
+        ...[['≈ 23 m', 'de largo: como dos autobuses'], ['32', 'remeros cuando no había viento'], ['< 1 m', 'de calado: subía por los ríos hasta París']].map(([n, l], i) =>
           (i ? after : on)(stat(n, l, 780, 180 + i * 160, 420, ['#ffd166', AUR, TEAL][i], ICE, 60), 'fade-left', { sound: 'drumroll', duration: 500, delay: i ? 900 : 0 }))],
-        notes: 'Un clic y las tres cifras aparecen seguidas, con redoble. Medidas aproximadas de un barco de guerra grande. El poco calado les permitía atacar ciudades del interior por los ríos.' },
+        notes: 'Un clic y las tres cifras aparecen seguidas, con redoble. Medidas del barco de Gokstad (Noruega, hacia el año 900): 23 m de eslora y 16 remos por banda. Los mayores barcos de guerra llegaban a 30 m y unos 60 remeros. El poco calado les permitía atacar ciudades del interior por los ríos.' },
       { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'match', question: 'Los dioses nórdicos siguen en el calendario inglés: une cada día con su dios', fontSize: 38, x: 60, y: 40, w: 1160, h: 640,
         options: ['Tuesday (martes) = Tyr, dios de la guerra', 'Wednesday (miércoles) = Odín (Woden), el padre de los dioses', 'Thursday (jueves) = Thor, dios del trueno', 'Friday (viernes) = Frigg, diosa del hogar'] })],
         notes: 'Unir parejas con nota. Curiosidad para Inglés: los nombres de los días son una herencia de los pueblos germánicos del norte.' },
@@ -770,17 +774,18 @@ export default {
         notes: 'Primer clic: las dos ruedas giran a la vez a distinta velocidad. Las mismas dos fechas solo vuelven a coincidir cada 52 años (mínimo común múltiplo).' },
       { title: 'La serpiente de luz', layout: 'titleOnly', bg: '#1a1f3a', extra: [glow(900, 120, 420, SUN, '#1a1f3a', 50),
         img(MAYA_PYR, 90, 190, 640, 448, 'Pirámide de Kukulcán'),
-        ...Array.from({ length: 7 }, (_, i) => (i ? after : on)(shape('triangle', 400, 230 + i * 56, 34, 44, SUN, { rotation: 90, opacity: 90 }), 'fade-in', { duration: 300, ...(i ? {} : { sound: 'chime' }) })),
+        ...Array.from({ length: 7 }, (_, i) => (i ? after : on)(shape('triangle', 400, 280 + i * 50, 34, 44, SUN,   // (on the stairs, from under the temple down to the heads)
+           { rotation: 90, opacity: 90 }), 'fade-in', { duration: 300, ...(i ? {} : { sound: 'chime' }) })),
         text('En los equinoccios de primavera y otoño, el sol de la tarde dibuja en la escalera de la pirámide de Kukulcán (Chichén Itzá) <b>una serpiente de luz</b> que baja hasta la cabeza de piedra.', 780, 220, 420, 260, { fontSize: 25, color: STONE }),
         text('20 de marzo · 22 de septiembre', 780, 520, 420, 50, { fontSize: 26, fontWeight: 800, color: SUN })],
         notes: 'Un clic: los triángulos de luz aparecen escalón a escalón, como la sombra que baja. Muestra lo bien que conocían el movimiento del sol.' },
       { title: '<span style="color:#6b3e26">El cacao era dinero</span>', layout: 'titleOnly', bg: STONE, extra: [
         tableBlock({ x: 90, y: 180, w: 760, h: 380, fontSize: 25, header: true, headBg: CACAO, headFg: '#ffffff', stroke: '#c9bfa0', banded: true, band: '#f3eedd',
-          rows: [['En el mercado', 'Precio (granos)', 'Cantidad', 'Total'], ['Tomate grande', '1', '4', '=B2*C2'], ['Aguacate maduro', '3', '2', '=B3*C3'], ['Tamal', '1', '3', '=B4*C4'], ['Conejo', '30', '1', '=B5*C5'], ['<b>Total</b>', '', '', '=SUMA(D2:D5)']], colW: [5, 4, 3, 3] }),
+          rows: [['En el mercado', 'Precio (granos)', 'Cantidad', 'Total'], ['Tomate grande', '1', '4', '=B2*C2'], ['Aguacate maduro', '1', '2', '=B3*C3'], ['Tamal', '1', '3', '=B4*C4'], ['Conejo', '30', '1', '=B5*C5'], ['<b>Total</b>', '', '', '=SUMA(D2:D5)']], colW: [5, 4, 3, 3] }),
         on(stat('200', 'granos de cacao costaba un pavo', 890, 200, 310, CACAO, INK, 90), 'zoom-in', { sound: 'pop' }),
         on(text('Con el cacao también se preparaba una bebida amarga y espumosa: el antepasado del chocolate.', 890, 420, 310, 160, { fontSize: 22, color: INK }), 'fade-up'),
         text('Precios aproximados de una lista mesoamericana del siglo XVI.', 90, 590, 760, 40, { fontSize: 19, color: '#6f6a55', fontStyle: 'italic' })],
-        notes: 'Tabla con fórmulas: la cesta de la compra se suma sola. Reto: ¿cuántos tomates podrías comprar con lo que cuesta un pavo?' },
+        notes: 'Tabla con fórmulas: la cesta de la compra se suma sola. Reto: ¿cuántos tomates podrías comprar con lo que cuesta un pavo? En la lista, un aguacate recién cogido costaba 3 granos y uno maduro, 1.' },
       { layout: 'blank', bg: STONE, extra: [pollBlock({ kind: 'choice', question: '¿Qué aportación maya te parece más asombrosa?', display: 'pie', fontSize: 40, x: 60, y: 50, w: 1160, h: 620,
         options: ['El cero', 'El calendario', 'Las pirámides', 'El chocolate'] })],
         notes: 'Votación en directo con gráfico circular. Pedir que justifiquen: ¿por qué el cero es tan importante?' },
@@ -806,7 +811,7 @@ export default {
         text('HISTORIA · EL FIN DE LA EDAD MEDIA', 640, 64, 540, 30, { fontSize: 16, letterSpacing: 4, color: RUB, textAlign: 'right' })],
         notes: 'Portada como la página de un libro antiguo: capital roja y texto negro. Los tipos caen solos uno a uno con un clic metálico: fíjate en que las letras están al revés.' },
       { title: 'Copiar a mano o imprimir', layout: 'titleOnly', bg: PAPER, extra: [
-        shape('rect', 638, 190, 4, 430, '#d8ccb4'),
+        shape('rect', 638, 190, 4, 350, '#d8ccb4'),   // (it ends above the closing line, which runs across both columns)
         text('<b>Un copista</b>', 90, 190, 520, 50, { fontFamily: H, fontSize: 34, color: RUB, textAlign: 'center' }), text('<b>Una imprenta</b>', 670, 190, 520, 50, { fontFamily: H, fontSize: 34, color: RUB, textAlign: 'center' }),
         on(stat('≈ 4', 'páginas al día, escritas a pluma', 90, 270, 520, INK, '#3a3a3a', 110, { textAlign: 'center' }), 'zoom-in', { sound: 'pop' }),
         on(stat('≈ 3.600', 'páginas al día, con una sola prensa', 670, 270, 520, RUB, '#3a3a3a', 110, { textAlign: 'center' }), 'zoom-in', { sound: 'drumroll' }),
@@ -817,8 +822,8 @@ export default {
         ...Array.from({ length: 24 }, (_, i) => shape('rect', 104 + (i % 6) * 112, 194 + Math.floor(i / 6) * 107, 100, 95, '#6b4f32')),
         ...'LIBRO'.split('').map((ch, i) => keep(sort(ch, [140, 590, 360, 250, 470][i], [215, 430, 320, 525, 215][i], 60), ids[i])),
         text('Cada letra es una pieza de metal (un <b>tipo</b>) con la forma <b>al revés</b>, como un sello. Se guardaban en una caja con un cajetín para cada letra.', 830, 200, 370, 300, { fontSize: 25, color: INK }),
-        text('Por eso decimos «mayúsculas» y «minúsculas»: estaban en la parte alta y baja de la caja.', 830, 500, 370, 130, { fontSize: 20, fontStyle: 'italic', color: GREY })],
-        notes: 'Las cinco letras de LIBRO están repartidas por la caja. En la siguiente diapositiva se ordenan solas en el componedor (Transformar). La anécdota de mayúsculas y minúsculas es más cierta en inglés (upper case, lower case).' },
+        text('Por eso a las mayúsculas se las llama también «caja alta» y a las minúsculas, «caja baja»: estaban en la parte alta y baja de la caja.', 830, 500, 370, 130, { fontSize: 20, fontStyle: 'italic', color: GREY })],
+        notes: 'Las cinco letras de LIBRO están repartidas por la caja. En la siguiente diapositiva se ordenan solas en el componedor (Transformar). En inglés pasa lo mismo: «upper case» y «lower case».' },
       { title: 'Componer e imprimir', layout: 'titleOnly', bg: PAPER, autoAnimate: true, extra: [
         shape('rect', 90, 300, 560, 120, '#6b6b6b', { stroke: '#3a3a3a', strokeWidth: 3 }),
         ...'LIBRO'.split('').map((ch, i) => keep(sort(ch, 110 + (4 - i) * 104, 315, 90), ids[i])),
@@ -829,7 +834,8 @@ export default {
         notes: 'Transformar: cada tipo vuela desde la caja hasta su sitio. Un clic: se imprime la palabra. Ejercicio: escribir su nombre como lo vería un cajista (en espejo y al revés).' },
       { title: 'La prensa', layout: 'titleOnly', bg: PAPER, extra: [
         img(PRESS, 90, 170, 380, 470, 'Prensa de imprenta de madera'),
-        withAnims(img(PLATEN, 168, 357, 224, 52, 'Platina de la prensa'), path([[0, 110]], { duration: 700, sound: 'click' }), path([[0, -110]], { start: 'afterPrev', duration: 700, delay: 300 })),
+        withAnims(img(PLATEN, 168, 357, 224, 52, 'Platina de la prensa'), path([[0, 68]], { duration: 700, sound: 'click' }), path([[0, -68]], {   // (down onto the paper, no further)
+           start: 'afterPrev', duration: 700, delay: 300 })),
         ...[['Fundir los tipos', 'Metal fundido en moldes, letra a letra'], ['Componer', 'Ordenar los tipos en líneas y páginas'], ['Entintar', 'Tinta grasa, con bolas de cuero'], ['Prensar', 'La platina aprieta el papel contra los tipos'], ['Secar y encuadernar', 'Pliegos al aire; luego, coser el libro']]
           .map(([h, d], i) => on(text(`<div style="display:flex;gap:18px;align-items:center"><span style="flex:0 0 52px;height:52px;border-radius:26px;background:${RUB};color:#fff;font-weight:700;text-align:center;line-height:52px;font-size:28px">${i + 1}</span><span><b style="font-family:${H};font-size:28px">${h}</b><br><span style="color:${GREY}">${d}</span></span></div>`, 540, 180 + i * 92, 660, 84, { fontSize: 21, color: INK, vAlign: 'middle' }), 'fade-left'))],
         notes: 'Primer clic: la platina baja con un golpe y vuelve a subir (dos trayectorias encadenadas). Después, un clic por paso del proceso. La idea de la prensa venía de las prensas de uva y aceite.' },
