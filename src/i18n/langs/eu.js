@@ -1384,6 +1384,7 @@ export default {
   "Aspecto": "Itxura",
   "Anillo": "Eraztuna",
   "Barra": "Barra",
+  "Sigue al cambiar de diapositiva": "Jarraitzen du diapositibaz aldatzean",
   "Empieza solo": "Berez hasten da",
   "Sonido al acabar": "Soinua amaieran",
   "Texto final": "Amaierako testua",

@@ -1384,6 +1384,7 @@ export default {
   "Aspecto": "المظهر",
   "Anillo": "حلقة",
   "Barra": "شريط",
+  "Sigue al cambiar de diapositiva": "يستمر عند تغيير الشريحة",
   "Empieza solo": "يبدأ تلقائيًا",
   "Sonido al acabar": "صوت عند الانتهاء",
   "Texto final": "النص الختامي",

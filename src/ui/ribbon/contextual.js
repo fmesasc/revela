@@ -287,6 +287,7 @@ function groupsFor(b) {
       ['color', 'palette', 'Color', b.color || '#ffffff', v => set(b, x => { x.color = v; })]]],
     ['Al presentar', [btn('play_circle', 'Empieza solo', () => set(b, x => { x.auto = x.auto === false; }), b.auto !== false),
       btn('volume_up', 'Sonido al acabar', () => set(b, x => { x.sound = x.sound === false; }), b.sound !== false),
+      btn('fast_forward', 'Sigue al cambiar de diapositiva', () => set(b, x => { if (x.keep) delete x.keep; else x.keep = true; }), !!b.keep),
       btn('edit_note', 'Texto final', async () => { const v = await promptDialog(t('Texto al acabar el tiempo:'), b.endText ?? t('¡Tiempo!')); if (v != null) set(b, x => { x.endText = v.slice(0, 40); }); })]]);
   else if (b.type === 'ink') G.push(['Dibujo', [btn('gesture', 'Trazar al presentar', () => (b.animation?.effect === 'draw' ? clearAnimation() : setAnimation('draw')), b.animation?.effect === 'draw')]]);
   else if (b.type === 'icon') G.push(['Icono', [btn('interests', 'Cambiar icono', () => togglePopover(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="icon-change"]'), 'icons', { replaceId: b.id }), null, 'icon-change'),

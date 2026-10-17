@@ -1372,6 +1372,7 @@ export default {
   "Aspecto": "Uiterlijk",
   "Anillo": "Ring",
   "Barra": "Balk",
+  "Sigue al cambiar de diapositiva": "Loopt door op andere dia's",
   "Empieza solo": "Start vanzelf",
   "Sonido al acabar": "Geluid aan het eind",
   "Texto final": "Eindtekst",

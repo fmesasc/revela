@@ -1,7 +1,8 @@
 // Countdown timers in the presentation: runs as source embedded in the exported
 // page (toString), so it imports nothing. A timer starts when its slide is shown
 // (or with a click, if it doesn't start by itself); a click pauses and resumes
-// it, or starts it again once it has finished. Leaving the slide resets it.
+// it, or starts it again once it has finished. Leaving the slide resets it — or, with «Sigue al cambiar de diapositiva»
+// (data-keep), it goes on counting meanwhile (and beeps if it ends then); back on its slide, what is left.
 // At the end: its closing text, and three beeps if it has sound.
 export function timerRuntime() {
   var state = new WeakMap();
@@ -36,7 +37,10 @@ export function timerRuntime() {
     reset(el);
     el.addEventListener('click', function (e) { e.stopPropagation(); var s = state.get(el); if (s.running) pause(el); else start(el); });
   });
-  function shown(slide) { all().forEach(function (el) { reset(el); if (slide && slide.contains(el) && el.hasAttribute('data-auto')) start(el); }); }
+  function shown(slide) { all().forEach(function (el) {
+    var here = slide && slide.contains(el), s = state.get(el);
+    if (el.hasAttribute('data-keep')) { if (here && el.hasAttribute('data-auto') && !s.seen) { s.seen = true; start(el); } return; }
+    reset(el); if (here && el.hasAttribute('data-auto')) start(el); }); }
   if (window.Reveal) { Reveal.on('ready', function (e) { shown(e.currentSlide); }); Reveal.on('slidechanged', function (e) { shown(e.currentSlide); }); if (Reveal.isReady()) shown(Reveal.getCurrentSlide()); }
-  return { start: start, pause: pause, reset: reset };
+  return { start: start, pause: pause, reset: reset, shown: shown };
 }

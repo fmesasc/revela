@@ -1372,6 +1372,7 @@ export default {
   "Aspecto": "Aspecto",
   "Anillo": "Anel",
   "Barra": "Barra",
+  "Sigue al cambiar de diapositiva": "Segue ao cambiar de diapositiva",
   "Empieza solo": "Comeza só",
   "Sonido al acabar": "Son ao acabar",
   "Texto final": "Texto final",

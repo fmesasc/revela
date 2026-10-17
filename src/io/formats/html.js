@@ -449,7 +449,7 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'ink')
     return `<div${a} style="${box(b)}">${inkSVG(b)}</div>`;
   if (b.type === 'timer')                          // counts down with io/runtime/timer.js
-    return `<div${a} data-timer role="timer" data-secs="${Math.max(1, Math.round(+b.seconds || 300))}"${b.auto !== false ? ' data-auto' : ''}${b.sound !== false ? ' data-sound' : ''}`
+    return `<div${a} data-timer role="timer" data-secs="${Math.max(1, Math.round(+b.seconds || 300))}"${b.auto !== false ? ' data-auto' : ''}${b.sound !== false ? ' data-sound' : ''}${b.keep ? ' data-keep' : ''}`
       + ` data-end="${esc(b.endText ?? t('¡Tiempo!'))}" style="${box(b)}cursor:pointer">${timerSVG(b)}</div>`;
   if (b.type === 'lock') return `<div${a}${lockAttrs(b)} style="${box(b)}">${lockSVG(b)}</div>`;
   if (b.type === 'map') return mapHTML(b, a);

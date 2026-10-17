@@ -1331,6 +1331,7 @@ export const ROWS = [
   ['Aspecto', 'Look', 'Aspect', 'Aussehen', 'Aspetto', 'Aspeto', 'Aspecte'],
   ['Anillo', 'Ring', 'Anneau', 'Ring', 'Anello', 'Anel', 'Anell'],
   ['Barra', 'Bar', 'Barre', 'Balken', 'Barra', 'Barra', 'Barra'],
+  ['Sigue al cambiar de diapositiva', 'Keeps going on other slides', 'Continue sur les autres diapositives', 'Läuft auf anderen Folien weiter', 'Continua sulle altre diapositive', 'Continua noutros diapositivos', 'Continua en canviar de diapositiva'],
   ['Empieza solo', 'Starts by itself', 'Démarre seul', 'Startet von selbst', 'Parte da solo', 'Começa sozinho', 'Comença sol'],
   ['Sonido al acabar', 'Sound at the end', 'Son à la fin', 'Ton am Ende', 'Suono alla fine', 'Som no fim', 'So en acabar'],
   ['Texto final', 'Closing text', 'Texte final', 'Schlusstext', 'Testo finale', 'Texto final', 'Text final'],

@@ -1446,6 +1446,15 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     el.click(); await sleep(1100);
     assert(el.classList.contains('rv-t-done') && el.querySelector('.rv-t-txt').textContent === '¡Ya!', 'al acabar, su texto final');
     host.remove();
+    // Changing slide: it starts again — or, «Sigue al cambiar de diapositiva», goes on counting (back: what is left).
+    const two = D.createElement('div'); two.innerHTML = `<section><div data-timer data-auto data-secs="60"></div><div data-timer data-auto data-keep data-secs="60"></div></section><section></section>`; D.body.appendChild(two);
+    const [s1, s2] = two.children, [plain, kept] = s1.children, rt2 = W.eval(`(${T.timerRuntime.toString()})()`), txt = x => x.querySelector('.rv-t-txt');
+    plain.innerHTML = kept.innerHTML = S.timerSVG({ seconds: 60, w: 100, h: 100 });
+    rt2.shown(s1); await sleep(1300); rt2.shown(s2); await sleep(900); rt2.shown(s1); await sleep(100);
+    eq(txt(plain).textContent, '01:00', 'por defecto, al volver empieza de nuevo');
+    eq(txt(kept).textContent, '00:58', 'con «Sigue…», ha seguido contando');
+    two.remove();
+    b().keep = true; assert(/data-keep/.test(R.io.buildHTML().match(/<div[^>]*data-timer[^>]*>/)[0]), 'la opción, en lo exportado'); delete b().keep;
     // PowerPoint: as a picture.
     const blob = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(blob);          // (JSZip comes with the export)
     assert(Object.keys(zip.files).some(n => /^ppt\/media\//.test(n)), 'en PowerPoint, como imagen');
