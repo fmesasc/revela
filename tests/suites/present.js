@@ -483,6 +483,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(Math.abs(cur2.firstChild.st.spin) < 0.01 && /^0\.0deg 75deg/.test(cur2.firstChild.st.orbit) && !cur2.firstChild.hasAttribute('auto-rotate'), 'o gira hasta quedar de frente (y se queda)');
     const cur3 = mk('m1', 'data-arrive="reset"'); api.handoff(prev, cur3); eq(cur3.firstChild.st.spin, 0, 'o empieza de cero');
     const cur4 = mk('otro'); cur4.firstChild.setAttribute('src', 'b.glb'); api.handoff(prev, cur4); eq(cur4.firstChild.st.spin, 0, 'otro modelo distinto: nada que continuar');
+    const cur4b = mk('otra-vista'); api.handoff(prev, cur4b); eq(cur4b.firstChild.st.spin, 0, 'otro objeto del mismo archivo, sin Transformar: conserva su vista');
     // With Morph and "zoom in on arrival": it goes back while travelling, and zooms in once there (not at once)
     const cur5 = mk('m1', 'data-motion="zoom"'); cur5.setAttribute('data-auto-animate', ''); prev.setAttribute('data-auto-animate', '');   // (reveal.js morphs only between two marked slides)
     D.body.appendChild(cur5); prev.firstChild.st.spin = 0.5;
@@ -540,6 +541,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const mh = R.io.buildHTML();
     assert(/<div class="rv-mt" data-id="[^"]+" style="display:inline-block[^"]*">NOVA<\/div>/.test(mh), 'transformar un texto: se mueve la caja justa del texto');
     assert(/autoAnimateStyles:\['opacity','color'/.test(mh) && !/autoAnimateStyles:\[[^\]]*font-size/.test(mh), 'sin animar el tamaño de letra además de la escala');
+    R.store.commit(() => { for (const x of R.state.deck.slides.slice(0, 2)) x.blocks[0].html = '<div style="display:flex;gap:8px"><b>Especie</b><span>Celtis</span></div>'; });
+    { const hh = R.io.buildHTML(); assert(/Especie/.test(hh) && !/class="rv-mt"[^>]*><div style="display:flex/.test(hh), 'un texto con filas propias (display:flex) no va en la caja justa: se encogían'); }
     // Quick buttons and the editor's zoom slider
     assert(D.querySelector('.titlebar .tb-play [data-action="present"]') && D.querySelector('.titlebar .tb-play [data-action="present-current"]'), 'presentar desde el principio o desde aquí, en la barra de título');
     const sl = D.getElementById('zoom-slider'); sl.value = '150'; sl.dispatchEvent(new W.Event('input')); eq(R.state.ui.zoom, 1.5, 'deslizador de zoom del editor');

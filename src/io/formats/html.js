@@ -358,7 +358,10 @@ function blockHTMLRaw(b, slide) {
     // a box as tight as the words — so it glides and grows evenly from where it
     // was, whatever the alignment in its frame (the frame would stretch it, and a
     // change of alignment would make it jump).
-    const tight = b.morphId && !byText && !b.bg && !b.borderColor && !b.curve && !(b.columns > 1) && !b.vertical && !tabbed;
+    // (Not one laid out in rows or a grid of its own — a record card's lines —: in a box as tight as its words, those
+    // shrank to nothing, «EspecieCeltis…» run together.)
+    const laidOut = /display:\s*(?:flex|grid)|<table/i.test(b.html || '');
+    const tight = b.morphId && !byText && !b.bg && !b.borderColor && !b.curve && !(b.columns > 1) && !b.vertical && !tabbed && !laidOut;
     const ta = { center: 'center', right: 'flex-end', justify: 'stretch' }[b.textAlign] || 'flex-start';
     // (Text Art goes on the moving text, not on the still frame: painted on the frame, clipped to the
     // letters, it would show at once where the text ends up while the text itself glides there unseen.)

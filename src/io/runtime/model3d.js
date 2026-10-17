@@ -207,6 +207,9 @@ export function model3dRuntime() {
     [].slice.call(cur.querySelectorAll('model-viewer')).forEach(function (mv) {
       var how = mv.getAttribute('data-arrive') || 'keep'; if (how === 'reset') return;
       var old = partner(mv, prev); if (!old || !old.loaded) return;
+      // (Without Morph, only the same object — its data-id, a duplicated slide —: another model of the same file kept
+      // that one's angle and lost its own view — a character sheet's four views, all alike.)
+      if (!morphs(prev, cur) && !(mv.getAttribute('data-id') && old.getAttribute('data-id') === mv.getAttribute('data-id'))) return;
       handed.set(mv, Math.max(travel(prev, cur), how === 'turn' ? 2400 + 150 : how === 'keep' ? 0 : 1400 + 150));   // (its own movement starts once the arrival is over)
       bridge(mv, old);
       var o = orbitOf(old), spin = typeof old.turntableRotation === 'number' ? old.turntableRotation : 0;

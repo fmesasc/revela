@@ -117,7 +117,7 @@ export default {
         chartBlock({ x: 110, y: 220, w: 520, h: 410, chartType: 'hbar', color: RED, dataLabels: true, xTitle: 'Minutos de retraso en hora punta',
           data: D(['1. Glorieta del Puerto', '2. Ronda y la Loma', '3. Puente Viejo', '4. Plaza del Mercado', '5. Cuesta San Blas'], [14, 11, 9, 7, 6]) }),
         ...[[1, 814, 516], [2, 1096, 234], [3, 1000, 556], [4, 1000, 300], [5, 749, 300]].map(([n, x, y], i) => pin(n, x, y, i)).flat()],
-        notes: 'Cada clic encadena los cinco puntos negros sobre el plano, con un «pop». El gráfico de barras horizontales ordena los cruces por minutos perdidos (inventados).' },
+        notes: 'Con un clic se encadenan los cinco puntos negros sobre el plano, cada uno con un «pop». El gráfico de barras horizontales ordena los cruces por minutos perdidos (inventados).' },
       { layout: 'titleOnly', title: 'Quién ocupa la calzada a las 8:30', bg: BG, transition: 'slide', extra: [
         chartBlock({ x: 60, y: 160, w: 540, h: 480, chartType: 'doughnut',
           data: [{ label: 'Coche particular', value: 61, color: CY }, { label: 'Reparto y carga', value: 23, color: AMB }, { label: 'Taxi y VTC', value: 7, color: '#bb9af7' }, { label: 'Autobús', value: 6, color: GRN }, { label: 'Moto', value: 3, color: RED }] }),
@@ -207,11 +207,11 @@ export default {
         notes: 'Tabla con fórmulas (=C2/(B2+C2)*100 y =SUMA(ARRIBA)). Datos de 2025, inventados.' },
       { layout: 'blank', bg: PAPER, transition: 'fade', extra: [pollBlock({ kind: 'rating', fontSize: 34, question: '¿Cómo valoras el aire de tu barrio?', x: 90, y: 70, w: 1100, h: 580 })],
         notes: 'Valoración de 1 (muy malo) a 5 (muy bueno) desde el móvil: compara la media con el mapa de días malos.' },
-      { layout: 'blank', bg: SKY2, autoAnimate: true, transition: 'fade', back: [sky(SKY1, SKY2), sun(80, 60, 180, '#ffd75e', 100), city('#24445e')], extra: [
+      { layout: 'blank', bg: SKY2, transition: 'fade', transitionSpeed: 'slow', back: [sky(SKY1, SKY2), sun(80, 60, 180, '#ffd75e', 100), city('#24445e')], extra: [
         text('<span style="text-shadow:0 3px 18px #1d5a8a66">Respirar mejor<br>es un dato que se cambia</span>', 300, 70, 900, 200, { fontSize: 60, fontWeight: 800, color: '#ffffff', lineHeight: 1.1 }),
         ...['Zona de bajas emisiones hasta el Puerto (2027)', 'Enchufes en los muelles: barcos con el motor apagado', '30.000 árboles más en cuatro años'].map((t, i) =>
           chain(card(t, 300, 290 + i * 76, 760, 60, '#ffffffd9', { fontSize: 24, color: INK, radius: 30, pad: [12, 26, 12, 26] }), i, 'fade-up', { duration: 450 }))],
-        notes: 'Cierre con Transformar: el sol se va a la otra esquina. Tres medidas que entran seguidas con un clic.' },
+        notes: 'Cierre con el cielo ya limpio de la segunda diapositiva y el sol en la otra esquina. Tres medidas que entran seguidas con un clic.' },
     ]));
   } },
 
@@ -241,18 +241,18 @@ export default {
     const back = [img(grid, 0, 0, 1280, 720, 'Cuadrícula de plano')];
     const sq = (x, y, side, c, label, m2) => [
       withAnims(shape('rect', x, y, side, side, c, { opacity: 22, stroke: c, strokeWidth: 3 }), A('zoom-in', { duration: 500, start: 'afterPrev' })),
-      text(`<b>${m2}</b>`, x, y + side / 2 - 26, side, 52, { fontSize: 36, color: LN, textAlign: 'center', fontFamily: H }),
-      text(label, x - 40, y + side + 14, side + 80, 40, { fontSize: 20, color: DIM, textAlign: 'center' })];
+      withAnims(text(`<b>${m2}</b>`, x, y + side / 2 - 26, side, 52, { fontSize: 36, color: LN, textAlign: 'center', fontFamily: H }), A('zoom-in', { duration: 500, start: 'withPrev' })),
+      withAnims(text(label, x - 40, y + side + 14, side + 80, 40, { fontSize: 20, color: DIM, textAlign: 'center' }), A('fade-in', { duration: 500, start: 'withPrev' }))];
     const YEARS = ['2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026'];
     const DIST = [[2, 18.4], [4, 17.6], [5, 18.9], [7, 17.1], [9, 16.8], [11, 16.2], [12, 17.0], [15, 15.1], [18, 14.9], [21, 15.4], [24, 13.8], [27, 13.1], [30, 14.0], [34, 12.3], [38, 12.6], [42, 11.4]];
     return numbered(build({ name: 'Puerto Albar · vivienda', palette: 'ocean', fonts: 'websafe', title: { color: LN, size: 44, font: H }, body: { color: LN },
-      decor: () => [shape('rect', 1040, 668, 200, 30, 'none', { stroke: '#ffffff40', strokeWidth: 1 }), text('PUERTO ALBAR · VIVIENDA', 1040, 674, 200, 20, { fontSize: 11, color: '#ffffff80', textAlign: 'center', letterSpacing: 2 })] }, [
+      decor: () => [shape('rect', 960, 668, 200, 30, 'none', { stroke: '#ffffff40', strokeWidth: 1 }), text('PUERTO ALBAR · VIVIENDA', 960, 674, 200, 20, { fontSize: 11, color: '#ffffff80', textAlign: 'center', letterSpacing: 2 })] }, [
       { layout: 'blank', bg: BP, transition: 'fade', back, extra: [
         kicker('OBSERVATORIO DE VIVIENDA · HOJA 01', 80, 160, 560, YEL),
         text('Puerto Albar:<br>el precio<br>de quedarse', 80, 200, 540, 280, { fontFamily: H, fontSize: 70, color: '#ffffff', lineHeight: 1.1 }),
         text('Diez años de alquileres, sueldos y barrios, en diez láminas', 84, 500, 520, 80, { fontSize: 22, color: DIM }),
         withAnims(img(plan, 650, 100, 560, 480, 'Planta de un piso de 45 m² con salón-cocina, dormitorio y baño'), A('fade-in', { start: 'afterPrev', duration: 1200 })),
-        text(`45 m² · <b style="color:${YEL}">1.080 €/mes</b>`, 650, 590, 560, 40, { fontSize: 24, color: LN, textAlign: 'center' })],
+        withAnims(text(`45 m² · <b style="color:${YEL}">1.080 €/mes</b>`, 650, 590, 560, 40, { fontSize: 24, color: LN, textAlign: 'center' }), A('fade-in', { start: 'withPrev', duration: 1200 }))],
         notes: 'Portada en estilo plano: la cuadrícula y la planta del piso son dibujos SVG propios. La planta aparece sola al llegar. Es el piso tipo de La Marina (precio inventado).' },
       { layout: 'titleOnly', title: 'Lo que alquilan 1.000 € al mes', bg: BP, transition: 'push', back, extra: [
         ...sq(170, 200, 300, MINT, '2016 · a 7,2 €/m²', '139 m²'),
@@ -318,7 +318,7 @@ export default {
     const H = pairStacks('bold').heading, DBU = `<span style="font-family:${pairStacks('bold').body};font-size:30px">dB</span>`;
     const mix = (a, b, t) => '#' + [0, 2, 4].map(k => Math.round(parseInt(a.slice(1 + k, 3 + k), 16) * (1 - t) + parseInt(b.slice(1 + k, 3 + k), 16) * t).toString(16).padStart(2, '0')).join('');
     const wave = Array.from({ length: 40 }, (_, i) => { const h = Math.round(24 + 190 * Math.abs(Math.sin(i * 0.47) * Math.cos(i * 0.11 + 0.6)) + (i % 3) * 8);
-      return withAnims(shape('rounded', 92 + i * 27.6, 560 - h / 2, 18, h, mix(CY, MAG, i / 39), { radius: 9 }), A('grow', { start: i ? 'withPrev' : 'afterPrev', delay: i * 35, duration: 380 })); });
+      return withAnims(shape('rounded', 92 + i * 27.6, 560 - h / 2, 18, h, mix(CY, MAG, i / 39), { radius: 9 }), A('split', { dir: 'horizontal', start: i ? 'withPrev' : 'afterPrev', delay: i * 35, duration: 380 })); });
     const yDb = db => Math.round(620 - (db - 30) * 480 / 90);
     const LEVELS = [[30, 'Biblioteca'], [45, 'Calle tranquila de noche'], [60, 'Conversación normal'], [75, 'Avenida con tráfico'], [90, 'Moto acelerando'], [100, 'Martillo neumático'], [110, 'Concierto, primera fila']];
     const noiseMap = svgURL(1280, 720, '<defs><filter id="b" filterUnits="userSpaceOnUse" x="0" y="0" width="1280" height="720"><feGaussianBlur stdDeviation="14"/></filter></defs>'
@@ -350,7 +350,7 @@ export default {
         mathBlock({ x: 90, y: 180, w: 640, h: 150, fontSize: 56, color: FG, latex: 'L = 10\\,\\log_{10}\\left(\\dfrac{I}{I_0}\\right)' }),
         text('El nivel sonoro <i>L</i>, en decibelios, compara la intensidad <i>I</i> con la del umbral de audición <i>I</i><sub>0</sub>: es una escala logarítmica.', 760, 190, 440, 140, { fontSize: 24, color: DIM }),
         ...[['+3 ' + DBU, 'el doble de energía sonora', CY], ['+10 ' + DBU, 'se oye el doble de fuerte', YEL], ['90 + 90 = 93', 'dos motos no dan 180 dB', MAG]].map(([n, d, c], i) =>
-          chain(card(`<div style="font-family:${H};font-size:64px;color:${c};line-height:1.05">${n}</div>${d}`, 90 + i * 375, 400, 350, 210, PAN, { fontSize: 22, color: FG, textAlign: 'center', vAlign: 'middle', radius: 16, pad: [20, 16, 20, 16] }), i, 'zoom-in', { sound: 'pop', duration: 400 }))],
+          withAnims(card(`<div style="font-family:${H};font-size:64px;color:${c};line-height:1.05">${n}</div>${d}`, 90 + i * 375, 400, 350, 210, PAN, { fontSize: 22, color: FG, textAlign: 'center', vAlign: 'middle', radius: 16, pad: [20, 16, 20, 16] }), A('zoom-in', { sound: 'pop', duration: 400 })))],
         notes: 'Ecuación del nivel sonoro y tres consecuencias que sorprenden, una por clic con un «pop». Dos fuentes iguales suben el nivel solo 3 dB.' },
       { layout: 'blank', bg: BG, transition: 'zoom', back: [img(noiseMap, 0, 0, 1280, 720, 'Mapa de ruido de Sotoverde: bandas de color alrededor de las vías principales')], extra: [
         text('Mapa de ruido<br>de día', 70, 70, 420, 160, { fontFamily: H, fontSize: 72, color: FG, lineHeight: 1 }),
@@ -455,7 +455,7 @@ export default {
         ...[['Norte', '0,6 h', L4], ['Puerto', '2,1 h', '#b36b00'], ['Plaza Mayor', 'no se vacía', L1]].map(([n, h, c], i) =>
           chain(text(`<b style="font-size:26px">${i + 1}. ${n}</b><br><span style="color:${c};font-weight:700">${h}</span>`, 820, 170 + i * 130, 390, 110, { fontSize: 22, color: INK, bg: '#ffffff', radius: 14, borderColor: c, pad: [12, 18, 12, 18] }), i, 'fade-left')),
         text('Cada 15 minutos se recalcula el orden con los datos de los anclajes.', 70, 590, 1140, 40, { fontSize: 22, color: DIM })],
-        notes: 'Código con pasos de resaltado: cada clic marca una parte. Después, el orden de la ruta para esta mañana (ejemplo inventado).' },
+        notes: 'Con el primer clic entra el orden de la ruta para esta mañana (ejemplo inventado); después, cada clic resalta una parte del código que lo calcula.' },
       { layout: 'blank', bg: BG, transition: 'fade', extra: [pollBlock({ fontSize: 32, display: 'pie', question: '¿Dónde pondrías la próxima estación?', x: 80, y: 60, w: 1120, h: 600,
         options: ['Polígono de Las Lomas', 'Cementerio y huertos', 'Barrio de la Estación', 'Playa de Poniente'] })],
         notes: 'Votación con el resultado en gráfico circular. La estación ganadora se estudiará en el plan de 2027.' },
@@ -497,7 +497,7 @@ export default {
         ...people(410, 2, 96, 110),
         shape('rounded', 90, 560, 1100, 80, SAND, { radius: 14 }),
         text(`<b style="color:${TEAL}">48.000</b> vecinos · <b style="color:${TERRA}">61.000</b> plazas turísticas · <b style="color:${TERRA}">2,9 M</b> visitantes al año`, 110, 578, 1060, 44, { fontSize: 26, color: INK, textAlign: 'center' })],
-        notes: 'Pictograma con iconos de persona: el primero de cada fila es un vecino (verde azulado) y el resto, visitantes. Entran en cadena con un clic. Datos inventados.' },
+        notes: 'Pictograma con iconos de persona: el primero de cada fila es un vecino (verde azulado) y el resto, visitantes. Cada fila entra en cadena con un clic. Datos inventados.' },
       { layout: 'titleOnly', title: 'Una isla que se llena y se vacía', bg: CREAM, transition: 'fade', extra: [
         chartBlock({ x: 70, y: 150, w: 840, h: 500, chartType: 'area', color: TERRA, seriesName: 'Visitantes presentes', grid: true, yTitle: 'Miles de personas en la isla',
           data: D(MON, [38, 41, 52, 70, 96, 180, 330, 432, 210, 95, 46, 40]), series: [{ name: 'Vecinos', values: [48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 48], color: TEAL }] }),
@@ -519,7 +519,7 @@ export default {
         text('Paseo de las Gaviotas, un día de agosto', 90, 60, 1100, 60, { fontFamily: H, fontSize: 44, fontWeight: 700, color: INK }),
         ...[['18.000', 'paseos al día'], ['3,4 km', 'de paseo marítimo'], ['1 de cada 4', 'vecinos lo evita en agosto']].map(([n, l], i) =>
           chain(text(`<span style="font-family:${H};font-size:44px;color:${[TERRA, TEAL, TERRA][i]}">${n}</span><br>${l}`, 90 + i * 380, 150, 340, 120, { fontSize: 22, color: INK }), i, 'fade-down')),
-        withAnims(m3d('kh-CesiumMan', 60, 330, 220, 280, { walk: { clip: '*', face: true, look: true } }), path([[420, 0], [960, 0]], { duration: 6000 }))],
+        withAnims(m3d('kh-CesiumMan', 60, 330, 220, 280, { walk: { clip: '*', face: true, look: true } }), path([[420, 0], [960, 0]], { start: 'afterPrev', duration: 6000 }))],
         notes: 'Clic: las cifras caen una tras otra y luego el paseante 3D camina por el paseo (Modelo 3D ▸ Mientras se mueve, con una trayectoria). Datos inventados.' },
       { layout: 'titleOnly', title: 'La tasa turística', bg: CREAM, transition: 'fade', extra: [
         tableBlock({ x: 70, y: 160, w: 1140, h: 420, fontSize: 24, header: true, headBg: TERRA, headFg: '#ffffff', stroke: SAND, banded: true, band: SUN,
@@ -584,7 +584,7 @@ export default {
         shape('rect', 600, 160, 580, 470, LABEL, { stroke: INK, strokeWidth: 2, shadow: { x: 4, y: 5, blur: 0, color: '#3b322833' } }),
         text('Ficha n.º 18.204 · calle del Molino, 12', 630, 180, 520, 36, { fontSize: 20, color: RUST, fontStyle: 'italic' }),
         ...[['Especie', '<i>Celtis australis</i> (almez)'], ['Perímetro del tronco', '142 cm'], ['Altura', '11 m'], ['Estado', 'bueno'], ['Alcorque', '1,2 × 1,2 m'], ['CO₂ que fija', '38 kg al año']].map(([k, v], i) =>
-          chain(text(field(k, v), 630, 228 + i * 64, 520, 56, { fontSize: 22, color: INK }), i, 'fade-in', { duration: 300 }))],
+          chain(text(field(k, v), 630, 228 + i * 64, 520, 56, { fontSize: 22, color: INK, bg: LABEL }), i, 'fade-in', { duration: 300 }))],   // (bg: with Transform, a text without a box is drawn as tight as its words, and the row's flex would shrink)
         notes: 'La planta 3D gira despacio. Con un clic, los campos de la ficha se rellenan uno tras otro, como en la tableta del inventario. Datos de ejemplo.' },
       { layout: 'blank', bg: PAPER, autoAnimate: true, extra: [
         plant(900, 300, 300, 360, { autoRotate: false, view: 'front', arrive: 'turn' }),
@@ -646,8 +646,9 @@ export default {
     const M = pairStacks('modern'), H = M.heading;
     const BINS = [[YEL, 'Envases'], [BLU, 'Papel y cartón'], [GRN, 'Vidrio'], [BRN, 'Orgánica'], [GRY, 'Resto']];
     const bin = (x, y, s, c, label, i, anim = true) => {
-      const parts = [shape('rounded', x, y + 30 * s, 150 * s, 180 * s, c, { radius: 14 * s }), shape('rounded', x - 10 * s, y, 170 * s, 30 * s, c, { radius: 8 * s, stroke: INK, strokeWidth: 0, opacity: 85 }),
-        shape('rounded', x + 45 * s, y + 8 * s, 60 * s, 10 * s, INK, { radius: 5 * s, opacity: 60 }), shape('rect', x + 30 * s, y + 70 * s, 90 * s, 4 * s, '#ffffff', { opacity: 50 }),
+      // (The see-through parts with the alpha in their colour, not with opacity: «Rebotar» doesn't keep an object's own opacity.)
+      const parts = [shape('rounded', x, y + 30 * s, 150 * s, 180 * s, c, { radius: 14 * s }), shape('rounded', x - 10 * s, y, 170 * s, 30 * s, c + 'd9', { radius: 8 * s, stroke: INK, strokeWidth: 0 }),
+        shape('rounded', x + 45 * s, y + 8 * s, 60 * s, 10 * s, INK + '99', { radius: 5 * s }), shape('rect', x + 30 * s, y + 70 * s, 90 * s, 4 * s, '#ffffff80'),
         ...(label ? [text(label, x - 30 * s, y + 222 * s, 210 * s, 34 * s, { fontSize: Math.round(20 * s), color: INK, textAlign: 'center', fontWeight: 700 })] : [])];
       return anim ? parts.map((p, k) => withAnims(p, A('bounce', { start: k ? 'withPrev' : 'afterPrev', duration: 500, ...(k ? {} : { sound: 'pop' }) }))) : parts;
     };
@@ -667,7 +668,7 @@ export default {
         ...[['2015', 438, GRY], ['2025', 412, BLU], ['Meta 2030', 380, GRN]].map(([y, v, c], i) => [
           text(`<b>${y}</b>`, 880, 150 + i * 130, 300, 34, { fontSize: 22, color: INK }),
           chain(shape('rounded', 880, 190 + i * 130, Math.round(v * 0.68), 40, c, { radius: 8 }), i, 'fade-right', { start: 'afterPrev', duration: 600 }),
-          text(`${v} kg`, 890, 194 + i * 130, 200, 34, { fontSize: 22, color: '#ffffff', fontWeight: 700 })]).flat(),
+          withAnims(text(`${v} kg`, 890, 194 + i * 130, 200, 34, { fontSize: 22, color: '#ffffff', fontWeight: 700 }), A('fade-right', { start: 'withPrev', duration: 600 }))]).flat(),
         text('Kilos por vecino y año (datos de ejemplo).', 880, 560, 320, 60, { fontSize: 18, color: DIM })],
         notes: 'Cifra gigante con redoble al aparecer. A la derecha, barras hechas con formas: 2015, 2025 y la meta. Datos inventados.' },
       { layout: 'titleOnly', title: 'Del cubo al vertedero', bg: '#ffffff', transition: 'fade', extra: [
@@ -705,7 +706,7 @@ export default {
         shape('rounded', 140, 290, 1000, 70, SOFT, { radius: 35 }),
         withAnims(shape('rounded', 140, 290, 395, 70, BLU, { radius: 35, fill2: GRN, gradAngle: 0 }), A('fade-right', { start: 'afterPrev', duration: 1200 })),
         shape('rect', 688, 270, 4, 110, INK), text('<b>55 %</b> en 2030', 600, 390, 180, 40, { fontSize: 22, color: INK, textAlign: 'center' }),
-        text('<b>39,5 %</b> hoy', 160, 304, 300, 44, { fontSize: 26, color: '#ffffff' }),
+        withAnims(text('<b>39,5 %</b> hoy', 160, 304, 300, 44, { fontSize: 26, color: '#ffffff' }), A('fade-right', { start: 'withPrev', duration: 1200 })),
         ...BINS.map(([c, l], i) => bin(215 + i * 190, 470, 0.55, c, '', i, false)).flat()],
         notes: 'Cierre: la barra (formas) se llena sola hasta el 39,5 % actual (el total de la tabla anterior) y la marca negra señala el 55 % de 2030. Pide a cada barrio un compromiso concreto.' },
     ]));
@@ -752,7 +753,7 @@ export default {
         notes: 'Tres años en un gráfico de líneas: 2026 se corta en septiembre (valores vacíos) porque aún no ha terminado. Eje de 0 a 100 % (yMin y yMax). Datos inventados.' },
       { layout: 'titleOnly', title: 'Adónde va el agua', bg: BG, transition: 'fade', extra: [
         chartBlock({ x: 70, y: 150, w: 640, h: 500, chartType: 'doughnut',
-          data: [{ label: 'Hogares', value: 62, color: AQUA }, { label: 'Pérdidas en la red', value: 14, color: WARN }, { label: 'Comercios', value: 9, color: '#7aa2f7' }, { label: 'Industria', value: 8, color: '#bb9af7' }, { label: 'Riego de parques', value: 7, color: '#9be15d' }] }),
+          data: [{ label: 'Hogares', value: 62, color: AQUA }, { label: 'Pérdidas en la red', value: 14, color: WARN }, { label: 'Comercios', value: 11, color: '#7aa2f7' }, { label: 'Industria', value: 7, color: '#bb9af7' }, { label: 'Riego de parques', value: 6, color: '#9be15d' }] }),
         chain(card(`<div style="font-size:64px;font-weight:800;color:${WARN};line-height:1">14 %</div>se escapa por tuberías viejas antes de llegar a ningún grifo: más que todo el riego y la industria juntos.`,
           770, 200, 440, 300, PAN, { fontSize: 24, color: FG, radius: 18 }), 0, 'fade-left')],
         notes: 'Anillo con un color por uso. Las pérdidas en la red son el segundo «consumidor» de la ciudad (datos inventados).' },
@@ -815,10 +816,10 @@ export default {
         text('Cada distrito recibe según su población y su renta: el Sur, con menos renta, recibe más por vecino.', 760, 360, 460, 140, { fontSize: 24, color: INK, textAlign: 'right' })],
         notes: 'Anillo con el reparto por distrito, en miles de euros (inventado). La cifra entra con una campanilla.' },
       { layout: 'titleOnly', title: 'Así se decide', bg: BG, transition: 'fade', extra: [
-        dg('chevrons', 'Propones\n  Cualquier vecino desde 16 años\nEstudiamos\n  ¿Es legal, viable y municipal?\nVotas\n  Hasta 3 proyectos de tu distrito\nSe hace\n  Obras durante el año siguiente', 70, 170, 1140, 300, { oneByOne: true, colors: 'colorful', fontScale: 1.25 }),
+        dg('chevrons', 'Propones\n  Cualquier vecino desde 16 años\nEstudiamos\n  ¿Es legal, viable y municipal?\nVotas\n  Hasta 3 proyectos de tu distrito\nSe hace\n  Obras durante el año siguiente', 70, 170, 1140, 300, { colors: 'colorful' }),
         ...[['Febrero', '412 propuestas'], ['Abril', '96 viables'], ['Mayo', '11.200 votos'], ['2026–2027', '14 proyectos']].map(([m, d], i) =>
           chain(text(`<b style="font-family:${H};font-size:40px;color:${[RED, BLUE, '#b07d00', GRN][i]}">${m}</b><br>${d}`, 80 + i * 285, 490, 260, 110, { fontSize: 24, color: INK, textAlign: 'center' }), i, 'fade-up'))],
-        notes: 'Galones uno a uno: cada clic añade una fase. Después, el calendario y las cifras de la edición (inventadas).' },
+        notes: 'Galones con las cuatro fases. Con un clic entran, debajo de cada fase, su fecha y su cifra de esta edición (inventadas).' },
       { layout: 'titleOnly', title: 'Cada año vota más gente', bg: BG, transition: 'fade', extra: [
         chartBlock({ x: 70, y: 150, w: 820, h: 500, chartType: 'bar', combo: true, color: BLUE, seriesName: 'Votantes', grid: true, yTitle: 'Personas',
           data: D(['2021', '2022', '2023', '2024', '2025', '2026'], [3100, 4800, 6200, 5900, 8400, 11200]), series: [{ name: 'Menores de 30', values: [400, 900, 1500, 1600, 2700, 4100], color: RED }] }),
