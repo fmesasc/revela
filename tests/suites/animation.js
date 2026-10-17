@@ -569,6 +569,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/<span style="white-space: nowrap;"><span class="rv-m" data-id="c:R:1">R<\/span>/.test(h2), 'por caracteres, sin partir palabras');
     const r2 = await presentDeck(R.state.deck, 1);
     assert(r2.targets.filter(x => x.length === 1).length >= 20, 'las letras se desplazan: ' + r2.targets.length);
+    // With Text Art clipped to the letters (gold): each letter paints its own (on the frame, they were drawn piled up).
+    R.store.commit(() => { for (const x of R.state.deck.slides.slice(-2)) for (const t of x.blocks) if (t.type === 'text') t.wordart = 'gold'; });
+    const h3 = R.io.buildHTML();
+    assert(/<span class="rv-m" style="[^"]*background-clip:text[^"]*" data-id="c:R:1">R<\/span>/.test(h3) && !/data-id="tb"[^>]*background-clip:text/.test(h3), 'Text Art dorado: en cada letra, no en el marco');
     D.querySelector('[data-morphby]').value = 'objects'; D.querySelector('[data-morphby]').dispatchEvent(new frame.contentWindow.Event('change'));
     assert(!slide().morphBy, 'volver a objetos desde la cinta');
   });

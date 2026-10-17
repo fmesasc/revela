@@ -277,6 +277,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(await drag(2, 640, 400), 'la diapositiva acepta la miniatura');
     const z = last();
     assert(slide().blocks.length === n + 1 && z.type === 'slideref' && z.target === S[2].id, 'un zoom a la diapositiva 3');
+    // Its picture is still: the steps of that slide (a code's highlighted lines, its animations) aren't steps here.
+    R.store.commit(() => { S[2].blocks.push({ id: 'cz', type: 'code', x: 100, y: 100, w: 500, h: 200, rotation: 0, code: 'a\nb\nc', lang: 'js', lineSteps: '1|2|3', animation: { effect: 'fade-in', order: 1, seq: 1, start: 'click' } }); });
+    const zh = R.io.buildHTML().match(/<a class="slide-zoom"[\s\S]*?<\/a>/)?.[0] || '';
+    assert(zh && !/fragment|data-line-numbers="1/.test(zh), 'la miniatura del zoom, sin pasos propios');
+    R.store.undo(); await sleep(10);
     assert(Math.abs(z.x + z.w / 2 - 640) < 3 && Math.abs(z.y + z.h / 2 - 400) < 3, 'donde se suelta');
     eq(R.state.ui.slideIndex, 0, 'sigue en la diapositiva que se edita');
     await drag(1, 1270, 710); assert(last().x + last().w <= 1280 && last().y + last().h <= 720, 'junto al borde, dentro de la diapositiva');

@@ -361,7 +361,10 @@ function blockHTMLRaw(b, slide) {
     const ta = { center: 'center', right: 'flex-end', justify: 'stretch' }[b.textAlign] || 'flex-start';
     // (Text Art goes on the moving text, not on the still frame: painted on the frame, clipped to the
     // letters, it would show at once where the text ends up while the text itself glides there unseen.)
-    const art = b.wordart ? wordartCSS(b.wordart, b.wordartColor) : '';
+    let art = b.wordart ? wordartCSS(b.wordart, b.wordartColor) : '', body = b.html || '';
+    // (Morph by words or letters with a Text Art clipped to the letters — gold, gradients —: each piece paints its own,
+    // as they move on their own. Painted on the frame, Chrome drew all of them piled where the first one is.)
+    if (byText && /background-clip:text/.test(art)) { body = body.replace(/class="rv-m"/g, `class="rv-m" style="${art.replace(/"/g, "'")}"`); art = art.replace(/(?:^|;)(?:background-image|-webkit-background-clip|background-clip|color):[^;]*/g, '').replace(/^;/, ''); }
     const inner = html => (tight ? `<div class="rv-mt" data-id="${esc(b.morphId)}" style="display:inline-block;max-width:100%;vertical-align:top;${b.vAlign ? `align-self:${ta};` : ''}${art}">${html}</div>` : html);
     return `<div${tight ? a.replace(/ data-id="[^"]*"/, '') : a}${b.levels ? ' class="lv"' : ''}${wrapAttrs(wr)}${tabbed ? ` data-tabs="${esc(JSON.stringify(b.tabs || []))}"` : ''} style="${box(b)}${wrapVars(wr)}${tabbed ? 'white-space:pre-wrap;tab-size:96px;' : ''}font-size:${wordartSize(b)}px;${b.color ? `color:${b.color};` : ''}${b.levels ? levelVars(b) : ''}`
       + `text-align:${b.textAlign || 'left'};${b.fontFamily ? `font-family:${b.fontFamily};` : ''}`
@@ -378,7 +381,7 @@ function blockHTMLRaw(b, slide) {
       + `${b.fontWeight ? `font-weight:${b.fontWeight};` : ''}${b.fontStyle ? `font-style:${b.fontStyle};` : ''}`
       + `${b.columns > 1 ? `column-count:${b.columns};column-gap:32px;` : ''}`
       + `${tight ? '' : art}">`
-      + `${b.curve ? curvedTextSVG(b) : inner(b.html || '')}</div>`;
+      + `${b.curve ? curvedTextSVG(b) : inner(body)}</div>`;
   }
   if (b.type === 'model')
     return `<model-viewer${a}${modelAttrsHTML(b)}${posterAttr(b)} style="${box(bleedBox(b))}background:transparent;${edgeCSS(b)}${bleedBox(b) !== b ? 'pointer-events:none' : ''}"></model-viewer>`;
@@ -547,7 +550,9 @@ function slideRefExport(b, originSlide, deck) {
   const vis = slidePaths(deck);
   const ti = vis.get(deck.slides.indexOf(target)) ?? '0/0';
   const oi = vis.get(deck.slides.indexOf(originSlide)) ?? '0/0';
-  const inner = target.blocks.filter(x => x.type !== 'slideref').map(bl => blockHTML(bl, target)).join('');
+  // (A picture of that slide, still — as a magnifier's —: its objects' steps would be steps of this one, clicks that
+  // changed nothing in sight: a code block's highlighted lines.)
+  const inner = target.blocks.filter(x => x.type !== 'slideref').map(bl => blockHTML({ ...bl, ...STILL }, target)).join('');
   const ret = b.returnBack ? ` data-zoom-return="1" data-target="${ti}" data-origin="${oi}"` : '';
   return `<a class="slide-zoom" href="#/${ti}"${ret} style="${box(b)}display:block;overflow:hidden;`
     + `border:1px solid #ffffff88;border-radius:6px;background:${target.background}">`
