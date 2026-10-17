@@ -3,7 +3,7 @@
 // the print and image exports.
 
 import { registerCodeLangs } from '../../render/codelangs.js';
-import { diagramHTML } from '../../render/diagrams.js';
+import { diagramHTML, diagramLayout } from '../../render/diagrams.js';
 import { pdfRuntime } from '../runtime/pdf.js';
 import { finishStepRuntime } from '../runtime/finishstep.js';
 import { tabRuntime } from '../runtime/tabs.js';
@@ -395,12 +395,7 @@ function blockHTMLRaw(b, slide) {
   // Video / GIF with segments, autoplay, loop, mute or a colour key: the media
   // player draws it; each segment after the first automatic one is a click.
   if (needsPlayer(b)) {
-    const cfg = mediaConfig(b);
-    if (cfg.after && !waitsFor(b, slide)) delete cfg.after;
-    // (It starts by itself, or when the other one ends: its first segment is that, not a click.)
-    const first = cfg.autoplay || cfg.after ? 1 : 0;
-    // No segments, not automatic and no steps of its own: one click plays it all (data-seg -1).
-    const segs = cfg.segments.length ? cfg.segments.slice(first).map((_, k) => k + first) : cfg.autoplay || cfg.after || cfg.steps ? [] : [-1];
+    const { cfg, segs } = mediaSegs(b, slide);
     const clicks = segs.map((n, k) => `<span class="fragment rv-seg" data-seg-of="rvm-${b.id}" data-seg="${n}"${b.animation && !b.animation.trigger ? ` data-fragment-index="${b.animation.order + k + 1}"` : ''} style="display:none"></span>`).join('');
     return `<div${a} id="rvm-${b.id}" data-media="${esc(JSON.stringify(cfg))}" style="${b.type === 'image' ? imgBox(b) : box(b)}${b.type === 'image' ? `filter:${imgFilter(b)};clip-path:${imgClip(b)};${deviceCSS(b)}` : ''}"></div>${clicks}`;
   }
@@ -482,13 +477,45 @@ function blockHTMLRaw(b, slide) {
     // data-line-numbers drives reveal's animated line highlighting; a value like
     // "1|2-3|4" steps through line groups, empty just numbers the lines.
     const ln = b.lineSteps ? ` data-line-numbers="${esc(b.lineSteps)}"` : (b.showLines ? ' data-line-numbers=""' : '');
+    // (With an animation of its own, its steps follow it — highlight.js numbers them from here —, not after the rest.)
+    const lnAt = b.lineSteps && b.animation && !b.animation.trigger ? ` data-fragment-index="${+b.animation.order + 1}"` : '';
     const start = b.lineStart > 1 ? ` data-ln-start-from="${+b.lineStart}"` : '';
     // Morph between slides: the <pre> needs its own data-id for reveal's code animation.
     const morph = b.morphId ? ` data-id="code-${esc(b.morphId)}"` : '';
     return `<div${a} class="rv-code${b.scroll === false ? ' no-scroll' : ''}" style="${box(b)}"><pre${morph} style="margin:0;height:100%;width:100%;font-size:${b.fontSize || 22}px">`
-      + `<code class="language-${b.lang || 'plaintext'}" data-trim${ln}${start}>${esc(b.code || '')}</code></pre></div>`;
+      + `<code class="language-${b.lang || 'plaintext'}" data-trim${ln}${lnAt}${start}>${esc(b.code || '')}</code></pre></div>`;
   }
   return '';
+}
+
+// A video's or GIF's clicks: each segment after the first automatic one.
+function mediaSegs(b, slide) {
+  const cfg = mediaConfig(b);
+  if (cfg.after && !waitsFor(b, slide)) delete cfg.after;
+  // (It starts by itself, or when the other one ends: its first segment is that, not a click.)
+  const first = cfg.autoplay || cfg.after ? 1 : 0;
+  // No segments, not automatic and no steps of its own: one click plays it all (data-seg -1).
+  const segs = cfg.segments.length ? cfg.segments.slice(first).map((_, k) => k + first) : cfg.autoplay || cfg.after || cfg.steps ? [] : [-1];
+  return { cfg, segs };
+}
+// The clicks an object with an animation of its own takes after that click: a diagram «one by one» (its first item
+// comes in with it), a code's highlighted lines (the first group shows with it), a video's segments.
+function extraClicks(b, slide) {
+  if (!b.animation || b.animation.trigger) return 0;
+  if (b.type === 'diagram' && b.oneByOne) return Math.max(0, ...diagramLayout(b).map(p => +p.i || 0));
+  if (b.type === 'code' && b.lineSteps) return String(b.lineSteps).split('|').length - 1;
+  if (needsPlayer(b)) return mediaSegs(b, slide).segs.length;
+  return 0;
+}
+// The slide with its steps renumbered so those clicks are the object's own: the animations after it wait for them.
+// (They shared them: a text set for the next click came in with the diagram's second item, its step-by-step code
+// lines after everything else.)
+function spreadClicks(s) {
+  const spans = s.blocks.map(b => [+b.animation?.order || 0, extraClicks(b, s)]).filter(([, n]) => n > 0);
+  if (!spans.length) return s;
+  const at = o => o + spans.reduce((t, [d, n]) => t + (o > d ? n : 0), 0);
+  const fix = a => (a && !a.trigger && a.order != null ? { ...a, order: at(+a.order) } : a);
+  return { ...s, blocks: s.blocks.map(b => (b.animation || b.anims ? { ...b, animation: fix(b.animation), ...(Array.isArray(b.anims) && { anims: b.anims.map(fix) }) } : b)) };
 }
 
 // A map that flies from stop to stop (io/runtime/geomap.js draws it live): its settings as data, and each stop's
@@ -647,14 +674,15 @@ const backdropCSS = (bd, w, h) => (bd.layers.length ? `.reveal .slides>.rv-bd{po
 const backdropHTML = bd => (bd.layers.length ? `<div class="rv-bd" aria-hidden="true">${bd.layers.map((l, i) =>
   `<div class="stage rv-bd-k" data-k="${i}" style="background:${l.bg}">${l.html.replace(/ data-id="[^"]*"/g, '')}</div>`).join('')}</div>` : '');
 
-function slideHTML(s, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck), bd = backdropPlan(deck, fit)) {
+function slideHTML(s0, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck), bd = backdropPlan(deck, fit)) {
+  const s = spreadClicks(s0);
   // Entry/exit can differ (reveal's "x-in y-out"); speed can be set per slide.
   const tin = ownTransition(s) || deck.defaultTransition || 'slide';
   // As in PowerPoint, a transition belongs to the slide that comes in: the one before leaves with it too — a shape
   // reveal (wipe, circle…) keeping the rest of the screen, a fade crossing over evenly. (Before, only shape reveals: a
   // slide with no transition of its own vanished at once while the next one faded in over white — a flash on every
   // fade after a Morph slide, as imported from PowerPoint.) With Morph next, reveal.js's own way.
-  const vis = deck.slides.filter(x => !x.hidden), next = vis[vis.indexOf(s) + 1];
+  const vis = deck.slides.filter(x => !x.hidden), next = vis[vis.indexOf(s0) + 1];
   const nextIn = next && (ownTransition(next) || deck.defaultTransition);
   const tout = s.transitionOut || (isShapeTransition(nextIn) || (next?.transition && !next.autoAnimate) ? nextIn : null);
   const trans = tout && tout !== tin ? ` data-transition="${tin}-in ${tout}-out"`

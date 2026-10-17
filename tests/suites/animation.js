@@ -453,7 +453,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(b.lineSteps, '|1-2|4', 'pasos guardados'); eq(b.lang, 'python', 'lenguaje'); eq(b.lineStart, 10, 'línea inicial');
     R.trans.setAnimation('fade-up');
     let html = R.io.buildHTML();
-    assert(/<code class="language-python" data-trim data-line-numbers="\|1-2\|4" data-ln-start-from="10">/.test(html), 'atributos de reveal.js');
+    assert(/<code class="language-python" data-trim data-line-numbers="\|1-2\|4" data-fragment-index="\d+" data-ln-start-from="10">/.test(html), 'atributos de reveal.js (sus pasos, tras su animación)');
     assert(/class="fragment fade-up rv-code"/.test(html), 'animación y clase propia en un solo class');
     assert(/\.rv-code pre code\{max-height:100%/.test(html), 'el bloque se desplaza dentro de su caja');
     R.slides.toggleAutoAnimate(); html = R.io.buildHTML();
@@ -478,6 +478,20 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); const b = newText(); R.state.ui.selection = b.id;
     b.animation = { effect: 'grow', order: 1 };
     assert(/class="fragment grow"/.test(R.io.buildHTML()), 'clase de fragmento grow');
+  });
+
+  await test('un diagrama uno a uno, un código por líneas o un vídeo por tramos con animación propia: lo de después espera a sus clics', async () => {
+    reset(); R.blocks.addDiagram(); const d = last(); d.text = 'Uno\nDos\nTres'; d.oneByOne = true; d.animation = { effect: 'fade-in', order: 1 };
+    const t = newText(); t.animation = { effect: 'fade-up', order: 2 };
+    let html = R.io.buildHTML();
+    const dg = [...html.matchAll(/class="fragment fade-in" data-fragment-index="(\d+)"/g)].map(m => +m[1]);
+    eq([...new Set(dg)].sort().join(), '1,2,3', 'el diagrama: un clic por elemento, desde el suyo');
+    assert(/class="fragment fade-up" data-fragment-index="4"/.test(html), 'el texto, después del último elemento (compartía el segundo)');
+    reset(); R.blocks.addCode(); const c = last(); c.code = 'a\nb\nc'; c.lineSteps = '1|2|3'; c.animation = { effect: 'fade-in', order: 1 };
+    const t2 = newText(); t2.animation = { effect: 'fade-up', order: 2 };
+    html = R.io.buildHTML();
+    assert(/data-line-numbers="1\|2\|3" data-fragment-index="2"/.test(html), 'las líneas del código, justo después de su clic');
+    assert(/class="fragment fade-up" data-fragment-index="4"/.test(html), 'el texto, después de las líneas (iban después de todo)');
   });
 
   await test('auto-animate: data-auto-animate y data-id en el export', async () => {
