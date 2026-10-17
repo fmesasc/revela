@@ -575,7 +575,6 @@ export default {
  "Lago lee lejos": "Lagok urrutira irakurtzen du",
  "Rejilla de glifos de 16 columnas sobre negro; la eñe, en violeta, porque la tipografía nació para el español. Cada fila entra después de la anterior.": "16 zutabeko glifo-sareta beltzaren gainean; eñea morez, tipografia gaztelaniarako jaio baitzen. Errenkada bakoitza aurrekoaren ondoren sartzen da.",
  "JUEGO DE CARACTERES": "KARAKTERE-JOKOA",
- "612 glifos, del ñ al ¿": "612 glifo, ñ-tik ¿-ra",
  "A": "A",
  "B": "B",
  "C": "C",
@@ -735,5 +734,6 @@ export default {
  "coste": "kostua",
  "lectores": "irakurle",
  "px": "px",
- "Hz": "Hz"
+ "Hz": "Hz",
+ "612 glifos, de la ñ al ¿": "612 glifo, ñ-tik ¿-ra"
 };

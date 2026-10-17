@@ -575,7 +575,6 @@ export default {
  "Lago lee lejos": "Lago يُقرأ من بعيد",
  "Rejilla de glifos de 16 columnas sobre negro; la eñe, en violeta, porque la tipografía nació para el español. Cada fila entra después de la anterior.": "شبكة محارف من 16 عمودًا على خلفية سوداء؛ حرف ñ بالبنفسجي لأن الخط وُلد للإسبانية. يدخل كل صف بعد سابقه.",
  "JUEGO DE CARACTERES": "مجموعة المحارف",
- "612 glifos, del ñ al ¿": "612 محرفًا، من ñ إلى ¿",
  "A": "A",
  "B": "B",
  "C": "C",
@@ -735,5 +734,6 @@ export default {
  "coste": "التكلفة",
  "lectores": "قارئ",
  "px": "px",
- "Hz": "Hz"
+ "Hz": "Hz",
+ "612 glifos, de la ñ al ¿": "612 محرفًا، من ñ إلى ¿"
 };

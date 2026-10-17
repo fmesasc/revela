@@ -575,7 +575,6 @@ export default {
  "Lago lee lejos": "Lago leest ver",
  "Rejilla de glifos de 16 columnas sobre negro; la eñe, en violeta, porque la tipografía nació para el español. Cada fila entra después de la anterior.": "Raster van glyphs van 16 kolommen op zwart; de ñ, in violet, omdat het lettertype voor het Spaans is geboren. Elke rij komt na de vorige binnen.",
  "JUEGO DE CARACTERES": "TEKENSET",
- "612 glifos, del ñ al ¿": "612 glyphs, van ñ tot ¿",
  "A": "A",
  "B": "B",
  "C": "C",
@@ -735,5 +734,6 @@ export default {
  "coste": "kosten",
  "lectores": "lezers",
  "px": "px",
- "Hz": "Hz"
+ "Hz": "Hz",
+ "612 glifos, de la ñ al ¿": "612 glyphs, van ñ tot ¿"
 };

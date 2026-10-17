@@ -5,6 +5,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); const T = await frame.contentWindow.eval("import('/src/features/animation/transitions.js')");
     const names = ['cube', 'cover', 'page', 'gallery', 'fall', 'drop', 'swirl', 'shrink', 'blur', 'flash'];
     assert(names.every(n => T.CUSTOM_TRANSITIONS[n]), 'cada una definida');
+    assert(/visibility:hidden/.test(T.CUSTOM_TRANSITIONS.cover[0]) && T.CUSTOM_TRANSITIONS.cube.every(x => /visibility:hidden/.test(x)), 'cubrir y cubo: la que queda tapada o de lado, oculta al acabar (se veía debajo o a través)');
     assert(names.every(n => D.querySelector(`[data-slide-transition="${n}"]`)), 'en la cinta');
     R.slides.addSlide('blank'); await sleep(10); R.trans.setSlideTransition('blur'); await sleep(10);
     const html = R.io.buildHTML();

@@ -575,7 +575,6 @@ export default {
  "Lago lee lejos": "Lago liest weit",
  "Rejilla de glifos de 16 columnas sobre negro; la eñe, en violeta, porque la tipografía nació para el español. Cada fila entra después de la anterior.": "Glyphenraster mit 16 Spalten auf Schwarz; das Ñ in Violett, weil die Schrift für das Spanische entstand. Jede Zeile erscheint nach der vorigen.",
  "JUEGO DE CARACTERES": "ZEICHENSATZ",
- "612 glifos, del ñ al ¿": "612 Glyphen, vom ñ bis zum ¿",
  "A": "A",
  "B": "B",
  "C": "C",
@@ -735,5 +734,6 @@ export default {
  "coste": "Kosten",
  "lectores": "Leser",
  "px": "px",
- "Hz": "Hz"
+ "Hz": "Hz",
+ "612 glifos, de la ñ al ¿": "612 Glyphen, vom ñ bis zum ¿"
 };

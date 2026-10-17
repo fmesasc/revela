@@ -17,8 +17,10 @@ export const CUSTOM_TRANSITIONS = {
   rise: ['transform:scale(1.25);opacity:0', 'transform:scale(.8) translate3d(0,8%,0);opacity:0'],
   // More, as PowerPoint's: a cube turning, the new one covering the old, the old falling,
   // blur, swirl, shrink, dropping from above, a flash, a page turning and a gallery.
-  cube: ['transform:perspective(1400px) translate3d(-50%,0,0) rotateY(-90deg) translate3d(-50%,0,0);opacity:.4', 'transform:perspective(1400px) translate3d(50%,0,0) rotateY(90deg) translate3d(50%,0,0);opacity:.4'],
-  cover: ['transform:none;opacity:1', 'transform:translate3d(100%,0,0)'],
+  // (The slides that end in place or half seen — the one covered, a cube's sides — hidden once the move is over:
+  // visibility changes at its end. They stayed on screen, under or through the slide shown.)
+  cube: ['transform:perspective(1400px) translate3d(-50%,0,0) rotateY(-90deg) translate3d(-50%,0,0);opacity:.4;visibility:hidden', 'transform:perspective(1400px) translate3d(50%,0,0) rotateY(90deg) translate3d(50%,0,0);opacity:.4;visibility:hidden'],
+  cover: ['transform:none;opacity:1;visibility:hidden', 'transform:translate3d(100%,0,0)'],
   fall: ['transform:perspective(1200px) translate3d(0,30%,0) rotateX(-35deg) rotateZ(-6deg);opacity:0', 'opacity:0'],
   blur: ['filter:blur(18px);opacity:0', 'filter:blur(18px);opacity:0'],
   swirl: ['transform:rotate(-180deg) scale(.2);opacity:0', 'transform:rotate(180deg) scale(.2);opacity:0'],

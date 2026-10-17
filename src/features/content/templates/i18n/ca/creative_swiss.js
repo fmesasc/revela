@@ -575,7 +575,6 @@ export default {
  "Lago lee lejos": "Lago es llegeix de lluny",
  "Rejilla de glifos de 16 columnas sobre negro; la eñe, en violeta, porque la tipografía nació para el español. Cada fila entra después de la anterior.": "Reixeta de glifs de 16 columnes sobre negre; la enya, en violeta, perquè la tipografia va néixer per a l'espanyol. Cada fila entra després de l'anterior.",
  "JUEGO DE CARACTERES": "JOC DE CARÀCTERS",
- "612 glifos, del ñ al ¿": "612 glifs, de la ñ al ¿",
  "A": "A",
  "B": "B",
  "C": "C",
@@ -735,5 +734,6 @@ export default {
  "coste": "cost",
  "lectores": "lectors",
  "px": "px",
- "Hz": "Hz"
+ "Hz": "Hz",
+ "612 glifos, de la ñ al ¿": "612 glifs, de la ñ al ¿"
 };

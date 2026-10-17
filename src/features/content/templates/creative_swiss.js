@@ -202,7 +202,7 @@ export default {
             rows: [['Origen', '2024', '2025', 'Variación'], ['Socios y donantes', '812', '934', '=C2-B2'], ['Empresas', '426', '488', '=C3-B3'], ['Ayuntamientos', '310', '355', '=C4-B4'],
               ['Fundaciones amigas', '198', '240', '=C5-B5'], ['Venta de libros', '64', '71', '=C6-B6'], ['<b>Total</b>', '=SUMA(B2:B6)', '=SUMA(C2:C6)', '=SUMA(D2:D6)']] }),
           at(T('+278', 60, 430, 300, 100, 80, BLUE, IN, { fontWeight: 700, letterSpacing: -2 }), 'fade-up'),
-          T('mil euros más que en 2024', 60, 530, 300, 40, 20, INK, IN),
+          at(T('mil euros más que en 2024', 60, 530, 300, 40, 20, INK, IN), 'fade-up', { start: 'withPrev' }),
           ...folio('04', 'Cuentas')],
           notes: 'Tabla de solo líneas con fórmulas: la variación es la resta de las dos columnas (=C2-B2) y los totales, sumas de rangos. Si cambias una cifra, se recalcula. Cuentas inventadas.' },
         { layout: 'blank', bg: W, transition: 'fade', extra: [
@@ -267,7 +267,7 @@ export default {
           chartBlock({ x: 560, y: 80, w: 660, h: 580, chartType: 'doughnut', color: INK,
             data: [{ label: 'Madera', value: 38, color: INK }, { label: 'Metal', value: 24, color: '#4d4a46' }, { label: 'Plástico', value: 21, color: LIME }, { label: 'Tejido', value: 11, color: '#9a968f' }, { label: 'Otros', value: 6, color: '#c8c4bc' }] }),
           at(T('38 %', 60, 440, 400, 140, 120, INK, WS, { fontWeight: 700, letterSpacing: -4 }), 'fade-up'),
-          T('de las piezas son de madera', 60, 580, 400, 40, 22, INK, WS)],
+          at(T('de las piezas son de madera', 60, 580, 400, 40, 22, INK, WS), 'fade-up', { start: 'withPrev' })],
           notes: 'Dona con un color propio por material: los grises y un solo acento lima para el plástico, que es la historia de la exposición. Datos de ejemplo.' },
         { layout: 'blank', bg: '#ffffff', transition: 'fade', extra: [
           R(660, 0, 620, 720, LIME),
@@ -338,7 +338,7 @@ export default {
           T('Recorrido recomendado · 90 minutos', 60, 80, 900, 60, 40, K, FI, { fontWeight: 700 }),
           img(plan(true), 60, 150, 820, 426, 'Plano de la planta baja con cuatro salas numeradas, la tienda y la entrada'),
           withAnims(E(460, 476, 36, 36, Y, { stroke: K, strokeWidth: 4 }),
-            path([[-279, -180], [-8, -180], [263, -180], [230, 0]], { duration: 5000, start: 'click' })),
+            path([[-279, -180], [-8, -180], [263, -180], [300, 0]], { duration: 5000, start: 'click' })),
           ...[['1', 'Minerales', '15 min'], ['2', 'Dinosaurios', '30 min'], ['3', 'Fauna ibérica', '25 min'], ['4', 'Océanos', '20 min']].flatMap(([n, t, m], i) => [
             sign(n, 930, 160 + i * 110, 56),
             T(`<b>${t}</b><br>${m}`, 1002, 160 + i * 110, 220, 70, 22, K, FI, { lineHeight: 1.3 })]),
@@ -600,7 +600,7 @@ export default {
         { layout: 'blank', bg: BG, transition: 'fade', transitionSpeed: 'slow', extra: [
           withAnims(img(rings(7), 660, -120, 820, 820, 'Arcos concéntricos como ondas de sonido', { decorative: true }), A('spin360', { start: 'afterPrev', duration: 6000 })),
           kicker('ORQUESTA SINFÓNICA DE VALLEHONDO', 60, 60, 600),
-          at(T('Temporada', 54, 300, 700, 120, 104, W, RW, { fontWeight: 300, letterSpacing: -2, lineHeight: 1 }), 'fade-up', { start: 'afterPrev', duration: 800, sound: 'chime' }),
+          at(T('Temporada', 54, 300, 700, 120, 104, W, RW, { fontWeight: 300, letterSpacing: -2, lineHeight: 1 }), 'fade-up', { start: 'withPrev', delay: 500, duration: 800, sound: 'chime' }),
           T('26/27', 54, 410, 700, 150, 140, AMB, RW, { fontWeight: 700, letterSpacing: -4, lineHeight: 1 }),
           T('dieciséis conciertos · cuatro ciclos · una ciudad', 40, 560, 560, 130, 20, G, RW, { curve: -14, letterSpacing: 4 })],
           notes: 'Portada inspirada en los carteles de conciertos suizos: arcos concéntricos (un SVG propio) que dan una vuelta lenta al empezar, y el título con un sonido de campanillas. Texto curvo abajo. Orquesta inventada.' },
@@ -651,8 +651,8 @@ export default {
             options: ['Una sinfonía romántica', 'Una ópera en versión de concierto', 'Bandas sonoras de cine', 'Un estreno encargado por la orquesta'] })],
           notes: 'Votación en directo con resultado en tarta: el público elige desde el móvil y lo tenemos en cuenta para la temporada 27/28.' },
         { layout: 'blank', bg: BG, transition: 'zoom', extra: [
-          withAnims(img(rings(7), 210, -150, 860, 860, 'Arcos concéntricos', { decorative: true, opacity: 70 }), A('spin360', { start: 'afterPrev', duration: 9000 })),
-          at(T('Nos vemos<br>en la sala', 60, 230, 1160, 260, 110, W, RW, { fontWeight: 700, textAlign: 'center', lineHeight: 1, letterSpacing: -2 }), 'zoom-in', { start: 'afterPrev', duration: 700, sound: 'applause' }),
+          withAnims(img(rings(7), 210, -150, 860, 860, 'Arcos concéntricos', { decorative: true, opacity: 45 }), A('spin360', { start: 'afterPrev', duration: 9000 })),
+          at(T('Nos vemos<br>en la sala', 60, 230, 1160, 260, 110, W, RW, { fontWeight: 700, textAlign: 'center', lineHeight: 1, letterSpacing: -2 }), 'zoom-in', { start: 'withPrev', delay: 400, duration: 700, sound: 'applause' }),
           T('Abonos a la venta desde el 1 de septiembre · orquestavallehondo.example', 140, 620, 1000, 44, 20, AMB, RW, { textAlign: 'center', letterSpacing: 2, bg: BG, pad: [8, 12, 8, 12] })],
           notes: 'Cierre: los arcos giran detrás y el título entra con un aplauso (sonido de la animación). Buen momento para dar las fechas de venta.' },
       ]));
@@ -792,7 +792,7 @@ export default {
           notes: 'Escala modular: la fórmula (bloque de ecuación) da cada tamaño a partir de 16 px. Los siete tamaños entran en cadena con un clic.' },
         { layout: 'blank', bg: K, transition: 'push', extra: [
           kicker('JUEGO DE CARACTERES', 60, 50, 600, '#a991ff'),
-          T('612 glifos, del ñ al ¿', 60, 80, 900, 60, 44, W, DM, { fontWeight: 700, letterSpacing: -1 }),
+          T('612 glifos, de la ñ al ¿', 60, 80, 900, 60, 44, W, DM, { fontWeight: 700, letterSpacing: -1 }),
           ...'ABCDEFGHIJKLMNÑOPQRSTUVWXYZabcdefghijklmnñopqrstuvwxyz0123456789¿?¡!áéíóú€&@'.slice(0, 80).split('').map((c, i) => { const x = 60 + (i % 16) * 72.5, y = 170 + Math.floor(i / 16) * 98;
             return at(T(c, x, y, 70, 92, 46, c === 'Ñ' || c === 'ñ' ? W : '#d9d9d9', DM, { fontWeight: 700, textAlign: 'center', vAlign: 'middle', bg: c === 'Ñ' || c === 'ñ' ? VI : '#1c1c1c', pad: [0, 0, 0, 0], radius: 0 }),
               'fade-in', { start: i % 16 ? 'withPrev' : (i ? 'afterPrev' : 'click'), duration: 250 }); })],
@@ -863,8 +863,7 @@ export default {
           R(60, 600, 120, 10, RED)],
           notes: 'Cartel de servicio público a la suiza: tipografía de palo seco, todo a la izquierda y una gota roja enorme que entra sola. Campaña y entidad inventadas.' },
         { layout: 'blank', bg: W, autoAnimate: true, transition: 'none', extra: [
-          drop(-600, -600, 2480, 1900),
-          at(R(0, 0, 1280, 720, RED), 'fade-in', { start: 'afterPrev', duration: 300 }),
+          drop(-600, -590, 2480, 1500),
           head('Cada<br>2 segundos', 60, 120, 1100, 280, 130, W),
           T('alguien en un hospital necesita una transfusión. Operaciones, partos, accidentes, tratamientos contra el cáncer.', 64, 440, 760, 140, 30, W, HV, { lineHeight: 1.4 })],
           notes: 'Transformar: la gota de la portada crece hasta llenar toda la pantalla y el titular cambia de sitio y de color. Dato orientativo, citado a menudo en campañas.' },

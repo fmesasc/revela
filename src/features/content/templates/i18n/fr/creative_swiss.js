@@ -575,7 +575,6 @@ export default {
  "Lago lee lejos": "Lago se lit de loin",
  "Rejilla de glifos de 16 columnas sobre negro; la eñe, en violeta, porque la tipografía nació para el español. Cada fila entra después de la anterior.": "Grille de glyphes de 16 colonnes sur fond noir ; le ñ, en violet, car la police est née pour l’espagnol. Chaque rangée entre après la précédente.",
  "JUEGO DE CARACTERES": "JEU DE CARACTÈRES",
- "612 glifos, del ñ al ¿": "612 glyphes, du ñ au ¿",
  "A": "A",
  "B": "B",
  "C": "C",
@@ -735,5 +734,6 @@ export default {
  "coste": "coût",
  "lectores": "lecteurs",
  "px": "px",
- "Hz": "Hz"
+ "Hz": "Hz",
+ "612 glifos, de la ñ al ¿": "612 glyphes, du ñ au ¿"
 };

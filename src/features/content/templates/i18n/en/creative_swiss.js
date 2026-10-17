@@ -575,7 +575,6 @@ export default {
  "Lago lee lejos": "Lago reads from afar",
  "Rejilla de glifos de 16 columnas sobre negro; la eñe, en violeta, porque la tipografía nació para el español. Cada fila entra después de la anterior.": "16-column glyph grid on black; the eñe in violet, because the typeface was born for Spanish. Each row comes in after the previous one.",
  "JUEGO DE CARACTERES": "CHARACTER SET",
- "612 glifos, del ñ al ¿": "612 glyphs, from ñ to ¿",
  "A": "A",
  "B": "B",
  "C": "C",
@@ -735,5 +734,6 @@ export default {
  "coste": "cost",
  "lectores": "readers",
  "px": "px",
- "Hz": "Hz"
+ "Hz": "Hz",
+ "612 glifos, de la ñ al ¿": "612 glyphs, from ñ to ¿"
 };
