@@ -131,7 +131,7 @@ export default {
     const tile = (label, value, x, y, w, h, c) => card(`<div style="font-size:26px;font-weight:700;color:${W}">${label}</div><div style="font-family:${MONO};font-size:17px;color:${c};margin-top:6px">${value}</div>`,
       x, y, w, h, CARD, { fontSize: 22, textAlign: 'center', vAlign: 'middle', borderColor: c + '66', pad: [10, 12, 10, 12] });
     const IN = [['Aparecer', 'fade-in'], ['Desde abajo', 'fade-up'], ['Desde arriba', 'fade-down'], ['Desde la derecha', 'fade-left'], ['Desde la izquierda', 'fade-right'],
-      ['Acercar', 'zoom-in'], ['Crecer', 'grow'], ['Encoger', 'shrink'], ['Girar', 'spin'], ['Voltear', 'flip'], ['Rebotar', 'bounce']];
+      ['Acercar', 'zoom-in'], ['Barrido', 'wipe'], ['Disolver', 'dissolve'], ['Girar', 'spin'], ['Voltear', 'flip'], ['Rebotar', 'bounce']];
     const EMPH = [['Vuelta completa', 'spin360'], ['Resaltar en rojo', 'highlight-red'], ['Resaltar en verde', 'highlight-green'], ['Resaltar en azul', 'highlight-blue'],
       ['Rojo mientras dura', 'highlight-current-red'], ['Verde mientras dura', 'highlight-current-green'], ['Azul mientras dura', 'highlight-current-blue'], ['Tachar', 'strike']];
     const OUT = [['Desaparecer', 'fade-out', 'Está y se va.'], ['Atenuar', 'semi-fade-out', 'Se queda a media luz.'], ['Aparecer y desaparecer', 'fade-in-then-out', 'Entra y se va en el paso siguiente.'],
@@ -468,10 +468,10 @@ export default {
         notes: 'Los botones de acción van a la diapositiva anterior, la siguiente, la primera o la última al presentar.' },
       { title: 'Líneas y guiones', layout: 'titleOnly', extra: [
         ...lines.flatMap(([k, n], i) => { const y = 185 + i * 105;
-          return [shape(k, 110, y - 20, 330, 100, 'none', { stroke: C[i], strokeWidth: 4 }), cap(n, `'${k}'`, 460, y + 2, 180, INK, { textAlign: 'left' })]; }),
+          return [shape(k, 110, y - 20, 330, 100, 'none', { stroke: C[i], strokeWidth: 4 }), cap(n, `'${k}'`, 460, y + 2, 200, INK, { textAlign: 'left' })]; }),
         ink([[110, 625], [160, 590], [230, 640], [300, 585], [380, 630], [440, 600]], C[5], 4), cap('Forma libre', 'a mano', 460, 592, 180, INK, { textAlign: 'left' }),
         ...[['solid', 'Continua'], ['dash', 'Guiones'], ['dot', 'Puntos'], ['dashDot', 'Guion y punto']].flatMap(([v, n], i) => { const y = 185 + i * 110;
-          return [shape('line', 700, y + 10, 300, 40, 'none', { stroke: INK, strokeWidth: 2 + i * 2, dash: v }), cap(n, `dash: '${v}' · ${2 + i * 2} px`, 1010, y, 200, INK, { textAlign: 'left' })]; })],
+          return [shape('line', 680, y + 10, 290, 40, 'none', { stroke: INK, strokeWidth: 2 + i * 2, dash: v }), cap(n, `dash: '${v}' · ${2 + i * 2} px`, 990, y, 240, INK, { textAlign: 'left' })]; })],
         notes: 'Forma ▸ Estilo de forma: color, grosor y tipo de línea. La forma libre se dibuja con el ratón o el dedo (pestaña Dibujo).' },
       { title: 'Relleno: degradado y transparencia', layout: 'titleOnly', extra: [
         ...[[0, 'Lineal 0°'], [45, 'Lineal 45°'], [90, 'Lineal 90°'], [135, 'Lineal 135°'], [180, 'Lineal 180°'], ['radial', 'Radial']].flatMap(([a, n], i) => { const x = 90 + i * 185;
@@ -541,8 +541,8 @@ export default {
         ['Burbujas', 'El tamaño, de la segunda serie (margen)', { chartType: 'bubble', color: C[0], data: d(['Café', 'Té', 'Zumo', 'Batido', 'Bollería'], [540, 260, 220, 120, 380]), series: [{ name: 'Margen', values: [70, 65, 40, 55, 30] }] }],
         'Dispersión: temperatura (°C) frente a bebidas frías vendidas. Burbujas: ventas de cada producto y, por el tamaño, su margen.'),
       two('Radar y cascada', ['Radar', 'Varios criterios de un vistazo', { chartType: 'radar', color: C[2], data: d(['Sabor', 'Precio', 'Rapidez', 'Trato', 'Limpieza', 'Ambiente'], [9, 6, 7, 9, 8, 7]) }],
-        ['Cascada', 'Sumas y restas hasta el total', { chartType: 'waterfall', color: C[5], data: d(['Ingresos', 'Materia prima', 'Personal', 'Alquiler', 'Otros', 'Beneficio'], [980, -310, -380, -120, -60, 0]) }],
-        'El radar resume la encuesta de clientes (de 0 a 10). La cascada va de los ingresos al beneficio, en miles de euros; la última barra, con valor 0, es el total.'),
+        ['Cascada', 'Sumas y restas hasta el total', { chartType: 'waterfall', color: C[5], data: d(['Ingresos', 'Materia prima', 'Personal', 'Alquiler', 'Otros', 'Total'], [980, -310, -380, -120, -60, 0]) }],
+        'El radar resume la encuesta de clientes (de 0 a 10). La cascada va de los ingresos al beneficio, en miles de euros; la última barra, llamada «Total», la calcula sola: es el beneficio.'),
       two('Embudo y rectángulos', ['Embudo', 'Cada paso, menos que el anterior', { chartType: 'funnel', color: C[3], data: d(['Ven la oferta', 'Abren la app', 'Piden', 'Repiten'], [12000, 5200, 2100, 900]) }],
         ['Rectángulos', 'El área de cada uno, su peso', { chartType: 'treemap', data: d(['Centro', 'Campus', 'Puerto', 'Estación', 'Aeropuerto', 'Mercado'], [470, 490, 330, 250, 180, 120]) }],
         'El embudo cuenta una conversión; los rectángulos, qué parte de las ventas hace cada tienda.'),

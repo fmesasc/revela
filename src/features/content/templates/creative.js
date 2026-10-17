@@ -191,7 +191,7 @@ export default {
       const sprout = [[200, 340], [204, 300], [198, 250], [202, 200], [200, 160], [170, 130], [130, 120], [110, 140], [140, 165], [180, 168], [200, 160],
         [220, 120], [260, 90], [300, 92], [292, 125], [250, 150], [205, 158]];
       const plant = lib3d('kh-DiffuseTransmissionPlant');
-      return mk({ name: 'Un huerto en el balcón', palette: 'paper', fonts: 'classic', title: { size: 58, color: GREEN } }, [
+      return numbered(mk({ name: 'Un huerto en el balcón', palette: 'paper', fonts: 'classic', title: { size: 58, color: GREEN } }, [
         { layout: 'blank', transition: 'fade', transitionSpeed: 'slow', extra: [
           blot('cloud', -120, -80, 620, 420, '#9cc58a', -8), blot('ellipse', 900, 380, 520, 460, '#f2b8a0', 0, 60), blot('ellipse', 760, -60, 380, 340, '#c9b6e4', 0, 45),
           blot('teardrop', 60, 470, 260, 300, '#a8d0e6', 200, 45),
@@ -245,7 +245,7 @@ export default {
           hand('¡Gracias!', 390, 290, 500, 140, 110, TERRA, { textAlign: 'center' }),
           text('Taller de huerto urbano · Centro cívico del barrio', 140, 640, 1000, 40, { fontSize: 24, textAlign: 'center', color: INK })],
           notes: 'Texto curvo en círculo alrededor de una mancha amarilla, como un sol pintado.' },
-      ]);
+      ]));
     } },
 
   // ============================================================================
@@ -279,7 +279,7 @@ export default {
         { title: '¿A dónde se va?', layout: 'titleOnly', bg: BG, transition: 'fade', extra: [
           ...lights(2),
           pane(90, 180, 500, 480),
-          chartBlock({ x: 130, y: 210, w: 420, h: 420, chartType: 'doughnut', data: cats.map(([l, v]) => ({ label: l, value: v })) }),
+          chartBlock({ x: 130, y: 210, w: 420, h: 420, chartType: 'doughnut', legend: false, data: cats.map(([l, v, c]) => ({ label: l, value: v, color: c })) }),
           glass(cats.map(([l, v, c]) => `<div style="display:flex;justify-content:space-between;margin:10px 0"><span><span style="color:${c};font-size:34px;line-height:0">●</span> ${l}</span><b>${v} %</b></div>`).join(''),
             640, 180, 550, 360, { fontSize: 30 }),
           text('La vivienda se lleva más de un tercio. El ocio, solo un 10 %.', 640, 570, 550, 90, { fontSize: 24, color: '#cfd6ff' })],
@@ -534,12 +534,12 @@ export default {
       const gridB = kinds.map(([k, c], i) => { const [x, y, w, h, r] = posB[i]; return withId(shape(k, x, y, w, h, c, { rotation: r }), ids[i]); });
       return numbered(mk({ name: 'Bauhaus: forma y función', palette: 'office', fonts: 'modern', title: { size: 54, color: INK, font: FF.josefin } }, [
         { layout: 'blank', bg: CREAM, transition: 'fade', extra: [
-          at(E(640, 70, 520, 520, BLUE), 'zoom-in', { duration: 700 }),
+          at(E(640, 70, 520, 520, BLUE), 'zoom-in', { start: 'afterPrev', duration: 700 }),
           withAnims(shape('pie', 900, 330, 340, 340, RED, { rotation: 90 }), A('spin', { start: 'afterPrev', duration: 700 })),
           at(shape('triangle', 660, 400, 280, 240, YEL), 'fade-up', { start: 'afterPrev', duration: 500 }),
           at(R(60, 470, 640, 26, INK), 'fade-right', { start: 'afterPrev', duration: 500 }),
           at(R(980, 60, 26, 260, INK), 'fade-down', { start: 'withPrev', duration: 500 }),
-          head('BAUHAUS', 60, 230, 700, 150, 118, INK, { letterSpacing: 4 }),
+          head('BAUHAUS', 60, 236, 700, 150, 104, INK, { letterSpacing: 4 }),
           head('Forma y función · 1919–1933', 64, 520, 640, 50, 32, RED),
           text('Una escuela que cambió la forma de las cosas cotidianas', 64, 580, 560, 80, { fontSize: 24, color: INK })],
           notes: 'Composición de formas primarias que se monta sola al empezar: círculo, cuarto de círculo que gira, triángulo y barras.' },
@@ -671,6 +671,9 @@ export default {
         px('PUNTOS 004250', 440, 28, 400, 44, 28, W, { textAlign: 'center' }), img(COIN, 1050, 30, 36, 36, 'Moneda'), px('× 17', 1094, 28, 130, 44, 28, YEL)];
       const knight = lib3d('kk-Knight'), hero = lib3d('kn-character');
       const stat = (label, v, c, x, y) => [px(label, x, y, 110, 26, 16, '#94b0c2'), R(x + 110, y + 6, 120, 14, '#333c57'), R(x + 110, y + 6, Math.round(120 * v / 5), 14, c)];
+      // (Made before the coins: its click comes first and the coins spin with it.)
+      const climber = withAnims(model('kn-character', 60, 470, 150, 190, { walk: { clip: hero.walk, end: 'jump', endOnce: true, face: true, look: true } }),
+        path([[180, 0], [330, -110], [560, -200], [830, -300], [960, -300]], { duration: 4800 }));
       const heroes = [['kk-Knight', 'CABALLERO', [5, 1, 3]], ['kk-Mage', 'MAGA', [2, 5, 3]], ['kk-Rogue', 'PÍCARA', [3, 2, 5]], ['kk-Barbarian', 'BÁRBARO', [5, 1, 2]]];
       return numbered(mk({ name: 'Pixel Quest · taller de videojuegos', palette: 'revela', fonts: 'tech', title: { size: 44, color: YEL, font: FF.mono } }, [
         { layout: 'blank', bg: SKY, transition: 'fade', extra: [
@@ -689,7 +692,7 @@ export default {
             model(id, x + 20, 190, 235, 290, { view: 'front' }),
             px(n, x, 485, 275, 40, 26, i === 1 ? YEL : W, { textAlign: 'center' }),
             ...stat('FUERZA', f, RED, x + 20, 540), ...stat('MAGIA', m, BLUE, x + 20, 575), ...stat('VELOC.', v, GRN, x + 20, 610)];
-        }).concat([withAnims(px('▼', 400, 128, 120, 50, 40, YEL, { textAlign: 'center' }), A('bounce'))]),
+        }).concat([withAnims(px('▼', 432, 128, 120, 50, 40, YEL, { textAlign: 'center' }), A('bounce'))]),
           notes: 'Cuatro personajes 3D (KayKit, CC0) en sus casillas, con barras de atributos hechas con rectángulos. Clic: la flecha amarilla cae rebotando sobre la elegida.' },
         { title: 'EL BUCLE DEL JUEGO', layout: 'titleOnly', bg: BG, transition: 'slide', extra: [
           dg('cycle', 'Leer los controles\nMover el mundo\nDibujar la pantalla', 60, 170, 700, 500, { colors: 'colorful', oneByOne: true }),
@@ -702,8 +705,7 @@ export default {
           ...ground(656),
           ...[[380, 520, 3], [640, 420, 3], [900, 320, 4]].flatMap(([x, y, n]) => Array.from({ length: n }, (_, k) => img(BLOCK, x + k * 56, y, 56, 56, 'Plataforma', { decorative: true }))),
           ...[[420, 460], [690, 360], [960, 260], [1060, 260]].map(([x, y], i) => withAnims(img(COIN, x, y, 40, 40, 'Moneda'), A('spin', { start: 'withPrev', duration: 900, delay: 400 + i * 200 }))),
-          withAnims(model('kn-character', 60, 470, 150, 190, { walk: { clip: hero.walk, end: 'jump', endOnce: true, face: true, look: true } }),
-            path([[180, 0], [330, -110], [560, -200], [830, -300], [960, -300]], { duration: 4800 })),
+          climber,
           px('Reglas: cada salto cabe en un salto. Cada moneda enseña el camino.', 60, 180, 860, 70, 22, W)],
           notes: 'Clic: el personaje sube por las plataformas siguiendo un recorrido, con su animación de andar, y salta al llegar. Las monedas giran a la vez.' },
         { title: 'EL BUCLE EN CÓDIGO', layout: 'titleOnly', bg: BG, transition: 'slide', extra: [
