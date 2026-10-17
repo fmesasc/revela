@@ -18,6 +18,8 @@ const m3d = (id, x, y, w, h, props = {}) => model(id, x, y, w, h, { caption: '',
 // Neon text in any colour (the Text Art «Neón» preset is blue).
 const neon = (str, c) => `<span style="color:#ffffff;text-shadow:0 0 6px ${c},0 0 16px ${c},0 0 32px ${c}">${str}</span>`;
 // A number with its label under it.
+// The same animation starting together with the previous one (one click for a whole card).
+const withPrev = b => ({ ...b, animation: { ...b.animation, start: 'withPrev' } });
 const stat = (n, label, x, y, w, color, fg, size = 72, props = {}) => text(`<div style="font-size:${size}px;font-weight:800;line-height:1.05;color:${color}">${n}</div><div style="margin-top:8px">${label}</div>`,
   x, y, w, Math.round(size * 1.15 + 90), { fontSize: 24, color: fg, ...props });
 
@@ -36,7 +38,7 @@ const habitScreen = (brand, warm) => svgURL(360, 720,
 // Its weekly summary, wide (tablet and laptop).
 const habitWide = (brand, warm, w, h) => svgURL(w, h,
   `<rect width="${w}" height="${h * 0.14}" fill="${brand}"/>` + T(w * 0.04, h * 0.09, h * 0.05, '#fff', 'Hábito · Resumen semanal', ' font-weight="700"')
-  + ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d, i) => { const bw = w * 0.07, x = w * 0.06 + i * w * 0.085, v = [0.6, 0.8, 0.7, 0.95, 0.5, 0.85, 0.9][i], bh = h * 0.45 * v, y0 = h * 0.8;
+  + ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d, i) => { const bw = w * 0.07, x = w * 0.06 + i * w * 0.085, v = [0.8, 0.9, 0.85, 1, 0.7, 0.85, 0.92][i], bh = h * 0.45 * v, y0 = h * 0.8;
     return `<rect x="${x}" y="${y0 - bh}" width="${bw}" height="${bh}" rx="${bw * 0.18}" fill="${i === 3 ? warm : brand}" opacity="${i === 3 ? 1 : 0.75}"/>` + T(x + bw / 2, h * 0.87, h * 0.04, '#666', d, ' text-anchor="middle"'); }).join('')
   + `<rect x="${w * 0.66}" y="${h * 0.22}" width="${w * 0.3}" height="${h * 0.26}" rx="${h * 0.03}" fill="#fff" stroke="#e6e4f0"/>` + T(w * 0.68, h * 0.3, h * 0.035, '#777', 'Racha actual')
   + T(w * 0.68, h * 0.42, h * 0.09, warm, '23 días', ' font-weight="700"')
@@ -97,7 +99,7 @@ export default {
         watch(700, 80, 500, 560, { autoRotate: false, view: 'side', arrive: 'view' }),
         anim(stat('14 días', 'de batería en uso normal', 90, 200, 560, GOLD, CREAM, 80), 1, 'fade-up'),
         anim(stat('38 g', 'con la correa de titanio', 90, 400, 270, GOLD, CREAM, 64), 2, 'fade-up'),
-        anim(stat('5 ATM', 'resistencia al agua', 380, 400, 270, GOLD, CREAM, 64), 3, 'fade-up')],
+        anim(stat('10 ATM', 'resistencia al agua', 380, 400, 270, GOLD, CREAM, 64), 3, 'fade-up')],
         notes: 'Segunda Transformar: ahora el reloj va a la vista de lado de esta diapositiva (Modelo 3D ▸ Desde la anterior ▸ Llega ▸ Ir a la vista de esta diapositiva). Cifras de ejemplo, inventadas para la plantilla.' },
       { layout: 'titleOnly', title: 'Autonomía según el uso', bg: BG, autoAnimate: true, extra: [
         watch(1030, 30, 190, 190, { autoRotate: true, spin: 40, view: 'front', arrive: 'front' }),
@@ -113,8 +115,8 @@ export default {
       { layout: 'titleOnly', title: 'Tres acabados', bg: BG, transition: 'convex', extra: [
         ...[['Titanio natural', '449 €', '#e8e2d6', '#9c9486'], ['Oro champán', '549 €', '#f1d9a0', '#b8860b'], ['Negro carbono', '499 €', '#5a5550', '#15120f']].map(([n, p, c1, c2], i) => [
           anim(shape('ellipse', 180 + i * 380, 180, 160, 160, c1, { fill2: c2, gradType: 'radial', stroke: GOLD, strokeWidth: 2 }), i + 1, 'zoom-in'),
-          anim(text(`<div style="font-size:30px;color:${CREAM}">${n}</div><div style="font-size:64px;font-weight:700;color:${GOLD}">${p}</div><div style="color:${DIM}">Correa de piel incluida</div>`,
-            90 + i * 380, 370, 340, 220, { fontSize: 22, textAlign: 'center' }), i + 1, 'fade-up')]).flat()],
+          withPrev(anim(text(`<div style="font-size:30px;color:${CREAM}">${n}</div><div style="font-size:64px;font-weight:700;color:${GOLD}">${p}</div><div style="color:${DIM}">Correa de piel incluida</div>`,
+            90 + i * 380, 370, 340, 220, { fontSize: 22, textAlign: 'center' }), i + 1, 'fade-up'))]).flat()],
         notes: 'Cada acabado aparece con un clic: la esfera es una elipse con degradado radial. Precios de ejemplo.' },
       { layout: 'blank', bg: BG, transition: 'zoom', extra: [
         glow(-200, 200, 700, '#6b4a1f', BG, 55),
@@ -149,7 +151,7 @@ export default {
       { layout: 'blank', bg: BG, autoAnimate: true, extra: [
         car(290, 250, 700, 490, { autoRotate: false, view: 'front', arrive: 'view', edge: 'fade' }),
         ...[['620 km', 'de autonomía (WLTP)'], ['3,2 s', 'de 0 a 100 km/h'], ['15 min', 'del 10 al 80 %'], ['0 g', 'de CO₂ al circular']].map(([n, l], i) =>
-          withAnims(stat(n, l, 70 + i * 290, 70, 270, [CY, BL, '#f5a623', '#b8e986'][i], FG, 76, { textAlign: 'center' }), A('grow', { start: i ? 'afterPrev' : 'withPrev', delay: i ? 0 : 300, duration: 450 })))],
+          withAnims(stat(n, l, 70 + i * 290, 70, 270, [CY, BL, '#f5a623', '#b8e986'][i], FG, 76, { textAlign: 'center' }), A('zoom-in', { start: i ? 'afterPrev' : 'withPrev', delay: i ? 0 : 300, duration: 450 })))],
         notes: 'Las cuatro cifras entran solas una detrás de otra («después de la anterior») mientras el coche se coloca de frente. Datos de ejemplo.' },
       { layout: 'titleOnly', title: 'Más lejos, más rápido', bg: BG, transition: 'slide', extra: [
         chartBlock({ x: 90, y: 180, w: 520, h: 440, chartType: 'bar', color: CY, dataLabels: true,
@@ -246,7 +248,9 @@ export default {
     const lamp = (x, y, w, h, props) => ({ ...m3d('kh-IridescenceLamp', x, y, w, h, props), id: LAMP });
     const bottle = (x, y, w, h, props) => ({ ...m3d('kh-WaterBottle', x, y, w, h, props), id: BOT });
     const grad = s => `<span style="background-image:linear-gradient(90deg,#0071e3,#8e44ad 50%,#e84393);-webkit-background-clip:text;background-clip:text;color:transparent">${s}</span>`;
-    const label = (str, x, y, w, i, align = 'left') => withAnims(text(str, x, y, w, 90, { fontSize: 22, color: GRAY, textAlign: align }), A('fade-in', { start: i ? 'afterPrev' : 'click', duration: 500 }));
+    const label = (str, x, y, w, i, align = 'left') => withAnims(text(str, x, y, w, 90, { fontSize: 22, color: GRAY, textAlign: align }), A('fade-in', { start: i ? 'afterPrev' : 'withPrev', delay: i ? 0 : 700, duration: 500 }));
+    // Its pointer line, appearing with it (made after the label so that it plays with it).
+    const pointer = (x, y, w) => withAnims(shape('line', x, y, w, 1, 'none', { stroke: '#48484a', strokeWidth: 2 }), A('fade-in', { start: 'withPrev', duration: 500 }));
     return numbered(build({ name: 'Keynote · Casa 2026', palette: 'grayscale', fonts: 'clean', title: { color: INK, size: 54 }, body: { color: INK } }, [
       { layout: 'blank', bg: '#ffffff', transition: 'fade', extra: [
         text('Presentación de otoño', 140, 200, 1000, 50, { fontSize: 28, color: GRAY, textAlign: 'center' }),
@@ -262,9 +266,9 @@ export default {
         notes: 'La lámpara gira despacio sobre negro. Su pantalla tiene un material iridiscente: los colores cambian con el ángulo.' },
       { layout: 'blank', bg: '#000000', autoAnimate: true, extra: [
         lamp(420, 90, 440, 560, { autoRotate: false, view: 'front', arrive: 'turn' }),
-        shape('line', 340, 205, 150, 1, 'none', { stroke: '#48484a', strokeWidth: 2 }), label('<b style="color:#f5f5f7">Pantalla iridiscente</b><br>Vidrio con capa dicroica', 50, 165, 280, 0, 'right'),
-        shape('line', 800, 400, 150, 1, 'none', { stroke: '#48484a', strokeWidth: 2 }), label('<b style="color:#f5f5f7">Luz regulable</b><br>De 2700 K a 6500 K', 960, 360, 270, 1),
-        shape('line', 340, 580, 200, 1, 'none', { stroke: '#48484a', strokeWidth: 2 }), label('<b style="color:#f5f5f7">Base de latón</b><br>Con carga inalámbrica', 50, 540, 280, 2, 'right')],
+        label('<b style="color:#f5f5f7">Pantalla iridiscente</b><br>Vidrio con capa dicroica', 50, 165, 280, 0, 'right'), pointer(340, 205, 150),
+        label('<b style="color:#f5f5f7">Luz regulable</b><br>De 2700 K a 6500 K', 960, 360, 270, 1), pointer(800, 400, 150),
+        label('<b style="color:#f5f5f7">Base de latón</b><br>Con carga inalámbrica', 50, 540, 280, 2, 'right'), pointer(340, 580, 200)],
         notes: 'Transformar: la lámpara viene de la diapositiva anterior dando una vuelta hasta quedar de frente. Las etiquetas aparecen solas, una tras otra.' },
       { layout: 'titleOnly', title: 'Prisma, en cifras', bg: LIGHT, transition: 'slide', extra: [
         ...[['1.200', 'lúmenes'], ['9 W', 'de consumo'], ['25.000', 'horas de vida'], ['100 %', 'aluminio reciclado']].map(([n, l], i) =>
@@ -314,7 +318,7 @@ export default {
         device(dashScreen(), 'browser', 610, 170, 620, 380, 'Panel de Pulso en el navegador', { rotation: -3 })],
         notes: 'Portada con el nombre en neón de color propio y el producto dentro de una ventana de navegador (Imagen ▸ Dispositivo ▸ Navegador).' },
       { layout: 'titleOnly', title: 'Hoy: los datos, en siete sitios', bg: BG, extra: [
-        dg('radial', 'Tu equipo\n  Hojas de cálculo\n  CRM\n  Web\n  Soporte\n  Facturación\n  Anuncios', 90, 160, 700, 510, { colors: 'colorful', oneByOne: true }),
+        dg('radial', 'Tu equipo\n  Hojas de cálculo\n  CRM\n  Web\n  Soporte\n  Facturación\n  Anuncios\n  Correo', 90, 160, 700, 510, { colors: 'colorful', oneByOne: true }),
         text('Cada lunes, <b style="color:#e0af68">4 horas</b> juntando cifras a mano para la reunión de ventas.', 830, 280, 360, 220, { fontSize: 30, color: FG })],
         notes: 'Diagrama radial uno a uno: cada herramienta aparece con un clic. Pregunta al público cuántas usan ellos.' },
       { layout: 'blank', bg: BG, transition: 'fade', extra: [
@@ -336,7 +340,7 @@ export default {
           data: ['T1', 'T2', 'T3', 'T4'].map((l, i) => ({ label: l, value: [120, 150, 170, 190][i] })),
           series: [{ name: 'Equipo', values: [60, 90, 130, 170], color: GR }, { name: 'Empresa', values: [20, 35, 55, 80], color: PU }], yTitle: 'Clientes' })],
         notes: 'Tres resultados medios de los clientes y la evolución de clientes por plan en barras apiladas. Cifras de ejemplo.' },
-      { layout: 'titleOnly', title: 'Conectarlo: tres líneas', bg: BG, extra: [
+      { layout: 'titleOnly', title: 'Conectarlo en tres pasos', bg: BG, extra: [
         codeBlock({ x: 90, y: 170, w: 780, h: 380, fontSize: 24, lang: 'javascript', lineSteps: '1|3-5|7-8',
           code: "import { Pulso } from '@pulso/sdk';\n\nconst pulso = new Pulso({\n  clave: process.env.PULSO_CLAVE,\n});\n\npulso.evento('compra', { importe: 49 });\npulso.identificar(usuario.id, { pais: 'ES' });" }),
         text(ul('Importa el SDK', 'Crea el cliente con tu clave', 'Envía eventos: salen en el panel en segundos'), 910, 190, 280, 380, { fontSize: 24, color: FG, lineHeight: 1.5 })],
@@ -423,12 +427,12 @@ export default {
         text(ul('Terciopelo de algodón reciclado', 'Estructura de haya con certificado forestal', 'Fundas lavables a 30 °C', 'Tres plazas · 210 × 92 cm'), 730, 280, 480, 330, { fontSize: 26, color: INK, lineHeight: 1.45 })],
         notes: 'Transformar: el sofá viene de la portada y da una vuelta hasta quedar de frente (Modelo 3D ▸ Desde la anterior ▸ Llega ▸ Dar una vuelta hasta su vista).' },
       { layout: 'blank', bg: BG, autoAnimate: true, extra: [
-        sofa(340, 60, 600, 360, { autoRotate: false, view: 'side', arrive: 'view' }),
+        sofa(340, 60, 600, 360, { autoRotate: false, view: 'three2', arrive: 'view' }),
         text('Cinco colores de temporada', 90, 420, 1100, 60, { fontFamily: serif, fontSize: 40, color: INK, textAlign: 'center' }),
         ...[['Teja', TER], ['Oliva', OLI], ['Arena', SAND], ['Mostaza', '#c9962b'], ['Carbón', '#3a3633']].map(([n, c], i) => [
           withAnims(shape('ellipse', 175 + i * 200, 500, 110, 110, c, { stroke: '#ffffff', strokeWidth: 4 }), A('zoom-in', { start: i ? 'afterPrev' : 'click', duration: 300 })),
           withAnims(text(n, 140 + i * 200, 620, 180, 40, { fontSize: 22, color: INK, textAlign: 'center' }), A('fade-in', { start: 'withPrev', duration: 300 }))]).flat()],
-        notes: 'Segunda Transformar: el sofá sube y va a su vista de lado. Las muestras de color aparecen seguidas con un clic.' },
+        notes: 'Segunda Transformar: el sofá sube y gira a la vista de tres cuartos del otro lado. Las muestras de color aparecen seguidas con un clic.' },
       { layout: 'titleOnly', title: 'Para sentarse bien', bg: BG, transition: 'slide', extra: [
         m3d('kh-SheenChair', 110, 170, 460, 380, { autoRotate: false, view: 'three', motion: 'swing' }),
         m3d('kh-ChairDamaskPurplegold', 710, 170, 460, 380, { autoRotate: false, view: 'three', motion: 'swing' }),
@@ -536,9 +540,9 @@ export default {
         text('Cómo protegemos la plataforma y los datos de nuestros clientes', 90, 520, 1100, 50, { fontSize: 28, color: DIM, textAlign: 'center' })],
         notes: 'Portada en neón verde con un color propio. El hexágono da una vuelta al llegar (efecto Girar 360°).' },
       { title: 'Defensa en capas', layout: 'titleOnly', bg: BG, extra: [
-        dg('target', 'Datos\nAplicación\nRed\nPersonas', 90, 160, 560, 500, { colors: 'colorful', oneByOne: true }),
-        text(ul('<b>Datos:</b> cifrado en reposo y en tránsito', '<b>Aplicación:</b> revisiones de código y pruebas', '<b>Red:</b> segmentada, sin puertos abiertos', '<b>Personas:</b> formación y doble factor'), 690, 200, 500, 420, { fontSize: 26, color: FG, lineHeight: 1.5 })],
-        notes: 'Diana uno a uno, de dentro afuera: lo más valioso en el centro.' },
+        dg('target', 'Personas\nRed\nAplicación\nDatos', 90, 160, 560, 500, { colors: 'colorful', oneByOne: true }),
+        text(ul('<b>Personas:</b> formación y doble factor', '<b>Red:</b> segmentada, sin puertos abiertos', '<b>Aplicación:</b> revisiones de código y pruebas', '<b>Datos:</b> cifrado en reposo y en tránsito'), 690, 200, 500, 420, { fontSize: 26, color: FG, lineHeight: 1.5 })],
+        notes: 'Diana uno a uno, de fuera adentro: lo más valioso, los datos, queda en el centro.' },
       { title: 'Cada petición se comprueba', layout: 'titleOnly', bg: BG, transition: 'slide', extra: [
         ...boxes, ...links,
         withAnims(text('Nunca confiar, siempre verificar: identidad, dispositivo y permiso en cada paso.', 90, 460, 1100, 50, { fontSize: 26, color: DIM, textAlign: 'center' }), A('fade-up', { start: 'afterPrev' })),
@@ -584,6 +588,15 @@ export default {
         text('El hervidor Kettle Uno,<br>de la cuna a la cuna', 90, 480, 620, 90, { fontSize: 28, color: DIM, fontStyle: 'italic' }),
         plant(760, 70, 440, 580, { autoRotate: true, spin: 10, view: 'three', edge: 'fade' })],
         notes: 'Portada con la planta 3D (material con transmisión de luz: las hojas se ven a contraluz) girando despacio.' },
+      { layout: 'blank', bg: BG, autoAnimate: true, extra: [
+        plant(60, 120, 360, 500, { autoRotate: false, view: 'front', arrive: 'turn' }),
+        text('Menos que el año pasado', 460, 90, 740, 70, { fontFamily: serif, fontSize: 48, color: G }),
+        ...[['−10 %', 'de CO₂ por unidad', G], ['72 %', 'de materiales reciclados', '#43a047'], ['10 años', 'de garantía y piezas de repuesto', BR]].map(([n, l, c], i) =>
+          [shape('rect', 460, 300 + i * 120, 740, 2, '#d7ebcf'),
+            withAnims(text(n, 460, 190 + i * 120, 290, 100, { fontSize: 54, fontWeight: 700, color: c, vAlign: 'middle' }), A('fade-left', { start: i ? 'afterPrev' : 'click', duration: 500 })),
+            withAnims(text(l, 760, 190 + i * 120, 440, 100, { fontSize: 28, color: INK, vAlign: 'middle' }), A('fade-in', { start: 'withPrev', duration: 500 }))]).flat(),
+        text('Frente a 2025 (datos de ejemplo).', 460, 570, 700, 40, { fontSize: 20, color: DIM })],
+        notes: 'Transformar: la planta viene de la portada, se desplaza a la izquierda y da una vuelta al llegar. Las tres cifras entran seguidas con un clic.' },
       { title: 'Todo el ciclo de vida', layout: 'titleOnly', bg: BG, extra: [
         dg('cycle', 'Materiales\nFabricación\nTransporte\nUso\nReparación\nReciclaje', 90, 160, 640, 500, { colors: 'colorful', oneByOne: true }),
         text('Medimos el impacto en cada fase, no solo en la fábrica. La reparación cierra el círculo: un hervidor que dura diez años evita fabricar otros dos.', 770, 240, 420, 340, { fontSize: 26, color: INK })],
@@ -593,15 +606,6 @@ export default {
           data: [{ label: 'Materiales', value: 42 }, { label: 'Fabricación', value: 18 }, { label: 'Transporte', value: 6 }, { label: 'Uso (10 años)', value: 20 }, { label: 'Reciclaje', value: -9 }, { label: 'Total', value: 0 }] }),
         text('kg de CO₂ equivalente por unidad (estimación de ejemplo)', 90, 620, 1100, 40, { fontSize: 20, color: DIM, textAlign: 'center' })],
         notes: 'Gráfico de cascada: cada fase suma y el reciclaje resta. La barra final es el total.' },
-      { layout: 'blank', bg: BG, autoAnimate: true, extra: [
-        plant(60, 120, 360, 500, { autoRotate: false, view: 'front', arrive: 'turn' }),
-        text('Menos que el año pasado', 460, 90, 740, 70, { fontFamily: serif, fontSize: 48, color: G }),
-        ...[['−38 %', 'de CO₂ por unidad', G], ['72 %', 'de materiales reciclados', '#43a047'], ['10 años', 'de garantía y piezas de repuesto', BR]].map(([n, l, c], i) =>
-          [shape('rect', 460, 300 + i * 120, 740, 2, '#d7ebcf'),
-            withAnims(text(n, 460, 190 + i * 120, 290, 100, { fontSize: 54, fontWeight: 700, color: c, vAlign: 'middle' }), A('fade-left', { start: i ? 'afterPrev' : 'click', duration: 500 })),
-            withAnims(text(l, 760, 190 + i * 120, 440, 100, { fontSize: 28, color: INK, vAlign: 'middle' }), A('fade-in', { start: 'withPrev', duration: 500 }))]).flat(),
-        text('Frente al modelo anterior (datos de ejemplo).', 460, 570, 700, 40, { fontSize: 20, color: DIM })],
-        notes: 'Transformar: la planta se desplaza a la izquierda y da una vuelta al llegar. Las tres cifras entran seguidas.' },
       { title: '¿De qué está hecho?', layout: 'titleOnly', bg: BG, extra: [
         chartBlock({ x: 90, y: 180, w: 600, h: 460, chartType: 'hbar', color: G, dataLabels: true,
           data: [{ label: 'Acero reciclado', value: 46 }, { label: 'Plástico reciclado', value: 26 }, { label: 'Vidrio', value: 14 }, { label: 'Electrónica', value: 10 }, { label: 'Otros', value: 4 }] }),
