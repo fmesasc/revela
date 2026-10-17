@@ -299,7 +299,7 @@ export default {
           notes: 'Primer clic: una luz recorre la carretera 1 alrededor de la isla (trayectoria con silbido). Segundo clic: las paradas aparecen una tras otra. El mapa es un dibujo aproximado hecho para esta plantilla.' },
         { title: 'ETAPAS', layout: 'titleOnly', bg: '#0b1220', extra: [
           tableBlock({ x: 90, y: 175, w: 620, h: 450, fontSize: 23, header: true, headBg: '#1d6b55', headFg: '#ffffff', stroke: '#2a3a55', banded: true, band: '#1f3354', color: FG,
-            rows: [['Tramo', 'Km', 'Horas'], ['Reikiavik → Vík', '187', '2,5'], ['Vík → Jökulsárlón', '190', '2,5'], ['Jökulsárlón → Egilsstaðir', '250', '3,5'],
+            rows: [['Tramo', 'Km', 'Horas'], ['Reikiavik → Vík', '187', '2,5'], ['Vík → Jökulsárlón', '190', '2,5'], ['Jökulsárlón → Egilsstaðir', '290', '4'],
               ['Egilsstaðir → Mývatn', '165', '2'], ['Mývatn → Akureyri', '100', '1,3'], ['Akureyri → Reikiavik', '390', '5'], ['<b>Total</b>', '=SUMA(ARRIBA)', '=SUMA(ARRIBA)']], colW: [5, 2, 2] }),
           glow(760, 200, 440, '#1d6b55', '#0b1220', 60),
           m3d('kh-CarConcept', 740, 190, 480, 330, { view: 'three', arrive: 'turn', bleed: true, edge: 'free' }),
@@ -346,9 +346,9 @@ export default {
           ...[[130, 220, 80], [300, 200, 70], [220, 160, 90], [90, 300, 60], [360, 280, 60]].map(([x, y, d], i) => shape('ellipse', x, y, d, d * 0.8, '#ffffff', { opacity: 25 + i * 8 })),
           text('STROKKUR', 520, 150, 660, 100, { fontFamily: H, fontSize: 90, color: FG }),
           text('Este géiser lanza agua hirviendo a 20 metros cada pocos minutos. ¿Aguantas sin mirar el móvil?', 520, 250, 660, 120, { fontSize: 28, color: DIM }),
-          timer(240, 600, 400, 200, { style: 'digital', color: AUR, endText: '¡Ahora!' }),
+          timer(360, 600, 400, 200, { style: 'digital', color: AUR, endText: '¡Ahora!' }),
           text('minutos de espera media (más o menos)', 820, 470, 360, 70, { fontSize: 22, color: DIM })],
-          notes: 'Cuenta atrás digital de 4 minutos que empieza sola: el ritmo aproximado del géiser. Ideal para hacer una pausa con el grupo.' },
+          notes: 'Cuenta atrás digital de 6 minutos que empieza sola: el ritmo aproximado del géiser. Ideal para hacer una pausa con el grupo.' },
         { layout: 'section', bg: NIGHT, title: 'GÓÐA FERÐ!', subtitle: '«¡Buen viaje!» · Salida el 6 de septiembre', transition: 'zoom', back: [...sky()],
           notes: 'Cierre con el cielo de la portada. Góða ferð se pronuncia más o menos «goza ferz».' },
       ]);
@@ -398,7 +398,7 @@ export default {
               text(`<b>${n}</b>`, cx - 120, 240, 240, 50, { fontSize: 30, color: INK, textAlign: 'center' }),
               text(t, cx - 120, 290, 240, 34, { fontSize: 20, color: RED, textAlign: 'center', fontWeight: 700, letterSpacing: 2 }),
               text(d, cx - 115, 415, 230, 80, { fontSize: 22, color: MID, textAlign: 'center' })], 'fade-up', 'afterPrev', { duration: 450 }); }),
-          text('Bergen ▸ Flåm: 5 h en tren y autobús · Flåm ▸ Gudvangen: 2 h en barco · Ålesund ▸ Geiranger: 3 h en barco de línea', 90, 560, 1100, 70, { fontSize: 22, color: MID, textAlign: 'center' })],
+          text('Bergen ▸ Flåm: 3 h en tren · Flåm ▸ Gudvangen: 2 h en barco · Ålesund ▸ Geiranger: 3 h en barco de línea', 90, 560, 1100, 70, { fontSize: 22, color: MID, textAlign: 'center' })],
           notes: 'Clic: la línea del viaje se colorea y las cinco paradas aparecen solas, una tras otra (después de la anterior). Duraciones orientativas: comprobad los horarios del año del viaje.' },
         { title: 'Tren, barco o coche', layout: 'titleOnly', bg: SKY, extra: [
           chartBlock({ x: 90, y: 170, w: 620, h: 480, chartType: 'radar', color: TEAL, seriesName: 'Barco',
@@ -432,7 +432,7 @@ export default {
           notes: 'Votación de respuesta múltiple: cada uno marca todas las que quiera. Con luz casi toda la noche en junio, el antifaz es más útil de lo que parece.' },
         { layout: 'blank', bg: '#f6dcc0', transition: 'fade', transitionSpeed: 'slow', extra: [
           shape('rect', 0, 0, 1280, 500, '#f2b880', { fill2: '#e7f0f3', gradAngle: 90 }),
-          withAnims(shape('ellipse', 760, 150, 130, 130, '#f6a04d', { fill2: '#ffd9a0', gradType: 'radial' }), path([[90, 110], [200, 150], [320, 110], [400, 20]], { duration: 6000 })),
+          withAnims(shape('ellipse', 760, 150, 130, 130, '#f6a04d', { fill2: '#ffd9a0', gradType: 'radial' }), path([[90, 140], [200, 195], [320, 140], [400, 20]], { duration: 6000 })),
           ...fjordScene(545, ['#e2a36f', '#3a3f55'], 32, 0.62),
           text('God tur!', 90, 60, 600, 130, { fontSize: 110, fontWeight: 800, color: INK, letterSpacing: -3 }),
           text('«¡Buen viaje!» · En junio el sol casi no se pone: roza el horizonte y vuelve a subir.', 90, 195, 600, 90, { fontSize: 26, color: '#3a3f55' })],
@@ -485,7 +485,7 @@ export default {
         { layout: 'blank', bg: DEEP, extra: [
           pollBlock({ kind: 'label', fontSize: 30, question: 'Pon cada barrio en su sitio', image: map, x: 70, y: 60, w: 1140, h: 600,
             options: ['Hradčany (el castillo)', 'Malá Strana', 'Staré Město', 'Josefov', 'Nové Město', 'Vyšehrad'],
-            points: [{ x: 22, y: 30 }, { x: 36, y: 50 }, { x: 62, y: 45 }, { x: 58, y: 22 }, { x: 72, y: 68 }, { x: 60, y: 88 }] })],
+            points: [{ x: 22, y: 30 }, { x: 36, y: 50 }, { x: 62, y: 45 }, { x: 62, y: 21 }, { x: 72, y: 68 }, { x: 60, y: 88 }] })],
           notes: 'Actividad de etiquetar una imagen desde el móvil: cada uno coloca los seis barrios. El plano es un dibujo esquemático hecho para la plantilla (el río, el puente y el castillo).' },
         { title: 'Coronas en euros', layout: 'titleOnly', bg: BURG, extra: [
           tableBlock({ x: 90, y: 180, w: 700, h: 430, fontSize: 24, header: true, headBg: GOLD, headFg: BURG, stroke: '#5a3a2a', banded: true, band: '#7a4a2a', color: CREAM,
@@ -548,7 +548,7 @@ export default {
           ...[1, 2].map(i => shape('rect', 90 + i * 367, 175, 2, 470, '#d8c9a6')), shape('rect', 90, 410, 1100, 2, '#d8c9a6'),
           ...stages.map(([a], i) => [a, i]).concat([['Santiago', 5]]).flatMap(([pl, i]) => {
             const x = 90 + (i % 3) * 367, y = 175 + Math.floor(i / 3) * 235, rot = [-8, 6, -4, 10, -12, 4][i];
-            return together(stamp(x + 95, y + 25, 180, pl, `${12 + i} de sept.`, INKS[i], rot, HAND), 'zoom-in', 'click', { duration: 250, sound: 'pop' }); }),
+            return together(stamp(x + 95, y + 25, 180, pl, `${11 + i} de sept.`, INKS[i], rot, HAND), 'zoom-in', 'click', { duration: 250, sound: 'pop' }); }),
           text('Dos sellos al día en los últimos 100 km: en albergues, bares o iglesias.', 90, 650, 1100, 40, { fontSize: 22, color: '#5b5646', textAlign: 'center', fontStyle: 'italic' })],
           notes: 'Cada clic estampa un sello (Zoom, con un «pop»): cada uno es un anillo, un anillo discontinuo y un texto, girados lo mismo. Con la credencial sellada se pide la Compostela en Santiago.' },
         { title: 'Kilómetros que faltan', layout: 'titleOnly', bg: '#ffffff', extra: [
@@ -606,11 +606,13 @@ export default {
     make: () => {
       const AEG = '#1f5fa8', DEEP = '#0d3b66', SKY = '#d8eef8', WHITE = '#ffffff', INK = '#13293d', SAND = '#f4ead5', SUNSET = '#f08a4b';
       const H = pairStacks('modern').heading, glasses = uid();
-      const islands = [['Pireo', 120, 90], ['Mykonos', 560, 100], ['Naxos', 610, 265], ['Paros', 450, 255], ['Milos', 170, 370], ['Santorini', 610, 420]];
+      // (Positions from their real longitude and latitude, east–west stretched a little; [dx, dy]: where each name goes.)
+      const islands = [['Pireo', 70, 60, [100, -45]], ['Mykonos', 568, 184, [0, -64]], ['Naxos', 607, 283, [92, -17]], ['Paros', 525, 283, [-70, -75]], ['Milos', 301, 377, [0, 46]], ['Santorini', 598, 445, [92, -17]]];
       const blob = (cx, cy, r, seed) => { const R = rng(seed); const pts = Array.from({ length: 10 }, (_, i) => { const a = i / 10 * Math.PI * 2, k = 0.7 + R() * 0.5; return [50 + 48 * k * Math.cos(a), 50 + 48 * k * Math.sin(a)]; });
         return shape('custom', cx - r, cy - r, r * 2, r * 2, SAND, { path: 'M' + pts.map(p => p.map(v => Math.min(100, Math.max(0, v)).toFixed(1)).join(' ')).join(' L') + ' Z', stroke: '#d9c8a2', strokeWidth: 2 }); };
       const MX = 90, MY = 160;                                   // (the sea map on the slide)
-      const route = islands.map(([, x, y]) => [x, y]);
+      // (each leg in short straight steps, so the drawn line goes straight from port to port)
+      const route = islands.flatMap(([, x, y], i) => { const [, x0, y0] = islands[i - 1] || []; return i ? [0.25, 0.5, 0.75, 1].map(t => [Math.round(x0 + (x - x0) * t), Math.round(y0 + (y - y0) * t)]) : [[x, y]]; });
       const sunglasses = (x, y, w, h, props = {}) => keep(m3d('kh-SunglassesKhronos', x, y, w, h, { autoRotate: true, view: 'front', ...props }), glasses);
       const deck = build({ name: 'Cícladas en ferry', palette: 'grayscale', fonts: 'modern', title: { size: 46, color: AEG }, body: { color: INK } }, [
         { layout: 'blank', bg: SKY, transition: 'fade', extra: [
@@ -624,9 +626,9 @@ export default {
           notes: 'Todo el pueblo está hecho con rectángulos (blanco, una cara en sombra, puertas y ventanas azules) y una cúpula con forma libre. La greca de arriba es una sola forma libre repetida.' },
         { title: 'La ruta en el mar', layout: 'titleOnly', bg: WHITE, extra: [
           shape('rounded', MX, MY, 760, 500, '#cfe8f6', { radius: 18 }),
-          ...islands.map(([, x, y], i) => blob(MX + x, MY + y, [36, 40, 52, 44, 42, 34][i], 30 + i)),
+          ...islands.map(([, x, y], i) => blob(MX + x, MY + y, [34, 34, 42, 32, 36, 30][i], 30 + i)),
           { ...base(MX, MY, 760, 500), type: 'ink', points: route, vw: 760, vh: 500, color: AEG, width: 5, animation: A('draw', { duration: 4000, sound: 'whoosh' }) },
-          ...islands.map(([n, x, y], i) => text(n, MX + x - 80, MY + y + (i === 4 ? 46 : -64), 160, 34, { fontSize: 21, fontWeight: 700, color: INK, textAlign: 'center' })),
+          ...islands.map(([n, x, y, [dx, dy]]) => text(n, MX + x + dx - 80, MY + y + dy, 160, 34, { fontSize: 21, fontWeight: 700, color: INK, textAlign: 'center' })),
           ...chain([['1', 'Pireo → Mykonos', 'Salida a primera hora'], ['2', 'Mykonos → Naxos', 'La isla más grande'], ['3', 'Naxos → Paros', 'Media hora de travesía'], ['4', 'Paros → Milos', 'Playas de roca blanca'], ['5', 'Milos → Santorini', 'Llegada por la caldera']].map(([n, a, b], i) =>
             text(`<b style="color:${AEG}">${n} · ${a}</b><br><span style="color:#5a6b7d">${b}</span>`, 880, 165 + i * 98, 320, 90, { fontSize: 21 })), 'fade-left', 'afterPrev', { duration: 350 })],
           notes: 'Clic: la ruta se dibuja sola de isla en isla (trazo de tinta con el efecto Dibujar y un silbido); después aparecen los cinco tramos. Mapa esquemático, sin escala: las islas son formas libres.' },
@@ -634,7 +636,7 @@ export default {
           meander(90, 150, 1100, 18, AEG, 40, 2),
           tableBlock({ x: 90, y: 195, w: 1100, h: 400, fontSize: 24, header: true, headBg: AEG, headFg: WHITE, stroke: '#d9c8a2', banded: true, band: '#cd853f', color: INK,
             rows: [['Tramo', 'Sale (h)', 'Llega (h)', 'Horas', 'Tipo de barco'], ['Pireo → Mykonos', '7', '12,5', '=C2-B2', 'Convencional'], ['Mykonos → Naxos', '10,5', '11,75', '=C3-B3', 'Rápido'],
-              ['Naxos → Paros', '9', '9,75', '=C4-B4', 'Convencional'], ['Paros → Milos', '13', '16,5', '=C5-B5', 'Rápido'], ['Milos → Santorini', '8', '10,25', '=C6-B6', 'Rápido'], ['<b>En el mar</b>', '', '', '=SUMA(ARRIBA)', '']], colW: [4, 2, 2, 2, 3] }),
+              ['Naxos → Paros', '9', '9,5', '=C4-B4', 'Rápido'], ['Paros → Milos', '13', '16,5', '=C5-B5', 'Rápido'], ['Milos → Santorini', '8', '10,25', '=C6-B6', 'Rápido'], ['<b>En el mar</b>', '', '', '=SUMA(ARRIBA)', '']], colW: [4, 2, 2, 2, 3] }),
           text('Horarios inventados, en horas decimales (12,5 = 12:30). En verano conviene reservar los rápidos con días de antelación.', 90, 610, 1100, 60, { fontSize: 21, color: '#5a6b7d', fontStyle: 'italic', textAlign: 'center' })],
           notes: 'La columna Horas resta llegada menos salida (=C2-B2) y la última fila suma el tiempo total en el mar. Cambia una hora y todo se recalcula.' },
         { title: 'Cada isla, su carácter', layout: 'titleOnly', bg: WHITE, extra: [
@@ -689,7 +691,8 @@ export default {
       const HEATH = '#8e4fa0', PINE = '#1f4d3a', NAVY = '#1b2340', MIST = '#d8d2e3', GOLD = '#e0b04f', DARK = '#140c22', INK = '#241a30';
       const SERIF = pairStacks('websafe').heading;
       const plaid = (x, y, w, h) => tartan(x, y, w, h, PINE, [[0, 90, NAVY, 70], [120, 40, HEATH, 60], [190, 8, GOLD, 70], [230, 50, NAVY, 55], [290, 6, '#d04a4a', 60]]);
-      const stops = [['Edimburgo', 150, 560], ['Glencoe', 390, 300], ['Fort William', 590, 470], ['Isla de Skye', 820, 230], ['Inverness', 1030, 420]];
+      // (Where they are, north up: from their longitude and latitude; Glencoe a little further from Fort William so the signs fit.)
+      const stops = [['Edimburgo', 1000, 590], ['Glencoe', 520, 500], ['Fort William', 520, 380], ['Isla de Skye', 180, 264], ['Inverness', 740, 248]];
       const road = (() => { const pts = []; for (let i = 0; i < stops.length - 1; i++) { const [, x0, y0] = stops[i], [, x1, y1] = stops[i + 1];
         for (let k = 0; k < 12; k++) { const t = k / 12; pts.push([Math.round(x0 + (x1 - x0) * t + Math.sin(t * Math.PI) * 40 * (i % 2 ? 1 : -1)), Math.round(y0 + (y1 - y0) * t)]); } }
         pts.push([stops.at(-1)[1], stops.at(-1)[2]]); return pts; })();
@@ -739,7 +742,7 @@ export default {
         { title: 'Pequeños pero matones', layout: 'titleOnly', bg: '#2a1840', extra: [
           chartBlock({ x: 90, y: 170, w: 720, h: 470, chartType: 'bar', color: HEATH, seriesName: 'Mosquitos «midges» (índice)', dataLabels: true,
             data: [['Abr', 1], ['May', 4], ['Jun', 8], ['Jul', 9], ['Ago', 9], ['Sep', 6], ['Oct', 2]].map(([label, value]) => ({ label, value })) }),
-          card(`<div style="font-family:${SERIF};font-size:34px;color:${GOLD}">Cómo librarse</div>` + ul('Viento: donde sopla, no hay.', 'Repelente y ropa clara.', 'Mayo o septiembre: menos bichos y el brezo en flor.'), 850, 190, 340, 420, '#ffffff10', { fontSize: 23, color: MIST, borderColor: '#5a4a70' })],
+          card(`<div style="font-family:${SERIF};font-size:34px;color:${GOLD}">Cómo librarse</div>` + ul('Viento: donde sopla, no hay.', 'Repelente y ropa clara.', 'Mayo, casi sin bichos; septiembre, con el brezo en flor.'), 850, 190, 340, 420, '#ffffff10', { fontSize: 23, color: MIST, borderColor: '#5a4a70' })],
           notes: 'Barras con etiquetas de datos: los «midges» son unos mosquitos diminutos de las Highlands. Índice inventado de 0 a 10, solo para comparar meses.' },
         { layout: 'blank', bg: DARK, extra: [
           ...plaid(0, 0, 1280, 40),
@@ -772,7 +775,7 @@ export default {
         + `<rect x="0" y="600" width="360" height="120" fill="#0b0e13"/>`
         + [['32,4', 'km'], ['17,8', 'km/h'], ['1:49', 'h']].map(([v, u], i) => `<text x="${30 + i * 115}" y="660" font-family="monospace" font-size="30" font-weight="700" fill="${LIME}">${v}</text><text x="${30 + i * 115}" y="690" font-family="sans-serif" font-size="16" fill="#8a96a8">${u}</text>`).join(''));
       const stat = (v, u, x, y, w, c = LIME, size = 64) => text(`<div style="font-family:${MONO};font-size:${size}px;font-weight:700;color:${c};line-height:1">${v}</div><div style="font-size:18px;color:${DIM};letter-spacing:3px;margin-top:6px">${u}</div>`, x, y, w, size + 70);
-      const stages = [['Passau → Schlögen', 42, 4], ['Schlögen → Linz', 48, 3], ['Linz → Grein', 52, 8], ['Grein → Melk', 44, 6], ['Melk → Krems', 34, 2], ['Krems → Viena', 70, 10]];
+      const stages = [['Passau → Schlögen', 45, 4], ['Schlögen → Linz', 50, 3], ['Linz → Grein', 60, 8], ['Grein → Melk', 50, 6], ['Melk → Krems', 40, 2], ['Krems → Viena', 85, 10]];   // (330 km, 33 by road)
       const deck = build({ name: 'El Danubio en bici', palette: 'revela', fonts: 'tech', title: { size: 46, color: FG }, body: { color: FG } }, [
         { layout: 'blank', bg: BG, transition: 'fade', extra: [
           { ...base(0, 0, 1280, 720), type: 'ink', points: river, vw: 1280, vh: 720, color: '#1f6f9a', width: 26 },
@@ -794,15 +797,16 @@ export default {
         { title: 'La ruta por dentro: un archivo GPX', layout: 'titleOnly', bg: BG, extra: [
           codeBlock({ x: 90, y: 170, w: 720, h: 470, fontSize: 21, lang: 'xml', lineSteps: '1-2|3-6|7-10|12',
             code: '<gpx version="1.1" creator="planificador">\n  <metadata><name>Danubio · etapa 3</name></metadata>\n  <wpt lat="48.3069" lon="14.2858">\n    <name>Linz · salida</name>\n    <ele>266</ele>\n  </wpt>\n  <trk><trkseg>\n    <trkpt lat="48.2810" lon="14.4170"><ele>255</ele></trkpt>\n    <trkpt lat="48.2290" lon="14.6890"><ele>243</ele></trkpt>\n  </trkseg></trk>\n  <!-- … miles de puntos más … -->\n</gpx>' }),
-          ...chain([['Cabecera', 'Qué es y quién lo hizo.'], ['Waypoint', 'Un sitio con nombre: salida, fuente, taller.'], ['Track', 'El camino, punto a punto, con altura.'], ['Cierre', 'Y listo para cualquier app.']].map(([h, d], i) =>
-            text(`<b style="color:${[LIME, RIVER, ORANGE, FG][i]}">${h}</b><br><span style="color:${DIM}">${d}</span>`, 850, 190 + i * 110, 340, 90, { fontSize: 23 })), 'fade-left', 'click', { duration: 300 })],
+          // (the legend is there from the start: the clicks are the code's highlight steps)
+          ...[['Cabecera', 'Qué es y quién lo hizo.'], ['Waypoint', 'Un sitio con nombre: salida, fuente, taller.'], ['Track', 'El camino, punto a punto, con altura.'], ['Cierre', 'Y listo para cualquier app.']].map(([h, d], i) =>
+            text(`<b style="color:${[LIME, RIVER, ORANGE, FG][i]}">${h}</b><br><span style="color:${DIM}">${d}</span>`, 850, 190 + i * 110, 340, 90, { fontSize: 23 }))],
           notes: 'Bloque de código con pasos de resaltado: cada clic ilumina una parte del archivo GPX (cabecera, punto con nombre, recorrido, cierre). Las coordenadas son aproximadas.' },
         { title: 'Kilómetros por etapa', layout: 'titleOnly', bg: BG, transition: 'push', extra: [
           chartBlock({ x: 90, y: 170, w: 780, h: 470, chartType: 'stacked', color: LIME, seriesName: 'Carril bici', grid: true,
             data: stages.map(([label, km, road]) => ({ label: label.split(' → ')[1], value: km - road })), series: [{ name: 'Carretera tranquila', values: stages.map(s => s[2]), color: ORANGE }] }),
           shape('rounded', 910, 190, 280, 430, PANEL, { radius: 22 }),
           at(stat('90 %', 'POR CARRIL BICI', 940, 220, 230), 'zoom-in', { sound: 'pop' }),
-          at(stat('70 km', 'LA ETAPA MÁS LARGA', 940, 360, 230, ORANGE, 52), 'zoom-in', { sound: 'pop' }),
+          at(stat('85 km', 'LA ETAPA MÁS LARGA', 940, 360, 230, ORANGE, 52), 'zoom-in', { sound: 'pop' }),
           text('La última, hasta Viena, se puede partir en dos.', 940, 500, 230, 100, { fontSize: 20, color: DIM })],
           notes: 'Barras apiladas: en cada etapa, la parte por carril bici y la parte por carretera secundaria. Clic: las dos cifras clave, con un «pop». Distancias aproximadas.' },
         { layout: 'blank', bg: BG, extra: [
@@ -854,7 +858,7 @@ export default {
           ...row(600, 1, true, 0.82),
           ...ROW.map(([x, w, h, c]) => shape('rect', x, 600, w, Math.round(h * 0.3), c, { opacity: 25 })),
           ...[0, 1, 2].map(i => shape('rect', 160 + i * 380, 640 + i * 18, 200, 3, '#ffffff', { opacity: 35 })),
-          kicker('TRES DÍAS · ABRIL', 90, 70, 600, ORANGE, 22),
+          kicker('TRES DÍAS · ABRIL', 90, 46, 600, ORANGE, 22),
           text('ÁMSTERDAM', 84, 90, 1100, 170, { fontFamily: H, fontSize: 170, color: INK, lineHeight: 1 }),
           text('Canales, bicicletas y museos, sin prisa', 90, 240, 800, 50, { fontSize: 30, color: DIM })],
           notes: 'Las nueve fachadas son formas libres (cuatro tipos de frontón: escalonado, de campana, de cuello y de pico) con ventanas y puerta; se montan solas, una tras otra, al llegar. Debajo, su reflejo en el canal.' },
@@ -863,7 +867,7 @@ export default {
           text('<b>Siglo XVII:</b> la ciudad creció en forma de media luna, canal a canal, alrededor del puerto.', 700, 200, 490, 130, { fontSize: 27, color: INK }),
           ...chain([['165', 'canales'], ['1.500', 'puentes'], ['880.000', 'bicicletas']].map(([n, l], i) =>
             text(`<span style="font-family:${H};font-size:64px;color:${[ORANGE, CANAL, BRICK][i]}">${n}</span>&nbsp; <span style="font-size:26px">${l}</span>`, 700, 350 + i * 95, 490, 85, { color: INK, vAlign: 'middle' })), 'zoom-in', 'click', { sound: 'pop', duration: 400 })],
-          notes: 'Diagrama de diana que aparece anillo a anillo, del exterior al centro. Después, tres cifras redondeadas con un «pop».' },
+          notes: 'Clic: tres cifras redondeadas, una tras otra, con un «pop». Después, con cada clic, el diagrama de diana aparece anillo a anillo, del exterior al centro.' },
         { title: 'En bici, como un local', layout: 'titleOnly', bg: '#ffffff', extra: [
           shape('rect', 0, 175, 1280, 90, '#b8463a'),
           ...[60, 360, 660, 960].map(x => shape('rect', x, 217, 160, 6, '#ffffff')),
@@ -918,7 +922,7 @@ export default {
           B(1, shape('ellipse', cx - r * 0.82, cy - r * 0.82, 1.64 * r, 1.64 * r, 'none', { stroke: NAVY, strokeWidth: 1, dash: 'dash' })),
           B(2, shape('star8', cx - r * 0.7, cy - r * 0.7, 1.4 * r, 1.4 * r, '#9fb6c8', { opacity: 80 })),
           B(3, shape('star4', cx - r * 0.95, cy - r * 0.95, 1.9 * r, 1.9 * r, NAVY, { fill2: '#3c5a8a', gradType: 'radial' })),
-          B(4, text('N', cx - 35, cy - r - 60, 70, 60, { fontFamily: OSW, fontSize: Math.max(18, Math.round(r * 0.24)), color: RED, textAlign: 'center', fontWeight: 700 }))];
+          B(4, text('N', cx - 35, cy - r - Math.max(28, Math.round(r * 0.32)), 70, Math.max(28, Math.round(r * 0.32)), { fontFamily: OSW, fontSize: Math.max(18, Math.round(r * 0.24)), color: RED, textAlign: 'center', fontWeight: 700 }))];
         return spin ? parts.map((b, i) => i === 3 ? withAnims(b, A('spin360', { start: 'afterPrev', duration: 2500, delay: 400 })) : b) : parts; };
       const chartGrid = () => { const out = [];
         for (let x = 80; x < 1280; x += 160) out.push(shape('rect', x, 0, 1, 720, NAVY, { opacity: 18 }));
@@ -926,7 +930,7 @@ export default {
         const R = rng(77); for (let i = 0; i < 110; i++) { const x = Math.round(40 + R() * 1180), y = Math.round(40 + R() * 620), v = Math.round(8 + R() * 70); if (x < 780 && y < 600 || x > 760 && y < 560 && x < 1200) continue; out.push(text(String(v), x, y, 40, 24, { fontSize: 13, color: '#6c7a8f', fontStyle: 'italic', decorative: true })); }
         return out; };
       // Signal flags (SVG, 150 × 100): O, B, N, C, A.
-      const FL = { O: '<path d="M0 0 L150 100 L0 100Z" fill="#c8102e"/><path d="M0 0 L150 0 L150 100Z" fill="#f2c230"/>', B: '<path d="M0 0 L150 0 L115 50 L150 100 L0 100Z" fill="#c8102e"/>',
+      const FL = { O: '<path d="M0 0 L150 100 L0 100Z" fill="#f2c230"/><path d="M0 0 L150 0 L150 100Z" fill="#c8102e"/>', B: '<path d="M0 0 L150 0 L115 50 L150 100 L0 100Z" fill="#c8102e"/>',
         N: [0, 1, 2, 3].flatMap(r => [0, 1, 2, 3].map(c => `<rect x="${c * 37.5}" y="${r * 25}" width="37.5" height="25" fill="${(r + c) % 2 ? '#ffffff' : '#1f4fa0'}"/>`)).join(''),
         C: ['#1f4fa0', '#ffffff', '#c8102e', '#ffffff', '#1f4fa0'].map((c, i) => `<rect x="0" y="${i * 20}" width="150" height="20" fill="${c}"/>`).join(''),
         A: '<rect x="0" y="0" width="70" height="100" fill="#ffffff"/><path d="M70 0 L150 0 L115 50 L150 100 L70 100Z" fill="#1f4fa0"/>' };

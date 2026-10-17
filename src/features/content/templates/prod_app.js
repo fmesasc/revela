@@ -89,13 +89,13 @@ const sobrasScan = () => svgURL(360, 720, R(0, 0, 360, 720, 0, '#1d2421')
     `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="none" stroke="#9be15d" stroke-width="3"/>` + R(x, y - 24, t.length * 8 + 14, 22, 6, '#9be15d') + T(x + 7, y - 8, 14, '#10200a', t, ' font-weight="700"')).join('')
   + R(20, 624, 320, 64, 32, '#9be15d') + T(180, 664, 19, '#10200a', '6 ingredientes · ver recetas', ' text-anchor="middle" font-weight="700"'), '#1d2421');
 const sobrasRecipes = () => svgURL(360, 720, T(24, 62, 26, '#24312b', 'Para hoy', ' font-weight="800"') + T(24, 90, 14, '#6d7a72', 'Con lo que tienes · menos de 25 min')
-  + [['Tortilla de lo que hay', '20 min · 4 ingredientes', '#f2c14e', 'Usa: huevos, calabacín, queso'], ['Arroz salteado', '15 min · aprovecha el de ayer', '#7fa650', 'Usa: arroz, espinacas, huevo'], ['Tostas de tomate', '10 min · para cenar', '#d9534f', 'Usa: tomate, queso, pan']].map(([t, d, c, u], i) => { const y = 116 + i * 178;
+  + [['Tortilla de lo que hay', '20 min · 4 ingredientes', '#f2c14e', 'Usa: huevos, calabacín, queso, espinacas'], ['Arroz salteado', '15 min · aprovecha el de ayer', '#7fa650', 'Usa: arroz, espinacas, huevo'], ['Tostas de tomate', '10 min · para cenar', '#d9534f', 'Usa: tomate, queso, pan']].map(([t, d, c, u], i) => { const y = 116 + i * 178;
     return R(20, y, 320, 162, 18, '#ffffff', ' stroke="#dfe7e2"') + R(20, y, 320, 70, 18, c) + R(20, y + 52, 320, 18, 0, c) + T(36, y + 44, 19, '#ffffff', t, ' font-weight="800"')
       + T(36, y + 100, 15, '#24312b', d) + T(36, y + 128, 13, '#6d7a72', u); }).join('') + tabs(360, 720, '#2e7d32', '#cfd8d3', 4, 1), '#f3f7f4');
 
 // ─── Cartilla (banking for older people): the passbook ─────────────────────────────
 const cartillaHome = () => svgURL(360, 720, R(0, 0, 360, 210, 0, '#1f4d3a') + T(24, 64, 24, '#ffffff', 'Hola, Carmen', '', 'Georgia,serif') + T(24, 110, 16, '#cfe3d8', 'Tienes en tu cuenta', '', 'Verdana,sans-serif')
-  + T(24, 170, 46, '#ffffff', '1.248,30 €', ' font-weight="700"', 'Georgia,serif')
+  + T(24, 170, 46, '#ffffff', '1.622,35 €', ' font-weight="700"', 'Georgia,serif')
   + [['Ver mis movimientos', '#ffffff', '#1b1b1b'], ['Enviar dinero', '#ffffff', '#1b1b1b'], ['Llamar a mi gestora', '#c9a24a', '#1b1b1b']].map(([t, bg, fg], i) => { const y = 240 + i * 128;
     return R(20, y, 320, 108, 20, bg, ' stroke="#1f4d3a" stroke-width="3"') + T(180, y + 64, 22, fg, t, ' text-anchor="middle" font-weight="700"', 'Verdana,sans-serif'); }).join('')
   + T(180, 660, 15, '#555', 'Sin prisas: nada caduca mientras lees', ' text-anchor="middle"', 'Verdana,sans-serif'), '#fbf8f0');
@@ -104,7 +104,7 @@ const cartillaHome = () => svgURL(360, 720, R(0, 0, 360, 210, 0, '#1f4d3a') + T(
 const turnoBook = () => svgURL(360, 720, R(0, 0, 360, 120, 0, '#0f8b8d') + T(24, 56, 15, '#d8f0ef', 'Centro de Salud Las Acacias') + T(24, 92, 26, '#ffffff', 'Pedir cita', ' font-weight="800"')
   + T(24, 160, 17, '#0b3c49', 'Noviembre', ' font-weight="700"')
   + ['L', 'M', 'X', 'J', 'V'].map((d, i) => T(46 + i * 66, 196, 13, '#7a9aa3', d, ' text-anchor="middle"')).join('')
-  + Array.from({ length: 15 }, (_, k) => { const d = k + 3, x = 46 + (k % 5) * 66, y = 230 + Math.floor(k / 5) * 52, sel = d === 12, off = [5, 9, 16].includes(d);
+  + Array.from({ length: 15 }, (_, k) => { const d = 3 + Math.floor(k / 5) * 7 + k % 5, x = 46 + (k % 5) * 66, y = 230 + Math.floor(k / 5) * 52, sel = d === 12, off = [5, 10, 19].includes(d);
     return (sel ? `<circle cx="${x}" cy="${y - 6}" r="22" fill="#0f8b8d"/>` : '') + T(x, y, 17, sel ? '#fff' : off ? '#c3d3d7' : '#0b3c49', d, ' text-anchor="middle"' + (sel ? ' font-weight="800"' : '')); }).join('')
   + T(24, 410, 17, '#0b3c49', 'Miércoles 12 · Dra. Ortega', ' font-weight="700"')
   + ['9:20', '10:40', '11:00', '12:20', '13:00', '17:40'].map((t, i) => { const x = 24 + (i % 3) * 106, y = 430 + Math.floor(i / 3) * 62, on = i === 1;
@@ -252,7 +252,7 @@ export default {
           notes: 'Las tres pantallas principales dentro de móviles (Imagen ▸ Dispositivo ▸ Móvil). Todas son dibujos SVG hechos a medida: no hay capturas reales.' },
         { layout: 'titleOnly', title: 'Ocho semanas después', bg: BG, transition: 'slide', extra: [
           chartBlock({ x: 90, y: 170, w: 760, h: 470, chartType: 'line', color: SKY, grid: true, seriesName: 'Con Marea', yTitle: 'Minutos hasta dormirse',
-            data: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'].map((l, i) => ({ label: l, value: [46, 41, 35, 30, 26, 24, 22, 21][i] })),
+            data: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'].map((l, i) => ({ label: l, value: [47, 41, 35, 30, 26, 24, 22, 21][i] })),
             series: [{ name: 'Grupo sin app', values: [47, 46, 46, 45, 46, 44, 45, 45], color: '#f0a6b8' }] }),
           withAnims(card(`<div style="font-family:${head};font-size:84px;font-style:italic;color:${SKY};line-height:1">−55 %</div><div style="margin-top:12px">de tiempo hasta quedarse dormido, de media, tras ocho semanas de uso diario.</div>`,
             890, 230, 310, 330, '#13204a', { fontSize: 24, color: CREAM, radius: 24 }), A('fade-left', { duration: 700 }))],
@@ -307,7 +307,7 @@ export default {
           notes: 'Transformar: el móvil y el sello llegan desde la portada. Los cuatro pasos del método aparecen uno a uno al presentar (Diagrama ▸ Uno a uno).' },
         { layout: 'blank', bg: PAPER, transition: 'slide', extra: [
           text('Palabras que se quedan', 90, 70, 1100, 70, { fontFamily: head, fontSize: 48, fontWeight: 700, color: INK }),
-          text('Cada tarjeta gira con un clic: delante, la palabra; detrás, cómo se usa.', 90, 140, 1100, 40, { fontSize: 24, color: MUTE }),
+          text('Cada ficha entra girando con un clic: la palabra, qué significa y cómo se usa.', 90, 140, 1100, 40, { fontSize: 24, color: MUTE }),
           ...[['la finestra', 'la ventana', 'Apri la finestra, per favore.', RED], ['le rendez-vous', 'la cita', 'J\'ai un rendez-vous à midi.', BLUE], ['a saudade', 'la nostalgia', 'Que saudade de você!', GREEN], ['der Feierabend', 'el fin de la jornada', 'Endlich Feierabend!', '#b5651d']].map(([w, t, ex, c], i) =>
             withAnims(card(`<div style="font-family:${head};font-size:30px;font-weight:700;color:${c}">${w}</div><div style="margin:8px 0 18px;color:${INK}">${t}</div><div style="font-style:italic;color:${MUTE};font-size:21px">«${ex}»</div>`,
               90 + i * 280, 220, 260, 300, '#fffaf0', { fontSize: 22, borderColor: c, radius: 6, rotation: [-2, 1.5, -1, 2][i], shadow: { x: 0, y: 6, blur: 14, color: '#00000022' } }),
@@ -552,9 +552,9 @@ export default {
           text('Su mes, como en la libreta', 160, 40, 1000, 60, { fontFamily: head, fontSize: 46, color: GREEN }),
           tableBlock({ x: 160, y: 130, w: 520, h: 480, fontSize: 24, header: true, headBg: GREEN, headFg: '#ffffff', stroke: '#d9d2bf',
             rows: [['Concepto', 'Importe'], ['Saldo a 1 de octubre', '980,00 €'], ['Pensión', '1.240,00 €'], ['Luz y agua', '−96,40 €'], ['Supermercado', '−412,30 €'], ['Farmacia', '−38,95 €'], ['Regalo nieta', '−50,00 €'], ['<b>Saldo hoy</b>', '=SUMA(ARRIBA)']], colW: [3, 2] }),
-          chartBlock({ x: 720, y: 140, w: 480, h: 470, chartType: 'waterfall', color: GREEN, dataLabels: true,
+          chartBlock({ x: 720, y: 170, w: 480, h: 440, chartType: 'waterfall', color: GREEN, dataLabels: true,
             data: [{ label: 'Inicio', value: 980 }, { label: 'Pensión', value: 1240 }, { label: 'Casa', value: -96 }, { label: 'Súper', value: -412 }, { label: 'Otros', value: -89 }] }),
-          withAnims(shape('seal', 1060, 40, 150, 150, 'none', { stroke: RED, strokeWidth: 4, rotation: -14, html: '<b>AL DÍA</b>', fontSize: 26, color: RED, opacity: 85 }), A('zoom-in', { duration: 400, sound: 'click' }))],
+          withAnims(shape('seal', 1080, 18, 135, 135, 'none', { stroke: RED, strokeWidth: 4, rotation: -14, html: '<b>AL DÍA</b>', fontSize: 24, color: RED, opacity: 85 }), A('zoom-in', { duration: 400, sound: 'click' }))],
           notes: 'Tabla con fórmula: el saldo final es =SUMA(ARRIBA) y se recalcula al cambiar cualquier importe. Al lado, la misma cuenta en cascada. El sello «Al día» cae con un clic.' },
         { layout: 'blank', bg: '#fff4f2', transition: 'fade', extra: [
           text('Lo que el banco <u>nunca</u> le pedirá', 90, 60, 1100, 70, { fontFamily: head, fontSize: 50, color: RED }),
@@ -603,7 +603,7 @@ export default {
           ...[['23 min', 'al teléfono para pedir cita'], ['1 de 8', 'citas se pierde porque nadie avisa'], ['26 min', 'de espera media en la sala']].flatMap(([n, l], i) => [
             withAnims(text(`<b style="font-size:46px;color:${MUTE}">${n}</b>&nbsp; ${l}`, 130, 250 + i * 120, 460, 100, { fontSize: 23, color: DEEP, vAlign: 'middle' }), A('fade-right', { start: i ? 'click' : 'click', duration: 450 })),
             withAnims(text(`<b style="font-size:46px;color:#ffffff">${[['40 s'], ['1 de 25'], ['7 min']][i]}</b>&nbsp; ${['desde el móvil, a cualquier hora', 'con recordatorio y anulación en un toque', 'porque llega justo a su hora'][i]}`, 710, 250 + i * 120, 460, 100, { fontSize: 23, color: '#e9fbfa', vAlign: 'middle' }), A('fade-left', { start: 'afterPrev', duration: 450 }))]),
-          text('Piloto en dos centros durante seis meses (datos de ejemplo).', 90, 655, 1100, 36, { fontSize: 18, color: MUTE })],
+          text('Piloto en cuatro centros durante seis meses (datos de ejemplo).', 90, 655, 1100, 36, { fontSize: 18, color: MUTE })],
           notes: 'Comparativa en dos columnas: cada clic muestra un problema de antes y, justo después, cómo queda con Turno.' },
         { layout: 'titleOnly', title: 'El recorrido del paciente', bg: BG, extra: [
           dg('cycle', 'Pide cita\nRecibe recordatorio\nLlega y escanea\nConsulta\nReceta en el móvil', 90, 160, 640, 520, { oneByOne: true, colors: 'accent' }),
@@ -627,11 +627,11 @@ export default {
         { layout: 'titleOnly', title: 'Citas perdidas por semana', bg: BG, extra: [
           chartBlock({ x: 90, y: 160, w: 760, h: 490, chartType: 'bar', color: '#9fb4ba', dataLabels: true, grid: true, seriesName: 'Antes',
             data: [{ label: 'Las Acacias', value: 64 }, { label: 'Río Verde', value: 51 }, { label: 'San Roque', value: 72 }, { label: 'El Pilar', value: 43 }],
-            series: [{ name: 'Con Turno', values: [17, 14, 21, 11], color: TEAL }] }),
-          withAnims(card(`<div style="font-size:68px;font-weight:800;color:${CORAL};line-height:1">−72 %</div><div style="margin-top:10px">citas perdidas de media en los cuatro centros del piloto</div>`, 890, 230, 300, 330, '#ffffff', { fontSize: 24, color: DEEP, borderColor: '#dbe7ea', radius: 18 }), A('zoom-in', { duration: 500, sound: 'chime' }))],
+            series: [{ name: 'Con Turno', values: [19, 16, 24, 14], color: TEAL }] }),
+          withAnims(card(`<div style="font-size:68px;font-weight:800;color:${CORAL};line-height:1">−68 %</div><div style="margin-top:10px">citas perdidas de media en los cuatro centros del piloto</div>`, 890, 230, 300, 330, '#ffffff', { fontSize: 24, color: DEEP, borderColor: '#dbe7ea', radius: 18 }), A('zoom-in', { duration: 500, sound: 'chime' }))],
           notes: 'Barras agrupadas: antes y después en cada centro. Los nombres de los centros y las cifras son ficticios.' },
         { layout: 'titleOnly', title: 'Calendario de implantación', bg: BG, transition: 'fade', extra: [
-          dg('timeline', 'Enero 2027\n  Piloto en Las Acacias\nMarzo\n  Tres centros más\nJunio\n  Toda el área de salud\nSeptiembre\n  Recetas y resultados en la app', 90, 170, 1100, 360, { oneByOne: true, colors: 'colorful' }),
+          dg('timeline', 'Enero 2027\n  Arranca en Las Acacias\nMarzo\n  Tres centros más\nJunio\n  Toda el área de salud\nSeptiembre\n  Recetas y resultados en la app', 90, 170, 1100, 360, { oneByOne: true, colors: 'colorful' }),
           text('Formación de 30 minutos para cada equipo de recepción antes de empezar.', 90, 570, 1100, 50, { fontSize: 26, color: MUTE, textAlign: 'center' })],
           notes: 'Cronología que se descubre hito a hito. Recalca que el despliegue es gradual y se puede parar en cualquier fase.' },
         { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'qa', fontSize: 34, question: 'Preguntas del equipo del centro', options: [], x: 80, y: 60, w: 1120, h: 600 })],
@@ -641,7 +641,7 @@ export default {
           text('Turno', 90, 170, 700, 160, { fontFamily: head, fontSize: 140, fontWeight: 800, color: '#ffffff', letterSpacing: -4 }),
           text('Menos teléfono, más consulta.', 96, 340, 800, 60, { fontSize: 40, color: '#e9fbfa' }),
           pulse(96, 440, 520, 90, '#ffffff', { animation: A('draw', { start: 'afterPrev', duration: 2000 }) }),
-          text('turno.example · piloto desde enero de 2027', 96, 580, 900, 40, { fontSize: 24, color: LT })],
+          text('turno.example · en marcha desde enero de 2027', 96, 580, 900, 40, { fontSize: 24, color: LT })],
           notes: 'Cierre en el color de la marca, con el latido que vuelve a dibujarse solo.' },
       ]), { textColor: DEEP }));
     } },
@@ -748,7 +748,7 @@ export default {
           text('En la cubeta', 90, 60, 1100, 70, { fontFamily: head, fontSize: 50, fontWeight: 800, color: PAPER }),
           keep(shape('rounded', 300, 220, 680, 420, '#2b2b2b', { radius: 18, stroke: '#3d3d3d', strokeWidth: 8 }), TRAY),
           photo(390, 280, 500, 320, { opacity: 12 }),
-          text('Durante la noche, la foto «se revela» poco a poco… y el sonido del agua acompaña.', 90, 140, 1100, 40, { fontSize: 24, color: DIM })],
+          text('Durante la noche, la foto «se revela» poco a poco, sin que nadie la vea.', 90, 140, 1100, 40, { fontSize: 24, color: DIM })],
           notes: 'La foto está en la cubeta casi invisible (12 % de opacidad). Pasa a la siguiente diapositiva: Transformar la saca, la agranda y la vuelve opaca, como si se revelara.' },
         { layout: 'blank', bg: BG, autoAnimate: true, extra: [
           keep(shape('rounded', 300, 640, 680, 420, '#2b2b2b', { radius: 18, stroke: '#3d3d3d', strokeWidth: 8, opacity: 40 }), TRAY),
@@ -768,7 +768,7 @@ export default {
           withAnims(phone(granoSheet(), 800, 150, 250, 'Hoja de contactos del carrete en el móvil'), A('fade-left', { start: 'afterPrev', duration: 500 })),
           text('Móvil: el carrete del día · Tableta: el revelado fino', 760, 662, 460, 30, { fontSize: 16, color: DIM })],
           notes: 'Dos dispositivos con pantallas propias. La tableta muestra una foto dentro de otra imagen SVG; las fotos sin revelar aparecen tapadas en la hoja de contactos.' },
-        { layout: 'titleOnly', title: 'Seis películas para elegir', bg: BG, transition: 'fade', extra: [
+        { layout: 'titleOnly', title: 'Cinco películas para elegir', bg: BG, transition: 'fade', extra: [
           tableBlock({ x: 90, y: 160, w: 1100, h: 420, fontSize: 24, header: true, headBg: RED, headFg: '#ffffff', stroke: '#3d2020', banded: true, band: '#7a0b14',
             rows: [['Película', 'ISO', 'Carácter', 'Grano', 'Para…'], ['Brisa 400', '400', 'Cálida y suave', 'Fino', 'Retratos al atardecer'], ['Escarcha 100', '100', 'Fría y nítida', 'Muy fino', 'Paisaje de invierno'],
               ['Ceniza 1600', '1600', 'Blanco y negro duro', 'Grueso', 'Calle de noche'], ['Feria 200', '200', 'Colores saturados', 'Medio', 'Fiestas y verano'], ['Niebla 800', '800', 'Apagada y pastel', 'Medio', 'Días nublados']], colW: [3, 1, 3, 2, 3] }),

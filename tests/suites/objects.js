@@ -158,7 +158,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const img = D.querySelector(`.block[data-id="${b.id}"] img`);
     assert(/brightness\(150%\)/.test(img.style.filter), 'filtro en el DOM');
     eq(img.style.opacity, '0.6', 'opacidad en el DOM');
-    assert(/brightness\(150%\)[^"]*opacity:0\.6/.test(R.io.buildHTML()), 'filtro en el export');
+    const tag = () => R.io.buildHTML().match(/<img[^>]*brightness\(150%\)[^>]*>/)?.[0] || '';
+    assert(/opacity:0\.6;/.test(tag()), 'filtro y opacidad en el export');
+    // The object's own opacity too, times the picture's (it was replaced by it: a faded photo came out whole).
+    b.opacity = 50; R.render(); await sleep(10);
+    assert(/opacity:0\.3;/.test(tag()) && (tag().match(/opacity:/g) || []).length === 1, 'opacidad del objeto × la de la imagen');
   });
 
   await test('descripción (caption) bajo la figura y en el export', async () => {

@@ -71,6 +71,8 @@ const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
   + (opacityOf(b) < 1 ? `opacity:${+opacityOf(b).toFixed(3)};--o:${+opacityOf(b).toFixed(3)};` : '')
   + (shadowCSS(b) ? `filter:${shadowCSS(b)};` : '')   // (a picture's styled shadow: in its own filter)
   + animVars(b);
+// A picture: its own opacity (Ajustes) times the object's, in one (a second opacity on the same element replaced it).
+const imgBox = b => box({ ...b, opacity: opacityOf(b) * imgOpacity(b) * 100 });
 // Timing (and motion path) of one of an object's animations (its first by
 // default), also for its caption and for the layers of the next ones.
 const cssKey = key => String(key).replace(/[^\w-]/g, '_');
@@ -400,15 +402,15 @@ function blockHTMLRaw(b, slide) {
     // No segments, not automatic and no steps of its own: one click plays it all (data-seg -1).
     const segs = cfg.segments.length ? cfg.segments.slice(first).map((_, k) => k + first) : cfg.autoplay || cfg.after || cfg.steps ? [] : [-1];
     const clicks = segs.map((n, k) => `<span class="fragment rv-seg" data-seg-of="rvm-${b.id}" data-seg="${n}"${b.animation && !b.animation.trigger ? ` data-fragment-index="${b.animation.order + k + 1}"` : ''} style="display:none"></span>`).join('');
-    return `<div${a} id="rvm-${b.id}" data-media="${esc(JSON.stringify(cfg))}" style="${box(b)}${b.type === 'image' ? `filter:${imgFilter(b)};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}` : ''}"></div>${clicks}`;
+    return `<div${a} id="rvm-${b.id}" data-media="${esc(JSON.stringify(cfg))}" style="${b.type === 'image' ? imgBox(b) : box(b)}${b.type === 'image' ? `filter:${imgFilter(b)};clip-path:${imgClip(b)};${deviceCSS(b)}` : ''}"></div>${clicks}`;
   }
   // A 360° photo: walked through by dragging, while presenting (PANO_JS); its flat picture until it loads.
   if (b.type === 'image' && b.pano && b.src)
     return `<div${a} data-pano="${esc(b.src)}" data-prevent-swipe role="img" aria-label="${esc(b.alt || '')}" style="${box(b)}overflow:hidden;background:#000 url('${esc(b.src)}') center/cover"></div>`;
   if (b.type === 'image')
-    return `<img${a} src="${esc(b.fit === 'fill' ? stretchSVG(b.src || '') : b.src || '')}"${b.zoomable ? ' data-lightbox' : ''} alt="${b.decorative ? '' : esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};${b.fit === 'cover' && (b.focusX != null || b.focusY != null) ? `object-position:${imgFocus(b)};` : ''}`
+    return `<img${a} src="${esc(b.fit === 'fill' ? stretchSVG(b.src || '') : b.src || '')}"${b.zoomable ? ' data-lightbox' : ''} alt="${b.decorative ? '' : esc(b.alt || '')}" style="${imgBox(b)}object-fit:${b.fit || 'contain'};${b.fit === 'cover' && (b.focusX != null || b.focusY != null) ? `object-position:${imgFocus(b)};` : ''}`
       // (Its shadow after its look, else the picture's own filter would replace box()'s: a cut-out's follows its figure.)
-      + `filter:${imgFilter(b)}${b.shadow ? ' ' + shadowCSS(b) : ''};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}">`;
+      + `filter:${imgFilter(b)}${b.shadow ? ' ' + shadowCSS(b) : ''};clip-path:${imgClip(b)};${deviceCSS(b)}">`;
   if (b.type === 'video')
     return `<video${a} data-vid="${b.id}" src="${esc(b.src || '')}"${b.poster && /^(data:image\/|https:|blob:)/.test(b.poster) ? ` poster="${esc(b.poster)}"` : ''} controls preload="metadata" style="${box(b)}object-fit:contain"></video>`;
   if (b.type === 'poll')     // live poll: question, live results and the QR to vote
@@ -529,7 +531,7 @@ function magCloneHTML(o, slide, deck, chain) {
   if (o.type === 'video') return pic(o.poster) || `<div style="${box({ ...o, ...STILL })}background:#000"></div>`;
   if (o.type === 'file' && o.display === 'viewer') return pic(o.poster);
   if (o.type === 'image' && needsPlayer(o))
-    return `<img src="${esc(o.src || '')}" alt="" style="${box({ ...o, ...STILL })}object-fit:${o.fit || 'contain'};filter:${imgFilter(o)};opacity:${imgOpacity(o)};clip-path:${imgClip(o)};${deviceCSS(o)}">`;
+    return `<img src="${esc(o.src || '')}" alt="" style="${imgBox({ ...o, ...STILL })}object-fit:${o.fit || 'contain'};filter:${imgFilter(o)};clip-path:${imgClip(o)};${deviceCSS(o)}">`;
   if (needsPlayer(o)) return '';
   return blockHTML({ ...o, ...STILL }, slide).replace(/ data-bid="[^"]*"/g, '');
 }
