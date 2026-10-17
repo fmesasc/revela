@@ -215,7 +215,7 @@ const cataApp = svgURL(360, 720,
     return `<circle cx="${cx}" cy="${cy}" r="22" fill="${i < 7 ? HC.RED : 'none'}" stroke="${i < 7 ? HC.RED : '#c9b08c'}" stroke-width="3"${i < 7 ? '' : ' stroke-dasharray="4 4"'}/>`; }).join('')
   + '<rect x="90" y="380" width="180" height="180" fill="#ffffff"/>' + Array.from({ length: 81 }, (_, i) => ((i * 37) % 7 < 3 || [0, 8, 72].some(c => [0, 1, 9, 10].includes(i - c)) ? `<rect x="${100 + (i % 9) * 18}" y="${390 + Math.floor(i / 9) * 18}" width="18" height="18" fill="#2a1a12"/>` : '')).join('')
   + T(180, 590, 16, '#5a4636', 'Enseña el código al pagar', ' text-anchor="middle"')
-  + `<rect x="24" y="620" width="312" height="60" rx="30" fill="${HC.GOLD}"/>` + T(180, 657, 18, HC.BG, 'Faltan 3 cafés para el regalo', ' text-anchor="middle" font-weight="700"'),
+  + `<rect x="24" y="620" width="312" height="60" rx="30" fill="${HC.GOLD}"/>` + T(180, 657, 18, HC.BG, 'Faltan 2 cafés para el regalo', ' text-anchor="middle" font-weight="700"'),
   HC.CREAM);
 
 // ---- 9 · Mercado del Carmen: a municipal market ---------------------------------------------
@@ -252,8 +252,8 @@ export default {
   biz_retail_opening: { name: 'Apertura de una librería-café', summary: 'Fachada dibujada con toldo, mapa del barrio con puntos en cadena, Venn, sillón 3D, cronología, tabla con fórmulas y cuenta atrás', cat: 'biz', make: () => {
     const { WALL, WINE, CREAM, INK, GOLD, SAGE } = TR, H = head('editorial'), SIGN = uid();
     const sign = size => ({ ...text('La Trastienda', 160, 36, 960, 76, { fontFamily: H, fontSize: size, color: GOLD, textAlign: 'center', vAlign: 'middle', letterSpacing: 3, fontWeight: 700 }), id: SIGN });
-    const pois = [['star', 300, 240, GOLD, 'La Trastienda', 'L'], ['school', 160, 150, SAGE, 'Colegio Alameda', 'R'], ['school', 470, 400, SAGE, 'Colegio del Puerto', 'R'],
-      ['graduation-cap', 560, 260, SAGE, 'Instituto', 'L'], ['store', 430, 320, '#c8643b', 'Mercado', 'R'], ['train-front', 220, 80, '#2f4f6f', 'Metro Alameda', 'R']];
+    const pois = [['star', 300, 240, GOLD, 'La Trastienda', 'L'], ['school', 200, 170, SAGE, 'Colegio Alameda', 'R'], ['school', 400, 180, SAGE, 'Colegio del Puerto', 'R'],
+      ['graduation-cap', 220, 300, SAGE, 'Instituto', 'L'], ['store', 430, 320, '#c8643b', 'Mercado', 'R'], ['train-front', 220, 80, '#2f4f6f', 'Metro Alameda', 'R']];
     return numbered(build({ name: 'La Trastienda · plan de apertura', palette: 'paper', fonts: 'editorial', title: { color: WINE, size: 48 }, body: { color: INK } }, [
       { layout: 'blank', bg: WALL, transition: 'fade', extra: [
         pic(facadeSVG(), 0, 0, 1280, 720, 'Fachada de la librería con toldo a rayas, dos escaparates y la puerta'),
@@ -267,7 +267,7 @@ export default {
           withAnims(icon(ic, 70 + x - 20, 170 + y - 20, 40, c), chain(i, 'zoom-in', { duration: 350, sound: 'pop' })),
           withAnims(text(`<b>${l}</b>`, 70 + x + (side === 'L' ? -200 : 26), 170 + y - 16, 174, 32, { fontSize: 17, color: INK, textAlign: side === 'L' ? 'right' : 'left', bg: '#efe5d2cc', radius: 4, pad: [2, 6, 2, 6] }), A('fade-in', { start: 'withPrev', duration: 300 }))]),
         withAnims(stat('12.400', 'vecinos a menos de 500 metros', 800, 170, 410, WINE, INK, 64), chain(0, 'fade-left')),
-        withAnims(stat('4', 'centros educativos en el radio', 800, 330, 410, SAGE, INK, 64), chain(1, 'fade-left')),
+        withAnims(stat('3', 'centros educativos en el radio', 800, 330, 410, SAGE, INK, 64), chain(1, 'fade-left')),
         withAnims(stat('2,4 km', 'hasta la librería más cercana', 800, 490, 410, '#c8643b', INK, 64), chain(1, 'fade-left'))],
         notes: 'Los puntos del mapa aparecen en cadena con un sonido de «pop»; después, las tres cifras. Datos de población inventados para la plantilla: cámbialos por los del padrón de tu barrio.' },
       { layout: 'titleOnly', title: 'Tres negocios bajo un mismo techo', bg: CREAM, extra: [
@@ -298,7 +298,7 @@ export default {
         chartBlock({ x: 70, y: 170, w: 760, h: 470, chartType: 'stacked', color: WINE, seriesName: 'Libros', grid: true, yTitle: 'Miles de euros',
           data: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8'].map((l, i) => ({ label: l, value: [42, 48, 39, 71, 52, 58, 46, 84][i] })),
           series: [{ name: 'Café', values: [18, 22, 24, 23, 26, 29, 31, 30], color: GOLD }, { name: 'Club y talleres', values: [3, 5, 6, 7, 9, 10, 11, 12], color: SAGE }] }),
-        withAnims(card(`<div style="font-family:${H};font-size:54px;color:${WINE};font-weight:700;line-height:1">Mes 14</div><div style="margin-top:10px">punto de equilibrio, con un ticket medio de 17 € y 95 clientes al día.</div>`,
+        withAnims(card(`<div style="font-family:${H};font-size:54px;color:${WINE};font-weight:700;line-height:1">Mes 14</div><div style="margin-top:10px">punto de equilibrio, con un ticket medio de 17 € y 57 clientes al día.</div>`,
           870, 210, 340, 250, '#ffffff', { fontSize: 23, color: INK, borderColor: '#e2d3bb' }), A('zoom-in', { start: 'click' })),
         text('Navidad (T4 y T8) dispara la venta de libros.', 870, 490, 340, 90, { fontSize: 21, color: '#6a5444', fontStyle: 'italic' })],
         notes: 'Barras apiladas por trimestre durante los dos primeros años: libros, café y club. Las cifras son una previsión de ejemplo; usa las de tu plan de negocio.' },
@@ -315,14 +315,14 @@ export default {
         notes: 'Programa del día: cada franja entra después de la anterior con un solo clic. Detalla quién se encarga de cada actividad.' },
       { layout: 'blank', bg: CREAM, extra: [pollBlock({ fontSize: 32, question: '¿Qué club te gustaría que empezara primero?', options: ['Club de lectura', 'Cuentacuentos infantil', 'Ajedrez los domingos', 'Escritura creativa'], display: 'bar', x: 80, y: 60, w: 1120, h: 600 })],
         notes: 'Votación en directo: el público escanea el código QR con el móvil. El club ganador se anuncia el día de la inauguración.' },
-      { layout: 'blank', bg: WALL, transition: 'zoom', autoAnimate: true, extra: [
+      { layout: 'blank', bg: WALL, transition: 'zoom', extra: [
         pic(facadeSVG(true), 0, 0, 1280, 720, 'La fachada con una cinta roja en la puerta'),
         sign(54),
         card(`<div style="font-size:17px;letter-spacing:4px;color:${WINE};font-weight:700">CORTE DE CINTA</div><div style="font-family:${H};font-size:30px;color:${INK};margin-top:4px">sábado 14 · 11:00</div>`,
           178, 318, 324, 110, CREAM, { radius: 4, pad: [14, 16, 14, 16], borderColor: WINE, rotation: -2, textAlign: 'center' }),
         shape('rounded', 772, 306, 336, 150, CREAM, { radius: 6, stroke: WINE, strokeWidth: 2, rotation: 2 }),
         timer(10, 800, 320, 280, { style: 'digital', h: 120, color: WINE, auto: false, endText: '¡Abrimos!', rotation: 2 })],
-        notes: 'Cierre con Transformar: el rótulo se queda en su sitio y aparece la cinta roja. Haz clic en la cuenta atrás de 10 segundos para «cortar la cinta» con todo el público contando.' },
+        notes: 'Cierre: vuelve la fachada de la portada, ahora con una cinta roja en la puerta. Haz clic en la cuenta atrás de 10 segundos para «cortar la cinta» con todo el público contando.' },
     ]));
   } },
 
@@ -354,7 +354,7 @@ export default {
         text('Las tiendas abren de 10:00 a 22:00 (sin datos fuera de ese horario).', 70, 640, 1140, 36, { fontSize: 20, color: DIM })],
         notes: 'Dos series en líneas: la web se dispara a medianoche y las tiendas tienen dos picos, a mediodía y por la tarde. Los huecos de la serie de tiendas son valores vacíos. Datos inventados.' },
       { layout: 'titleOnly', title: 'Cuatro días, un plan', bg: BG, extra: [
-        dg('chevrons', 'Teaser\n  Lunes 23: cuenta atrás en redes\nSocios\n  Jueves 26: acceso anticipado\nViernes Negro\n  Viernes 27: ofertas de 24 horas\nCiberlunes\n  Lunes 30: solo en la web', 70, 190, 1140, 300, { oneByOne: true, colors: 'colorful', fontScale: 1.3 }),
+        dg('chevrons', 'Teaser\n  Lunes 23: cuenta atrás en redes\nSocios\n  Jueves 26: acceso anticipado\nViernes Negro\n  Viernes 27: ofertas de 24 horas\nCiberlunes\n  Lunes 30: solo en la web', 70, 190, 1140, 300, { oneByOne: true, colors: 'colorful', fontScale: 1 }),
         shape('rounded', 70, 530, 1140, 110, PANEL, { radius: 14 }), icon('megaphone', 105, 555, 60, YEL),
         text(`<b style="color:${YEL}">Un mensaje por día y por canal.</b> Nada de bombardear: el que se da de baja ya no vuelve en todo el año.`, 190, 540, 990, 90, { fontSize: 24, color: W, vAlign: 'middle' })],
         notes: 'Galones que aparecen uno a uno al presentar. Recuerda la regla de comunicación: una sola notificación al día por canal.' },
@@ -445,10 +445,10 @@ export default {
         codeBlock({ x: 60, y: 160, w: 710, h: 400, fontSize: 20, lang: 'python', lineSteps: '1-2|3-4|5-6|8-9',
           code: 'def revisar(ref):\n    pp = ref.demanda * ref.plazo + ref.seguridad\n    if ref.stock <= pp:\n        pedir(ref, cantidad=ref.lote_optimo)\n    elif ref.stock > 3 * pp:\n        avisar("exceso", ref)\n\nfor ref in tienda.referencias:\n    revisar(ref)' }),
         ...[['1', 'Calcula el punto de pedido'], ['2', 'Si no llega, pide el lote'], ['3', 'Si sobra mucho, avisa'], ['4', 'Cada noche, en cada tienda']].map(([n, t], i) =>
-          withAnims(text(`<span style="display:inline-block;width:40px;height:40px;border-radius:20px;background:#b85c00;color:#fff;text-align:center;line-height:40px;font-weight:700;margin-right:14px">${n}</span>${t}`,
-            800, 180 + i * 95, 420, 60, { fontSize: 24, color: INK, vAlign: 'middle' }), A('fade-left', { start: 'click' }))),
+          text(`<span style="display:inline-block;width:40px;height:40px;border-radius:20px;background:#b85c00;color:#fff;text-align:center;line-height:40px;font-weight:700;margin-right:14px">${n}</span>${t}`,
+            800, 180 + i * 95, 420, 60, { fontSize: 24, color: INK, vAlign: 'middle' })),
         text('Se ejecuta a las 3:00, cuando las tiendas están cerradas.', 60, 590, 1160, 40, { fontSize: 22, color: GREY, fontStyle: 'italic' })],
-        notes: 'Código con pasos de resaltado: cada clic ilumina un bloque de líneas y hace aparecer su explicación a la derecha. Es pseudocódigo de ejemplo en Python.' },
+        notes: 'Código con pasos de resaltado: cada clic ilumina un bloque de líneas; a la derecha, la explicación numerada de cada bloque, en el mismo orden. Es pseudocódigo de ejemplo en Python.' },
       { layout: 'titleOnly', title: 'Contar un poco cada día', bg: CONC, extra: [
         dg('cycle', 'Contar\nComparar\nBuscar la causa\nCorregir', 60, 160, 560, 480, { colors: 'colorful', oneByOne: true, fontScale: 1.15 }),
         m3d('kh-AnisotropyBarnLamp', 700, 165, 500, 335, { autoRotate: true, spin: 14, view: 'three', edge: 'fade' }),
@@ -534,6 +534,12 @@ export default {
         ...[['1', 'Ganancias rápidas', 'Tallas en el móvil y cobro portátil: en dos meses.', LIL], ['2', 'Grandes apuestas', 'El almacén nuevo, con la reforma de 2027.', PINK], ['3', 'Si sobra tiempo', 'Carteles de colores: bonitos, pero no quitan esperas.', YEL], ['4', 'Descartado', 'Pantallas táctiles: caras y casi nadie las usa.', MINT]].map(([n, h, d, c], i) =>
           withAnims(text(`<div style="font-family:${H};font-size:24px;font-weight:700;color:${c}">${n} · ${h}</div><div>${d}</div>`, 800, 170 + i * 115, 420, 105, { fontSize: 21, color: FG }), chain(i, 'fade-left')))],
         notes: 'Matriz de esfuerzo frente a impacto: arriba a la izquierda, lo que más rinde con menos trabajo; abajo a la derecha, lo que no compensa. Las cuatro decisiones entran en cadena.' },
+      { layout: 'titleOnly', title: 'Su visita, paso a paso', bg: BG, transition: 'fade', extra: [
+        ...stageHead(), ...grid(),
+        { ...stroke(curveOf(BEFORE), JX, JY, JW, JH, PINK, 5), id: OLD },
+        ...faces(BEFORE, false),
+        text('Línea: cómo se siente Marta en cada momento (arriba, bien; abajo, mal).', JX, 640, JW, 34, { fontSize: 20, color: DIM, textAlign: 'center' })],
+        notes: 'Recordatorio: la curva de antes del piloto, tal como la vimos al principio. Al pasar a la siguiente, Transformar lleva cada cara a su nueva posición.' },
       { layout: 'titleOnly', title: 'Tras el piloto de tres meses', bg: BG, autoAnimate: true, extra: [
         ...stageHead(), ...grid(),
         { ...stroke(curveOf(BEFORE), JX, JY, JW, JH, PINK, 3, { opacity: 30, dash: 'dash' }), id: OLD },
@@ -567,6 +573,11 @@ export default {
         text('Comité de tienda · octubre', 50, 620, 250, 30, { fontSize: 16, color: '#8a9099' }),
         ...planBase(), ...planDepts(HOY, true)],
         notes: 'Portada con el plano de planta: cada sección es una forma con su nombre y entra sola, una tras otra. Como son objetos (no una imagen), en la diapositiva de la propuesta se mueven con Transformar.' },
+      { layout: 'titleOnly', title: 'Ventas por metro cuadrado', bg: '#ffffff', transition: 'slide', extra: [
+        chartBlock({ x: 70, y: 160, w: 780, h: 470, chartType: 'hbar', color: INK, dataLabels: true, grid: true, xTitle: 'Euros al mes por m²',
+          data: [['Fruta y verdura', 820], ['Panadería', 760], ['Carne y pescado', 690], ['Lácteos y huevos', 610], ['Bebidas', 430], ['Congelados', 380], ['Droguería', 210]].map(([label, value]) => ({ label, value })) }),
+        withAnims(card('<b>Fruta y verdura</b> es lo que más vende por metro… y hoy está escondida en una esquina.', 890, 280, 320, 180, '#ffffff', { fontSize: 21, color: INK, borderColor: GREEN, pad: [14, 18, 14, 18] }), A('fade-up', { start: 'click' }))],
+        notes: 'Barras horizontales ordenadas de más a menos ventas por metro. Los frescos son lo que más vende y hoy están lejos de la entrada. Cifras de ejemplo.' },
       { layout: 'titleOnly', title: 'Así se mueve hoy el cliente', bg: '#ffffff', extra: [
         ...planBase(), ...planDepts(HOY, false),
         withAnims(icon('shopping-cart', PX + 750, PY + 450, 44, RED), path([[0, -100], [-20, -300], [-200, -330], [-480, -330], [-500, -160], [-400, -40]], { start: 'click', duration: 5000 })),
@@ -584,11 +595,6 @@ export default {
         side('<b>Calientes:</b> la entrada y las cajas, donde ponemos la droguería y las chucherías.', 260, 130),
         side('<b>Fríos:</b> congelados y lácteos. Los visita casi todo el mundo… pero deprisa y al final.', 420, 150)],
         notes: 'Mapa de calor hecho con brillos (elipses con degradado radial a transparente) sobre el plano. Datos de los sensores de techo, de ejemplo.' },
-      { layout: 'titleOnly', title: 'Ventas por metro cuadrado', bg: '#ffffff', transition: 'slide', extra: [
-        chartBlock({ x: 70, y: 160, w: 780, h: 470, chartType: 'hbar', color: INK, dataLabels: true, grid: true, xTitle: 'Euros al mes por m²',
-          data: [['Fruta y verdura', 820], ['Panadería', 760], ['Carne y pescado', 690], ['Lácteos y huevos', 610], ['Bebidas', 430], ['Congelados', 380], ['Droguería', 210]].map(([label, value]) => ({ label, value })) }),
-        withAnims(card('<b>Fruta y verdura</b> es lo que más vende por metro… y hoy está escondida en una esquina.', 890, 280, 320, 180, '#ffffff', { fontSize: 21, color: INK, borderColor: GREEN, pad: [14, 18, 14, 18] }), A('fade-up', { start: 'click' }))],
-        notes: 'Barras horizontales ordenadas de más a menos ventas por metro. Los frescos son lo que más vende y hoy están lejos de la entrada. Cifras de ejemplo.' },
       { layout: 'titleOnly', title: 'La propuesta', bg: '#ffffff', autoAnimate: true, extra: [
         ...planBase(), ...planDepts(NUEVO, false),
         ...[['Fresco a la entrada', 'Color, olor y temporada: la tienda se presenta.'], ['Pan en la esquina del fondo', 'Quien viene a por pan recorre la tienda.'], ['Congelados al final', 'Lo último antes de pagar: llegan fríos a casa.']].map(([h, d], i) =>
@@ -607,7 +613,7 @@ export default {
         text('Se recupera en 14 meses si la visita media pasa de 11 a 14 minutos.', 70, 590, 1140, 44, { fontSize: 24, color: INK, fontWeight: 700 })],
         notes: 'Tabla con fórmulas: el importe es unidades por precio (=B2*C2) y el total, la suma de la columna. Presupuesto de ejemplo.' },
       { layout: 'titleOnly', title: 'Tres noches de obra', bg: FLOOR, extra: [
-        dg('steps', 'Noche 1\n  Murales y frescos\nNoche 2\n  Góndolas y pasillos\nNoche 3\n  Señalética y limpieza\nLunes\n  Abrimos como siempre', 70, 170, 1140, 420, { oneByOne: true, colors: 'colorful', fontScale: 1.2 }),
+        dg('steps', 'Noche 1\n  Murales y frescos\nNoche 2\n  Góndolas y pasillos\nNoche 3\n  Señalética y limpieza\nLunes\n  Abrimos como siempre', 70, 170, 1140, 420, { oneByOne: true, colors: 'colorful', fontScale: 1 }),
         text('La tienda no cierra: se trabaja de 22:00 a 7:00.', 70, 610, 1140, 40, { fontSize: 22, color: GREY, textAlign: 'center' })],
         notes: 'Escalera de pasos que aparece uno a uno. Insiste en que la tienda no cierra ningún día.' },
       { layout: 'blank', bg: '#ffffff', extra: [pollBlock({ kind: 'multi', fontSize: 30, question: '¿Qué echas en falta en tu súper? (elige todas las que quieras)', options: ['Más productos locales', 'Cajas de autopago', 'Comida preparada', 'Pasillos más anchos', 'Horario más amplio'], display: 'bar', x: 80, y: 60, w: 1120, h: 600 })],
@@ -648,7 +654,7 @@ export default {
         notes: 'Muestras de color como tiras de pintura, que caen una tras otra. Recuerda la regla del 60-30-10 para que el escaparate no parezca un mercadillo.' },
       { layout: 'titleOnly', title: 'La regla del triángulo', bg: BG, extra: [
         pic(windowSVG, WX, WY, 720, 416, 'Escaparate iluminado con tres maniquíes de alturas distintas'),
-        withAnims(stroke(`M${tri[0][0]} ${tri[0][1]} L${tri[1][0]} ${tri[1][1]} L${tri[2][0]} ${tri[2][1]} Z`, WX, WY, 720, 416, '#ffffff', 3, { dash: '8 8' }), A('draw', { start: 'click', duration: 1600 })),
+        withAnims(stroke(`M${tri[0][0]} ${tri[0][1]} L${tri[1][0]} ${tri[1][1]} L${tri[2][0]} ${tri[2][1]} Z`, WX, WY, 720, 416, '#ffffff', 3), A('draw', { start: 'click', duration: 1600 })),
         ...HEADS.map((hd, i) => { const [x, y] = wpt(hd); return withAnims(shape('ellipse', x - 10, y - 10, 20, 20, '#ffffff'), A('zoom-in', { start: 'withPrev', delay: 400 * i, duration: 300 })); }),
         text(`<div style="font-family:${H};font-size:30px;font-style:italic;color:${RUST}">Tres alturas, una mirada</div>`
           + '<p>El ojo salta de una cabeza a otra y recorre todo el escaparate.</p><p>El punto más alto, para la prenda que más queremos vender.</p><p>Nunca tres maniquíes en fila: parece una cola.</p>',
@@ -664,7 +670,7 @@ export default {
       { layout: 'titleOnly', title: 'Puntos focales', bg: BG, extra: [
         pic(windowSVG, WX, WY, 720, 416, 'El escaparate con sus puntos focales'),
         ...[[[450, 52], 'Foco cálido de 3.000 K sobre el héroe'], [[450, 190], 'La prenda principal, en el punto más alto'], [[592, 340], 'Precio pequeño, sobre la maleta'], [[160, 446], 'Hojas secas: la temporada, sin palabras']].flatMap(([pt, l], i) => { const [x, y] = wpt(pt);
-          return [withAnims(shape('ellipse', x - 22, y - 22, 44, 44, RUST, { stroke: IVORY, strokeWidth: 3 }), chain(i, 'zoom-in', { duration: 300, sound: 'click' })),
+          return [withAnims(shape('ellipse', x - 22, y - 22, 44, 44, RUST, { stroke: IVORY, strokeWidth: 3 }), A('zoom-in', { start: 'click', duration: 300, sound: 'click' })),
             withAnims(text(String(i + 1), x - 22, y - 22, 44, 44, { fontSize: 22, color: '#ffffff', fontWeight: 700, textAlign: 'center', vAlign: 'middle' }), A('fade-in', { start: 'withPrev', duration: 300 })),
             withAnims(text(`<span style="font-family:${H};font-size:30px;font-style:italic;color:${RUST};margin-right:12px">${i + 1}</span>${l}`, 830, 180 + i * 110, 390, 90, { fontSize: 22, color: IVORY, vAlign: 'middle' }), A('fade-left', { start: 'withPrev', duration: 400 }))]; })],
         notes: 'Cuatro puntos numerados sobre el dibujo del escaparate; cada clic añade uno y su explicación, con un «clic» de sonido.' },
@@ -693,11 +699,15 @@ export default {
         kicker('PEONZA · JUGUETERÍAS · PLAN 2027', 80, 110, 600, MINT, 18),
         text('Pide en casa,<br>recoge en<br>tu tienda', 76, 150, 620, 330, { fontFamily: H, fontSize: 70, fontWeight: 800, color: FG, lineHeight: 1.1 }),
         text('En dos horas, sin gastos de envío y con alguien que te lo explica', 80, 500, 560, 80, { fontSize: 26, color: DIM }),
-        withAnims(stroke('M5 80 C 30 95, 40 20, 70 35 S 90 10, 95 8', 760, 230, 300, 300, YEL, 4, { dash: 'dash' }), A('draw', { start: 'afterPrev', delay: 400, duration: 1400 })),
+        withAnims(stroke('M5 80 C 30 95, 40 20, 70 35 S 90 10, 95 8', 760, 230, 300, 300, YEL, 4), A('draw', { start: 'afterPrev', delay: 400, duration: 1400 })),
         phone(690, 360, 150, 300, { rotation: -8 }),
         withAnims(shape('ellipse', 1040, 140, 150, 150, CORAL), A('zoom-in', { start: 'afterPrev', duration: 400, sound: 'pop' })),
         withAnims(icon('store', 1075, 175, 80, '#ffffff'), A('fade-in', { start: 'withPrev' }))],
-        notes: 'Portada: del móvil a la tienda, una ruta punteada que se dibuja sola (efecto «Dibujar») y la tienda que aparece con un «pop». La pantalla de la app es un dibujo SVG propio dentro de un marco de móvil.' },
+        notes: 'Portada: del móvil a la tienda, una ruta que se dibuja sola (efecto «Dibujar») y la tienda que aparece con un «pop». La pantalla de la app es un dibujo SVG propio dentro de un marco de móvil.' },
+      { layout: 'titleOnly', title: 'Cómo funciona', bg: BG, transition: 'slide', autoAnimate: true, extra: [
+        dg('cards', 'Pide\n  En la web o la app, antes de las 18:00\nPreparamos\n  El equipo lo saca del lineal en 30 minutos\nAvisamos\n  Un mensaje con un código QR\nRecoges\n  En el mostrador rápido, sin colas', 70, 170, 820, 470, { oneByOne: true, colors: 'colorful', fontScale: 1.05 }),
+        phone(960, 150, 250, 500)],
+        notes: 'Transformar: el móvil viaja desde la portada y se endereza. Las cuatro tarjetas del diagrama aparecen una a una al presentar.' },
       { layout: 'titleOnly', title: 'El cliente ya va y viene', bg: BG, extra: [
         ...[['search', '68 %', 'mira la web antes de ir a la tienda', MINT], ['shopping-cart', '1 de 3', 'pedidos online del piloto se recogió en tienda', YEL], ['gift', '+26 %', 'compra algo más al recoger su pedido', CORAL]].map(([ic, n, l, c], i) => {
           const x = 70 + i * 390;
@@ -705,10 +715,6 @@ export default {
             withAnims(icon(ic, x + 40, 230, 56, c), A('fade-in', { start: 'withPrev' })),
             withAnims(text(`<div style="font-family:${H};font-size:84px;font-weight:800;color:${c};line-height:1.1">${n}</div><div style="margin-top:10px">${l}</div>`, x + 40, 310, 290, 250, { fontSize: 25, color: FG }), A('fade-in', { start: 'withPrev' }))]; }).flat()],
         notes: 'Tres cifras en tarjetas que entran seguidas con un clic. Datos de ejemplo del piloto en dos tiendas.' },
-      { layout: 'titleOnly', title: 'Cómo funciona', bg: BG, transition: 'slide', autoAnimate: true, extra: [
-        dg('cards', 'Pide\n  En la web o la app, antes de las 18:00\nPreparamos\n  El equipo lo saca del lineal en 30 minutos\nAvisamos\n  Un mensaje con un código QR\nRecoges\n  En el mostrador rápido, sin colas', 70, 170, 820, 470, { oneByOne: true, colors: 'colorful', fontScale: 1.05 }),
-        phone(960, 150, 250, 500)],
-        notes: 'Transformar: el móvil viaja desde la portada y se endereza. Las cuatro tarjetas del diagrama aparecen una a una al presentar.' },
       { layout: 'titleOnly', title: 'Enviar o recoger', bg: BG, extra: [
         shape('rect', 0, 160, 1280, 140, '#24323f'), ...Array.from({ length: 12 }, (_, i) => shape('rect', 20 + i * 110, 226, 60, 8, '#ffffff', { opacity: 70 })),
         withAnims(m3d('kh-CesiumMilkTruck', 980, 150, 260, 160, { autoRotate: false, view: 'side', edge: 'free' }), path([[-440, 0], [-880, 0]], { start: 'click', duration: 3500 })),
@@ -725,8 +731,8 @@ export default {
         codeBlock({ x: 60, y: 160, w: 800, h: 440, fontSize: 18, lang: 'javascript', lineSteps: '1-2|3-5|6-8|10',
           code: "async function reservar(pedido, tienda) {\n  const stock = await inventario.de(tienda, pedido.ref);\n  if (stock.libre < pedido.unidades) {\n    return ofrecerOtraTienda(pedido);\n  }\n  await inventario.bloquear(tienda, pedido, { minutos: 120 });\n  await avisarTienda(tienda, pedido);\n  return { listoA: horaDeRecogida(tienda) };\n}\n// Si en 2 horas no se recoge, el stock vuelve a la venta." }),
         ...[['1', 'Mira el stock de esa tienda'], ['2', 'Si falta, propone otra'], ['3', 'Bloquea, avisa y da hora'], ['4', 'Sin recoger, se libera']].map(([n, t], i) =>
-          withAnims(text(`<b style="color:${YEL};font-size:30px">${n}</b>  ${t}`, 900, 190 + i * 95, 320, 60, { fontSize: 23, color: FG, vAlign: 'middle' }), A('fade-left', { start: 'click' })))],
-        notes: 'Código con pasos de resaltado: cada clic ilumina un bloque y añade su explicación. Es un ejemplo en JavaScript, no el código real.' },
+          text(`<b style="color:${YEL};font-size:30px">${n}</b>  ${t}`, 900, 190 + i * 95, 320, 60, { fontSize: 23, color: FG, vAlign: 'middle' }))],
+        notes: 'Código con pasos de resaltado: cada clic ilumina un bloque; a la derecha, la explicación numerada de cada uno. Es un ejemplo en JavaScript, no el código real.' },
       { layout: 'titleOnly', title: 'Cómo cambia la venta', bg: BG, extra: [
         chartBlock({ x: 70, y: 160, w: 1140, h: 480, chartType: 'stacked100', color: SKY, seriesName: 'Tienda', grid: true, labelColor: DIM, dataLabels: true,
           data: ['T1 26', 'T2 26', 'T3 26', 'T4 26', 'T1 27*', 'T2 27*'].map((l, i) => ({ label: l, value: [84, 82, 80, 76, 72, 68][i] })),
@@ -825,7 +831,7 @@ export default {
         notes: 'Cuatro pizarras de tiza (tipo de letra manuscrita) que caen una tras otra. El dato que más duele: casi uno de cada cuatro puestos, cerrado.' },
       { layout: 'titleOnly', title: 'Qué se vende', bg: BGL, transition: 'slide', extra: [
         chartBlock({ x: 70, y: 160, w: 780, h: 480, chartType: 'treemap', dataLabels: true,
-          data: [['Fruta y verdura', 31, LEAF], ['Carnicería', 22, TOMATO], ['Pescadería', 18, '#3f7fae'], ['Charcutería', 12, ORANGE], ['Panadería', 7, '#c9a24a'], ['Bar', 6, IRON], ['Otros', 4, '#9aa69f']].map(([label, value, color]) => ({ label, value, color })) }),
+          data: [['Frutería', 31, LEAF], ['Carnicería', 22, TOMATO], ['Pescadería', 18, '#3f7fae'], ['Charcutería', 12, ORANGE], ['Panadería', 7, '#c9a24a'], ['Bar', 6, IRON], ['Otros', 4, '#9aa69f']].map(([label, value, color]) => ({ label, value, color })) }),
         withAnims(text(`<div style="font-family:${H};font-size:28px;font-weight:700;color:${GREEN}">El bar es el 6 %…</div><div style="margin-top:8px">pero es donde más tiempo pasa la gente. Lo usaremos como reclamo de tarde.</div>`, 890, 220, 330, 300, { fontSize: 24, color: INK }), A('fade-left', { start: 'click' }))],
         notes: 'Treemap: cada rectángulo es proporcional a las ventas de cada tipo de puesto. Porcentajes de ejemplo.' },
       { layout: 'titleOnly', title: 'Cuándo viene la gente', bg: BGL, extra: [
@@ -915,8 +921,8 @@ export default {
         codeBlock({ x: 70, y: 160, w: 760, h: 420, fontSize: 20, lang: 'sql', lineSteps: '1-3|4-6|7-8|9-10',
           code: "SELECT a.producto, b.producto,\n       COUNT(*) AS juntos\nFROM lineas a\nJOIN lineas b\n  ON a.ticket = b.ticket\n AND a.producto < b.producto\nGROUP BY a.producto, b.producto\nHAVING COUNT(*) > 500\nORDER BY juntos DESC\nLIMIT 20;" }),
         ...[['Cada pareja de un ticket', TEAL], ['Sin contarla dos veces', AMBER], ['Solo las frecuentes', ROSE], ['Las 20 primeras', '#ffffff']].map(([t, c], i) =>
-          withAnims(text(`<span style="color:${c};font-weight:700">●</span>  ${t}`, 870, 190 + i * 95, 350, 60, { fontSize: 24, color: '#e8ecef', vAlign: 'middle' }), A('fade-left', { start: 'click' })))],
-        notes: 'Consulta SQL con pasos de resaltado: cada clic ilumina un bloque y su explicación. Une la tabla de líneas de ticket consigo misma para sacar las parejas.' },
+          text(`<span style="color:${c};font-weight:700">●</span>  ${t}`, 870, 190 + i * 95, 350, 60, { fontSize: 24, color: '#e8ecef', vAlign: 'middle' }))],
+        notes: 'Consulta SQL con pasos de resaltado: cada clic ilumina un bloque; a la derecha, lo que hace cada uno, en el mismo orden. Une la tabla de líneas de ticket consigo misma para sacar las parejas.' },
       { layout: 'titleOnly', title: 'Cuatro misiones de compra', bg: BG, extra: [
         chartBlock({ x: 70, y: 170, w: 620, h: 460, chartType: 'doughnut', legend: false, data: [{ label: 'Reposición semanal', value: 34, color: TEAL }, { label: 'Comida para hoy', value: 29, color: AMBER }, { label: 'Urgencia', value: 22, color: ROSE }, { label: 'Capricho', value: 15, color: '#8e9ba6' }] }),
         ...[['Reposición · 34 %', 'Más de 12 artículos · mañana · 54 €', TEAL], ['Comida para hoy · 29 %', '3 a 6 artículos · 19:00 a 21:00 · 14 €', AMBER], ['Urgencia · 22 %', '1 o 2 artículos · cualquier hora · 4 €', ROSE], ['Capricho · 15 %', 'Dulces y bebidas · fin de semana · 7 €', '#8e9ba6']].map(([h, d, c], i) =>
