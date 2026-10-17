@@ -1092,7 +1092,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const box = D.getElementById('toasts');
     assert(box && box.getAttribute('aria-live') === 'polite', 'una zona de avisos que se lee en voz alta');
     assert(/revela\.json/.test(box.textContent) && /Abrir/.test(box.textContent), 'dice qué se descargó y cómo seguir: ' + box.textContent);
-    box.querySelector('.toast').click(); await sleep(300); eq(box.children.length, 0, 'un clic lo quita');
+    // (That one: whatever else the page may have said meanwhile — a slow machine's notices — is not this test's.)
+    const own = [...box.querySelectorAll('.toast')].find(x => /revela\.json/.test(x.textContent));
+    own.click(); await sleep(300);
+    assert(!box.contains(own), 'un clic lo quita (quedan: ' + [...box.children].map(x => x.textContent.trim().slice(0, 40)).slice(0, 3).join(' | ') + ')');
   });
 
   await test('si el navegador no puede guardar, la barra lo dice y un clic descarga una copia', async () => {
