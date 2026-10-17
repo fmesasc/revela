@@ -257,8 +257,19 @@ export function pollResultsHTML(poll, res, accent, L) {
           return '<span style="padding:.15em .45em;border-radius:1em;background:' + (pc >= 75 ? '#26890c' : pc >= 50 ? '#d89e00' : '#c94f4f') + ';color:#fff"><b>' + esc(x.l) + '</b> ' + esc(String(x.a || '').split('|')[0]) + ' · ' + pc + ' %</span>'; }).join('')
         + '</div><div style="margin-top:.4em;font-size:.55em;opacity:.8">' + nv + ' ' + T(nv === 1 ? 'respuesta' : 'respuestas') + ' · ' + avg + ' ' + T('% de aciertos') + '</div>' + ((res.board || []).length ? ranking(res.board, 3) : '')
       : !res.revealed
-      ? '<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;gap:.2em"><div style="font-size:2.2em;font-weight:800">' + nv + '</div><div style="font-size:.6em;opacity:.8">'
-        + T(nv === 1 ? 'respuesta' : 'respuestas') + (nv ? ' · ' + avg + ' ' + T('% de aciertos') : '') + '</div><div style="font-size:.45em;opacity:.6;margin-top:.4em">' + T('Clic para ver las soluciones') + '</div></div>'
+      // (Putting in order and matching pairs: what there is to order or to match, shuffled — not the answer —, over the
+      // count: the slide showed only «0 respuestas» and the room didn't know what the activity was about.)
+      ? (kind === 'order' || kind === 'match' ? (function () {
+          var mix = function (a) { return a.map(function (x, i) { var h = 0, t = String(x); for (var k = 0; k < t.length; k++) h = (h * 31 + t.charCodeAt(k)) | 0; return [h, x]; }).sort(function (p, q) { return p[0] - q[0]; }).map(function (p) { return p[1]; }); };
+          var chip = function (t, c) { return '<span style="display:inline-block;margin:.12em;padding:.12em .5em;border-radius:.35em;background:' + c + ';color:#fff">' + esc(t) + '</span>'; };
+          var lefts = kind === 'match' ? labels.map(function (l) { return two(l)[0]; }) : labels, rights = kind === 'match' ? mix(labels.map(function (l) { return two(l)[1]; })) : [];
+          var cells = kind === 'match' ? '<div style="display:flex;gap:1.2em;justify-content:center"><div>' + lefts.map(function (t, i) { return '<div>' + chip(t, cols[i % cols.length]) + '</div>'; }).join('') + '</div><div>'
+              + rights.map(function (t) { return '<div>' + chip(t, '#5b6577') + '</div>'; }).join('') + '</div></div>'
+            : '<div style="text-align:center">' + mix(lefts).map(function (t, i) { return chip(t, cols[i % cols.length]); }).join('') + '</div>';
+          return '<div style="display:flex;flex-direction:column;justify-content:center;height:100%;gap:.3em"><div style="font-size:.6em">' + cells + '</div><div style="text-align:center;font-size:.5em;opacity:.8">' + nv + ' '
+            + T(nv === 1 ? 'respuesta' : 'respuestas') + (nv ? ' · ' + avg + ' ' + T('% de aciertos') : '') + ' · ' + T('Clic para ver las soluciones') + '</div></div>'; })()
+      : '<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;gap:.2em"><div style="font-size:2.2em;font-weight:800">' + nv + '</div><div style="font-size:.6em;opacity:.8">'
+        + T(nv === 1 ? 'respuesta' : 'respuestas') + (nv ? ' · ' + avg + ' ' + T('% de aciertos') : '') + '</div><div style="font-size:.45em;opacity:.6;margin-top:.4em">' + T('Clic para ver las soluciones') + '</div></div>')
       : '<div style="display:flex;flex-direction:column;justify-content:center;gap:.35em;min-height:80%">' + gl.map(function (l, i) { var pc = nv ? Math.round((counts[i] || 0) * 100 / nv) : 0;
           return '<div style="display:flex;align-items:center;gap:.5em;font-size:.7em"><div style="flex:0 1 55%;min-width:30%;overflow-wrap:anywhere;line-height:1.15">' + esc(l) + '</div>'
             + '<div style="flex:1;background:#8882;border-radius:.2em;height:1.2em"><div style="height:100%;width:' + pc + '%;background:#26890c;border-radius:.2em"></div></div><div style="flex:0 0 3em;font-weight:700">' + pc + ' %</div></div>'; }).join('')

@@ -236,7 +236,7 @@ export default {
 
         { layout: 'titleOnly', title: 'Cómo se importa', bg: WALL, extra: [
           dg('process', 'Archivo ▸ Importar PPTX / ODP\n  En la pestaña Archivo\nElige el archivo\n  .pptx de PowerPoint u .odp\nRevela lo convierte\n  Sin salir del navegador\nRepasa y guarda\n  Archivo ▸ Guardar',
-            90, 180, 1100, 250, { oneByOne: true, colors: 'accent', fontScale: 1.1 }),
+            90, 180, 1100, 250, { oneByOne: true, colors: 'accent', fontScale: 0.95 }),
           tipCard('<b>¿Solo unas diapositivas?</b><br><b>Archivo ▸ Reutilizar diapositivas</b> las añade a la presentación que tienes abierta.', 90, 470, 530, 150, ORANGE),
           tipCard('<b>¿Está en Google Slides?</b><br><b>Archivo ▸ Desde Google Slides</b> la trae de tu Drive, sin descargarla antes.', 660, 470, 530, 150, NAVY)],
         notes: 'El diagrama aparece paso a paso al presentar (Diagrama ▸ Uno a uno al presentar). Un archivo .odp de LibreOffice se importa igual, con el mismo botón.' },
@@ -264,10 +264,10 @@ export default {
         { layout: 'titleOnly', title: 'Las animaciones siguen ahí', bg: WALL, extra: [
           RR(90, 180, 600, 440, '#ffffff', 16, { stroke: LINE, strokeWidth: 2, shadow: { x: 0, y: 8, blur: 20, color: '#00000018' } }),
           at(text('Mudanzas por meses', 120, 200, 540, 54, { fontFamily: HG, fontSize: 32, color: NAVY }), 'fly-in', { duration: 700 }),
-          at(chartBlock({ x: 120, y: 270, w: 400, h: 320, chartType: 'bar', color: ORANGE, dataLabels: true, labelColor: INK,
+          at(chartBlock({ x: 120, y: 270, w: 380, h: 320, chartType: 'bar', color: ORANGE, dataLabels: true, labelColor: INK,
             data: [{ label: 'Jun', value: 14 }, { label: 'Jul', value: 22 }, { label: 'Ago', value: 31 }, { label: 'Sep', value: 18 }] }), 'wipe', { start: 'afterPrev', duration: 800 }),
           at(shape('seal', 520, 280, 160, 160, GREEN, { html: '<b>+40&nbsp;%</b>', fontSize: 22, color: '#ffffff' }), 'zoom-in', { start: 'afterPrev' }),
-          withAnims(icon('truck', 540, 480, 70, NAVY), A('fade-in'), path([[-60, 0], [-180, 0]], { start: 'afterPrev', duration: 1200 })),
+          withAnims(icon('truck', 512, 500, 64, NAVY), A('fade-in'), path([[50, 0], [100, 0]], { start: 'afterPrev', duration: 1200 })),
           ...[['1', 'Título', 'Desplazar hacia dentro', 'Al hacer clic'], ['2', 'Gráfico', 'Barrido', 'Después de la anterior'], ['3', 'Sello', 'Zoom', 'Después de la anterior'],
             ['4', 'Camión', 'Aparecer y trayectoria', 'Al hacer clic']].map(([n, o, e, s], i) =>
             text(`<b style="color:${ORANGE}">${n}</b>  <b>${o}</b> · ${e}<br><span style="color:${MUTED}">${s}</span>`, 730, 186 + i * 86, 460, 74, { fontSize: 21, color: INK, lineHeight: 1.35 })),
@@ -355,13 +355,13 @@ export default {
           ...[['Entrada', 'El objeto aparece en escena.', 'Animaciones ▸ Aparecer', '#2e7d32'], ['Énfasis', 'Ya está a la vista y llama la atención.', 'Animaciones ▸ Agrandar', '#f9a825'],
             ['Salida', 'El objeto se va de la escena.', 'Animaciones ▸ Desaparecer', '#c62828'], ['Trayectoria', 'Se mueve por un camino.', 'Animaciones ▸ Trayectoria', '#4f8fd6']].flatMap(([t, d, w, c], i) => { const x = 90 + i * 280;
             const star = shape('star', x + 85, 270, 90, 90, GOLD);
-            const fx = [withAnims(star, A('zoom-in', { duration: 700 })), withAnims(star, A('grow', { size: 140 }), A('shrink', { size: 72, start: 'afterPrev' })),
+            const fx = [withAnims(star, A('fade-in', { duration: 700 })), withAnims(star, A('grow', { size: 140 }), A('shrink', { size: 72, start: 'afterPrev' })),
               withAnims(star, A('fade-out', { duration: 700 })), withAnims(star, path([[60, -30], [0, -60], [-60, -30], [0, 0]], { duration: 1800 }))][i];
             return [RR(x, 240, 260, 380, '#1b1416', 16, { stroke: c, strokeWidth: 2 }), R(x, 240, 260, 10, c), fx,
               text(`<b>${t}</b>`, x + 20, 384, 220, 46, { fontFamily: HP, fontSize: 28, color: CREAM, textAlign: 'center' }),
               text(d, x + 20, 436, 220, 70, { fontSize: 20, color: DIM, textAlign: 'center', lineHeight: 1.3 }),
               text(w.replace(' ▸ ', ' ▸<br>'), x + 20, 530, 220, 64, { fontSize: 18, color: CREAM, textAlign: 'center', bg: '#2a2022', radius: 12, vAlign: 'middle' })]; })],
-        notes: 'Cuatro clics, cuatro estrellas: la primera entra (Zoom), la segunda se agranda y vuelve a su tamaño, la tercera se va y la cuarta da una vuelta. Así se ve la diferencia entre entrada, énfasis, salida y trayectoria.' },
+        notes: 'Cuatro clics, cuatro estrellas: la primera entra (Aparecer), la segunda se agranda y vuelve a su tamaño, la tercera se va y la cuarta da una vuelta. Así se ve la diferencia entre entrada, énfasis, salida y trayectoria.' },
 
         { layout: 'blank', bg: BG, extra: [top, ...head('PASO A PASO', 'Tu primera animación'),
           ...[['Selecciona el objeto en la diapositiva.'], ['En <b>Animaciones</b>, elige un efecto: Aparecer, Subir, Zoom…'], ['En <b>Comienzo</b>, elige cuándo: <i>Al hacer clic</i>.'],
@@ -372,7 +372,7 @@ export default {
           shape('trapezoid', 700, 540, 500, 100, WOOD, { fill2: WOOD2, gradAngle: 90, flipV: true }),
           withAnims(m3d('kk-Mage', 960, 250, 230, 380, { walk: { clip: 'Walking_A', end: 'Cheer', endOnce: true, face: true, look: true } }),
             path([[-170, 0]], { start: 'afterPrev', duration: 2600 }))],
-        notes: 'El mago entra solo en escena con una trayectoria y, al llegar, saluda (Modelo 3D ▸ Mientras se mueve: anda, y al llegar celebra). Los cinco pasos aparecen con un clic, uno detrás de otro.' },
+        notes: 'El mago entra solo en escena con una trayectoria y, al llegar, saluda (Modelo 3D ▸ Movimiento 3D: «Mientras se mueve», andar; «Al terminar el recorrido», celebrar). Los cinco pasos aparecen con un clic, uno detrás de otro.' },
 
         { layout: 'blank', bg: BG, back: [...floor], extra: [
           ...[{}, { start: 'withPrev' }, { start: 'afterPrev' }, { start: 'afterPrev', delay: 1000, sound: 'chime' }]
@@ -589,7 +589,7 @@ export default {
           chartBlock({ x: 730, y: 230, w: 440, h: 360, chartType: 'bar', color: '#4a90d9', dataLabels: true, labelColor: '#1d2a3a',
             data: [{ label: 'Ene', value: 42 }, { label: 'Feb', value: 55 }, { label: 'Mar', value: 87, color: '#e8590c' }, { label: 'Abr', value: 61 }] }),
           at(ink(Array.from({ length: 40 }, (_, k) => { const a = -Math.PI / 2 + k / 39 * 2.15 * Math.PI; return [995 + 78 * Math.cos(a), 330 + 118 * Math.sin(a)]; }), RED, 6), 'draw', { duration: 1200 }),
-          withAnims(E(760, 600, 22, 22, RED, { shadow: { x: 0, y: 0, blur: 14, color: RED } }), A('fade-in', { start: 'afterPrev' }), path([[90, -150], [190, -260], [240, -300]], { start: 'afterPrev', duration: 1600 }))],
+          withAnims(E(756, 596, 30, 30, RED, { stroke: '#ffffff', strokeWidth: 3, shadow: { x: 0, y: 0, blur: 14, color: RED } }), A('fade-in'), path([[90, -150], [190, -280], [234, -342]], { start: 'afterPrev', duration: 1600 }))],
         notes: 'Dos clics: el primero dibuja el círculo rojo alrededor de marzo, como harías con el lápiz; el segundo, un punto rojo que imita el puntero láser y va hacia esa barra. Datos inventados.' },
 
         { layout: 'blank', bg: '#fbfcfd', extra: [
@@ -659,23 +659,23 @@ export default {
             ['Que voten', 'Cada persona escanea el QR con su móvil y responde: el resultado se mueve al instante.', YEL]].flatMap(([t, d, c], i) => { const y = 190 + i * 140;
             return together([RR(90, y, 680, 120, PANEL, 18, { stroke: c, strokeWidth: 2 }), text(`<b>${i + 1}</b>`, 110, y + 20, 80, 80, { fontFamily: HB, fontSize: 72, color: c, textAlign: 'center', vAlign: 'middle' }),
               text(`<b style="color:${c}">${t}</b><br>${d}`, 206, y + 10, 540, 100, { fontSize: 21, color: W, lineHeight: 1.4, vAlign: 'middle' })], 'fade-right', i ? 'afterPrev' : 'click'); }),
-          text('Los móviles se conectan directamente a este ordenador, sin servidor: funciona bien con decenas de personas.', 90, 620, 680, 60, { fontSize: 19, color: DIM, lineHeight: 1.35 }),
+          text('Con tu sesión de Revela iniciada caben miles de móviles; sin ella, se conectan directamente a este ordenador, hasta unos 500.', 90, 620, 680, 60, { fontSize: 19, color: DIM, lineHeight: 1.35 }),
           withAnims({ ...base(880, 120, 270, 540), type: 'image', src: vote, alt: 'Pantalla del móvil al votar: la pregunta y cuatro opciones', fit: 'cover', device: 'phone' }, A('fade-up', { start: 'afterPrev', duration: 700 }))],
         notes: 'El móvil de la derecha es un dibujo de lo que ve el público al votar. En la siguiente diapositiva hay una votación real con esta misma pregunta.' },
 
         { layout: 'blank', bg: ST, extra: [
           pollBlock({ kind: 'choice', fontSize: 28, x: 70, y: 50, w: 790, h: 620, display: 'bar', color: W, question: '¿Qué actividad probarías primero con tu clase?', options: ['Una votación', 'Una nube de palabras', 'Un cuestionario con puntos', 'Preguntas del público'] }),
-          side(`<b style="color:${YEL}">Tipo: Una opción</b><br>Cada persona elige una respuesta.<br><br><b style="color:${YEL}">Mostrar resultados como</b><br>Barras, Circular o Cifras.<br><br><b style="color:${YEL}">Borrar resultados</b><br>Para empezar de cero antes de la sesión.`, 900, 70, 310, 580)],
+          side(`<b style="color:${YEL}">Tipo: Encuesta</b><br>Cada persona elige una respuesta.<br><br><b style="color:${YEL}">Mostrar resultados como</b><br>Barras, Circular o Cifras.<br><br><b style="color:${YEL}">Borrar resultados</b><br>Para empezar de cero antes de la sesión.`, 900, 70, 310, 580)],
         notes: 'Votación real: al presentar sale el QR. Para cambiar la pregunta, las opciones o cómo se ven los resultados, selecciónala y pulsa Votación ▸ Editar votación.' },
 
         { layout: 'blank', bg: ST, extra: [...head('TIPOS DE ACTIVIDAD', 'Un formato para cada momento'),
-          ...chain([['', 'Una opción', MAG], ['', 'Varias opciones', CYAN], ['', 'Valoración 1 a 5', YEL], ['', 'Nube de palabras', MINT], ['', 'Preguntas del público', MAG],
-            ['(con respuesta correcta y puntos)', 'Cuestionario', YEL], ['Actividad:', 'ordenar', MINT], ['Actividad:', 'unir parejas', CYAN], ['Actividad:', 'completar huecos', MAG], ['Actividad:', 'etiquetar una imagen', YEL]].map(([pre, l, c], i) => {
+          ...chain([['', 'Encuesta', MAG], ['', 'Varias opciones', CYAN], ['', 'Valoración 1 a 5', YEL], ['', 'Nube de palabras', MINT], ['', 'Preguntas del público', MAG],
+            ['(con respuesta correcta y puntos)', 'Cuestionario', YEL], ['', 'Poner en orden', MINT], ['', 'Unir parejas', CYAN], ['', 'Texto con huecos', MAG], ['', 'Etiquetar una imagen', YEL]].map(([pre, l, c], i) => {
             const x = 90 + (i % 5) * 222, y = 190 + Math.floor(i / 5) * 200, small = pre && `<div style="font-size:16px;color:${DIM};margin-top:4px">${pre}</div>`;
             return text(`<div style="color:${c};font-size:40px;line-height:1">●</div>${pre && pre.startsWith('Act') ? small : ''}<div style="margin-top:6px"><b>${l}</b></div>${pre && !pre.startsWith('Act') ? small : ''}`,
               x, y, 200, 170, { fontSize: 22, color: W, bg: PANEL, radius: 16, textAlign: 'center', vAlign: 'middle', pad: [10, 12, 10, 12], borderColor: LINE }); }), 'zoom-in', { duration: 250 }),
           text('Y más: clasificar en grupos, crucigrama, sopa de letras, memoria, rueda de letras, adivinar un número, respuesta dibujada, con foto o de voz…', 90, 600, 1100, 70, { fontSize: 21, color: DIM, lineHeight: 1.4 })],
-        notes: 'Todos están en el desplegable «Tipo» de la votación. Las actividades (ordenar, unir parejas, completar huecos, etiquetar…) se corrigen solas y dan puntos.' },
+        notes: 'Al insertar una votación eliges el tipo («¿Qué quieres hacer?»); después se cambia con «Cambiar tipo». Los del grupo «Con respuesta correcta y puntos» (cuestionario, poner en orden, unir parejas, texto con huecos, etiquetar…) se corrigen solos y dan puntos.' },
 
         { layout: 'blank', bg: ST, back: [glow(340, 160, 600, '#3b1670', ST, 50)], extra: [
           pollBlock({ kind: 'word', fontSize: 30, x: 70, y: 50, w: 1140, h: 560, color: W, question: 'En una palabra: ¿cómo te sientes antes de presentar?', options: [] }),
@@ -684,7 +684,7 @@ export default {
 
         { layout: 'blank', bg: ST, extra: [
           pollBlock({ kind: 'quiz', fontSize: 30, x: 70, y: 50, w: 790, h: 620, time: 20, correct: [0], color: W, question: '¿Qué tecla abre la vista del moderador al presentar?', options: ['S', 'P', 'M', 'F'] }),
-          side(`<b style="color:${YEL}">Tipo: Cuestionario</b><br>Con respuesta correcta y puntos.<br><br><b style="color:${YEL}">La correcta</b><br>Pon un asterisco (*) delante en las opciones.<br><br><b style="color:${YEL}">Puntos</b><br>De 500 a 1000 al acertar: más cuanto antes.`, 900, 70, 310, 580)],
+          side(`<b style="color:${YEL}">Tipo: Cuestionario</b><br>Con respuesta correcta y puntos.<br><br><b style="color:${YEL}">La correcta</b><br>Márcala con ✓ en las opciones (o escribe un asterisco * delante).<br><br><b style="color:${YEL}">Puntos</b><br>De 500 a 1000 al acertar: más cuanto antes.`, 900, 70, 310, 580)],
         notes: 'Cuestionario con 20 segundos para responder. Al acabar el tiempo (o con un clic) se ve la respuesta correcta, la S, y quién va ganando.' },
 
         { layout: 'blank', bg: ST, back: [glow(40, 160, 560, '#4a1d8a', ST, 55)], extra: [...head('CUENTA ATRÁS Y CLASIFICACIÓN', 'Que se note la emoción'),
@@ -697,12 +697,12 @@ export default {
         { layout: 'blank', bg: ST, extra: [
           pollBlock({ kind: 'order', fontSize: 28, x: 70, y: 50, w: 1140, h: 560, color: W, question: 'Ordena los pasos para lanzar una votación',
             options: ['Insertar ▸ Votación en directo', 'Elegir el tipo y escribir la pregunta', 'Presentar la diapositiva', 'El público escanea el QR', 'Ver los resultados al instante'] }),
-          text('Tipo: <b>Actividad: ordenar</b> · escribe los pasos en su orden; cada móvil los recibe desordenados', 90, 630, 1100, 40, { fontSize: 20, color: DIM, textAlign: 'center' })],
+          text('Tipo: <b>Poner en orden</b> · escribe los pasos en su orden; cada móvil los recibe desordenados', 90, 630, 1100, 40, { fontSize: 20, color: DIM, textAlign: 'center' })],
         notes: 'Actividad de ordenar: cada persona recibe los pasos mezclados en el móvil, los ordena y Revela la corrige sola.' },
 
         { layout: 'blank', bg: ST, transition: 'zoom', back: [...beams], extra: [...head('DESPUÉS DEL DIRECTO', 'Y los resultados, ¿dónde están?'),
           ...[['Ver ▸ Resultados del público', 'Los puntos de cada participante en cada cuestionario y actividad.', CYAN], ['Descargar resultados (CSV)', 'En la ventana de cada votación, para abrirlos en una hoja de cálculo.', YEL],
-            ['Ver ▸ En sus dispositivos', 'El público sigue las diapositivas en su móvil, con un código y un QR en la esquina.', MAG], ['Responder más tarde, sin presentar', 'Abre la actividad con un enlace para que cada uno responda cuando quiera.', MINT]]
+            ['Ver ▸ En sus dispositivos', 'El público sigue las diapositivas en su móvil, con un código y un QR en la esquina.', MAG], ['Responder más tarde por enlace', 'En la ventana de la votación: cada uno responde cuando quiera, sin presentar.', MINT]]
             .map(([t, d, c], i) => at(card(`<b style="color:${c}">${t}</b><br>${d}`, 90 + (i % 2) * 560, 200 + Math.floor(i / 2) * 200, 530, 170, PANEL, { fontSize: 22, color: W, lineHeight: 1.45, radius: 16, borderColor: LINE }), 'zoom-in', { start: i ? 'afterPrev' : 'click', duration: 400 })),
           text('¡Gracias por jugar!', 90, 610, 1100, 60, { fontFamily: HB, fontSize: 48, color: YEL, textAlign: 'center', letterSpacing: 2 })],
         notes: 'Para responder más tarde, la presentación tiene que estar guardada en tu nube de Revela. Las preguntas también se pueden llevar a Moodle con Archivo ▸ Exportar preguntas.' },
@@ -985,11 +985,11 @@ export default {
         notes: 'Las cifras de contraste se calculan con la fórmula de accesibilidad WCAG a partir de los dos colores de cada muestra. El amarillo sobre blanco y el rosa sobre lila no llegan.' },
 
         { layout: 'blank', bg: '#ffffff', extra: [...head('INSERTAR ▸ TEXT ART', 'Letras con efectos'),
-          ...[['fill', '#ffffff', 'relleno'], ['outline', '#ffffff', 'contorno'], ['shadow', '#ffffff', 'sombra'], ['gradient', '#ffffff', 'degradado'], ['neon', '#14121f', 'neón'], ['gold', '#1b1712', 'oro']].map(([wa, bg, l], i) => {
+          ...[['fill', '#ffffff', 'relleno'], ['outline', '#ffffff', 'contorno'], ['shadow', '#3f6497', 'sombra'], ['gradient', '#ffffff', 'degradado'], ['neon', '#14121f', 'neón'], ['gold', '#1b1712', 'oro']].map(([wa, bg, l], i) => {
             const x = 90 + (i % 3) * 230, y = 196 + Math.floor(i / 3) * 210;
             return [R(x, y, 210, 190, bg, { stroke: LINE, strokeWidth: 2 }), text('Arte', x + 10, y + 26, 190, 100, { fontFamily: HE, fontSize: 64, textAlign: 'center', wordart: wa, ...(wa === 'gradient' && { wordartColor: '#d1495b' }) }),
               text(l, x + 10, y + 138, 190, 34, { fontSize: 18, color: bg === '#ffffff' ? GREY : '#d8d2c4', textAlign: 'center' })]; }).flat(),
-          E(860, 210, 300, 300, '#111111'),
+          E(888, 238, 244, 244, '#111111'),
           text('HECHO CON REVELA · HECHO CON REVELA · ', 840, 190, 340, 340, { fontSize: 22, curve: 100, color: '#111111', textAlign: 'center', fontWeight: 700, letterSpacing: 3 }),
           text('Aa', 860, 300, 300, 120, { fontFamily: HE, fontSize: 92, textAlign: 'center', vAlign: 'middle', wordart: 'gold' }),
           text('Texto curvo: <b>Cuadro de texto ▸ Efectos de texto ▸ Curvar texto</b>', 820, 560, 380, 80, { fontSize: 18, color: GREY, textAlign: 'center', lineHeight: 1.4 })],

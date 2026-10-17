@@ -78,8 +78,8 @@ export default {
           notes: 'Clic: el corazón recorre el camino desde la estación hasta la finca (trayectoria dibujada) con una campanilla. El mapa es un dibujo SVG hecho a medida.' },
         { title: 'Detalles para invitados', layout: 'titleOnly', bg: BG, extra: [
           ...[['user', 'Vestimenta', 'Formal de verano. Mejor tacón ancho: ¡hay césped!'], ['star', 'Peques', 'Mesa propia con monitores, talleres y cine.'], ['heart', 'Regalos', 'Lo mejor es que vengáis. Habrá una urna para el viaje.']].map(([ic, h, d], i) =>
-            anim(card(`<div style="font-size:34px;margin-top:84px"><b>${h}</b></div><div style="font-size:26px;margin-top:10px">${d}</div>`, 90 + i * 380, 210, 340, 360, '#ffffff', { color: INK, textAlign: 'center', borderColor: '#e4d6b8' }), i + 1, 'zoom-in')),
-          ...[0, 1, 2].map(i => icon(['user', 'star', 'heart'][i], 228 + i * 380, 242, 64, GOLD))],
+            together([card(`<div style="font-size:34px;margin-top:84px"><b>${h}</b></div><div style="font-size:26px;margin-top:10px">${d}</div>`, 90 + i * 380, 210, 340, 360, '#ffffff', { color: INK, textAlign: 'center', borderColor: '#e4d6b8' }),
+              icon(ic, 228 + i * 380, 242, 64, GOLD)], 'zoom-in')).flat()],
           notes: 'Tres tarjetas que entran con un clic cada una. Los iconos están en Insertar ▸ Iconos.' },
         { layout: 'blank', bg: BG, extra: [pollBlock({ fontSize: 34, question: '¿Nos acompañarás el 12 de junio?', options: ['¡Sí, allí estaré!', 'Iré con acompañante', 'Lo siento, no podré ir'], x: 90, y: 70, w: 1100, h: 580 })],
           notes: 'Confirmación en directo: cada invitado escanea el QR con el móvil y responde. El resultado se puede descargar en CSV.' },
@@ -128,7 +128,7 @@ export default {
             text(n, 90 + i * 380, 590, 340, 50, { fontSize: 30, fontWeight: 800, textAlign: 'center', color: c })])],
           notes: 'Tres personajes 3D celebrando, cada uno a su velocidad (Modelo 3D ▸ Movimiento 3D ▸ Velocidad). ¡Ven disfrazado de uno de ellos!' },
         { title: 'El plan de la tarde', layout: 'titleOnly', bg: CREAM, extra: [
-          dg('steps', '17:00\n  Búsqueda del tesoro\n17:45\n  Merienda\n18:30\n  ¡Tarta y velas!\n19:00\n  Piñata\n19:30\n  Baile loco', 90, 180, 1100, 470, { colors: 'colorful', oneByOne: true, fontScale: 1.4 })],
+          dg('steps', '17:00\n  Búsqueda del tesoro\n17:45\n  Merienda\n18:30\n  ¡Tarta y velas!\n19:00\n  Piñata\n19:30\n  Baile loco', 90, 180, 1100, 470, { colors: 'colorful', oneByOne: true })],
           notes: 'Diagrama «Escalera» que aparece peldaño a peldaño.' },
         { layout: 'blank', bg: SKY, extra: [q('¿Cuántas velas soplará Leo?', ['5', '6', '7', '8'], 2)],
           notes: 'Concurso desde el móvil: puntos por acertar y por rapidez. Los mayores pueden ayudar a los peques a votar.' },
@@ -141,7 +141,7 @@ export default {
           notes: 'El zorro da una vuelta completa al llegar (Modelo 3D ▸ Vista ▸ Al entrar: vuelta completa). Su crédito CC BY aparece debajo.' },
         { title: '¡Baile de las estatuas!', layout: 'titleOnly', bg: CREAM, extra: [
           withAnims(model('three-RobotExpressive', 90, 300, 260, 340, { walk: { clip: robot.walk, face: true, look: true } }),
-            path([[260, -20], [480, 0]], { duration: 2400 }),
+            path([[200, -20], [380, 0]], { duration: 2400 }),
             A('clip3d', { clip: 'Dance', start: 'afterPrev', duration: 4000 }),
             A('clip3d', { clip: 'Wave', once: true, start: 'click', duration: 2000 })),
           text(ul('Cuando suena la música, ¡a bailar!', 'Cuando para, ¡estatua!', 'Quien se mueva, ayuda al robot'), 760, 190, 440, 280, { fontSize: 30, color: INK }),
@@ -179,7 +179,7 @@ export default {
           notes: 'Retrato sustituido por las iniciales en un círculo con degradado y texto curvo alrededor. Persona y datos inventados: pon los tuyos.' },
         { title: 'Sobre mí', layout: 'titleOnly', bg: BG, extra: [
           text('Convierto lo que la gente hace y dice en productos más fáciles de usar. Me muevo entre la investigación, el diseño y los datos, y me encanta enseñar a otros equipos a hacerlo.', 100, 190, 560, 400, { fontSize: 32, color: FG, lineHeight: 1.4 }),
-          ...[['8', 'años de experiencia', MINT], ['40+', 'proyectos entregados', SUN], ['3', 'idiomas', SKYB]].map(([n, l, c], i) =>
+          ...[['7', 'años de experiencia', MINT], ['40+', 'proyectos entregados', SUN], ['3', 'idiomas', SKYB]].map(([n, l, c], i) =>
             together([shape('rounded', 730, 190 + i * 140, 460, 120, '#ffffff', { opacity: 7, radius: 16 }),
               text(n, 750, 195 + i * 140, 170, 110, { fontFamily: head, fontSize: 72, fontWeight: 800, color: c, vAlign: 'middle', textAlign: 'center' }),
               text(l, 930, 195 + i * 140, 250, 110, { fontSize: 28, color: FG, vAlign: 'middle' })], 'fade-left')).flat()],
@@ -191,7 +191,7 @@ export default {
           ...skills.flatMap(([n, v, c], i) => { const y = 190 + i * 88;
             return [text(n, 100, y, 440, 40, { fontSize: 26, color: FG }), text(v + ' %', 470, y, 130, 40, { fontSize: 24, textAlign: 'right', color: c }),
               shape('rounded', 100, y + 46, 500, 16, '#ffffff', { opacity: 15 }),
-              withAnims(shape('rounded', 100, y + 46, Math.round(500 * v / 100), 16, c), A('fade-right', { start: i ? 'afterPrev' : 'click', duration: 500 }))]; }),
+              withAnims(shape('rounded', 100, y + 46, Math.round(500 * v / 100), 16, c), A('wipe', { dir: 'left', start: i ? 'afterPrev' : 'click', duration: 600 }))]; }),
           chartBlock({ x: 680, y: 170, w: 520, h: 480, chartType: 'radar', color: MINT, yMax: 100,
             data: [{ label: 'Investigar', value: 95 }, { label: 'Diseñar', value: 90 }, { label: 'Datos', value: 75 }, { label: 'Enseñar', value: 85 }, { label: 'Liderar', value: 70 }, { label: 'Escribir', value: 80 }] })],
           notes: 'Las barras se llenan una tras otra con un clic. A la derecha, el mismo perfil en un gráfico de radar (valores de autoevaluación).' },
@@ -206,7 +206,7 @@ export default {
             rows: [['Idioma', 'Nivel'], ['Español', 'Nativo'], ['Inglés', 'C1'], ['Francés', 'B2']], colW: [3, 2] }),
           text('Certificados oficiales; inglés en el trabajo diario desde 2020.', 100, 440, 500, 90, { fontSize: 22, color: MUTE }),
           ...['Figma', 'Python', 'SQL', 'Miro', 'HTML y CSS', 'Revela', 'Tableau', 'Notion'].map((t, i) =>
-            anim(text(t, 680 + (i % 2) * 260, 190 + Math.floor(i / 2) * 100, 230, 70, { fontSize: 28, textAlign: 'center', vAlign: 'middle', color: FG, bg: ['#4a90d922', '#50e3c222', '#f5a62322', '#9b6cf022'][i % 4], borderColor: [SKYB, MINT, SUN, '#9b6cf0'][i % 4], radius: 35 }), 1, 'zoom-in'))],
+            withAnims(text(t, 680 + (i % 2) * 260, 190 + Math.floor(i / 2) * 100, 230, 70, { fontSize: 28, textAlign: 'center', vAlign: 'middle', color: FG, bg: ['#4a90d922', '#50e3c222', '#f5a62322', '#9b6cf022'][i % 4], borderColor: [SKYB, MINT, SUN, '#9b6cf0'][i % 4], radius: 35 }), A('zoom-in', { start: i ? 'withPrev' : 'click', delay: i * 80 })))],
           notes: 'Tabla con filas en bandas; las herramientas son cuadros de texto con borde redondeado («píldoras») que entran todas juntas.' },
         { layout: 'section', bg: BG, title: 'Hablemos', subtitle: 'marina.solis@correo.example · Disponible desde enero', transition: 'convex', extra: [
           glow(340, 30, 600, '#1d4f7a', BG, 90), shape('donut', 1060, 520, 150, 150, MINT, { opacity: 25 }), shape('donut', 70, 60, 140, 140, SUN, { opacity: 25 }),
@@ -235,7 +235,7 @@ export default {
           text('MAYO 2027 · CUATRO AMIGOS · 1.470 € POR PERSONA', 96, 490, 680, 40, { fontSize: 20, letterSpacing: 3, color: OLIVE })],
           notes: 'Texto curvo en círculo alrededor del sol (Cuadro de texto ▸ Efectos de texto ▸ Curvar texto ▸ Círculo). Viaje y cifras inventados como ejemplo.' },
         { title: 'La ruta', layout: 'titleOnly', bg: BG, extra: [
-          text(ul('<b>Venecia</b> · 2 noches', '<b>Florencia</b> · 3 noches, con Siena', '<b>Roma</b> · 3 noches', '<b>Nápoles</b> · 1 noche', '<b>Costa Amalfitana</b> · 1 noche'), 100, 190, 560, 340, { fontSize: 30, color: INK }),
+          text(ul('<b>Venecia</b> · 2 noches', '<b>Florencia</b> · 3 noches, con Siena', '<b>Roma</b> · 3 noches', '<b>Nápoles</b> · 1 noche', '<b>Costa Amalfitana</b> · el último día'), 100, 190, 560, 340, { fontSize: 30, color: INK }),
           text('Todo en tren: el trayecto más largo, Venecia–Florencia, dura 2 h 15 min.', 100, 540, 560, 90, { fontSize: 24, fontStyle: 'italic', color: OLIVE }),
           ...links, ...dots,
           ...cities.map(([n, x, y], i) => text(n, i % 2 || i === 4 ? x - 196 : x + 26, y - 22, 170, 44, { fontSize: 24, fontWeight: 700, color: INK, textAlign: i % 2 || i === 4 ? 'right' : 'left' })),
@@ -303,7 +303,7 @@ export default {
           avocado(860, 200, 340, 340)],
           notes: 'Transformar: el título y el aguacate se mueven solos desde la portada. El total de la tabla es una fórmula (=SUMA(ARRIBA)); precios orientativos.' },
         { title: 'Paso a paso', layout: 'titleOnly', bg: BG, extra: [
-          dg('list', 'Cortar\n  Abre los aguacates, quita el hueso y saca la pulpa\nMachacar\n  Con un tenedor: mejor con tropezones que en puré\nPicar\n  Cebolla, tomate sin semillas y cilantro, muy fino\nAliñar\n  Zumo de lima, sal y una pizca de chile\nServir\n  Al momento, con totopos templados', 90, 180, 1100, 480, { oneByOne: true, colors: 'colorful', fontScale: 1.4 })],
+          dg('list', 'Cortar\n  Abre los aguacates, quita el hueso y saca la pulpa\nMachacar\n  Con un tenedor: mejor con tropezones que en puré\nPicar\n  Cebolla, tomate sin semillas y cilantro, muy fino\nAliñar\n  Zumo de lima, sal y una pizca de chile\nServir\n  Al momento, con totopos templados', 90, 180, 1100, 480, { oneByOne: true, colors: 'colorful' })],
           notes: 'Diagrama «Lista vertical» uno a uno: cada paso aparece con un clic; explícalo mientras tanto.' },
         { layout: 'blank', bg: BG, extra: [
           text('EL TRUCO', 90, 120, 520, 120, { fontFamily: head, fontSize: 110, wordart: 'fire' }),
@@ -366,14 +366,14 @@ export default {
           notes: 'Los días de descanso tienen otro fondo (color de celda). El total semanal es una fórmula: cambia una sesión y se recalcula.' },
         { title: 'Tu progreso', layout: 'titleOnly', bg: BG, extra: [
           chartBlock({ x: 90, y: 170, w: 760, h: 480, chartType: 'line', color: ORANGE, seriesName: 'Real', grid: true, yTitle: 'Minutos seguidos',
-            data: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'].map((l, i) => ({ label: l, value: [1, 2, 3, 5, 8, 12, 20, 30][i] })),
-            series: [{ name: 'Objetivo', values: [1, 2, 3, 5, 10, 15, 22, 30], color: '#5c6670' }] }),
+            data: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'].map((l, i) => ({ label: l, value: [1, 2, 3, 4, 8, 11, 18, 30][i] })),
+            series: [{ name: 'Objetivo', values: [1, 2, 3, 5, 8, 12, 20, 30], color: '#5c6670' }] }),
           text(`<span style="font-family:${head};font-size:72px;font-weight:800;color:${GREEN}">×30</span><br>de 1 minuto a media hora seguida en ocho semanas`, 890, 230, 300, 300, { fontSize: 28, color: FG })],
           notes: 'Gráfico de líneas con dos series: lo real (datos de ejemplo) frente al objetivo.' },
         { title: 'Zonas de esfuerzo', layout: 'titleOnly', bg: BG, extra: [
           dg('pyramid', 'Z5 · Máximo\nZ4 · Umbral\nZ3 · Tempo\nZ2 · Aeróbico\nZ1 · Suave', 90, 180, 520, 460, { colors: 'colorful' }),
           chartBlock({ x: 660, y: 180, w: 530, h: 380, chartType: 'hbar', color: GREEN, dataLabels: true,
-            data: [{ label: 'Z1', value: 35 }, { label: 'Z2', value: 45 }, { label: 'Z3', value: 12 }, { label: 'Z4', value: 6 }, { label: 'Z5', value: 2 }] }),
+            data: [{ label: 'Z5', value: 2 }, { label: 'Z4', value: 6 }, { label: 'Z3', value: 12 }, { label: 'Z2', value: 45 }, { label: 'Z1', value: 35 }] }),
           text('% del tiempo en cada zona: el 80 % suave, el 20 % intenso.', 660, 580, 530, 60, { fontSize: 24, color: MUTE })],
           notes: 'Pirámide de zonas y barras horizontales con etiquetas de datos. Porcentajes orientativos.' },
         { title: 'Intervalos: ¡ahora tú!', layout: 'titleOnly', bg: BG, extra: [
@@ -426,7 +426,7 @@ export default {
           text('EL FARO<br>DE LAS HORAS', 110, 190, 290, 100, { fontFamily: serif, fontSize: 30, fontWeight: 700, textAlign: 'center', color: '#ffffff', letterSpacing: 2 }),
           text('Inés Valcárcel', 110, 580, 290, 36, { fontSize: 20, textAlign: 'center', color: '#e8dcff' }),
           text('En un faro del norte, una farera recibe cada noche una carta que aún no se ha escrito. Una novela sobre el tiempo, la memoria y las familias que se eligen.', 480, 180, 710, 260, { fontFamily: serif, fontSize: 32, color: FG, lineHeight: 1.4 }),
-          ...[['312', 'páginas'], ['2024', 'publicación'], ['4,3', 'nota media del club']].flatMap(([n, l], i) => [
+          ...[['312', 'páginas'], ['2024', 'publicación'], ['4,3', 'nota de los lectores']].flatMap(([n, l], i) => [
             text(n, 480 + i * 240, 480, 220, 70, { fontFamily: serif, fontSize: 56, fontWeight: 700, color: [YEL, MINT, PINK][i] }), text(l, 480 + i * 240, 555, 220, 64, { fontSize: 22, color: MUTE })])],
           notes: 'Portada dibujada con formas: degradados, un faro con un trapecio y una onda para el mar. Libro inventado: cambia el texto por el vuestro.' },
         { layout: 'blank', bg: BG, autoAnimate: true, extra: quote(70, PINK, 'Hay luces que no sirven para ver, sino para que otros sepan dónde estamos.', '— Capítulo 3, página 41'),
@@ -495,8 +495,8 @@ export default {
           shape('rect', 300, 174, 240, 14, '#cfe3ef', { stroke: INK, strokeWidth: 2 }), shape('rect', 840, 480, 20, 110, WOOD),
           text('puerta', 740, 520, 90, 30, { fontSize: 18, textAlign: 'right', color: GREY }),
           shape('rounded', 230, 370, 420, 210, SAGE, { opacity: 35, radius: 20 }),
-          keep(model('kh-GlamVelvetSofa', 220, 430, 440, 200, { view: 'top', caption: '' }), SOFA),
-          keep(model('kh-SheenChair', 640, 260, 170, 170, { view: 'top', caption: '' }), CHAIR),
+          keep(model('kh-GlamVelvetSofa', 220, 340, 440, 300, { view: 'top', arrive: 'view', caption: '' }), SOFA),
+          keep(model('kh-SheenChair', 610, 220, 220, 220, { view: 'top', arrive: 'view', caption: '' }), CHAIR),
           text('ventana', 300, 196, 240, 30, { fontSize: 18, textAlign: 'center', color: GREY }),
           text(ul('Sofá frente a la ventana', 'Butaca junto a la luz', 'Alfombra de 2 × 3 m', 'Paso libre de 90 cm'), 890, 200, 320, 300, { fontSize: 26, color: INK }),
           text(`Modelos 3D: ${lib3d('kh-GlamVelvetSofa').credit} · ${lib3d('kh-SheenChair').credit}`, 890, 580, 320, 60, { fontSize: 12, color: GREY })],
@@ -512,7 +512,7 @@ export default {
           notes: 'Actividad de ordenar: cada uno recibe los pasos desordenados y la corrección es automática.' },
         { layout: 'blank', bg: BG, transition: 'zoom', extra: [
           text('¡Hogar, dulce hogar!', 90, 150, 760, 210, { fontFamily: head, fontSize: 84, fontWeight: 800, color: INK, lineHeight: 1.05 }),
-          text('Fiesta de bienvenida: sábado 22 a las 19:00 · Calle del Olmo 23, 2.º B', 90, 390, 640, 100, { fontSize: 30, color: GREY }),
+          text('Fiesta de bienvenida: sábado 21 a las 19:00 · Calle del Olmo 23, 2.º B', 90, 390, 640, 100, { fontSize: 30, color: GREY }),
           model('kh-Lantern', 880, 140, 300, 460, { autoRotate: true, view: 'three', motion: 'float' })],
           notes: 'El farol 3D flota y gira solo. Cierre con transición «Zoom».' },
       ]));
@@ -553,7 +553,7 @@ export default {
           notes: 'Las fotos son huecos con degradado: haz clic derecho ▸ Cambiar imagen o arrastra vuestras fotos encima. Cada polaroid entra girando («Voltear») con un clic.' },
         { title: 'En cifras', layout: 'titleOnly', bg: BG, extra: [
           withAnims(big('86', 'graduadas y graduados', 90, 230, GOLD, FG), A('zoom-in', { sound: 'drumroll' })),
-          withAnims(big('3.400', 'horas de clase', 470, 230, BLUE, FG), A('zoom-in', { start: 'afterPrev', delay: 300 })),
+          withAnims(big('2.000', 'horas de clase', 470, 230, BLUE, FG), A('zoom-in', { start: 'afterPrev', delay: 300 })),
           withAnims(big('12', 'excursiones', 850, 230, GREEN, FG), A('zoom-in', { start: 'afterPrev', delay: 300 })),
           text('…y un número incontable de cafés antes de los exámenes.', 90, 520, 1100, 60, { fontSize: 28, fontStyle: 'italic', textAlign: 'center', color: MUTE })],
           notes: 'Clic: redoble de tambor y las tres cifras aparecen una tras otra. Datos de ejemplo.' },
@@ -573,7 +573,7 @@ export default {
           glow(340, -100, 600, '#3a2c1a', BG, 70),
           text('¡Enhorabuena!', 140, 250, 1000, 180, { fontFamily: head, fontSize: 130, wordart: 'gold', textAlign: 'center' }),
           text('Promoción 2026 · Ahora, a por lo siguiente', 140, 440, 1000, 60, { fontSize: 32, textAlign: 'center', color: FG }),
-          ...[[120, 560, 0.7, -260], [480, 590, 0.6, -330], [760, 580, 0.65, -300], [1040, 560, 0.7, -280]].flatMap(([x, y, s, dy], i) =>
+          ...[[120, 560, 0.7, -450], [480, 590, 0.6, -480], [760, 580, 0.65, -470], [1040, 560, 0.7, -450]].flatMap(([x, y, s, dy], i) =>
             cap(x, y, s).map((b, k) => withAnims(b, path([[i % 2 ? 40 : -40, dy / 2], [i % 2 ? 20 : -20, dy]], { duration: 1600, start: i + k ? 'withPrev' : 'afterPrev', delay: i * 120, ...(i + k === 0 && { sound: 'applause' }) }))))],
           notes: 'Al llegar, los birretes salen volando hacia arriba (trayectorias, todas a la vez) mientras suenan aplausos.' },
       ]));

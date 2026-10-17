@@ -152,7 +152,6 @@ export default {
  "MAYO 2027 · CUATRO AMIGOS · 1.470 € POR PERSONA": "MEI 2027 · VIER VRIENDEN · € 1.470 PER PERSOON",
  "Las paradas están unidas con conectores discontinuos: si mueves una ciudad, la flecha la sigue. Clic: el tren (el cuadrado azul) recorre la ruta.": "De haltes zijn verbonden met gestreepte connectoren: verplaats je een stad, dan volgt de pijl. Klik: de trein (het blauwe vierkant) rijdt de route.",
  "La ruta": "De route",
- "<ul><li><b>Venecia</b> · 2 noches</li><li><b>Florencia</b> · 3 noches, con Siena</li><li><b>Roma</b> · 3 noches</li><li><b>Nápoles</b> · 1 noche</li><li><b>Costa Amalfitana</b> · 1 noche</li></ul>": "<ul><li><b>Venetië</b> · 2 nachten</li><li><b>Florence</b> · 3 nachten, met Siena</li><li><b>Rome</b> · 3 nachten</li><li><b>Napels</b> · 1 nacht</li><li><b>Amalfikust</b> · 1 nacht</li></ul>",
  "Todo en tren: el trayecto más largo, Venecia–Florencia, dura 2 h 15 min.": "Alles met de trein: het langste traject, Venetië–Florence, duurt 2 u 15 min.",
  "Venecia": "Venetië",
  "Florencia": "Florence",
@@ -337,7 +336,6 @@ export default {
  "En un faro del norte, una farera recibe cada noche una carta que aún no se ha escrito. Una novela sobre el tiempo, la memoria y las familias que se eligen.": "In een vuurtoren in het noorden ontvangt een vuurtorenwachteres elke nacht een brief die nog niet is geschreven. Een roman over tijd, geheugen en de families die je kiest.",
  "páginas": "pagina's",
  "publicación": "verschijning",
- "nota media del club": "gemiddeld cijfer van de club",
  "Transformar: las comillas, la cita y la referencia son los mismos objetos en la diapositiva siguiente, y se mueven y cambian solos.": "Transformeren: de aanhalingstekens, het citaat en de verwijzing zijn dezelfde objecten op de volgende dia, en ze bewegen en veranderen vanzelf.",
  "Hay luces que no sirven para ver, sino para que otros sepan dónde estamos.": "Er zijn lichten die niet dienen om te zien, maar om anderen te laten weten waar we zijn.",
  "— Capítulo 3, página 41": "— Hoofdstuk 3, pagina 41",
@@ -417,7 +415,6 @@ export default {
  "Montar los muebles": "De meubels opbouwen",
  "El farol 3D flota y gira solo. Cierre con transición «Zoom».": "De 3D-lantaarn zweeft en draait vanzelf. Afsluiting met de overgang 'Zoom'.",
  "¡Hogar, dulce hogar!": "Home sweet home!",
- "Fiesta de bienvenida: sábado 22 a las 19:00 · Calle del Olmo 23, 2.º B": "Welkomstfeest: zaterdag 22 om 19:00 · Calle del Olmo 23, 2e verdieping B",
  "Farol": "Lantaarn",
  "Graduación 2026": "Afstuderen 2026",
  "Text Art «Oro» y un birrete hecho con formas (rombo, rectángulo redondeado y gota) que rebota al llegar. Centro y nombres inventados.": "Text Art 'Goud' en een afstudeerhoed van vormen (ruit, afgeronde rechthoek en druppel) die bij binnenkomst stuitert. School en namen zijn verzonnen.",
@@ -437,7 +434,6 @@ export default {
  "Clic: redoble de tambor y las tres cifras aparecen una tras otra. Datos de ejemplo.": "Klik: tromgeroffel en de drie cijfers verschijnen een voor een. Voorbeeldgegevens.",
  "En cifras": "In cijfers",
  "<div style=\"font-size:96px;font-weight:800;color:#e0af68;line-height:1.05\">86</div><div>graduadas y graduados</div>": "<div style=\"font-size:96px;font-weight:800;color:#e0af68;line-height:1.05\">86</div><div>afgestudeerden</div>",
- "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">3.400</div><div>horas de clase</div>": "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">3.400</div><div>lesuren</div>",
  "<div style=\"font-size:96px;font-weight:800;color:#9ece6a;line-height:1.05\">12</div><div>excursiones</div>": "<div style=\"font-size:96px;font-weight:800;color:#9ece6a;line-height:1.05\">12</div><div>excursies</div>",
  "…y un número incontable de cafés antes de los exámenes.": "…en een ontelbaar aantal koppen koffie vóór de examens.",
  "Cuatro agradecimientos que aparecen con un clic cada uno. Leedlos entre varias personas.": "Vier bedankjes die elk met een klik verschijnen. Lees ze met meerdere mensen voor.",
@@ -518,5 +514,9 @@ export default {
  "La planta da una vuelta completa al llegar (Modelo 3D ▸ Vista ▸ Al entrar: vuelta completa). Cierre con transición «Zoom».": "De plant draait een hele slag bij binnenkomst (3D-model ▸ Weergave ▸ Bij binnenkomst: volledige draai). Afsluiting met de overgang 'Zoom'.",
  "¡Manos a la tierra!": "Handen in de aarde!",
  "Próxima jornada: sábado a las 10:00 en la azotea. Trae guantes y una botella de agua.": "Volgende werkdag: zaterdag om 10:00 op het dak. Neem handschoenen en een fles water mee.",
- "Modelo 3D: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)": "3D-model: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)"
+ "Modelo 3D: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)": "3D-model: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)",
+ "<ul><li><b>Venecia</b> · 2 noches</li><li><b>Florencia</b> · 3 noches, con Siena</li><li><b>Roma</b> · 3 noches</li><li><b>Nápoles</b> · 1 noche</li><li><b>Costa Amalfitana</b> · el último día</li></ul>": "<ul><li><b>Venetië</b> · 2 nachten</li><li><b>Florence</b> · 3 nachten, met Siena</li><li><b>Rome</b> · 3 nachten</li><li><b>Napels</b> · 1 nacht</li><li><b>Amalfikust</b> · de laatste dag</li></ul>",
+ "nota de los lectores": "cijfer van lezers",
+ "Fiesta de bienvenida: sábado 21 a las 19:00 · Calle del Olmo 23, 2.º B": "Welkomstfeest: zaterdag 21 om 19:00 · Calle del Olmo 23, 2e verdieping B",
+ "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">2.000</div><div>horas de clase</div>": "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">2.000</div><div>lesuren</div>"
 };

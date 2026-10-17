@@ -152,7 +152,6 @@ export default {
  "MAYO 2027 · CUATRO AMIGOS · 1.470 € POR PERSONA": "MAIG 2027 · QUATRE AMICS · 1.470 € PER PERSONA",
  "Las paradas están unidas con conectores discontinuos: si mueves una ciudad, la flecha la sigue. Clic: el tren (el cuadrado azul) recorre la ruta.": "Les parades estan unides amb connectors discontinus: si mous una ciutat, la fletxa la segueix. Clic: el tren (el quadrat blau) recorre la ruta.",
  "La ruta": "La ruta",
- "<ul><li><b>Venecia</b> · 2 noches</li><li><b>Florencia</b> · 3 noches, con Siena</li><li><b>Roma</b> · 3 noches</li><li><b>Nápoles</b> · 1 noche</li><li><b>Costa Amalfitana</b> · 1 noche</li></ul>": "<ul><li><b>Venècia</b> · 2 nits</li><li><b>Florència</b> · 3 nits, amb Siena</li><li><b>Roma</b> · 3 nits</li><li><b>Nàpols</b> · 1 nit</li><li><b>Costa Amalfitana</b> · 1 nit</li></ul>",
  "Todo en tren: el trayecto más largo, Venecia–Florencia, dura 2 h 15 min.": "Tot en tren: el trajecte més llarg, Venècia–Florència, dura 2 h 15 min.",
  "Venecia": "Venècia",
  "Florencia": "Florència",
@@ -337,7 +336,6 @@ export default {
  "En un faro del norte, una farera recibe cada noche una carta que aún no se ha escrito. Una novela sobre el tiempo, la memoria y las familias que se eligen.": "En un far del nord, una farera rep cada nit una carta que encara no s'ha escrit. Una novel·la sobre el temps, la memòria i les famílies que s'escullen.",
  "páginas": "pàgines",
  "publicación": "publicació",
- "nota media del club": "nota mitjana del club",
  "Transformar: las comillas, la cita y la referencia son los mismos objetos en la diapositiva siguiente, y se mueven y cambian solos.": "Transforma: les cometes, la cita i la referència són els mateixos objectes a la diapositiva següent, i es mouen i canvien sols.",
  "Hay luces que no sirven para ver, sino para que otros sepan dónde estamos.": "Hi ha llums que no serveixen per veure-hi, sinó perquè els altres sàpiguen on som.",
  "— Capítulo 3, página 41": "— Capítol 3, pàgina 41",
@@ -417,7 +415,6 @@ export default {
  "Montar los muebles": "Muntar els mobles",
  "El farol 3D flota y gira solo. Cierre con transición «Zoom».": "El fanal 3D sura i gira sol. Tancament amb transició «Zoom».",
  "¡Hogar, dulce hogar!": "Llar, dolça llar!",
- "Fiesta de bienvenida: sábado 22 a las 19:00 · Calle del Olmo 23, 2.º B": "Festa de benvinguda: dissabte 22 a les 19:00 · Carrer del Om 23, 2n B",
  "Farol": "Fanal",
  "Graduación 2026": "Graduació 2026",
  "Text Art «Oro» y un birrete hecho con formas (rombo, rectángulo redondeado y gota) que rebota al llegar. Centro y nombres inventados.": "Text Art «Or» i un birret fet amb formes (rombe, rectangle arrodonit i gota) que rebota en arribar. Centre i noms inventats.",
@@ -437,7 +434,6 @@ export default {
  "Clic: redoble de tambor y las tres cifras aparecen una tras otra. Datos de ejemplo.": "Clic: redoble de tambor i les tres xifres apareixen una darrere l'altra. Dades d'exemple.",
  "En cifras": "En xifres",
  "<div style=\"font-size:96px;font-weight:800;color:#e0af68;line-height:1.05\">86</div><div>graduadas y graduados</div>": "<div style=\"font-size:96px;font-weight:800;color:#e0af68;line-height:1.05\">86</div><div>graduades i graduats</div>",
- "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">3.400</div><div>horas de clase</div>": "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">3.400</div><div>hores de classe</div>",
  "<div style=\"font-size:96px;font-weight:800;color:#9ece6a;line-height:1.05\">12</div><div>excursiones</div>": "<div style=\"font-size:96px;font-weight:800;color:#9ece6a;line-height:1.05\">12</div><div>excursions</div>",
  "…y un número incontable de cafés antes de los exámenes.": "…i un nombre incomptable de cafès abans dels exàmens.",
  "Cuatro agradecimientos que aparecen con un clic cada uno. Leedlos entre varias personas.": "Quatre agraïments que apareixen amb un clic cadascun. Llegiu-los entre diverses persones.",
@@ -518,5 +514,9 @@ export default {
  "La planta da una vuelta completa al llegar (Modelo 3D ▸ Vista ▸ Al entrar: vuelta completa). Cierre con transición «Zoom».": "La planta fa una volta completa en arribar (Model 3D ▸ Vista ▸ En entrar: volta completa). Tancament amb transició «Zoom».",
  "¡Manos a la tierra!": "Mans a la terra!",
  "Próxima jornada: sábado a las 10:00 en la azotea. Trae guantes y una botella de agua.": "Propera jornada: dissabte a les 10:00 al terrat. Porta guants i una ampolla d'aigua.",
- "Modelo 3D: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)": "Model 3D: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)"
+ "Modelo 3D: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)": "Model 3D: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)",
+ "<ul><li><b>Venecia</b> · 2 noches</li><li><b>Florencia</b> · 3 noches, con Siena</li><li><b>Roma</b> · 3 noches</li><li><b>Nápoles</b> · 1 noche</li><li><b>Costa Amalfitana</b> · el último día</li></ul>": "<ul><li><b>Venècia</b> · 2 nits</li><li><b>Florència</b> · 3 nits, amb Siena</li><li><b>Roma</b> · 3 nits</li><li><b>Nàpols</b> · 1 nit</li><li><b>Costa Amalfitana</b> · l'últim dia</li></ul>",
+ "nota de los lectores": "nota dels lectors",
+ "Fiesta de bienvenida: sábado 21 a las 19:00 · Calle del Olmo 23, 2.º B": "Festa de benvinguda: dissabte 21 a les 19:00 · Carrer del Om 23, 2n B",
+ "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">2.000</div><div>horas de clase</div>": "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">2.000</div><div>hores de classe</div>"
 };

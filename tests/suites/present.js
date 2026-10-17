@@ -104,6 +104,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const done = P.pollResultsHTML(quiz, { ...r, revealed: true });
     assert(/✓ París/.test(done) && /🥇 <\/b>Ana — <b>1000/.test(done), 'al acabar: la correcta y el podio');
     assert(/🥈 <\/b>Luis/.test(P.pollResultsHTML({ kind: 'board' }, { board: r.board })), 'la diapositiva de clasificación');
+    // Putting in order and matching pairs, before the solutions: what there is to do, shuffled (not only «0 respuestas»).
+    const ord = P.pollResultsHTML({ kind: 'order', options: ['Uno', 'Dos', 'Tres', 'Cuatro'] }, { counts: [0, 0, 0, 0], voters: 0 }).replace(/<[^>]+>/g, ' ');
+    assert(['Uno', 'Dos', 'Tres', 'Cuatro'].every(w => ord.includes(w)) && !/Uno\s+Dos\s+Tres\s+Cuatro/.test(ord), 'poner en orden: sus elementos, desordenados');
+    const mat = P.pollResultsHTML({ kind: 'match', options: ['Mulhacén = Sierra Nevada', 'Aneto = Pirineos'] }, { counts: [0, 0], voters: 0 }).replace(/<[^>]+>/g, ' ');
+    assert(/Mulhacén/.test(mat) && /Pirineos/.test(mat) && !/→/.test(mat), 'unir parejas: las dos columnas, sin la solución');
     // The editor: "*" marks the right answer; time.
     const b = P.addPoll(); await sleep(20);
     D.querySelector(`#stage .block[data-id="${b.id}"]`); R.store.commit(() => { R.state.ui.selection = b.id; }, { history: false });
@@ -239,7 +244,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(r.board.map(x => `${x.n}:${x.pts}`).join(), 'Ana:1000,Luis:500', 'puntos: todo bien 1000, la mitad 500'); eq(r.counts.join(), '1,1,2,2', 'aciertos por elemento');
     eq(Math.round(r.average * 100), 75, 'media');
     const hidden = P.pollResultsHTML(order, { ...r, revealed: false });
-    assert(/75 % de aciertos/.test(hidden) && !/Primavera/.test(hidden), 'mientras se responde: sin desvelar las soluciones');
+    assert(/75 % de aciertos/.test(hidden) && !/1\. Primavera/.test(hidden), 'mientras se responde: sin desvelar las soluciones (sus elementos, desordenados y sin numerar)');
     assert(/1\. Primavera/.test(P.pollResultsHTML(order, { ...r, revealed: true })), 'con un clic: las soluciones y cuánto acertó cada una');
     eq(P.quizTotals([{ poll: order, votes }, { poll: { kind: 'quiz', options: ['a', 'b'], correct: [0], time: 20 }, votes: { luis: { a: 0, t: 0, n: 'Luis' } } }]).map(x => `${x.n}:${x.pts}`).join(), 'Luis:1500,Ana:1000', 'la clasificación suma actividades y cuestionarios');
     // The editor

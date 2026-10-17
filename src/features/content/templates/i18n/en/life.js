@@ -152,7 +152,6 @@ export default {
  "MAYO 2027 · CUATRO AMIGOS · 1.470 € POR PERSONA": "MAY 2027 · FOUR FRIENDS · €1,470 PER PERSON",
  "Las paradas están unidas con conectores discontinuos: si mueves una ciudad, la flecha la sigue. Clic: el tren (el cuadrado azul) recorre la ruta.": "The stops are joined with dashed connectors: if you move a city, the arrow follows it. Click: the train (the blue square) travels the route.",
  "La ruta": "The route",
- "<ul><li><b>Venecia</b> · 2 noches</li><li><b>Florencia</b> · 3 noches, con Siena</li><li><b>Roma</b> · 3 noches</li><li><b>Nápoles</b> · 1 noche</li><li><b>Costa Amalfitana</b> · 1 noche</li></ul>": "<ul><li><b>Venice</b> · 2 nights</li><li><b>Florence</b> · 3 nights, with Siena</li><li><b>Rome</b> · 3 nights</li><li><b>Naples</b> · 1 night</li><li><b>Amalfi Coast</b> · 1 night</li></ul>",
  "Todo en tren: el trayecto más largo, Venecia–Florencia, dura 2 h 15 min.": "All by train: the longest leg, Venice–Florence, takes 2 h 15 min.",
  "Venecia": "Venice",
  "Florencia": "Florence",
@@ -337,7 +336,6 @@ export default {
  "En un faro del norte, una farera recibe cada noche una carta que aún no se ha escrito. Una novela sobre el tiempo, la memoria y las familias que se eligen.": "In a lighthouse in the north, a keeper receives a letter every night that hasn't been written yet. A novel about time, memory and the families we choose.",
  "páginas": "pages",
  "publicación": "published",
- "nota media del club": "club's average rating",
  "Transformar: las comillas, la cita y la referencia son los mismos objetos en la diapositiva siguiente, y se mueven y cambian solos.": "Transform: the quotation marks, the quote and the reference are the same objects on the next slide, and they move and change by themselves.",
  "Hay luces que no sirven para ver, sino para que otros sepan dónde estamos.": "Some lights aren't for seeing, but for letting others know where we are.",
  "— Capítulo 3, página 41": "— Chapter 3, page 41",
@@ -417,7 +415,6 @@ export default {
  "Montar los muebles": "Assemble the furniture",
  "El farol 3D flota y gira solo. Cierre con transición «Zoom».": "The 3D lantern floats and spins by itself. Closing with a “Zoom” transition.",
  "¡Hogar, dulce hogar!": "Home, sweet home!",
- "Fiesta de bienvenida: sábado 22 a las 19:00 · Calle del Olmo 23, 2.º B": "Housewarming party: Saturday 22nd at 19:00 · 23 Calle del Olmo, 2nd B",
  "Farol": "Lantern",
  "Graduación 2026": "Graduation 2026",
  "Text Art «Oro» y un birrete hecho con formas (rombo, rectángulo redondeado y gota) que rebota al llegar. Centro y nombres inventados.": "“Gold” Text Art and a mortarboard made from shapes (diamond, rounded rectangle and drop) that bounces in on arrival. School and names are made up.",
@@ -437,7 +434,6 @@ export default {
  "Clic: redoble de tambor y las tres cifras aparecen una tras otra. Datos de ejemplo.": "Click: drumroll and the three figures appear one after another. Sample data.",
  "En cifras": "In numbers",
  "<div style=\"font-size:96px;font-weight:800;color:#e0af68;line-height:1.05\">86</div><div>graduadas y graduados</div>": "<div style=\"font-size:96px;font-weight:800;color:#e0af68;line-height:1.05\">86</div><div>graduates</div>",
- "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">3.400</div><div>horas de clase</div>": "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">3,400</div><div>hours of lessons</div>",
  "<div style=\"font-size:96px;font-weight:800;color:#9ece6a;line-height:1.05\">12</div><div>excursiones</div>": "<div style=\"font-size:96px;font-weight:800;color:#9ece6a;line-height:1.05\">12</div><div>school trips</div>",
  "…y un número incontable de cafés antes de los exámenes.": "…and countless coffees before exams.",
  "Cuatro agradecimientos que aparecen con un clic cada uno. Leedlos entre varias personas.": "Four thank-yous that appear with one click each. Read them out between several people.",
@@ -518,5 +514,9 @@ export default {
  "La planta da una vuelta completa al llegar (Modelo 3D ▸ Vista ▸ Al entrar: vuelta completa). Cierre con transición «Zoom».": "The plant does a full turn on arrival (3D model ▸ View ▸ On entering: full turn). Closing with a “Zoom” transition.",
  "¡Manos a la tierra!": "Let's get our hands dirty!",
  "Próxima jornada: sábado a las 10:00 en la azotea. Trae guantes y una botella de agua.": "Next session: Saturday at 10:00 on the roof. Bring gloves and a bottle of water.",
- "Modelo 3D: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)": "3D model: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)"
+ "Modelo 3D: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)": "3D model: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)",
+ "<ul><li><b>Venecia</b> · 2 noches</li><li><b>Florencia</b> · 3 noches, con Siena</li><li><b>Roma</b> · 3 noches</li><li><b>Nápoles</b> · 1 noche</li><li><b>Costa Amalfitana</b> · el último día</li></ul>": "<ul><li><b>Venice</b> · 2 nights</li><li><b>Florence</b> · 3 nights, with Siena</li><li><b>Rome</b> · 3 nights</li><li><b>Naples</b> · 1 night</li><li><b>Amalfi Coast</b> · the last day</li></ul>",
+ "nota de los lectores": "readers' rating",
+ "Fiesta de bienvenida: sábado 21 a las 19:00 · Calle del Olmo 23, 2.º B": "Housewarming party: Saturday 21st at 19:00 · 23 Calle del Olmo, 2nd B",
+ "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">2.000</div><div>horas de clase</div>": "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">2,000</div><div>hours of lessons</div>"
 };

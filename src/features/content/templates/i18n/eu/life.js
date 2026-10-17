@@ -152,7 +152,6 @@ export default {
  "MAYO 2027 · CUATRO AMIGOS · 1.470 € POR PERSONA": "2027KO MAIATZA · LAU LAGUN · 1.470 € PERTSONAKO",
  "Las paradas están unidas con conectores discontinuos: si mueves una ciudad, la flecha la sigue. Clic: el tren (el cuadrado azul) recorre la ruta.": "Geldialdiak marra etenezko konektoreekin lotuta daude: hiri bat mugitzen baduzu, geziak jarraitu egiten dio. Klik: trenak (karratu urdina) ibilbidea egiten du.",
  "La ruta": "Ibilbidea",
- "<ul><li><b>Venecia</b> · 2 noches</li><li><b>Florencia</b> · 3 noches, con Siena</li><li><b>Roma</b> · 3 noches</li><li><b>Nápoles</b> · 1 noche</li><li><b>Costa Amalfitana</b> · 1 noche</li></ul>": "<ul><li><b>Venezia</b> · 2 gau</li><li><b>Florentzia</b> · 3 gau, Sienarekin</li><li><b>Erroma</b> · 3 gau</li><li><b>Napoli</b> · gau 1</li><li><b>Amalfiko kosta</b> · gau 1</li></ul>",
  "Todo en tren: el trayecto más largo, Venecia–Florencia, dura 2 h 15 min.": "Dena trenez: bidaiarik luzeena, Venezia–Florentzia, 2 h 15 min-koa da.",
  "Venecia": "Venezia",
  "Florencia": "Florentzia",
@@ -337,7 +336,6 @@ export default {
  "En un faro del norte, una farera recibe cada noche una carta que aún no se ha escrito. Una novela sobre el tiempo, la memoria y las familias que se eligen.": "Iparraldeko itsasargi batean, itsasargizain batek oraindik idatzi gabeko gutun bat jasotzen du gauero. Denborari, oroimenari eta aukeratzen diren familiei buruzko eleberria.",
  "páginas": "orrialde",
  "publicación": "argitalpena",
- "nota media del club": "klubaren batez besteko nota",
  "Transformar: las comillas, la cita y la referencia son los mismos objetos en la diapositiva siguiente, y se mueven y cambian solos.": "Eraldatu: komatxoak, aipua eta erreferentzia objektu berberak dira hurrengo diapositiban, eta bakarrik mugitzen eta aldatzen dira.",
  "Hay luces que no sirven para ver, sino para que otros sepan dónde estamos.": "Badira ikusteko balio ez duten argiak, besteek non gauden jakin dezaten baizik.",
  "— Capítulo 3, página 41": "— 3. kapitulua, 41. orrialdea",
@@ -417,7 +415,6 @@ export default {
  "Montar los muebles": "Altzariak muntatu",
  "El farol 3D flota y gira solo. Cierre con transición «Zoom».": "3D farolak flotatu eta bakarrik biratzen du. Amaiera «Zooma» trantsizioarekin.",
  "¡Hogar, dulce hogar!": "Etxea, etxe gozoa!",
- "Fiesta de bienvenida: sábado 22 a las 19:00 · Calle del Olmo 23, 2.º B": "Ongietorri-festa: larunbata, 22, 19:00etan · Olmo kalea 23, 2. B",
  "Farol": "Farola",
  "Graduación 2026": "Graduazioa 2026",
  "Text Art «Oro» y un birrete hecho con formas (rombo, rectángulo redondeado y gota) que rebota al llegar. Centro y nombres inventados.": "«Urrea» Text Art eta formekin egindako txano bat (erronboa, laukizuzen biribildua eta tanta) iristean errebote egiten duena. Ikastetxea eta izenak asmatuak.",
@@ -437,7 +434,6 @@ export default {
  "Clic: redoble de tambor y las tres cifras aparecen una tras otra. Datos de ejemplo.": "Klik: danbor-hotsa eta hiru zifrak bata bestearen atzetik agertzen dira. Adibideko datuak.",
  "En cifras": "Zifretan",
  "<div style=\"font-size:96px;font-weight:800;color:#e0af68;line-height:1.05\">86</div><div>graduadas y graduados</div>": "<div style=\"font-size:96px;font-weight:800;color:#e0af68;line-height:1.05\">86</div><div>graduatu</div>",
- "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">3.400</div><div>horas de clase</div>": "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">3.400</div><div>eskola-ordu</div>",
  "<div style=\"font-size:96px;font-weight:800;color:#9ece6a;line-height:1.05\">12</div><div>excursiones</div>": "<div style=\"font-size:96px;font-weight:800;color:#9ece6a;line-height:1.05\">12</div><div>txango</div>",
  "…y un número incontable de cafés antes de los exámenes.": "…eta azterketen aurreko kafe kontaezinak.",
  "Cuatro agradecimientos que aparecen con un clic cada uno. Leedlos entre varias personas.": "Lau esker, klik bat bakoitzeko agertzen direnak. Irakurri itzazue hainbat pertsonaren artean.",
@@ -518,5 +514,9 @@ export default {
  "La planta da una vuelta completa al llegar (Modelo 3D ▸ Vista ▸ Al entrar: vuelta completa). Cierre con transición «Zoom».": "Landareak bira oso bat ematen du iristean (3D eredua ▸ Ikuspegia ▸ Sartzean: Bira bat eman). Amaiera «Zooma» trantsizioarekin.",
  "¡Manos a la tierra!": "Eskuak lurrera!",
  "Próxima jornada: sábado a las 10:00 en la azotea. Trae guantes y una botella de agua.": "Hurrengo jardunaldia: larunbata 10:00etan terrazan. Ekarri eskularruak eta ur-botila bat.",
- "Modelo 3D: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)": "3D eredua: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)"
+ "Modelo 3D: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)": "3D eredua: Materials and animation: Eric Chadwick (CC-BY-4.0); Original asset: Rico Cilliers (CC0-1.0)",
+ "<ul><li><b>Venecia</b> · 2 noches</li><li><b>Florencia</b> · 3 noches, con Siena</li><li><b>Roma</b> · 3 noches</li><li><b>Nápoles</b> · 1 noche</li><li><b>Costa Amalfitana</b> · el último día</li></ul>": "<ul><li><b>Venezia</b> · 2 gau</li><li><b>Florentzia</b> · 3 gau, Sienarekin</li><li><b>Erroma</b> · 3 gau</li><li><b>Napoli</b> · gau 1</li><li><b>Amalfiko kosta</b> · azken eguna</li></ul>",
+ "nota de los lectores": "irakurleen nota",
+ "Fiesta de bienvenida: sábado 21 a las 19:00 · Calle del Olmo 23, 2.º B": "Ongietorri-festa: larunbata, 21, 19:00etan · Olmo kalea 23, 2. B",
+ "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">2.000</div><div>horas de clase</div>": "<div style=\"font-size:96px;font-weight:800;color:#7aa2f7;line-height:1.05\">2.000</div><div>eskola-ordu</div>"
 };
