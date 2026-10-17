@@ -289,7 +289,6 @@ export default {
  "AIRE": "الجوّ",
  "TIERRA": "الأرض",
  "MAR": "البحر",
- "Con cada clic se enciende una luz y aparece qué hacer. Jugamos al semáforo: la maestra enseña un color y la clase se para, se prepara o camina.": "مع كل نقرة يضيء ضوء ويظهر ما يجب فعله. نلعب لعبة الإشارة: تُري المعلّمة لونًا فيتوقّف الصف أو يستعدّ أو يمشي.",
  "El semáforo": "إشارة المرور",
  "¡Quieto!": "قف!",
  "Rojo: esperamos en la acera": "الأحمر: ننتظر على الرصيف",
@@ -405,5 +404,6 @@ export default {
  "¡Hemos llegado!": "لقد وصلنا!",
  "Apollo Lunar Module": "Apollo Lunar Module",
  "¡Un pequeño salto!": "قفزة صغيرة!",
- "Modelo 3D: Apollo Lunar Module — NASA": "نموذج ثلاثي الأبعاد: Apollo Lunar Module — NASA"
+ "Modelo 3D: Apollo Lunar Module — NASA": "نموذج ثلاثي الأبعاد: Apollo Lunar Module — NASA",
+ "Con cada clic cambia la luz, como en un semáforo de verdad: verde, amarillo y rojo. A la vez aparece qué hacer con cada color. Jugamos al semáforo: la maestra enseña un color y la clase se para, se prepara o camina.": "مع كل نقرة يتغيّر الضوء كما في إشارة مرور حقيقية: أخضر، ثم أصفر، ثم أحمر. وفي الوقت نفسه يظهر ما يجب فعله مع كل لون. نلعب لعبة الإشارة: تُري المعلّمة لونًا فيتوقّف الصف أو يستعدّ أو يمشي."
 };

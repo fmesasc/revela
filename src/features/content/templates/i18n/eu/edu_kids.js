@@ -289,7 +289,6 @@ export default {
  "AIRE": "AIREA",
  "TIERRA": "LURRA",
  "MAR": "ITSASOA",
- "Con cada clic se enciende una luz y aparece qué hacer. Jugamos al semáforo: la maestra enseña un color y la clase se para, se prepara o camina.": "Klik bakoitzean argi bat pizten da eta zer egin agertzen da. Semaforoan jolasten dugu: irakasleak kolore bat erakusten du eta gela gelditu, prestatu edo ibiltzen da.",
  "El semáforo": "Semaforoa",
  "¡Quieto!": "Geldi!",
  "Rojo: esperamos en la acera": "Gorria: espaloian itxaron",
@@ -405,5 +404,6 @@ export default {
  "¡Hemos llegado!": "Iritsi gara!",
  "Apollo Lunar Module": "Apollo Lunar Module",
  "¡Un pequeño salto!": "Salto txiki bat!",
- "Modelo 3D: Apollo Lunar Module — NASA": "3D eredua: Apollo Lunar Module — NASA"
+ "Modelo 3D: Apollo Lunar Module — NASA": "3D eredua: Apollo Lunar Module — NASA",
+ "Con cada clic cambia la luz, como en un semáforo de verdad: verde, amarillo y rojo. A la vez aparece qué hacer con cada color. Jugamos al semáforo: la maestra enseña un color y la clase se para, se prepara o camina.": "Klik bakoitzean argia aldatzen da, benetako semaforo batean bezala: berdea, horia eta gorria. Aldi berean, kolore bakoitzarekin zer egin agertzen da. Semaforoan jolasten dugu: irakasleak kolore bat erakusten du eta gela gelditu, prestatu edo ibiltzen da."
 };

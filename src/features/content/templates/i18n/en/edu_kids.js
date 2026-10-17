@@ -289,7 +289,6 @@ export default {
  "AIRE": "AIR",
  "TIERRA": "LAND",
  "MAR": "SEA",
- "Con cada clic se enciende una luz y aparece qué hacer. Jugamos al semáforo: la maestra enseña un color y la clase se para, se prepara o camina.": "With each click a light comes on and shows what to do. We play traffic lights: the teacher shows a colour and the class stops, gets ready or walks.",
  "El semáforo": "The traffic light",
  "¡Quieto!": "Stop!",
  "Rojo: esperamos en la acera": "Red: we wait on the pavement",
@@ -405,5 +404,6 @@ export default {
  "¡Hemos llegado!": "We made it!",
  "Apollo Lunar Module": "Apollo Lunar Module",
  "¡Un pequeño salto!": "One small jump!",
- "Modelo 3D: Apollo Lunar Module — NASA": "3D model: Apollo Lunar Module — NASA"
+ "Modelo 3D: Apollo Lunar Module — NASA": "3D model: Apollo Lunar Module — NASA",
+ "Con cada clic cambia la luz, como en un semáforo de verdad: verde, amarillo y rojo. A la vez aparece qué hacer con cada color. Jugamos al semáforo: la maestra enseña un color y la clase se para, se prepara o camina.": "With each click the light changes, just like a real traffic light: green, yellow and red. At the same time, what to do for each colour appears. We play traffic lights: the teacher shows a colour and the class stops, gets ready or walks."
 };

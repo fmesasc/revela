@@ -289,7 +289,6 @@ export default {
  "AIRE": "LUFT",
  "TIERRA": "LAND",
  "MAR": "MEER",
- "Con cada clic se enciende una luz y aparece qué hacer. Jugamos al semáforo: la maestra enseña un color y la clase se para, se prepara o camina.": "Mit jedem Klick geht ein Licht an und es erscheint, was zu tun ist. Wir spielen Ampel: Die Erzieherin zeigt eine Farbe und die Gruppe bleibt stehen, macht sich bereit oder geht.",
  "El semáforo": "Die Ampel",
  "¡Quieto!": "Stehen!",
  "Rojo: esperamos en la acera": "Rot: Wir warten auf dem Gehweg",
@@ -405,5 +404,6 @@ export default {
  "¡Hemos llegado!": "Wir sind da!",
  "Apollo Lunar Module": "Apollo Lunar Module",
  "¡Un pequeño salto!": "Ein kleiner Sprung!",
- "Modelo 3D: Apollo Lunar Module — NASA": "3D-Modell: Apollo Lunar Module — NASA"
+ "Modelo 3D: Apollo Lunar Module — NASA": "3D-Modell: Apollo Lunar Module — NASA",
+ "Con cada clic cambia la luz, como en un semáforo de verdad: verde, amarillo y rojo. A la vez aparece qué hacer con cada color. Jugamos al semáforo: la maestra enseña un color y la clase se para, se prepara o camina.": "Mit jedem Klick wechselt das Licht wie bei einer echten Ampel: Grün, Gelb und Rot. Gleichzeitig erscheint, was bei jeder Farbe zu tun ist. Wir spielen Ampel: Die Erzieherin zeigt eine Farbe und die Gruppe bleibt stehen, macht sich bereit oder geht."
 };

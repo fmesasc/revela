@@ -61,7 +61,10 @@ def main():
           return R.io.buildHTML(d,{inApp:false})})()""" % (json.dumps(key), json.dumps(LANG)), 180).get('result', {}).get('value') or ''
         if not html: print(f'{key}\tno se pudo generar', flush=True); continue
         open(os.path.join(HTML, key + '.html'), 'w').write(html)
-        report[key] = play(sid, ev, key); json.dump(report, open(os.path.join(OUT, 'report.json'), 'w'), ensure_ascii=False, indent=1)
+        # (One that hangs the browser — a heavy 3D with the computer busy —: said, and on to the next.)
+        try: report[key] = play(sid, ev, key)
+        except TimeoutError: report[key] = {'steps': 0, 'slides': 0, 'problems': ['la reproducción no respondió a tiempo (¿el ordenador muy cargado?): volver a probar'], 'seconds': 0}
+        json.dump(report, open(os.path.join(OUT, 'report.json'), 'w'), ensure_ascii=False, indent=1)
         for p in report[key]['problems']: print(f'{key}\t{p}', flush=True)
         recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html?test')); time.sleep(4)
     print(f'{len(keys)} presentaciones; {sum(len(report[k]["problems"]) for k in keys if k in report)} avisos', flush=True)

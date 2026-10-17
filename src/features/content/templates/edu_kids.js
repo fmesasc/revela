@@ -83,8 +83,8 @@ export default {
           const y = 175 + i * 172;
           return [on(blob(180, y, 150, 140, a, { stroke: '#e3dccb', strokeWidth: 3 }), 'zoom-in', { sound: 'pop' }),
             along(say('+', 340, y, 100, 140, 90, INK, Bd, { fontWeight: 900 }), 'fade-in'), along(blob(450, y, 150, 140, b, { stroke: '#e3dccb', strokeWidth: 3 }), 'zoom-in'),
-            along(say('=', 610, y, 100, 140, 90, INK, Bd, { fontWeight: 900 }), 'fade-in'), after(blob(720, y - 6, 170, 154, c), 'grow'),
-            along(say(n, 900, y, 260, 140, 60, c === '#f6a5b5' ? '#d0466a' : c === G ? GT : c, Bd, { fontWeight: 900, textAlign: 'left' }), 'fade-left')]; })],
+            along(say('=', 610, y, 100, 140, 90, INK, Bd, { fontWeight: 900 }), 'fade-in'), after(blob(720, y - 6, 170, 154, c), 'zoom-in'),
+            along(say(n, 915, y, 260, 140, 60, c === '#f6a5b5' ? '#d0466a' : c === G ? GT : c, Bd, { fontWeight: 900, textAlign: 'left' }), 'fade-left')]; })],
         notes: 'Una fila por clic. Azul y amarillo hacen verde; rojo y azul, morado; y si al rojo le añadimos blanco sale rosa. Buen momento para mancharse las manos.' },
       { title: '¿De qué color es?', layout: 'titleOnly', bg: BG, back: splats(), extra: [
         ...[['apple', R, 'rojo', R], ['sun', '#f2b400', 'amarillo', YT], ['leaf', G, 'verde', GT], ['droplet', B, 'azul', B], ['carrot', O, 'naranja', OT]].flatMap(([ic, c, n, tc], i) => [
@@ -157,7 +157,7 @@ export default {
         notes: 'Dos manzanas rojas y tres verdes: ¿cuántas hay en total? Primer clic, la respuesta con campanilla. Segundo clic, cómo se escribe con números (una ecuación).' },
       { title: '¿Qué fruta nos gusta más?', layout: 'titleOnly', bg: '#fff7e0', extra: [
         chartBlock({ x: 90, y: 170, w: 760, h: 490, chartType: 'bar', dataLabels: true, color: O, yMin: 0, yMax: 10, yTitle: 'manos levantadas',
-          data: [{ label: 'Manzana', value: 7, color: R }, { label: 'Plátano', value: 9, color: Y }, { label: 'Uvas', value: 4, color: P }, { label: 'Pera', value: 3, color: G }] }),
+          data: [{ label: 'Manzana', value: 7, color: R }, { label: 'Plátano', value: 9, color: '#e6a100' }, { label: 'Uvas', value: 4, color: P }, { label: 'Pera', value: 3, color: G }] }),
         on(say('¡Gana el plátano!', 890, 250, 320, 150, 50, '#9a6e00', H, { fontWeight: 800 }), 'zoom-in', { sound: 'applause' }),
         say('Cada niño o niña elige una fruta y contamos las manos levantadas.', 890, 420, 320, 200, 28, INK, H)],
         notes: 'Gráfico de barras con los votos de la clase (datos de ejemplo: cambiadlos por los vuestros en Gráfico ▸ Datos). ¿Qué barra es la más alta? ¿Y la más baja?' },
@@ -272,7 +272,7 @@ export default {
     function poly(x, y, s) { return shape('custom', x, y, 340 * s, 140 * s, '#8f2a22', { path: 'M0 100 L50 0 L100 100 Z' }); }
     const animals = [[cow, 'Vaca', '¡Muuu!'], [pig, 'Cerdo', '¡Oinc!'], [hen, 'Gallina', '¡Cocorocó!'], [sheep, 'Oveja', '¡Beee!']];
     const line = (x1, y1, x2, y2, c) => shape('custom', Math.min(x1, x2), Math.min(y1, y2), Math.max(2, Math.abs(x2 - x1)), Math.max(2, Math.abs(y2 - y1)), 'none',
-      { path: `M${x1 <= x2 ? 0 : 100} ${y1 <= y2 ? 0 : 100} L${x1 <= x2 ? 100 : 0} ${y1 <= y2 ? 100 : 0}`, stroke: c, strokeWidth: 8, dash: 'dash' });
+      { path: `M${x1 <= x2 ? 0 : 100} ${y1 <= y2 ? 0 : 100} L${x1 <= x2 ? 100 : 0} ${y1 <= y2 ? 100 : 0}`, stroke: c, strokeWidth: 8 });
     const fox = lib3d('kh-Fox');
     return numbered(build({ name: 'Los animales de la granja', palette: 'forest', fonts: 'editorial', title: { font: H, size: 62, color: '#8f2a22', bold: false }, body: { color: INK } }, [
       { layout: 'blank', bg: SKY, back: [shape('sun', 70, 50, 150, 150, '#ffd23f'), shape('cloud', 330, 60, 200, 110, '#ffffff'), ...field()], transition: 'fade', extra: [
@@ -304,7 +304,7 @@ export default {
         notes: 'La tabla suma sola: la última casilla es =SUMA(ARRIBA). Contamos con los dedos y comprobamos que coincide; si cambiáis un número, el total cambia.' },
       { title: 'El camión de la leche', layout: 'titleOnly', bg: SKY, back: [shape('cloud', 900, 40, 220, 110, '#ffffff'), ...field()], extra: [
         shape('rect', 0, 520, 1280, 110, '#9a9488'), ...Array.from({ length: 9 }, (_, i) => shape('rect', 30 + i * 150, 570, 80, 10, '#ffffff')),
-        withAnims(m3d('kh-CesiumMilkTruck', 30, 290, 460, 320, { view: 'side' }), path([[300, 0], [550, 0], [740, 0]], { duration: 4000, sound: 'whoosh' })),
+        withAnims(m3d('kh-CesiumMilkTruck', 790, 290, 460, 320, { view: 'side' }), path([[-300, 0], [-550, 0], [-740, 0]], { duration: 4000, sound: 'whoosh' })),
         say('Recoge la leche de las vacas y la lleva a la ciudad', 140, 170, 1000, 120, 44, INK, Bd, { fontWeight: 800 })],
         notes: 'Clic: el camión 3D recorre la carretera (trayectoria animada). Se puede girar con el ratón al presentar. Después la leche se envasa y llega a la tienda.' },
       { layout: 'blank', bg: '#2d3f6b', back: [shape('moon', 1080, 40, 110, 110, '#fff4c2'), ...Array.from({ length: 10 }, (_, i) => shape('star', 80 + i * 95, 140 + (i % 3) * 40, 18, 18, '#fff4c2', { opacity: 70 })),
@@ -370,7 +370,7 @@ export default {
       { layout: 'blank', bg: '#fffaf2', back: [glow(560, 60, 700, '#ffe9c7', '#fffaf2', 90)], transition: 'zoom', extra: [
         say('Las cuatro<br>estaciones', 70, 150, 560, 280, 116, INK, H, { fontWeight: 700, textAlign: 'left', lineHeight: 0.95 }),
         say('Un árbol nos cuenta cómo cambia el año', 70, 450, 520, 120, 40, '#8a6a52', Bd, { fontWeight: 700, textAlign: 'left' }),
-        withAnims(shape('ellipse', 700, 110, 500, 500, '#ffffff', { stroke: '#e9dccb', strokeWidth: 4 }), A('spin360', { start: 'afterPrev', duration: 2400 })),
+        withAnims(shape('ellipse', 700, 110, 500, 500, '#ffffff', { stroke: '#e9dccb', strokeWidth: 4 }), A('zoom-in', { start: 'afterPrev', duration: 600 })),
         ...[[0, '#9be07a', 'flower', '#e8558f'], [90, '#ffd25a', 'sun', '#c27c00'], [180, '#f5a25a', 'leaf', '#a8440f'], [270, '#a9d2f5', 'snowflake', '#2f6db0']].flatMap(([rot, c, ic, ic2], i) => {
           const cx = 950 + [1, 1, -1, -1][i] * 110, cy = 360 + [-1, 1, 1, -1][i] * 110;
           return [after(quarter(720, 130, 460, rot, c), 'zoom-in', { duration: 400, sound: i === 3 ? 'chime' : undefined }), along(icon(ic, cx - 50, cy - 50, 100, ic2), 'zoom-in')]; })],
@@ -407,8 +407,8 @@ export default {
     const tri = (x, y, w, h, c, props = {}) => block('triangle', x, y, w, h, c, props);
     // The house and the robot: the same seven pieces.
     const P7 = { wall: uid(), roof: uid(), door: uid(), winL: uid(), winR: uid(), sun: uid(), chim: uid() };
-    const house = () => [keep(block('rect', 700, 190, 50, 90, P), P7.chim), keep(block('ellipse', 960, 150, 160, 160, O), P7.sun), keep(block('rect', 380, 330, 400, 300, Y), P7.wall), keep(tri(340, 170, 480, 170, R), P7.roof), keep(block('rect', 530, 470, 100, 160, B), P7.door),
-      keep(block('rect', 420, 380, 80, 80, '#9bd8f2'), P7.winL), keep(block('rect', 660, 380, 80, 80, '#9bd8f2'), P7.winR)];
+    const house = () => [keep(block('rect', 660, 190, 50, 90, P), P7.chim), keep(block('ellipse', 960, 150, 160, 160, O), P7.sun), keep(block('rect', 430, 330, 300, 300, Y), P7.wall), keep(tri(390, 170, 380, 170, R), P7.roof), keep(block('rect', 530, 470, 100, 160, B), P7.door),
+      keep(block('rect', 455, 370, 80, 80, '#9bd8f2'), P7.winL), keep(block('rect', 625, 370, 80, 80, '#9bd8f2'), P7.winR)];
     const robot = () => [keep(block('rect', 625, 360, 30, 60, P), P7.chim), keep(block('ellipse', 520, 225, 240, 185, O), P7.sun), keep(block('rect', 480, 410, 320, 250, Y), P7.wall), keep(tri(565, 150, 150, 95, R), P7.roof), keep(block('rect', 590, 480, 100, 120, B), P7.door),
       keep(block('rect', 560, 280, 50, 50, '#9bd8f2'), P7.winL), keep(block('rect', 670, 280, 50, 50, '#9bd8f2'), P7.winR)];
     return numbered(build({ name: 'Formas y bloques', palette: 'revela', fonts: 'tech', title: { font: H, size: 60, color: W }, body: { color: W } }, [
@@ -421,8 +421,8 @@ export default {
       { title: 'Tres formas', layout: 'titleOnly', bg: RUG, back: rug(), extra: [
         ...[['ellipse', 'Círculo', 'redondo, sin esquinas', O], ['rect', 'Cuadrado', '4 lados iguales', B], ['triangle', 'Triángulo', '3 lados y 3 esquinas', R]].flatMap(([k, n, d, c], i) => {
           const x = 90 + i * 390;
-          return [on(shape(k, x + 40, 180, 260, 240, 'none', { stroke: W, strokeWidth: 10 }), 'draw', { duration: 1200 }),
-            after(block(k, x + 40, 180, 260, 240, c), 'zoom-in', { sound: 'pop' }),
+          return [on(shape(k, x + 50, 180, 240, 240, 'none', { stroke: W, strokeWidth: 10 }), 'draw', { duration: 1200 }),
+            after(block(k, x + 50, 180, 240, 240, c), 'zoom-in', { sound: 'pop' }),
             along(say(n, x, 450, 340, 80, 60, W, H, { fontWeight: 700 }), 'fade-up'), along(say(d, x, 530, 340, 60, 32, '#d9f3f1', H), 'fade-up', { delay: 200 })]; })],
         notes: 'Con cada clic, una forma se dibuja sola (como con el dedo en el aire) y luego se rellena de color. Dibujadla vosotros en la alfombra con el dedo.' },
       { title: 'Una casa de formas', layout: 'titleOnly', bg: RUG, back: rug(), extra: [
@@ -549,21 +549,25 @@ export default {
         m3d('kh-ToyCar', 780, 250, 480, 400, { autoRotate: true, view: 'three' })],
         notes: 'Una alfombra de carreteras vista desde arriba, con un coche de juguete en 3D que gira. ¿Cómo habéis venido hoy al cole?' },
       { title: 'Por el aire, por tierra y por el mar', layout: 'titleOnly', bg: '#ffffff', extra: [
-        shape('rect', 0, 150, 1280, 180, '#bfe6ff'), shape('rect', 0, 330, 1280, 180, '#a6d97f'), shape('rect', 0, 400, 1280, 50, ROAD), shape('rect', 0, 510, 1280, 210, '#3a86d8'),
+        shape('rect', 0, 150, 1280, 180, '#bfe6ff'), shape('rect', 0, 330, 1280, 180, '#a6d97f'), shape('rect', 0, 425, 1280, 55, ROAD), shape('rect', 0, 510, 1280, 210, '#3a86d8'),
         shape('cloud', 900, 170, 160, 90, '#ffffff'), shape('wave', 0, 540, 1280, 60, '#5aa0e8'),
-        ...[['AIRE', 180, '#1e5fbf'], ['TIERRA', 360, '#2d6a1e'], ['MAR', 560, '#ffffff']].map(([n, y, c]) => say(n, 40, y, 240, 100, 70, c, H, { textAlign: 'left' })),
+        ...[['AIRE', 180, '#1e5fbf'], ['TIERRA', 335, '#2d6a1e'], ['MAR', 560, '#ffffff']].map(([n, y, c]) => say(n, 40, y, 240, 90, 70, c, H, { textAlign: 'left' })),
         withAnims(icon('plane', 290, 180, 110, '#1f2a44'), path([[400, -20], [800, 10]], { duration: 2500, sound: 'whoosh' })),
-        withAnims(icon('bus', 290, 360, 100, '#e8413c'), path([[400, 0], [800, 0]], { duration: 3000, sound: 'whoosh' })),
+        withAnims(icon('bus', 290, 372, 100, '#e8413c'), path([[400, 0], [800, 0]], { duration: 3000, sound: 'whoosh' })),
         withAnims(icon('ship', 290, 560, 110, '#ffffff'), path([[400, 10], [800, 0]], { duration: 4000, sound: 'whoosh' }))],
         notes: 'Un clic por vehículo: el avión vuela, el autobús va por la carretera y el barco navega (trayectorias con silbido). ¿Qué más va por el aire? ¿Y por el mar?' },
       { title: 'El semáforo', layout: 'titleOnly', bg: '#e9eef5', extra: [
         shape('rect', 300, 560, 40, 130, '#3a3f4a'), shape('rounded', 220, 150, 200, 420, '#2b2f38'),
         ...[[R, 170], [Y, 300], [G, 430]].map(([c, y]) => shape('ellipse', 255, y, 130, 130, c, { opacity: 22 })),
-        ...[[R, 170, '¡Quieto!', 'Rojo: esperamos en la acera'], [Y, 300, '¡Atento!', 'Amarillo: va a cambiar'], [G, 430, '¡Ahora sí!', 'Verde: cruzamos de la mano']].flatMap(([c, y, t, d], i) => [
-          on(shape('ellipse', 255, y, 130, 130, c, { shadow: { x: 0, y: 0, blur: 30, color: c } }), 'fade-in', { sound: 'click' }),
-          along(say(t, 520, 200 + i * 150, 700, 80, 76, c === Y ? '#9a6e00' : c === G ? '#1d8a4a' : c, H, { textAlign: 'left' }), 'fade-left'),
-          along(say(d, 520, 270 + i * 150, 700, 50, 32, INK, Bd, { textAlign: 'left', fontWeight: 700 }), 'fade-left')])],
-        notes: 'Con cada clic se enciende una luz y aparece qué hacer. Jugamos al semáforo: la maestra enseña un color y la clase se para, se prepara o camina.' },
+        ...(() => { // As a real one: green, then amber, then red, and only one light on at a time (each turns off as the next comes on).
+          const L = [[R, 170, '¡Quieto!', 'Rojo: esperamos en la acera'], [Y, 300, '¡Atento!', 'Amarillo: va a cambiar'], [G, 430, '¡Ahora sí!', 'Verde: cruzamos de la mano']];
+          const play = [2, 1, 0], an = {};
+          play.forEach((i, k) => { an[i] = { on: A('fade-in', { sound: 'click' }), off: k ? A('fade-out', { start: 'withPrev' }) : null, t: A('fade-left', { start: 'withPrev' }), d: A('fade-left', { start: 'withPrev' }) }; });
+          return L.flatMap(([c, y, t, d], i) => { const next = play[play.indexOf(i) + 1];
+            return [withAnims(shape('ellipse', 255, y, 130, 130, c, { shadow: { x: 0, y: 0, blur: 30, color: c } }), an[i].on, ...(next != null ? [an[next].off] : [])),
+              withAnims(say(t, 520, 200 + i * 150, 700, 80, 76, c === Y ? '#9a6e00' : c === G ? '#1d8a4a' : c, H, { textAlign: 'left' }), an[i].t),
+              withAnims(say(d, 520, 270 + i * 150, 700, 50, 32, INK, Bd, { textAlign: 'left', fontWeight: 700 }), an[i].d)]; }); })()],
+        notes: 'Con cada clic cambia la luz, como en un semáforo de verdad: verde, amarillo y rojo. A la vez aparece qué hacer con cada color. Jugamos al semáforo: la maestra enseña un color y la clase se para, se prepara o camina.' },
       { title: '¿Cuántas ruedas tiene?', layout: 'titleOnly', bg: '#ffffff', extra: [
         chartBlock({ x: 80, y: 160, w: 760, h: 500, chartType: 'bar', color: SIGN, dataLabels: true, yMin: 0, yMax: 6,
           data: [{ label: 'Bici', value: 2 }, { label: 'Triciclo', value: 3 }, { label: 'Coche', value: 4 }, { label: 'Camión', value: 6 }] }),
@@ -600,7 +604,7 @@ export default {
       + `<path d="M110 30 q16 40 0 80 M135 36 q14 34 0 68" stroke="${c2}" stroke-width="7" fill="none" opacity=".7"/><circle cx="55" cy="58" r="14" fill="#fff"/><circle cx="51" cy="58" r="7" fill="#1b1b2f"/><path d="M28 84 q10 8 20 0" stroke="#1b1b2f" stroke-width="4" fill="none"/></g>`);
     const octopus = svgURL(220, 220, Array.from({ length: 8 }, (_, i) => `<path d="M${50 + i * 17} 120 q${i % 2 ? 18 : -18} 40 ${i % 2 ? -6 : 6} 90" stroke="#e86fa8" stroke-width="16" fill="none" stroke-linecap="round"/>`).join('')
       + `<ellipse cx="110" cy="90" rx="72" ry="74" fill="#f08bbd"/><circle cx="85" cy="90" r="15" fill="#fff"/><circle cx="135" cy="90" r="15" fill="#fff"/><circle cx="88" cy="92" r="7" fill="#2b1b2f"/><circle cx="138" cy="92" r="7" fill="#2b1b2f"/><path d="M96 124 q14 12 28 0" stroke="#2b1b2f" stroke-width="5" fill="none"/>`);
-    const crab = svgURL(240, 180, [0, 1, 2].map(i => `<path d="M${70 - i * 4} ${110 + i * 14} l-44 ${16 + i * 6} M${170 + i * 4} ${110 + i * 14} l44 ${16 + i * 6}" stroke="#d63b2e" stroke-width="9" stroke-linecap="round"/>`).join('')
+    const crab = svgURL(240, 180, [0, 1, 2, 3].map(i => `<path d="M${70 - i * 4} ${100 + i * 14} l-44 ${12 + i * 7} M${170 + i * 4} ${100 + i * 14} l44 ${12 + i * 7}" stroke="#d63b2e" stroke-width="9" stroke-linecap="round"/>`).join('')
       + `<path d="M60 70 q-40 -20 -30 -56 M180 70 q40 -20 30 -56" stroke="#d63b2e" stroke-width="10" fill="none"/><circle cx="30" cy="20" r="22" fill="#e8513f"/><circle cx="210" cy="20" r="22" fill="#e8513f"/><path d="M14 10 l18 12 M226 10 l-18 12" stroke="#fff" stroke-width="5"/>`
       + `<ellipse cx="120" cy="110" rx="78" ry="50" fill="#e8513f"/><path d="M100 64 v-20 M140 64 v-20" stroke="#d63b2e" stroke-width="6"/><circle cx="100" cy="40" r="12" fill="#fff"/><circle cx="140" cy="40" r="12" fill="#fff"/><circle cx="100" cy="42" r="6" fill="#222"/><circle cx="140" cy="42" r="6" fill="#222"/><path d="M104 120 q16 12 32 0" stroke="#7a1a12" stroke-width="5" fill="none"/>`);
     const turtle = svgURL(240, 180, `<ellipse cx="60" cy="140" rx="30" ry="16" fill="#7cc46a"/><ellipse cx="180" cy="140" rx="30" ry="16" fill="#7cc46a"/><ellipse cx="60" cy="50" rx="30" ry="16" fill="#7cc46a"/><ellipse cx="180" cy="50" rx="30" ry="16" fill="#7cc46a"/>`
@@ -632,7 +636,7 @@ export default {
         notes: 'Un clic por animal: entra con un «pop». ¿Cuántos brazos tiene el pulpo? ¡Ocho! ¿Y qué lleva la tortuga en la espalda?' },
       { title: 'Grande y pequeño', layout: 'titleOnly', back: sea(), extra: [
         img(whale, 60, 170, 700, 404, 'Una ballena'), img(tiny, 960, 380, 110, 70, 'Un pez pequeñito'),
-        on(say('GRANDE', 80, 560, 640, 120, 110, W, H, { fontWeight: 900 }), 'zoom-in', { sound: 'drumroll' }),
+        on(say('GRANDE', 80, 560, 640, 120, 110, INK, H, { fontWeight: 900 }), 'zoom-in', { sound: 'drumroll' }),
         on(say('pequeño', 860, 470, 320, 60, 32, '#ffe9a8', H, { fontWeight: 700 }), 'fade-in', { sound: 'pop' })],
         notes: 'La ballena es el animal más grande del mundo; el pez, pequeñito. Decimos «GRANDE» con voz muy fuerte y «pequeño» con voz muy bajita.' },
       { layout: 'blank', back: sea(), extra: [activity({ kind: 'quiz', question: '¿Cuántos brazos tiene el pulpo?', options: ['4', '6', '8'], correct: [2], time: 30, fontSize: 56, color: W })],
@@ -687,9 +691,9 @@ export default {
         shape('sun', -160, 160, 420, 420, '#ffc23a'), say('Sol', 20, 590, 200, 60, 36, Y, H, { fontWeight: 700 }),
         shape('ellipse', 520, 230, 280, 280, '#2f7de1'), shape('cloud', 560, 260, 120, 70, '#3fbf6e'), shape('cloud', 660, 380, 110, 80, '#3fbf6e'), shape('cloud', 590, 420, 70, 40, '#ffffff', { opacity: 70 }),
         say('Tierra', 560, 520, 200, 60, 36, '#9fd0ff', H, { fontWeight: 700 }),
-        shape('ellipse', 400, 110, 520, 520, 'none', { stroke: '#ffffff', strokeWidth: 2, dash: 'dash', opacity: 40 }),
-        withAnims(shape('ellipse', 860, 340, 80, 80, MOON), path(Array.from({ length: 13 }, (_, i) => { const a = i / 12 * Math.PI * 2; return [Math.round(-260 + 260 * Math.cos(a)), Math.round(-260 * Math.sin(a))]; }), { duration: 6000 })),
-        say('Luna', 960, 350, 200, 60, 36, MOON, H, { fontWeight: 700, textAlign: 'left' })],
+        shape('ellipse', 440, 150, 440, 440, 'none', { stroke: '#ffffff', strokeWidth: 2, dash: 'dash', opacity: 40 }),
+        withAnims(shape('ellipse', 840, 330, 80, 80, MOON), path(Array.from({ length: 13 }, (_, i) => { const a = i / 12 * Math.PI * 2; return [Math.round(-220 + 220 * Math.cos(a)), Math.round(-220 * Math.sin(a))]; }), { duration: 6000 })),
+        say('Luna', 935, 340, 200, 60, 36, MOON, H, { fontWeight: 700, textAlign: 'left' })],
         notes: 'Clic: la Luna da una vuelta completa alrededor de la Tierra (trayectoria circular). El Sol nos da luz y calor; la Tierra es nuestra casa.' },
       { layout: 'blank', bg: '#8fd3ff', extra: [
         shape('rect', 640, 0, 640, 720, NIGHT), ...stars(14, 9).map(b => ({ ...b, x: 660 + (b.x % 600) })),
@@ -707,7 +711,7 @@ export default {
         notes: 'Un astronauta en 3D de la NASA que gira. Cada clic muestra una pieza del traje. En la Luna no hay aire: por eso llevan el casco y la mochila.' },
       { title: 'La Luna cambia de forma', layout: 'titleOnly', bg: NIGHT, back: stars(30, 13), extra: [
         ...[0, 1, 2, 3].flatMap(i => { const x = 90 + i * 290, y = 230, d = 200;
-          const shp = [shape('ellipse', x, y, d, d, MOON), shape('custom', x, y, d, d, MOON, { path: 'M50 0 A50 50 0 0 1 50 100 Z' }), shape('moon', x + 30, y, d - 30, d, MOON),
+          const shp = [shape('ellipse', x, y, d, d, MOON), shape('custom', x, y, d, d, MOON, { path: 'M50 0 A50 50 0 0 0 50 100 Z' }), shape('moon', x + 30, y, d - 30, d, MOON),
             shape('ellipse', x, y, d, d, '#1a1f4a', { stroke: '#4a5090', strokeWidth: 3, dash: 'dash' })][i];
           return [shape('ellipse', x, y, d, d, '#1a1f4a'), on(shp, 'zoom-in', { sound: 'chime' }), along(say(['Llena', 'Media', 'Menguante', 'Nueva'][i], x - 30, 470, d + 60, 70, 42, INK, H, { fontWeight: 700 }), 'fade-up')]; })],
         notes: 'Un clic por forma. La Luna no cambia de verdad: vemos más o menos parte iluminada por el Sol. Durante un mes podemos dibujarla cada noche en un calendario.' },

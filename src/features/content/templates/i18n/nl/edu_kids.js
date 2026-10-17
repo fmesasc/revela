@@ -289,7 +289,6 @@ export default {
  "AIRE": "LUCHT",
  "TIERRA": "LAND",
  "MAR": "ZEE",
- "Con cada clic se enciende una luz y aparece qué hacer. Jugamos al semáforo: la maestra enseña un color y la clase se para, se prepara o camina.": "Bij elke klik gaat er een lampje aan en zie je wat je moet doen. We spelen stoplichtje: de juf laat een kleur zien en de klas staat stil, maakt zich klaar of loopt.",
  "El semáforo": "Het stoplicht",
  "¡Quieto!": "Stop!",
  "Rojo: esperamos en la acera": "Rood: we wachten op de stoep",
@@ -405,5 +404,6 @@ export default {
  "¡Hemos llegado!": "We zijn er!",
  "Apollo Lunar Module": "Apollo Lunar Module",
  "¡Un pequeño salto!": "Een kleine sprong!",
- "Modelo 3D: Apollo Lunar Module — NASA": "3D-model: Apollo Lunar Module — NASA"
+ "Modelo 3D: Apollo Lunar Module — NASA": "3D-model: Apollo Lunar Module — NASA",
+ "Con cada clic cambia la luz, como en un semáforo de verdad: verde, amarillo y rojo. A la vez aparece qué hacer con cada color. Jugamos al semáforo: la maestra enseña un color y la clase se para, se prepara o camina.": "Bij elke klik verandert het licht, net als bij een echt stoplicht: groen, geel en rood. Tegelijk zie je wat je bij elke kleur moet doen. We spelen stoplichtje: de juf laat een kleur zien en de klas staat stil, maakt zich klaar of loopt."
 };

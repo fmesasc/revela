@@ -289,7 +289,6 @@ export default {
  "AIRE": "AIRE",
  "TIERRA": "TERRA",
  "MAR": "MAR",
- "Con cada clic se enciende una luz y aparece qué hacer. Jugamos al semáforo: la maestra enseña un color y la clase se para, se prepara o camina.": "A cada clic s'encén un llum i apareix què cal fer. Juguem al semàfor: la mestra ensenya un color i la classe s'atura, es prepara o camina.",
  "El semáforo": "El semàfor",
  "¡Quieto!": "Quiet!",
  "Rojo: esperamos en la acera": "Vermell: esperem a la vorera",
@@ -405,5 +404,6 @@ export default {
  "¡Hemos llegado!": "Hi hem arribat!",
  "Apollo Lunar Module": "Apollo Lunar Module",
  "¡Un pequeño salto!": "Un petit salt!",
- "Modelo 3D: Apollo Lunar Module — NASA": "Model 3D: Apollo Lunar Module — NASA"
+ "Modelo 3D: Apollo Lunar Module — NASA": "Model 3D: Apollo Lunar Module — NASA",
+ "Con cada clic cambia la luz, como en un semáforo de verdad: verde, amarillo y rojo. A la vez aparece qué hacer con cada color. Jugamos al semáforo: la maestra enseña un color y la clase se para, se prepara o camina.": "A cada clic canvia el llum, com en un semàfor de debò: verd, groc i vermell. Alhora apareix què cal fer amb cada color. Juguem al semàfor: la mestra ensenya un color i la classe s'atura, es prepara o camina."
 };
