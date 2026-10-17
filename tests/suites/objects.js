@@ -3671,6 +3671,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); }
   });
 
+  await test('exportar otra presentación (no la abierta): sus diagramas con su paleta', async () => {
+    reset(); await sleep(10);
+    const d = structuredClone(R.state.deck); d.palette = 'forest';
+    d.slides[0].blocks.push({ id: 'dgx', type: 'diagram', layout: 'cards', colors: 'colorful', text: 'Uno\nDos\nTres', x: 100, y: 100, w: 600, h: 300, rotation: 0, animation: null });
+    const html = R.io.buildHTML(d), forest = '#2e7d32';
+    assert(R.state.deck.palette !== 'forest' && html.toLowerCase().includes(forest), 'los colores de su paleta (Bosque), no los de la abierta');
+  });
+
   await test('mapa: bordes del recuadro (redondeados, desvanecidos, óvalo) y, con Transformar, el mismo planeta sigue de una diapositiva a otra', async () => {
     reset(); const { G, W } = await mapSetup(); R.slides.addSlide('blank'); await sleep(10);
     eq(G.normalizeMap({ type: 'map', edge: 'raro', stops: [] }).edge, undefined, 'un borde raro, fuera');

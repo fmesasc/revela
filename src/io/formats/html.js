@@ -255,6 +255,10 @@ function mergeClasses(html) {
   const merged = tag.replace(/\sclass="[^"]*"/g, () => (first ? (first = false, ` class="${cls.join(' ')}"`) : ''));
   return merged + html.slice(end);
 }
+// The deck being exported (buildHTML, slideInnerHTML): an object's HTML takes its palette, size and language from it —
+// not from the one open in the editor (the gallery's previews and tools/play-templates.py export others).
+let outDeck = null;
+const theDeck = () => outDeck || state.deck;
 export function blockHTML(b, slide) {
   const html = blockHTMLRaw(b, slide), cls = b.cls && cleanClasses(b.cls);            // (its classes, for the deck's CSS: developer mode)
   return mergeClasses(cls ? html.replace(/^<([a-z][\w-]*)/i, `<$1 class="${cls}"`) : html);
@@ -328,7 +332,7 @@ function blockHTMLRaw(b, slide) {
   const byText = !!b.byText;
   const a = animAttrs(b, slide) + (b.morphId && !byText ? ` data-id="${esc(b.morphId)}"` : '') + ariaAttrs(b) + langAttr(b) + linkAttrs(b) + (b.dragLive && !b.locked ? ' data-drag data-prevent-swipe' : '');
   if (b.type === 'connector') {
-    const { w, h } = state.deck.size;
+    const { w, h } = theDeck().size;
     const from = slide && slide.blocks.find(x => x.id === b.from);
     const to = slide && slide.blocks.find(x => x.id === b.to);
     return `<div${a} style="${box(b)}pointer-events:none">${connectorSVG(b, from, to, w, h)}</div>`;
@@ -432,7 +436,7 @@ function blockHTMLRaw(b, slide) {
     return `<div${a} class="math" data-latex="${esc(mathTeX(b))}" style="${box(b)}display:flex;align-items:center;${mathCSS(b)}"></div>`;
   if (b.type === 'diagram') {
     // "One by one": each item (its shapes and words) a click of its own, after the slide's other steps.
-    let inner = diagramHTML(b, { accents: currentPalette(state.deck).accents, fg: deckFg(state.deck), back: slide?.background || currentPalette(state.deck).bg, step: !!b.oneByOne });
+    let inner = diagramHTML(b, { accents: currentPalette(theDeck()).accents, fg: deckFg(theDeck()), back: slide?.background || currentPalette(theDeck()).bg, step: !!b.oneByOne });
     if (b.oneByOne) {
       const base = b.animation && !b.animation.trigger ? b.animation.order : Math.max(0, ...(slide?.blocks || []).flatMap(x => animsOf(x)).map(x => +x.order || 0)) + 1;
       inner = inner.replace(/ data-dg="(-?\d+)"/g, (m, k) => (+k < 0 ? '' : ` class="fragment fade-in" data-fragment-index="${base + +k}"`));
@@ -469,13 +473,13 @@ function blockHTMLRaw(b, slide) {
 // picture — the first one seen; the others stand in, without a connection, when the map gets to their stop —, so
 // the pictures (PDF, images, PowerPoint) show it as it starts. Its name says where it goes («Mapa: Madrid → París»).
 function mapHTML(b, a = '') {
-  const stops = b.stops || [], lang = deckTag(state.deck, currentLang());
+  const stops = b.stops || [], lang = deckTag(theDeck(), currentLang());
   const shots = stops.map((s, k) => (s.shot && /^data:image\//.test(s.shot)
     ? `<img class="rv-map-shot" data-k="${k}" src="${esc(s.shot)}" alt="" style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;${MAP_MASK}${k ? 'visibility:hidden' : ''}">` : '')).join('');
   const label = b.decorative ? ' aria-hidden="true"' : ` role="img" aria-label="${esc((b.alt || '').trim() || mapAlt(b))}"`;
   // (A map over the whole slide — touching its four edges, within 2 % — goes on to the screen's edges when presenting
   // on a screen of another proportion, as a background would: io/runtime/geomap.js, bleed().)
-  const { w: W, h: H } = state.deck.size, tx = W * 0.02, ty = H * 0.02;
+  const { w: W, h: H } = theDeck().size, tx = W * 0.02, ty = H * 0.02;
   // (Not one whose edges fade or are rounded: it stays in its box, as drawn.)
   const whole = !b.edge && !b.rotation && !b.flipH && !b.flipV && b.x <= tx && b.y <= ty && b.x + b.w >= W - tx && b.y + b.h >= H - ty;
   return `<div${a.replace(/ (role|aria-label|aria-hidden)="[^"]*"/g, '')}${stops.length ? ` data-geomap="${esc(JSON.stringify(mapConfig(b, lang)))}" data-prevent-swipe` : ''}${whole ? ' data-bleed' : ''}${b.edge ? ` data-edge="${b.edge}"` : ''}${label} style="${box(b)}overflow:hidden;${mapEdgeCSS(b)}background:${isClear(b) || fadesOut(b) ? 'transparent' : b.look === 'map' ? '#e8e8e0' : '#0b1d33'}">${shots}${mapFrameHTML(b)}</div>`;
@@ -739,7 +743,8 @@ const chartCaption = b => `${t('Gráfico')} · ${t(CHART_KINDS[b.chartType || 'b
 
 export function buildHTML(deck = state.deck, opts = {}) {
   // (Shown in this window: its big pictures, videos and sounds as blob: addresses, io/formats/blobmedia.js.)
-  return dedupeMedia(buildHTMLRaw(opts.inApp ? blobMedia(deck) : deck, opts));
+  const was = outDeck; outDeck = deck;
+  try { return dedupeMedia(buildHTMLRaw(opts.inApp ? blobMedia(deck) : deck, opts)); } finally { outDeck = was; }
 }
 // (Reveal is set to fill the screen as the editor shows the slide: no margin, and no cap on how far it
 // grows — reveal.js stops at 2× by default, which left wide borders on large or high-resolution screens.)
@@ -995,4 +1000,4 @@ export async function offlineHTML(html) {
 }
 
 // The inline‑styled blocks of a slide (self‑contained, no external CSS).
-export function slideInnerHTML(slide, deck = state.deck) { return blocksOf(slide, deck).map(b => blockHTML(b, slide)).join(''); }
+export function slideInnerHTML(slide, deck = state.deck) { const was = outDeck; outDeck = deck; try { return blocksOf(slide, deck).map(b => blockHTML(b, slide)).join(''); } finally { outDeck = was; } }
