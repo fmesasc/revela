@@ -265,9 +265,9 @@ export default {
         ...[['Curso alto', 110], ['Curso medio', 470], ['Curso bajo', 850]].map(([t, x]) => text(t, x, 180, 300, 50, { fontFamily: HAND, fontSize: 36, color: OCHRE, fontWeight: 700 })),
         ...[['mountain', 'Erosiona', 'Mucha pendiente: el agua corre rápida y excava valles estrechos, en forma de V.'],
           ['waves', 'Transporta', 'Menos pendiente: arrastra arena y cantos rodados y empieza a serpentear.'],
-          ['sprout', 'Deposita', 'Casi llano: el agua va lenta, suelta lo que lleva y forma llanuras y deltas.']].map(([ic, t, d], i) =>
-          on(card(`<b style="font-size:28px;color:${BLUE}">${t}</b><br>${d}`, 90 + i * 375, 455, 350, 205, '#ffffff', { fontSize: 21, color: INK, radius: 14, pad: [20, 22, 20, 84], borderColor: SOFT }), 'fade-up')),
-        ...[['mountain', 0], ['waves', 1], ['sprout', 2]].map(([ic, i]) => on(icon(ic, 112 + i * 375, 478, 50, OCHRE), 'fade-up', { start: 'withPrev' }))],
+          ['sprout', 'Deposita', 'Casi llano: el agua va lenta, suelta lo que lleva y forma llanuras y deltas.']].flatMap(([ic, t, d], i) => [
+          on(card(`<b style="font-size:28px;color:${BLUE}">${t}</b><br>${d}`, 90 + i * 375, 455, 350, 205, '#ffffff', { fontSize: 21, color: INK, radius: 14, pad: [20, 22, 20, 84], borderColor: SOFT }), 'fade-up'),
+          on(icon(ic, 112 + i * 375, 478, 50, OCHRE), 'fade-up', { start: 'withPrev' })])],
         notes: 'El perfil longitudinal: cuanta más pendiente, más fuerza tiene el agua. Un clic por tramo; cada verbo resume su trabajo: erosionar, transportar, depositar.' },
 
       { layout: 'blank', bg: PAPER, transition: 'fade', extra: [
@@ -307,7 +307,7 @@ export default {
 
       { layout: 'blank', bg: PAPER, extra: [pollBlock({ kind: 'label', fontSize: 30, question: 'Pon nombre a cada parte del río', x: 80, y: 50, w: 1120, h: 620,
         image: LANDSCAPE('#ffffff'), options: ['Nacimiento', 'Afluente', 'Meandro', 'Delta', 'Montaña'],
-        points: [{ x: 84, y: 11 }, { x: 56, y: 34 }, { x: 36, y: 72 }, { x: 11, y: 95 }, { x: 77, y: 30 }] })],
+        points: [{ x: 84, y: 11 }, { x: 56, y: 34 }, { x: 36, y: 72 }, { x: 11, y: 95 }, { x: 71, y: 26 }] })],
         notes: 'Actividad «Etiquetar una imagen»: cada alumno arrastra los nombres a los puntos desde el móvil y se corrige solo. El afluente es el río pequeño que se une por la izquierda.' },
 
       { layout: 'blank', bg: PAPER, extra: [quiz('En un meandro, ¿por qué orilla erosiona más el río?', ['Por la de fuera, donde corre más deprisa', 'Por la de dentro, donde va más lento', 'Por las dos por igual', 'Por ninguna: en los meandros solo deposita'], 0, { fontSize: 38 })],
@@ -469,7 +469,7 @@ export default {
         along(model('kk-Rogue_Hooded', course[0][0] - 60, course[0][1] - 150, 120, 160, { walk: { clip: lib3d('kk-Rogue_Hooded').walk, end: lib3d('kk-Rogue_Hooded').arrive, endOnce: true, face: true, look: true } }),
           'path', { pathShape: 'custom', points: [[0, 0], ...rel(route)], dx: rel(route).at(-1)[0], dy: rel(route).at(-1)[1], duration: 8000 }),
         text('Clic: ¡salida!', 1040, 640, 190, 44, { fontSize: 20, fontWeight: 700, color: '#ffffff', bg: MAG, radius: 22, textAlign: 'center', vAlign: 'middle' })],
-        notes: 'Un clic: la corredora sigue el recorrido de baliza en baliza mientras se dibuja, y celebra al llegar a la meta. Pregunta por qué el tramo 2-3 rodea la colina en lugar de subirla.' },
+        notes: 'Un clic: la corredora sigue el recorrido de baliza en baliza mientras se dibuja, y celebra al llegar a la meta. Pregunta qué tramo cuesta más: el 2-3 sube a lo alto de la colina y cruza muchas curvas de nivel.' },
 
       { layout: 'blank', bg: CREAM, extra: [quiz('En un mapa 1 : 50 000, dos pueblos están a 6 cm. ¿Qué distancia real hay?', ['300 m', '3 km', '30 km', '6 km'], 1, { fontSize: 36 })],
         notes: 'Concurso por rapidez: 6 × 50 000 = 300 000 cm = 3 km.' },
@@ -550,12 +550,13 @@ export default {
         options: ['Natalidad y mortalidad muy altas', 'Baja la mortalidad; la natalidad sigue alta', 'Baja también la natalidad', 'Natalidad y mortalidad bajas'] })],
         notes: 'Actividad de ordenar desde el móvil, con nota automática. La pista está en el gráfico de líneas: primero cae una línea y después la otra.' },
 
-      { layout: 'blank', bg: BG, extra: [quiz('Una pirámide con la base estrecha y la cima ancha indica que la población…', ['Está envejeciendo', 'Tiene muchos nacimientos', 'Es muy joven', 'Crece muy deprisa'], 0, { fontSize: 36 })],
+      { layout: 'blank', bg: BG, extra: [quiz('Una pirámide con la base estrecha y el centro ancho indica que la población…', ['Está envejeciendo', 'Tiene muchos nacimientos', 'Es muy joven', 'Crece muy deprisa'], 0, { fontSize: 36 })],
         notes: 'Concurso con puntos por rapidez. Es la pirámide regresiva.' },
 
       { layout: 'blank', bg: BG, transition: 'zoom', extra: [
         ...pyramid(PYR.steady, 960, 22, 640, 40, 6).map(b => b.type === 'shape' ? { ...b, opacity: 35 } : b),
         withAnims(shape('rect', 960 - 40 - Math.round(6.5 * 22), 640 - 2 * 46 + 6, Math.round(6.5 * 22) + 80 + Math.round(6.2 * 22), 40, YEL, { radius: 4 }), A('color-pulse', { start: 'afterPrev', duration: 1400 })),
+        text('10-19', 920, 554, 80, 40, { fontSize: 20, fontWeight: 800, color: BG, textAlign: 'center', vAlign: 'middle', pad: [0, 0, 0, 0] }),
         text('TU EDAD TAMBIÉN<br>ESTÁ EN LA PIRÁMIDE', 70, 190, 640, 310, { fontFamily: BB, fontSize: 96, color: '#ffffff', lineHeight: 0.95 }),
         text('Busca tu barra: la de 10 a 19 años.', 76, 520, 560, 60, { fontSize: 28, color: YEL })],
         notes: 'Cierre: la barra amarilla es la de los alumnos. Pregunta final: ¿cómo será esta barra cuando tengáis 50 años?' },
@@ -610,7 +611,7 @@ export default {
         notes: 'Cifras de un día típico de verano en un desierto cálido. Por eso los pueblos del desierto se tapan con ropa amplia: protege del sol de día y del frío de noche.' },
 
       { layout: 'blank', bg: SKY2, transition: 'fade', back: [sky('#7a3a58', '#f2b36a')], extra: [
-        deco(DUNES(['#d9a05a', '#b8743a', '#8d5129', '#f3cf96']), 0, 420, 1280, 300, 'Dunas'),
+        deco(DUNES(['#d9a05a', '#b8743a', '#8d5129', '#f3cf96']), 0, 380, 1280, 340, 'Dunas'),
         withAnims(model('kh-Fox', 40, 400, 280, 200, { view: 'side', caption: '', walk: { clip: fox.walk, end: fox.rest, face: true, look: false } }), path([[160, -10], [330, 6]], { duration: 4000 })),
         text('Vivir con poca agua', 640, 90, 600, 70, { fontFamily: H, fontSize: 46, fontWeight: 700, color: CREAM }),
         ...[['moon', 'Sale de noche, cuando refresca.'], ['droplet', 'Casi no bebe: saca el agua de lo que come.'], ['paw-print', 'Pelo en las plantas: la arena no le quema.'], ['sun', 'Orejas enormes: por ellas suelta el calor.']].map(([ic, t], i) => [
@@ -641,7 +642,7 @@ export default {
 
       { layout: 'blank', bg: NIGHT, transition: 'fade', back: [deco(STARS(1280, 460, 160, 7), 0, 0, 1280, 460, 'Cielo estrellado')], extra: [
         shape('ellipse', 1010, 90, 110, 110, '#f6efd2'), shape('ellipse', 990, 76, 100, 100, NIGHT),
-        deco(DUNES(['#3a2a52', '#2a1f40', '#1c1530', '#5a4a7a']), 0, 400, 1280, 320, 'Dunas de noche'),
+        deco(DUNES(['#3a2a52', '#2a1f40', '#1c1530', '#5a4a7a']), 0, 380, 1280, 340, 'Dunas de noche'),
         after(text('De noche, el desierto<br>se enfría y se llena de estrellas.', 80, 140, 820, 200, { fontFamily: H, fontSize: 52, color: CREAM, lineHeight: 1.2 }), 'fade-in', { duration: 1500 }),
         after(text('Próxima parada: la sabana.', 84, 360, 600, 50, { fontSize: 26, color: SAND }), 'fade-up')],
         notes: 'Cierre tranquilo. Enlaza con la próxima clase: qué ocurre en el borde del desierto, donde empieza a llover un poco más.' },
@@ -692,7 +693,7 @@ export default {
         along(text('Área metropolitana: pueblos unidos a la ciudad', 340, 186, 600, 36, { fontSize: 20, color: BLUE, textAlign: 'center' }), 'fade-in'),
         ...[[180, 400], [1050, 360], [300, 560], [960, 560]].map(([x, y]) => along(shape('ellipse', x, y, 40, 30, BLUE, { opacity: 60 }), 'zoom-in')),
         on(shape('ellipse', 260, 222, 760, 360, '#1f2a44', { stroke: TEAL, strokeWidth: 3 }), 'zoom-in'),
-        along(text('Periferia: barrios nuevos, polígonos, centros comerciales', 330, 246, 620, 36, { fontSize: 20, color: TEAL, textAlign: 'center' }), 'fade-in'),
+        along(text('Periferia: barrios nuevos, polígonos, centros comerciales', 330, 250, 620, 34, { fontSize: 18, color: TEAL, textAlign: 'center' }), 'fade-in'),
         on(shape('ellipse', 410, 290, 460, 224, '#2c3554', { stroke: '#bb9af7', strokeWidth: 3 }), 'zoom-in'),
         along(text('Ensanche: calles rectas', 470, 306, 340, 34, { fontSize: 20, color: '#d6c4ff', textAlign: 'center' }), 'fade-in'),
         keep(shape('ellipse', 565, 360, 150, 120, AMBER, { opacity: 85 }), ring[0]),
@@ -747,8 +748,8 @@ export default {
       { title: 'El mar esculpe los acantilados', layout: 'titleOnly', bg: NAVY, extra: [
         ...[['1 · Cueva', 'Las olas golpean la roca blanda y abren un hueco.'], ['2 · Arco', 'La cueva atraviesa el cabo de lado a lado.'], ['3 · Farallón', 'El techo del arco se hunde: queda una columna en el mar.']].map(([t, d], i) => [
           (i ? after : on)(img(CLIFF(i), 60 + i * 400, 180, 360, 318, t), 'fade-up'),
-          along(text(`<b style="color:${LIGHT};font-size:28px">${t}</b><br>${d}`, 60 + i * 400, 515, 360, 120, { fontSize: 21, color: FOAM }), 'fade-up')]).flat(),
-        ...[0, 1].map(i => shape('arrow', 425 + i * 400, 320, 30, 30, LIGHT, { stroke: LIGHT, strokeWidth: 3 })),
+          along(text(`<b style="color:${LIGHT};font-size:28px">${t}</b><br>${d}`, 60 + i * 400, 515, 360, 120, { fontSize: 21, color: FOAM }), 'fade-up'),
+          ...(i ? [along(shape('arrow', 25 + i * 400, 320, 30, 30, LIGHT, { stroke: LIGHT, strokeWidth: 3 }), 'fade-right')] : [])]).flat(),
         text('En rocas blandas, la costa puede retroceder más de un metro al año.', 60, 640, 1160, 40, { fontSize: 19, color: MUTED, fontStyle: 'italic' })],
         notes: 'Un clic y las tres etapas aparecen encadenadas. Son siglos de trabajo de las olas. Si tenéis cerca una costa con farallones, este es el momento de enseñar una foto propia.' },
 
@@ -757,7 +758,7 @@ export default {
           data: series(hours.map(String), tide), xTitle: 'hora del día' }),
         mathBlock({ x: 880, y: 190, w: 340, h: 90, fontSize: 40, latex: 'T \\approx 12\\,\\text{h}\\ 25\\,\\text{min}', color: LIGHT }),
         text('entre una pleamar y la siguiente', 880, 285, 340, 40, { fontSize: 20, color: MUTED, textAlign: 'center' }),
-        on(card('<b>Pleamar</b>: el agua llega a lo más alto.<br><b>Bajamar</b>: a lo más bajo.<br>Dos de cada al día.', 880, 350, 340, 180, '#123a5c', { fontSize: 22, color: FOAM, radius: 14 }), 'fade-up'),
+        on(card('<b>Pleamar</b>: el agua llega a lo más alto.<br><b>Bajamar</b>: a lo más bajo.<br>Dos de cada una al día.', 880, 350, 340, 180, '#123a5c', { fontSize: 22, color: FOAM, radius: 14 }), 'fade-up'),
         on(icon('moon', 1010, 555, 80, LIGHT), 'pulse', { start: 'afterPrev' })],
         notes: 'La Luna atrae el agua del océano y forma dos «abultamientos»: por eso hay dos pleamares al día. Cada día la marea llega unos 50 minutos más tarde. Curva calculada para un puerto inventado.' },
 
@@ -806,7 +807,7 @@ export default {
 
       { title: 'Las partes de una montaña', layout: 'titleOnly', bg: CREAM, extra: [
         img(MOUNTAIN, 140, 180, 1000, 420, 'Dos cumbres unidas por un collado, sus laderas y un valle con un río'),
-        ...[['Cima', 355, 190], ['Collado', 385, 360], ['Ladera', 160, 400], ['Valle', 960, 470], ['Pie', 760, 560]].map(([t, x, y]) => on(tag(t, x, y), 'fade-down', { sound: 'click' })),
+        ...[['Cima', 355, 190], ['Collado', 525, 400], ['Ladera', 160, 400], ['Valle', 960, 470], ['Pie', 760, 560]].map(([t, x, y]) => on(tag(t, x, y), 'fade-down', { sound: 'click' })),
         text('Cima: el punto más alto · Collado: el paso entre dos cimas · Ladera: la pendiente · Valle: la zona baja por donde corre el agua · Pie: donde empieza la subida.', 140, 615, 1000, 70, { fontSize: 18, color: MUTED })],
         notes: 'Un clic por parte. Los collados han sido siempre los pasos naturales de caminos, cañadas y carreteras.' },
 
@@ -820,7 +821,7 @@ export default {
         notes: 'El aire se enfría unos 6,5 °C por cada kilómetro que subimos. La segunda columna de la tabla son fórmulas: cambia el 20 por la temperatura de hoy en tu pueblo.' },
 
       { title: 'Los pisos de vegetación', layout: 'titleOnly', bg: CREAM, extra: [
-        dg('pyramid', 'Nieve\nRoquedo\nPrados alpinos\nBosque de coníferas\nBosque de hayas y robles\nCultivos y prados', 80, 170, 700, 500, { oneByOne: true, colors: 'accent', fontScale: 0.9 }),
+        dg('pyramid', 'Nieve\nRoquedo\nPrados alpinos\nBosque de coníferas\nBosque de hayas y robles\nCultivos y prados', 80, 170, 700, 500, { oneByOne: true, colors: 'light', fontScale: 0.9 }),
         text('Al subir, el paisaje cambia por franjas: como si viajáramos hacia el norte.', 830, 200, 380, 160, { fontFamily: G, fontSize: 30, fontStyle: 'italic', color: INK }),
         text('Las alturas de cada piso cambian según la montaña y la orientación de la ladera (solana o umbría).', 830, 400, 380, 140, { fontSize: 20, color: MUTED })],
         notes: 'Un clic por piso, de la cumbre hacia abajo. En una montaña de la península, los prados alpinos empiezan hacia los 2.000 metros; en los Alpes, algo más abajo por estar más al norte.' },
@@ -830,7 +831,7 @@ export default {
         withAnims(model('kn-character', climb[0][0] - 50, climb[0][1] - 130, 100, 130, { walk: { clip: hiker.walk, end: hiker.arrive, endOnce: true, face: true, look: true } }),
           path(rel(smooth(climb, 6)), { duration: 7000 })),
         ...[['1.000 m · bosque', 330, 440], ['2.000 m · prados', 560, 340], ['3.000 m · roca y nieve', 740, 240]].map(([t, x, y], i) =>
-          after(text(t, x, y, 300, 40, { fontSize: 20, fontWeight: 700, color: INK, bg: SNOW, radius: 20, textAlign: 'center', vAlign: 'middle' }), 'fade-down', { delay: i ? 1400 : 1200 })),
+          along(text(t, x, y, 300, 40, { fontSize: 20, fontWeight: 700, color: INK, bg: SNOW, radius: 20, textAlign: 'center', vAlign: 'middle' }), 'fade-down', { delay: [1800, 3600, 5200][i] })),
         text('Clic: empieza la subida', 70, 140, 360, 40, { fontSize: 20, color: MUTED })],
         notes: 'Un clic: la excursionista sube por la ladera y salta al llegar a la cumbre. Por el camino aparecen los pisos: cada mil metros, otro paisaje.' },
 
@@ -862,7 +863,7 @@ export default {
   edu_geo_timezones: { name: 'Husos horarios', cat: 'edu', summary: 'Panel de aeropuerto con filas que giran, Tierra que rota con ecuación, Sol que cruza los husos, tabla con fórmulas, reloj 3D y huecos', make: () => {
     const BG = '#101317', BOARD = '#1a1d22', FLAP = '#24282f', YEL = '#ffcf3f', FG = '#f2f2f2', MUTED = '#8a96a8', RED = '#f7768e', GREEN = '#4caf7d';
     const H = pairStacks('tech').heading;
-    const rows = [['MADRID', '12:00', 'UTC+1'], ['LONDRES', '11:00', 'UTC+0'], ['NUEVA YORK', '06:00', 'UTC−5'], ['TOKIO', '20:00', 'UTC+9'], ['SÍDNEY', '21:00', 'UTC+10'], ['HONOLULU', '01:00', 'UTC−10']];
+    const rows = [['MADRID', '12:00', 'UTC+1'], ['LONDRES', '11:00', 'UTC+0'], ['NUEVA YORK', '06:00', 'UTC−5'], ['TOKIO', '20:00', 'UTC+9'], ['SÍDNEY', '22:00', 'UTC+11'], ['HONOLULU', '01:00', 'UTC−10']];
     const flap = (t, x, y, w, color = YEL) => text(t, x, y, w, 50, { fontFamily: MONO, fontSize: 30, fontWeight: 700, color, bg: FLAP, radius: 4, vAlign: 'middle', pad: [0, 14, 0, 14], letterSpacing: 2 });
     return numbered(build({ name: 'Husos horarios', palette: 'revela', fonts: 'tech', title: { size: 46, color: YEL }, body: { color: FG } }, [
       { layout: 'blank', bg: BG, transition: 'fade', extra: [
@@ -872,7 +873,7 @@ export default {
         ...[['CIUDAD', 90], ['HORA', 680], ['HUSO', 900]].map(([t, x]) => text(t, x, 225, 300, 34, { fontFamily: MONO, fontSize: 18, color: MUTED, letterSpacing: 4 })),
         ...rows.map(([c, h, u], i) => [after(flap(c, 90, 265 + i * 66, 560), 'flip', { duration: 380, sound: 'click' }), along(flap(h, 680, 265 + i * 66, 190, FG), 'flip', { duration: 380 }),
           along(flap(u, 900, 265 + i * 66, 290, i === 0 ? GREEN : MUTED), 'flip', { duration: 380 })]).flat()],
-        notes: 'Al llegar, el panel se rellena fila a fila, como en un aeropuerto. Horas en horario de invierno de Europa. Pregunta: si llamas a Tokio a las 12 del mediodía, ¿les pillas comiendo o cenando?' },
+        notes: 'Al llegar, el panel se rellena fila a fila, como en un aeropuerto. Horas en horario de invierno de Europa (Sídney está entonces en su horario de verano: UTC+11). Pregunta: si llamas a Tokio a las 12 del mediodía, ¿les pillas comiendo o cenando?' },
 
       { title: 'La Tierra gira: 15° cada hora', layout: 'titleOnly', bg: BG, extra: [
         after(img(GLOBE, 820, 190, 380, 380, 'Globo terráqueo con meridianos'), 'spin360', { duration: 4000 }),
@@ -901,7 +902,7 @@ export default {
         model('kh-ChronographWatch', 760, 120, 460, 480, { autoRotate: true, spin: 14, view: 'front', motion: 'float' }),
         kicker('LÍNEA DE CAMBIO DE FECHA', 80, 120, 600, RED, { fontSize: 18 }),
         text('Un día que se gana<br>o se pierde', 76, 160, 640, 170, { fontFamily: H, fontSize: 58, fontWeight: 700, color: FG, lineHeight: 1.05 }),
-        on(card(`<b style="color:${YEL}">Hacia el oeste → +1 día</b><br>Sales de Los Ángeles el lunes y cruzas el Pacífico: llegas el miércoles a Japón.`, 80, 360, 620, 130, '#1f242c', { fontSize: 22, color: FG, radius: 12 }), 'fade-right'),
+        on(card(`<b style="color:${YEL}">Hacia el oeste → +1 día</b><br>Sales de Los Ángeles el lunes por la noche y cruzas el Pacífico: llegas a Japón el miércoles de madrugada.`, 80, 360, 620, 130, '#1f242c', { fontSize: 22, color: FG, radius: 12 }), 'fade-right'),
         on(card(`<b style="color:${RED}">Hacia el este → −1 día</b><br>De vuelta, puedes aterrizar «antes» de haber despegado.`, 80, 510, 620, 110, '#1f242c', { fontSize: 22, color: FG, radius: 12 }), 'fade-right')],
         notes: 'La línea sigue más o menos el meridiano 180°, en mitad del Pacífico, y se desvía para no partir países. El reloj 3D se puede girar con el ratón.' },
 

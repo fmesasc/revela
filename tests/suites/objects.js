@@ -3681,6 +3681,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); }
   });
 
+  await test('un dibujo SVG con «Estirar» llena su caja (no conserva su proporción)', async () => {
+    reset(); const svg = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 90"><rect width="160" height="90" fill="#e9c46a"/></svg>');
+    R.store.commit(() => { slide().blocks.push({ id: 'dn', type: 'image', src: svg, fit: 'fill', x: 0, y: 500, w: 1280, h: 220, rotation: 0, animation: null }); });
+    assert(/preserveAspectRatio%3D%22none%22/.test(R.io.buildHTML()), 'en la presentación, estirado');
+    await sleep(30); assert(/preserveAspectRatio%3D%22none%22/.test(D.querySelector('.block[data-id="dn"] img')?.src || ''), 'y en el editor');
+  });
+
   await test('gráfico apilado: la cifra de cada tramo se lee sobre su color (oscura sobre claro, blanca sobre oscuro)', async () => {
     const SV = await frame.contentWindow.eval("import('/src/render/svg.js')");
     const h = SV.chartSVG({ chartType: 'stacked', dataLabels: true, data: [{ label: 'a', value: 5 }], seriesName: 'A', color: '#ffe066', series: [{ name: 'B', values: [3], color: '#203040' }], w: 400, h: 300 });

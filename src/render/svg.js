@@ -308,7 +308,7 @@ function drawChart(b) {
     const labs = edges.map(v => fmtNum(v)), wid = Math.max(1, ...labs.map(s => textWidth(s, 1, b)));
     while (Math.min(4, every * gap * 0.75 / wid) < 2.6 && every < edges.length) every++;
     fit = { lines: labs.map((s, i) => (i % every ? [] : [s])), fs: Math.min(4, every * gap * 0.75 / wid) };
-  } else fit = fitLabels(data.map(d => d.label || ''), slot * 0.94, 4, b);
+  } else fit = fitLabels(data.map(d => d.label || ''), slot * 0.84, 4, b);   // (a sixth of air between them: at 94 % twelve months ran together, «AgoSepOct»)
   const lh = fit.fs * 1.1 * sy, two = fit.lines.some(l => l.length > 1);
   const B = (b.xTitle ? 46 : 50) - (two ? lh : 0);           // plot bottom (as before without the new options)
   const Y = v => B - (v - lo) / (hi - lo) * (B - T), Yc = v => Y(Math.min(hi, Math.max(lo, v)));

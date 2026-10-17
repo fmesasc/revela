@@ -13,6 +13,7 @@ import { esc, jsData } from '../../core/text.js';
 import { opacityOf } from '../../core/model.js';
 import { wordartSize } from '../../render/textfit.js';
 import { morphPlan, morphSig } from '../../features/animation/morph.js';
+import { stretchSVG } from '../../core/svgstretch.js';
 export { morphPlan, morphSig };                // (for tests and older callers)
 import { state } from '../../core/store.js';
 import { REVEAL, KATEX, MODEL_VIEWER, GIFUCT, PDFJS, VISION, SELFIE_MODEL, POSE_MODEL, FACE_MODEL, PANNELLUM, MAPLIBRE, MAPLIBRE_RTL } from '../../core/vendor.js';
@@ -405,7 +406,7 @@ function blockHTMLRaw(b, slide) {
   if (b.type === 'image' && b.pano && b.src)
     return `<div${a} data-pano="${esc(b.src)}" data-prevent-swipe role="img" aria-label="${esc(b.alt || '')}" style="${box(b)}overflow:hidden;background:#000 url('${esc(b.src)}') center/cover"></div>`;
   if (b.type === 'image')
-    return `<img${a} src="${esc(b.src || '')}"${b.zoomable ? ' data-lightbox' : ''} alt="${b.decorative ? '' : esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};${b.fit === 'cover' && (b.focusX != null || b.focusY != null) ? `object-position:${imgFocus(b)};` : ''}`
+    return `<img${a} src="${esc(b.fit === 'fill' ? stretchSVG(b.src || '') : b.src || '')}"${b.zoomable ? ' data-lightbox' : ''} alt="${b.decorative ? '' : esc(b.alt || '')}" style="${box(b)}object-fit:${b.fit || 'contain'};${b.fit === 'cover' && (b.focusX != null || b.focusY != null) ? `object-position:${imgFocus(b)};` : ''}`
       // (Its shadow after its look, else the picture's own filter would replace box()'s: a cut-out's follows its figure.)
       + `filter:${imgFilter(b)}${b.shadow ? ' ' + shadowCSS(b) : ''};opacity:${imgOpacity(b)};clip-path:${imgClip(b)};${deviceCSS(b)}">`;
   if (b.type === 'video')

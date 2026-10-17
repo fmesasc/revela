@@ -15,6 +15,7 @@ import { esc } from '../../core/text.js';
 import { shownRows } from '../../core/formulas.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { state, commit, amend, currentSlide } from '../../core/store.js';
+import { stretchSVG } from '../../core/svgstretch.js';
 import { lockSVG, lockSig } from '../../render/svg.js';
 import { ensureLook } from '../../render/imagelook.js';
 import { borderCSS, tableColsHTML, cellBg, textPadding, webCardHTML, webCardSig, mathTeX, mathCSS, mathSig, shapeSVG, shapeSig, imgFilter, imgOpacity, imgClip, chartSVG, chartSig, connectorSVG, iconSVG, iconSig, applyWordart, tableSpan, inkSVG, timerSVG, deviceStyle, timerSig, inkSig, tableClass, tableVars } from '../../render/svg.js';
@@ -218,7 +219,7 @@ export function content(b) {
   }
   if (keyedView(b)) { const d = mediaView(b); if (b.type === 'image') applyImgStyle(d, b); return d; }
   // (Big files kept in the presentation: shown by their blob: address, io/formats/blobmedia.js; _src: what it is.)
-  if (b.type === 'image') { const i = document.createElement('img'); i.src = blobURL(b.src); i._src = b.src; i.draggable = false; applyImgStyle(i, b); return i; }
+  if (b.type === 'image') { const i = document.createElement('img'); i.src = b.fit === 'fill' && /^data:image\/svg/i.test(b.src || '') ? stretchSVG(b.src) : blobURL(b.src); i._src = b.src; i.draggable = false; applyImgStyle(i, b); return i; }
   if (b.type === 'video') { const v = document.createElement('video'); v.src = blobURL(b.src); v._src = b.src; if (b.poster) v.poster = blobURL(b.poster); v.controls = true; v.preload = 'metadata'; return v; }
   if (b.type === 'poll') {
     const d = document.createElement('div'); d.className = 'poll-blk'; d.dataset.sig = pollSig(b); d.innerHTML = pollEditorHTML(b, currentPalette().accents); return d;
