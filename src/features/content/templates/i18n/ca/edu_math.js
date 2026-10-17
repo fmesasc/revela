@@ -570,5 +570,6 @@ export default {
  "de": "de",
  "dato": "dada",
  "Me": "Me",
- "Empieza a": "Comença a"
+ "Empieza a": "Comença a",
+ "-50 m": "-50 m"
 };

@@ -570,5 +570,6 @@ export default {
  "de": "van",
  "dato": "waarde",
  "Me": "Me",
- "Empieza a": "Begint op"
+ "Empieza a": "Begint op",
+ "-50 m": "-50 m"
 };

@@ -570,5 +570,6 @@ export default {
  "de": "of",
  "dato": "value",
  "Me": "Me",
- "Empieza a": "Starts at"
+ "Empieza a": "Starts at",
+ "-50 m": "-50 m"
 };

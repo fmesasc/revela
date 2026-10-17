@@ -570,5 +570,6 @@ export default {
  "de": "من",
  "dato": "القيمة",
  "Me": "Me",
- "Empieza a": "يبدأ عند"
+ "Empieza a": "يبدأ عند",
+ "-50 m": "-50 m"
 };

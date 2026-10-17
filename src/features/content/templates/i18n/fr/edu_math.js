@@ -570,5 +570,6 @@ export default {
  "de": "de",
  "dato": "valeur",
  "Me": "Me",
- "Empieza a": "Départ à"
+ "Empieza a": "Départ à",
+ "-50 m": "-50 m"
 };

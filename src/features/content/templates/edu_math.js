@@ -115,7 +115,7 @@ export default {
       { title: 'El atajo del parque', layout: 'titleOnly', bg: BG, back: dust(), extra: [
         shape('rect', 120, 300, 600, 250, '#2d5a3d', { stroke: GR, strokeWidth: 3, sketch: true }),
         ...[[180, 340], [610, 470], [430, 330], [250, 470]].map(([x, y]) => shape('ellipse', x, y, 46, 46, '#3f7a4f', { stroke: '#1f3d33', strokeWidth: 2 })),
-        chalk('120 m', 340, 555, 160, 50, 34, BL, { textAlign: 'center' }), chalk('50 m', 728, 380, 50, 80, 26, PK, { lineHeight: 1.1 }),
+        chalk('120 m', 340, 555, 160, 50, 34, BL, { textAlign: 'center' }), chalk('50 m', 730, 400, 90, 50, 30, PK),
         lines([[120, 550], [720, 300]], YE, 4, false, { dash: 'dash' }),
         withAnims(model('kn-character', 60, 430, 120, 150, { walk: { clip: walker.walk, end: walker.arrive, endOnce: true, face: true, look: true } }),
           path([[150, -62], [300, -125], [450, -187], [600, -250]], { duration: 4200 })),
@@ -174,8 +174,8 @@ export default {
       { title: 'Dos monedas: el árbol', layout: 'titleOnly', bg: BG, back: felt(), extra: [
         dg('hierarchy', 'Lanzo dos monedas\n  Cara\n    Cara · Cara\n    Cara · Cruz\n  Cruz\n    Cruz · Cara\n    Cruz · Cruz', 60, 175, 760, 470, { oneByOne: true, colors: 'accent' }),
         card(`<div style="font-family:${H};font-size:46px;color:${GOLD}">4 caminos</div><div>igual de probables</div>`, 860, 190, 360, 150, '#ffffff14', { color: CR, fontSize: 26 }),
-        on(mathBlock({ x: 860, y: 370, w: 360, h: 80, fontSize: 34, color: CR, latex: 'P(\\text{dos caras}) = \\tfrac{1}{4}' }), 'fade-left'),
-        on(mathBlock({ x: 860, y: 470, w: 360, h: 80, fontSize: 34, color: CR, latex: 'P(\\text{una de cada}) = \\tfrac{2}{4}' }), 'fade-left'),
+        mathBlock({ x: 860, y: 370, w: 360, h: 80, fontSize: 34, color: CR, latex: 'P(\\text{dos caras}) = \\tfrac{1}{4}' }),
+        mathBlock({ x: 860, y: 470, w: 360, h: 80, fontSize: 34, color: CR, latex: 'P(\\text{una de cada}) = \\tfrac{2}{4}' }),
         text('¡Cuidado! «Una de cada» sale el doble que «dos caras».', 860, 570, 360, 90, { fontSize: 22, color: DIM })],
         notes: 'El árbol aparece rama a rama. Error típico: creer que hay tres casos (dos caras, dos cruces, una de cada) igual de probables.' },
       { title: 'Dos dados: ¿qué suma sale más?', layout: 'titleOnly', bg: BG, back: felt(), extra: [
@@ -267,11 +267,15 @@ export default {
         text('π se escribe 3,1416 en las fórmulas de la tabla: cambia una medida y el volumen se recalcula.', 70, 600, 1140, 50, { fontSize: 22, color: DIM })],
         notes: 'Fórmulas de la tabla: cubo =5^3, prisma =4*6*10, cilindro =3,1416*3^2*10, cono la tercera parte y esfera =4/3*3,1416*4^3. El cono y el cilindro tienen las mismas medidas: comparar sus barras.' },
       { title: 'Tres conos llenan un cilindro', layout: 'titleOnly', bg: BG, extra: [
-        ...[0, 1, 2].map(i => withAnims(shape('rect', 778, 444 - i * 92, 264, 92, CY, { opacity: 70 }), A('fade-up', { start: 'afterPrev', sound: 'pop', duration: 400 }))),
-        shape('cylinder', 770, 190, 280, 420, 'none', { stroke: W, strokeWidth: 3 }),
-        ...[0, 1, 2].map(i => withAnims(shape('triangle', 110 + i * 190, 400, 150, 220, '#ffd16633', { stroke: YE, strokeWidth: 3 }),
-          path([[(700 - i * 190) / 2, -300], [700 - i * 190, -260]], { duration: 1100 }), A('fade-out', { start: 'afterPrev', duration: 300 }))),
-        lbl('mismo radio · misma altura', 110, 640, 560, DIM),
+        // (Cones as wide and as tall as the cylinder's body; each one flies in, fades and the water rises a third: animations made in that order.)
+        ...(() => { const CX = 880, CY0 = 180, CW = 240, CH = 440, bx = CX + CW * 0.04, bw = Math.round(CW * 0.92), top = CY0 + CH * 0.16, bot = CY0 + CH * 0.84, bh = Math.round(bot - top), sl = (bot - top) / 3;
+          const cones = [], water = [];
+          [0, 1, 2].forEach(i => { const x0 = 90 + i * 240, dx = Math.round(bx - x0);
+            cones.push(withAnims(shape('triangle', x0, 330, bw, bh, '#ffd16633', { stroke: YE, strokeWidth: 3 }),
+              path([[Math.round(dx / 2), -260], [dx, -110]], { duration: 1100 }), A('fade-out', { start: 'afterPrev', duration: 300 })));
+            water.push(withAnims(shape('rect', Math.round(bx + 3), Math.round(bot - (i + 1) * sl), bw - 6, Math.round(sl) + 1, CY, { opacity: 70 }), A('fade-up', { start: 'afterPrev', sound: 'pop', duration: 400 }))); });
+          return [...water, shape('cylinder', CX, CY0, CW, CH, 'none', { stroke: W, strokeWidth: 3 }), ...cones]; })(),
+        lbl('mismo radio · misma altura', 90, 645, 560, DIM),
         m('V_{cono} = \\dfrac{1}{3}\\,\\pi r^2 h', 90, 190, 520, 120, 46, YE)],
         notes: 'Tres clics: cada cono «vuela» hasta el cilindro, desaparece y el agua sube un tercio. Con conos y un cilindro de plástico de igual base y altura se puede hacer en clase con arroz.' },
       { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'match', question: 'Une cada cuerpo con su volumen', fontSize: 32, x: 80, y: 60, w: 1120, h: 600,
@@ -453,9 +457,10 @@ export default {
         text('Paga semanal de siete amigos (en euros):', 90, 180, 900, 50, { fontSize: 28, color: INK }),
         shape('rect', 110, 380, 1060, 4, INK),
         ...[0, 10, 20, 30, 40, 50, 60].map(v => text(String(v), 110 + v * 17.5 - 30, 395, 60, 36, { fontSize: 22, color: DIM, textAlign: 'center' })),
-        ...[[5, 0], [5, 1], [6, 0], [7, 0], [8, 0], [9, 0]].map(([v, k]) => shape('ellipse', 110 + v * 17.5 - 16, 344 - k * 34, 32, 32, BLUE)),
-        on(shape('ellipse', 110 + 60 * 17.5 - 16, 344, 32, 32, '#e53935'), 'bounce', { sound: 'pop' }),
-        along(text('¡60 €!', 1080, 290, 120, 40, { fontSize: 26, color: '#e53935', fontWeight: 700, textAlign: 'center' }), 'fade-in'),
+        // (Dots narrower than one euro of the axis (17,5 px), so 5, 6, 7, 8 and 9 € don't merge into one blob.)
+        ...[[5, 0], [5, 1], [6, 0], [7, 0], [8, 0], [9, 0]].map(([v, k]) => shape('ellipse', 110 + v * 17.5 - 8, 362 - k * 19, 16, 16, BLUE)),
+        on(shape('ellipse', 110 + 60 * 17.5 - 8, 362, 16, 16, '#e53935'), 'bounce', { sound: 'pop' }),
+        along(text('¡60 €!', 1100, 310, 120, 40, { fontSize: 26, color: '#e53935', fontWeight: 700, textAlign: 'center' }), 'fade-in'),
         on(mathBlock({ x: 90, y: 460, w: 520, h: 90, fontSize: 36, color: INK, latex: '\\bar{x} = \\dfrac{100}{7} \\approx 14{,}3\\ \\text{€}' }), 'fade-up'),
         on(mathBlock({ x: 660, y: 460, w: 520, h: 90, fontSize: 36, color: '#2e7d32', latex: '\\text{Me} = 7\\ \\text{€}' }), 'fade-up'),
         text('Un solo dato extremo dispara la media; la mediana ni se inmuta.', 90, 590, 1100, 50, { fontSize: 28, color: INK, textAlign: 'center', fontWeight: 600 })],
@@ -507,8 +512,8 @@ export default {
         shape('doublearrow', 70, 330, 1140, 30, W, { stroke: W, strokeWidth: 3 }),
         ...Array.from({ length: 13 }, (_, k) => k - 6).flatMap(v => [shape('rect', 640 + v * 85 - 1.5, 334, 3, 22, W), tick(v, 640 + v * 85, 370, v < 0 ? RED : v > 0 ? BLU : W)]),
         on(shape('ellipse', 640 - 4 * 85 - 16, 329, 32, 32, RED), 'zoom-in', { sound: 'pop' }), along(shape('ellipse', 640 + 4 * 85 - 16, 329, 32, 32, BLU), 'zoom-in'),
-        on(shape('curve', 640 - 4 * 85, 230, 340, 100, 'none', { stroke: RED, strokeWidth: 4, dash: 'dash' }), 'draw', { duration: 900 }),
-        along(shape('curve', 640, 230, 340, 100, 'none', { stroke: BLU, strokeWidth: 4, dash: 'dash' }), 'draw', { duration: 900 }),
+        on(shape('curve', 640 - 4 * 85, 230, 340, 100, 'none', { stroke: RED, strokeWidth: 4 }), 'draw', { duration: 900 }),
+        along(shape('curve', 640, 230, 340, 100, 'none', { stroke: BLU, strokeWidth: 4 }), 'draw', { duration: 900 }),
         along(text('4 pasos', 400, 190, 140, 40, { fontSize: 24, color: RED, textAlign: 'center' }), 'fade-in'), along(text('4 pasos', 740, 190, 140, 40, { fontSize: 24, color: BLU, textAlign: 'center' }), 'fade-in'),
         on(mathBlock({ x: 90, y: 450, w: 540, h: 90, fontSize: 40, color: W, latex: '|-4| = |+4| = 4' }), 'fade-up'),
         on(text('−4 y +4 son <b>opuestos</b>: a la misma distancia del cero, en lados distintos.', 680, 450, 520, 100, { fontSize: 26, color: W }), 'fade-up'),
@@ -522,11 +527,14 @@ export default {
         on(card('Del lunes (−6) al jueves (+2) la temperatura <b>subió 8 grados</b>: 2 − (−6) = 8', 840, 430, 380, 180, '#ffffff12', { color: W, fontSize: 24 }), 'fade-up')],
         notes: 'Las barras crecen hacia abajo desde el cero (mínimas de una semana de invierno inventadas). El −6 °C está en Text Art «hielo».' },
       { title: 'El submarino: sumar y restar', layout: 'titleOnly', bg: DEEP, back: [shape('rect', -40, -10, 1360, 210, '#0d3b66', { fill2: DEEP, gradAngle: 180 })], extra: [
-        ...[0, -10, -20, -30, -40].map(v => [shape('rect', 120, 200 - v * 9, 1040, 2, W, { opacity: v ? 25 : 80 }), text(v + ' m', 40, 186 - v * 9, 76, 30, { fontSize: 20, color: v ? ICE : W, textAlign: 'right' })]).flat(),
-        withAnims(img(SUB, 230, 425, 200, 100, 'Submarino'), path([[0, -40], [0, -108]], { duration: 1600 }), path([[60, 60], [120, 117]], { start: 'click', duration: 2000 })),
-        mathBlock({ x: 640, y: 230, w: 540, h: 70, fontSize: 34, color: W, latex: '\\text{Empieza a } -30\\ \\text{m}' }),
-        withAnims(mathBlock({ x: 640, y: 320, w: 540, h: 70, fontSize: 34, color: SAND, latex: '-30 + 12 = -18' }), A('fade-left', { start: 'withPrev', delay: 0 })),
-        withAnims(mathBlock({ x: 640, y: 410, w: 540, h: 70, fontSize: 34, color: RED, latex: '-18 - 25 = -43' }), A('fade-left', { start: 'click' })),
+        ...[0, -10, -20, -30, -40, -50].map(v => [shape('rect', 120, 200 - v * 9, 1040, 2, W, { opacity: v ? 25 : 80 }), text(v + ' m', 40, 186 - v * 9, 76, 30, { fontSize: 20, color: v ? ICE : W, textAlign: 'right' })]).flat(),
+        // (9 px per metre: up 12 m = 108 px, down 25 m = 225 px. The animations are made in play order: rise + sum, dive + subtraction.)
+        ...(() => { const up = path([[0, -40], [0, -108]], { duration: 1600 }), sum = A('fade-left', { start: 'withPrev' }),
+            down = path([[60, 110], [120, 225]], { start: 'click', duration: 2000 }), sub = A('fade-left', { start: 'withPrev' });
+          return [withAnims(img(SUB, 230, 425, 200, 100, 'Submarino'), up, down),
+            mathBlock({ x: 640, y: 230, w: 540, h: 70, fontSize: 34, color: W, latex: '\\text{Empieza a } -30\\ \\text{m}' }),
+            withAnims(mathBlock({ x: 640, y: 320, w: 540, h: 70, fontSize: 34, color: SAND, latex: '-30 + 12 = -18' }), sum),
+            withAnims(mathBlock({ x: 640, y: 410, w: 540, h: 70, fontSize: 34, color: RED, latex: '-18 - 25 = -43' }), sub)]; })(),
         text('Subir es sumar; bajar es restar.', 640, 520, 540, 50, { fontSize: 26, color: ICE, textAlign: 'center' })],
         notes: 'Clic 1: el submarino sube 12 m (de −30 a −18) y aparece la suma. Clic 2: baja 25 m hasta −43, con la resta. Cada raya del fondo son 10 metros.' },
       { title: 'La regla de los signos', layout: 'titleOnly', bg: NAVY, extra: [
@@ -665,7 +673,9 @@ export default {
       sieve.forEach((c, i) => { if (out(i + 1) === k) c.animation = A('semi-fade-out', { start: 'withPrev', duration: 400, delay: (i % 10) * 20 }); });
     }
     sieveAnimated.push(withAnims(t('> ' + steps[4], 660, 480, 560, 60, 26, AM, { fontWeight: 700 }), A('fade-in', { start: 'click', duration: 300, sound: 'chime' })));
-    sieve.forEach((c, i) => { if (isP(i + 1)) { c.animation = A('highlight-green', { start: 'withPrev', duration: 500 }); c.borderColor = G + '90'; } });
+    // (On the fifth click a green frame lights up round each of the 25 primes: not before, so the sieve doesn't give the answer away.)
+    cells.filter(isP).forEach(n => sieveAnimated.push(withAnims(shape('rounded', 80 + ((n - 1) % 10) * 50 - 1, 175 + Math.floor((n - 1) / 10) * 50 - 1, 48, 48, 'none', { stroke: G, strokeWidth: 2.5 }),
+      A('zoom-in', { start: 'withPrev', duration: 300, delay: n * 6 }))));
     // The factor tree of 84.
     const nodes = [[84, 330, 190, 0], [2, 220, 310, 1], [42, 440, 310, 1], [2, 330, 430, 2], [21, 550, 430, 2], [3, 440, 550, 3], [7, 660, 550, 3]];
     const edges = [[0, 1], [0, 2], [2, 3], [2, 4], [4, 5], [4, 6]];
@@ -758,7 +768,7 @@ export default {
       + '<rect x="135" y="110" width="30" height="40" rx="4" fill="#e3b341" stroke="#4a3020" stroke-width="3"/><path d="M30 150 H270" stroke="#e3b341" stroke-width="8"/>'
       + [[70, 92], [110, 70], [160, 64], [205, 78], [235, 96]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="16" fill="#f2c94c" stroke="#b8892b" stroke-width="3"/>`).join(''));
     const rogue = lib3d('kk-Rogue');
-    const boat = [[-4, -1], [4, -1], [3, -3], [-3, -3]], mast = [[0, -1], [0, 4]], sail = [[0, 4], [3, 0], [0, 0]];
+    const boat = [[-4, -1], [4, -1], [3, -3], [-3, -3]], sail = [[0, 4], [3, 0], [0, 0]];
     const toPx = pts => pts.map(([x, y]) => P(x, y));
     return numbered(build({ name: 'Coordenadas: el mapa del tesoro', palette: 'forest', fonts: 'editorial', title: { color: INK, size: 48, font: HD }, body: { color: INK } }, [
       { layout: 'blank', bg: BG, back: parch(), extra: [
@@ -798,7 +808,8 @@ export default {
         keep(img(PLANE, 80, 180, 500, 500, 'Plano cartesiano de −5 a 5'), planeId),
         ...[...boat, [0, 4], [3, 0]].map(([x, y]) => dot(x, y, INK, 12)),
         on(lines(toPx(boat), '#8a5a2b', 5, true), 'draw', { duration: 1400 }),
-        after(lines(toPx(mast), INK, 5), 'draw', { duration: 600 }),
+        // (The mast lies on the Y axis: lighter and thicker than the axis. A hair of slant: a perfectly vertical path isn't drawn at all.)
+        after(shape('custom', P(0, 4)[0] - 10, P(0, 4)[1], 20, P(0, -1)[1] - P(0, 4)[1], 'none', { path: 'M50 100 L50.01 0', stroke: '#8a5a2b', strokeWidth: 7 }), 'draw', { duration: 600 }),
         after(lines(toPx(sail), RED, 5, true, { fill: '#b3261e30' }), 'draw', { duration: 1000, sound: 'whoosh' }),
         tableBlock({ x: 660, y: 190, w: 540, h: 330, fontSize: 24, header: true, headBg: INK, headFg: PARCH, stroke: '#c9a46a', banded: true, band: '#c9a46a', colW: [3, 2, 2],
           rows: [['Trazo', 'Desde', 'Hasta'], ['Casco', '(−4, −1)', '(4, −1)'], ['', '(3, −3)', '(−3, −3)'], ['Mástil', '(0, −1)', '(0, 4)'], ['Vela', '(0, 4)', '(3, 0)'], ['', '(0, 0)', '(0, 4)']] }),
@@ -837,7 +848,9 @@ export default {
     const L = [[0, 0], [55, 0], [55, 35], [30, 35], [30, 100], [0, 100]], LM = L.map(([x, y]) => [100 - x, y]);
     const ghost = (x, y, pts = L) => poly(pts, x, y, 110, 160, 'none', { stroke: DIM, strokeWidth: 2, dash: 'dash' });
     const piece = (x, y, c, pts = L) => poly(pts, x, y, 110, 160, c, { stroke: CR, strokeWidth: 2 });
-    const hex = Array.from({ length: 6 }, (_, r) => Array.from({ length: 8 }, (_, c) => [r, c])).flat();
+    // The honeycomb: the 'hexagon' shape has flat top and bottom, so the columns (not the rows) go half a cell down; the steps
+    // come from its outline (25,4 75,4 98,50 75,96 25,96 2,50 in its box), so neighbours share their edges.
+    const HW = 90, HH = 84, hex = Array.from({ length: 5 }, (_, r) => Array.from({ length: 10 }, (_, c) => [r, c])).flat();
     return numbered(build({ name: 'Simetría y mosaicos', palette: 'revela', fonts: 'editorial', title: { color: GOLD, size: 50, font: HD }, body: { color: CR },
       decor: () => [shape('rect', 0, 0, 1280, 6, GOLD), shape('rect', 0, 714, 1280, 6, GOLD)] }, [
       { layout: 'blank', bg: BG, extra: [
@@ -870,12 +883,13 @@ export default {
           rows: [['Polígono', 'Lados', 'Ángulo interior', '360° ÷ ángulo'], ['Triángulo', '3', '=180*(B2-2)/B2', '=360/C2'], ['Cuadrado', '4', '=180*(B3-2)/B3', '=360/C3'],
             ['Pentágono', '5', '=180*(B4-2)/B4', '=360/C4'], ['Hexágono', '6', '=180*(B5-2)/B5', '=360/C5'], ['Octógono', '8', '=180*(B6-2)/B6', '=360/C6']] }),
         text('Solo encajan alrededor de un vértice si 360 ÷ ángulo da un número <b>entero</b>.', 80, 600, 740, 60, { fontSize: 24, color: DIM }),
-        ...[['triangle', TEAL, '✓'], ['rect', GOLD, '✓'], ['hexagon', TERRA, '✓'], ['pentagon', '#5b6b8c', '✗']].flatMap(([k, c, m], i) => { const x = 880 + (i % 2) * 170, y = 190 + Math.floor(i / 2) * 210;
-          return [on(shape(k, x, y, 130, 130, c, { stroke: CR, strokeWidth: 2 }), 'zoom-in', { sound: i === 3 ? 'click' : 'pop' }),
+        // (Regular polygons: each box as tall as its outline needs — equilateral triangle 0,87 of its width, hexagon 0,93, pentagon 0,98 —, standing on the same line.)
+        ...[['triangle', TEAL, '✓', 113], ['rect', GOLD, '✓', 130], ['hexagon', TERRA, '✓', 121], ['pentagon', '#5b6b8c', '✗', 128]].flatMap(([k, c, m, h], i) => { const x = 880 + (i % 2) * 170, y = 190 + Math.floor(i / 2) * 210;
+          return [on(shape(k, x, y + 130 - h, 130, h, c, { stroke: CR, strokeWidth: 2 }), 'zoom-in', { sound: i === 3 ? 'click' : 'pop' }),
             along(text(m, x, y + 135, 130, 50, { fontSize: 38, color: i === 3 ? TERRA : '#7bd88f', textAlign: 'center', fontWeight: 700 }), 'fade-in')]; })],
         notes: 'La tabla calcula el ángulo interior (=180*(B2-2)/B2) y cuántos caben en una vuelta (=360/C2). Solo triángulos, cuadrados y hexágonos dan entero: son los únicos polígonos regulares que embaldosan solos.' },
       { title: 'El panal: hexágonos sin huecos', layout: 'titleOnly', bg: BG, extra: [
-        ...hex.map(([r, c]) => withAnims(shape('hexagon', 80 + c * 74.8 + (r % 2) * 37.4, 175 + r * 64.8, 90, 90, (r + c) % 3 ? GOLD : '#e8b94f', { stroke: '#8a6420', strokeWidth: 3, ...((r * 3 + c) % 5 ? {} : { fill: '#b8862a' }) }),
+        ...hex.map(([r, c]) => withAnims(shape('hexagon', Math.round(80 + c * 0.73 * HW), Math.round(175 + r * 0.92 * HH + (c % 2) * 0.46 * HH), HW, HH, (r + c) % 3 ? GOLD : '#e8b94f', { stroke: '#8a6420', strokeWidth: 3, ...((r * 3 + c) % 5 ? {} : { fill: '#b8862a' }) }),
           A('zoom-in', { start: r + c ? 'withPrev' : 'afterPrev', delay: (r + c) * 90, duration: 300 }))),
         text('Las abejas no saben geometría, pero el hexágono es la forma que cubre el plano con <b>menos borde</b> para la misma superficie: menos cera.', 790, 200, 410, 260, { fontSize: 28, color: CR }),
         on(text('3 hexágonos en cada vértice:<br><b style="color:#d4a640;font-size:40px">3 × 120° = 360°</b>', 790, 480, 410, 120, { fontSize: 26, color: CR }), 'fade-up')],
