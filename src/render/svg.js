@@ -326,11 +326,14 @@ function drawChart(b) {
     + `<text x="${(L - 1).toFixed(1)}" y="${(Y(v) + 1.2).toFixed(1)}" font-size="3" text-anchor="end" fill="${ink1}">${escSvg(num(v))}</text>`).join('') : '')
     + (two2 ? sc2.ticks.map(v => `<text x="${(RX + 1).toFixed(1)}" y="${(Y2(v) + 1.2).toFixed(1)}" font-size="3" fill="${ink2}">${escSvg(num(v))}</text>`).join('') : '');
   const up = data.map(() => 0), down = data.map(() => 0);
+  // (A stacked segment's label in white or dark, as its colour asks: white on a light yellow could not be read.)
+  const inkOn = c => { const m = /^#?([0-9a-f]{6})$/i.exec(c || ''); if (!m) return '#fff'; const v = parseInt(m[1], 16);
+    return (0.299 * (v >> 16) + 0.587 * (v >> 8 & 255) + 0.114 * (v & 255)) / 255 > 0.62 ? '#1e2a3a' : '#fff'; };
   const bars = stacked ? barSer.map(x => x.values.map((v, i) => {
     const bot = v >= 0 ? up[i] : down[i], top = bot + v; if (v >= 0) up[i] = top; else down[i] = top;
     const bx = L + gap * i + (gap - bw) / 2, y = Math.min(Yc(top), Yc(bot)), h = Math.abs(Yc(top) - Yc(bot));
     return `<rect x="${bx.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${x.colors?.[i] || x.color}"/>`
-      + (b.dataLabels && h > 4 ? `<text x="${(bx + bw / 2).toFixed(1)}" y="${(y + h / 2 + 1.1).toFixed(1)}" font-size="3" text-anchor="middle" fill="#fff">${escSvg(num(v))}</text>` : '');
+      + (b.dataLabels && h > 4 ? `<text x="${(bx + bw / 2).toFixed(1)}" y="${(y + h / 2 + 1.1).toFixed(1)}" font-size="3" text-anchor="middle" fill="${inkOn(x.colors?.[i] || x.color)}">${escSvg(num(v))}</text>` : '');
   }).join('')).join('') : barSer.map((x, k) => x.values.map((v, i) => {
     const bx = L + gap * i + (gap - bw * barSer.length) / 2 + k * bw, y = Math.min(Yc(v), Y0), h = Math.abs(Yc(v) - Y0), c = x.colors?.[i] || x.color;
     return `<rect x="${bx.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${c}"/>` + dl(bx + bw / 2, Yc(v), v, c);

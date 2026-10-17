@@ -50,8 +50,8 @@ export default {
       { title: 'Tres prioridades para 2027', layout: 'titleOnly', extra: prio.flatMap(([ic, c, n, h, d], i) => { const x = 90 + i * 385;
         return [withAnims(card(`<div style="font-size:22px;font-weight:700;letter-spacing:3px;color:${c};margin-top:84px">${n}</div><div style="font-size:31px;font-weight:700;line-height:1.15;margin:6px 0 14px">${h}</div><div style="font-size:22px;color:#404040">${d}</div>`,
           x, 190, 340, 380, '#f3f6f9', { color: INK, radius: 14 }), A('fade-up', { start: 'click' })),
-        withAnims(shape('rect', x, 190, 340, 8, c), A('fade-in', { start: 'withPrev' })),
-        withAnims(icon(ic, x + 26, 222, 56, c), A('zoom-in', { start: 'withPrev' }))]; }),
+        withAnims(shape('rect', x, 190, 340, 8, c), A('fade-up', { start: 'withPrev' })),
+        withAnims(icon(ic, x + 26, 222, 56, c), A('fade-up', { start: 'withPrev' }))]; }),
         notes: 'Cada prioridad entra con un clic, con su icono y su color. Son las tres de las que cuelgan los OKR de la siguiente diapositiva.' },
       { title: 'Los OKR del año', layout: 'titleOnly', extra: [tableBlock({ x: 90, y: 180, w: 1100, h: 440, fontSize: 22, header: true, headBg: B, headFg: '#ffffff', stroke: '#c8d3dc', banded: true, band: B,
         rows: [['Objetivo', 'Resultado clave', 'Meta', 'Responsable'],
@@ -100,10 +100,10 @@ export default {
         notes: 'Veltra Energía es una empresa inventada; las cifras son de ejemplo. Objetivo de la sesión: aprobar el presupuesto de 2027 y la cobertura de paneles.' },
       { title: 'El trimestre en cuatro cifras', layout: 'titleOnly', bg: BG, extra: [
         ...kpis.flatMap(([n, l, d, dc], i) => { const x = 100 + i * 275;
-          return [withAnims(shape('rounded', x, 200, 255, 250, '#ffffff', { opacity: 8, radius: 16 }), chain(i, 'zoom-in', { duration: 500, ...(i === 0 && { sound: 'chime' }) })),
-            withAnims(shape('rect', x, 200, 255, 6, i === 3 ? '#ff8a80' : GOLD), A('fade-in', { start: 'withPrev' })),
+          return [withAnims(shape('rounded', x, 200, 255, 250, '#ffffff', { opacity: 8, radius: 16 }), chain(i, 'fade-up', { duration: 500, ...(i === 0 && { sound: 'chime' }) })),
+            withAnims(shape('rect', x, 200, 255, 6, i === 3 ? '#ff8a80' : GOLD), A('fade-up', { start: 'withPrev', duration: 500 })),
             withAnims(text(`<div style="font-size:54px;font-weight:800;line-height:1.1;color:#ffffff">${n}</div><div style="font-size:23px;color:${A2};margin-bottom:14px">${l}</div><div style="font-size:19px;color:${dc}">${d}</div>`,
-              x + 18, 230, 225, 200, { textAlign: 'left', color: W }), A('fade-up', { start: 'withPrev' }))]; }),
+              x + 18, 230, 225, 200, { textAlign: 'left', color: W }), A('fade-up', { start: 'withPrev', duration: 500 }))]; }),
         withAnims(text('El mejor trimestre de nuestra historia en ingresos. El margen baja por el coste de los paneles importados, ya cubierto al 80 % para 2027.', 100, 500, 1080, 110, { fontSize: 27, color: A2 }), A('fade-up', { start: 'afterPrev' }))],
         notes: 'Un solo clic: las cuatro tarjetas entran en cadena y suena una campanilla con la primera (Panel de animación ▸ Sonido). Detenerse en el margen: es la única cifra bajo el plan.' },
       { title: 'Del ingreso al EBITDA (M€)', layout: 'titleOnly', bg: BG, extra: [chartBlock({ x: 100, y: 180, w: 1080, h: 460, chartType: 'waterfall', color: MINT,
@@ -129,8 +129,8 @@ export default {
         ['Plazos de conexión a red', 'Medio', GOLD, 'Tres proyectos esperan permiso; reclamación conjunta con la asociación del sector.'],
         ['Rotación de técnicos', 'Bajo', MINT, 'Nuevo plan de carrera; la rotación ha bajado del 14 % al 9 %.']].flatMap(([h, lv, c, d], i) => { const y = 185 + i * 160;
         return [withAnims(card(`<div style="font-size:28px;font-weight:700;color:#ffffff">${h}</div><div style="font-size:22px;color:${A2};margin-top:6px">${d}</div>`, 100, y, 1080, 140, '#ffffff0d', { pad: [20, 200, 20, 40], color: W, vAlign: 'middle' }), chain(i, 'fade-right')),
-          withAnims(shape('rect', 100, y, 8, 140, c), A('fade-in', { start: 'withPrev' })),
-          withAnims(text(lv, 1010, y + 48, 140, 44, { fontSize: 22, fontWeight: 700, textAlign: 'center', vAlign: 'middle', color: BG, bg: c, radius: 22 }), A('fade-in', { start: 'withPrev' }))]; }),
+          withAnims(shape('rect', 100, y, 8, 140, c), A('fade-right', { start: 'withPrev' })),
+          withAnims(text(lv, 1010, y + 48, 140, 44, { fontSize: 22, fontWeight: 700, textAlign: 'center', vAlign: 'middle', color: BG, bg: c, radius: 22 }), A('fade-right', { start: 'withPrev' }))]; }),
         notes: 'Tres riesgos con su nivel y su medida. Entran uno tras otro con un clic.' },
       { title: 'Qué pedimos al consejo', layout: 'titleOnly', bg: BG, extra: [
         dg('bullets', 'Aprobar el presupuesto de 2027\n  Ingresos de 52 M€ y EBITDA de 9 M€\nAutorizar la cobertura de paneles\n  Hasta 6 M€ con dos proveedores\nAmpliar el equipo técnico\n  Dos ingenieros para estudios de autoconsumo', 100, 185, 1080, 450, { oneByOne: true, colors: 'accent' })],
@@ -174,7 +174,7 @@ export default {
           .map(([h, d, c]) => `<div style="height:115px"><div style="font-size:28px;font-weight:700;color:${c}">${h}</div><div style="font-size:23px">${d}</div></div>`).join(''), 690, 180, 500, 460, { color: W })],
         notes: 'Embudo en diagrama, una etapa por clic; a la derecha, la acción principal de cada etapa.' },
       { title: 'Dónde invertimos', layout: 'titleOnly', bg: BG, extra: [
-        chartBlock({ x: 100, y: 175, w: 470, h: 470, chartType: 'doughnut', color: OR, data: mix.map(([label, value]) => ({ label, value })) }),
+        chartBlock({ x: 100, y: 175, w: 470, h: 470, chartType: 'doughnut', legend: false, color: OR, data: mix.map(([label, value], i) => ({ label, value, color: PIE[i] })) }),
         legend(mix.map(([l, v], i) => [PIE[i], `<b>${v} %</b> ${l}`]), 640, 200, 540, W, 28),
         text('Más vídeo y colaboraciones; menos anuncios de búsqueda que en 2025 (−8 puntos).', 640, 520, 540, 100, { fontSize: 24, color: SA })],
         notes: 'Gráfico de dona con su leyenda: reparto del presupuesto por canal.' },
@@ -264,7 +264,7 @@ export default {
         model('three-RobotExpressive', 760, 110, 440, 520, { clip: 'Wave' }),
         kicker('BIENVENIDA · SEMANA 1', 90, 170, 620, BR),
         text('<b>¡Hola!</b>', 90, 205, 640, 110, { fontFamily: head('friendly'), fontSize: 92, lineHeight: 1.1, color: G }),
-        text('<b>Te damos la bienvenida a Tándem</b>', 90, 320, 640, 130, { fontFamily: head('friendly'), fontSize: 46, lineHeight: 1.15, color: INK }),
+        text('<b>Te damos la bienvenida a Tándem</b>', 90, 320, 560, 130, { fontFamily: head('friendly'), fontSize: 46, lineHeight: 1.15, color: INK }),
         text('Todo lo que necesitas para tu primera semana', 90, 470, 660, 50, { fontSize: 28, color: '#4a6b4d' })],
         notes: 'El robot 3D saluda en bucle (Modelo 3D ▸ Animación ▸ En reposo: Wave). Tándem es una empresa inventada.' },
       { title: 'Tándem en pocas palabras', layout: 'titleOnly', extra: [
@@ -292,7 +292,7 @@ export default {
         notes: 'El robot anda por un recorrido (Animaciones ▸ Dibujar recorrido) con la animación de andar y, al llegar, saluda. Comentar cada día mientras avanza.' },
       { title: 'Lo que te damos', layout: 'titleOnly', extra: [['Portátil y accesos listos el primer día', G], ['Una mentora o un mentor durante 6 semanas', BL], ['300 € para tu puesto en casa', PK],
         ['Plan de formación en la plataforma interna', BR], ['Horario flexible desde el primer día', '#e0a100'], ['Conversaciones a los 30, 60 y 90 días', LG]].flatMap(([t, c], i) => { const x = 90 + (i % 2) * 560, y = 190 + Math.floor(i / 2) * 140;
-        return [withAnims(shape('ellipse', x, y + 10, 64, 64, c), chain(i, 'zoom-in', { duration: 400 })), withAnims(icon('check', x + 14, y + 24, 36, '#ffffff'), A('fade-in', { start: 'withPrev' })),
+        return [withAnims(shape('ellipse', x, y + 10, 64, 64, c), chain(i, 'zoom-in', { duration: 400 })), withAnims(icon('check', x + 14, y + 24, 36, '#ffffff'), A('zoom-in', { start: 'withPrev', duration: 400 })),
           withAnims(text(t, x + 86, y, 450, 90, { fontSize: 26, vAlign: 'middle', color: INK }), A('fade-right', { start: 'withPrev' }))]; }),
         notes: 'La lista entera aparece con un solo clic, punto tras punto.' },
       { layout: 'blank', extra: [pollBlock({ kind: 'match', question: '¿A quién acudo si…?', fontSize: 30, x: 60, y: 40, w: 1160, h: 640,
@@ -340,10 +340,11 @@ export default {
         text('<b>Reserva en tres pasos</b><br>Fechas, habitación y pago, sin registrarse.<br><br><b>Precio directo</b><br>Siempre igual o mejor que en los intermediarios.', 1000, 200, 200, 420, { fontSize: 20, color: INK })],
         notes: 'Maquetas dentro de un portátil y un móvil (Imagen ▸ Dispositivo). Son bocetos, no el diseño final.' },
       { title: 'Tres opciones', layout: 'titleOnly', extra: [
-        ...tiers.map(([n, pr, d], i) => { const hot = i === 1;
-          return withAnims(card(`<div style="font-size:28px;font-family:${head('editorial')}">${n}</div><div style="font-size:56px;font-weight:700;line-height:1.2;margin:6px 0">${pr}</div><div style="font-size:18px;opacity:.8;margin-bottom:16px">pago único · IVA aparte</div><div style="font-size:21px;line-height:1.45">${d}</div>`,
-            90 + i * 380, 200, 340, 400, hot ? BR : SOFT, { color: hot ? '#ffffff' : INK, textAlign: 'center', borderColor: hot ? BR : LINE, pad: [44, 24, 24, 24], ...(hot && { shadow: { x: 0, y: 10, blur: 24, color: '#3b322855' } }) }), chain(i, 'zoom-in')); }),
-        text('RECOMENDADA', 470, 210, 340, 30, { fontSize: 16, letterSpacing: 4, textAlign: 'center', color: '#fde7c8' })],
+        ...tiers.flatMap(([n, pr, d], i) => { const hot = i === 1;
+          return [withAnims(card(`<div style="font-size:28px;font-family:${head('editorial')}">${n}</div><div style="font-size:56px;font-weight:700;line-height:1.2;margin:6px 0">${pr}</div><div style="font-size:18px;opacity:.8;margin-bottom:16px">pago único · IVA aparte</div><div style="font-size:21px;line-height:1.45">${d}</div>`,
+            90 + i * 380, 200, 340, 400, hot ? BR : SOFT, { color: hot ? '#ffffff' : INK, textAlign: 'center', borderColor: hot ? BR : LINE, pad: [44, 24, 24, 24], ...(hot && { shadow: { x: 0, y: 10, blur: 24, color: '#3b322855' } }) }), chain(i, 'zoom-in')),
+            // The "recommended" label sits on the middle card: it enters with it.
+            ...(hot ? [withAnims(text('RECOMENDADA', 470, 210, 340, 30, { fontSize: 16, letterSpacing: 4, textAlign: 'center', color: '#fde7c8' }), A('zoom-in', { start: 'withPrev' }))] : [])]; })],
         notes: 'Tres niveles de precio: la opción central se destaca con color y sombra. Los precios son de ejemplo.' },
       { title: 'Detalle económico · opción Completa', layout: 'titleOnly', extra: [
         tableBlock({ x: 90, y: 180, w: 700, h: 440, fontSize: 23, header: true, headBg: BR, headFg: '#ffffff', stroke: LINE, banded: true, band: BR,
@@ -417,7 +418,7 @@ export default {
         withAnims(text(`<div style="font-size:30px;font-weight:700;color:${OR};margin-bottom:10px">En el centro</div><div>Clases dirigidas de calidad, a precio medio y pagadas por la empresa del socio.</div>`, 780, 260, 410, 300, { fontSize: 28, color: W }), A('fade-left'))],
         notes: 'Venn de tres círculos: donde se cruzan está nuestra propuesta de valor.' },
       { title: 'Cuota de mercado en nuestras ciudades', layout: 'titleOnly', bg: BG, extra: [
-        chartBlock({ x: 100, y: 180, w: 450, h: 450, chartType: 'pie', color: OR, data: share.map(([label, value]) => ({ label, value })) }),
+        chartBlock({ x: 100, y: 180, w: 450, h: 450, chartType: 'pie', legend: false, color: OR, data: share.map(([label, value], i) => ({ label, value, color: PIE[i] })) }),
         legend(share.map(([l, v], i) => [PIE[i], `${l} · <b>${v} %</b>`]), 620, 200, 560, W, 26),
         text(`Objetivo 2028: <b style="color:${OR}">22 %</b>`, 620, 550, 560, 50, { fontSize: 30, color: W })],
         notes: 'Gráfico de tarta con la leyenda al lado. Somos terceros; el objetivo es pasar a segundos en dos años.' },
@@ -455,9 +456,9 @@ export default {
         notes: 'Portada con Text Art en degradado y un coche 3D que gira: será nuestro indicador de avance. Proyecto y empresa son inventados.' },
       { title: 'Por qué y para qué', layout: 'titleOnly', bg: BG, extra: [
         withAnims(card(`<div style="font-size:28px;font-weight:700;color:${RED};margin:0 0 10px 64px">Hoy</div>` + ul('Servidores al final de su vida útil', 'Cierre de mes en 6 días', '14 integraciones hechas a mano'), 90, 190, 530, 330, '#ffffff0a', { fontSize: 26, color: W, borderColor: RED }), A('fade-right')),
-        withAnims(icon('bolt', 116, 212, 44, RED), A('fade-in', { start: 'withPrev' })),
+        withAnims(icon('bolt', 116, 212, 44, RED), A('fade-right', { start: 'withPrev' })),
         withAnims(card(`<div style="font-size:28px;font-weight:700;color:${GRN};margin:0 0 10px 64px">En 2028</div>` + ul('ERP en la nube, sin servidores propios', 'Cierre de mes en 2 días', 'Integraciones estándar y documentadas'), 660, 190, 530, 330, '#ffffff0a', { fontSize: 26, color: W, borderColor: GRN }), A('fade-left', { start: 'afterPrev' })),
-        withAnims(icon('check', 686, 212, 44, GRN), A('fade-in', { start: 'withPrev' }))],
+        withAnims(icon('check', 686, 212, 44, GRN), A('fade-left', { start: 'withPrev' }))],
         notes: 'Antes y después en dos tarjetas: la segunda entra justo después de la primera.' },
       { title: 'Cinco fases', layout: 'titleOnly', bg: BG, extra: [
         dg('chevrons', 'Preparar\n  Equipo y alcance\nDiseñar\n  Procesos objetivo\nMigrar\n  Datos y pruebas\nDesplegar\n  Por oleadas\nEstabilizar\n  Soporte reforzado', 90, 210, 1100, 380, { oneByOne: true })],
@@ -504,9 +505,9 @@ export default {
         text('Sesión abierta con toda la plantilla · las respuestas son anónimas', 90, 490, 620, 80, { fontSize: 26, color: MUTE }),
         timer(60, 90, 580, 260, { style: 'digital', color: YE, w: 260, h: 90 })],
         notes: 'Bocadillos de cómic como decoración. La cuenta atrás digital da un minuto para que todo el mundo saque el móvil.' },
-      { title: 'Lo que nos dijisteis en 2025', layout: 'titleOnly', bg: BG, extra: [chartBlock({ x: 90, y: 170, w: 1100, h: 480, chartType: 'stacked100', color: MI, seriesName: 'De acuerdo', dataLabels: true,
+      { title: 'Lo que nos dijisteis en 2025', layout: 'titleOnly', bg: BG, extra: [chartBlock({ x: 90, y: 170, w: 1100, h: 480, chartType: 'stacked100', color: '#0f9d8a', seriesName: 'De acuerdo', dataLabels: true,
         data: [{ label: 'Equipo', value: 82 }, { label: 'Responsable', value: 74 }, { label: 'Carga', value: 41 }, { label: 'Desarrollo', value: 48 }, { label: 'Comunicación', value: 52 }],
-        series: [{ name: 'Neutral', values: [12, 16, 27, 30, 28], color: YE }, { name: 'En desacuerdo', values: [6, 10, 32, 22, 20], color: PK }] })],
+        series: [{ name: 'Neutral', values: [12, 16, 27, 30, 28], color: '#76649a' }, { name: 'En desacuerdo', values: [6, 10, 32, 22, 20], color: '#d6338a' }] })],
         notes: 'Barras apiladas al 100 % con etiquetas: la carga de trabajo fue lo peor valorado. Datos de ejemplo.' },
       { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'rating', fontSize: 36, question: 'Del 1 al 5: ¿cómo valoras el equilibrio entre tu trabajo y tu vida personal?', x: 80, y: 50, w: 1120, h: 620 })],
         notes: 'Valoración de 1 a 5 desde el móvil: se ve el reparto y la media al momento.' },
@@ -518,7 +519,7 @@ export default {
       { title: 'Lo que hemos hecho desde 2025', layout: 'titleOnly', bg: BG, extra: [['+6', 'personas en soporte para repartir la carga', MI], ['3', 'planes de carrera para perfiles técnicos', YE],
         ['12', 'reuniones de toda la empresa, una al mes', CY], ['10', 'viernes por la tarde libres en verano', PK]].flatMap(([n, d, c], i) => { const x = 90 + (i % 2) * 560, y = 185 + Math.floor(i / 2) * 230;
         return [withAnims(card(`<div style="font-size:64px;font-weight:800;line-height:1;color:${c}">${n}</div><div style="margin-top:8px">${d}</div>`, x, y, 540, 210, '#ffffff10', { fontSize: 26, color: W, pad: [26, 26, 24, 110] }), chain(i, 'fade-up')),
-          withAnims(shape('ellipse', x + 28, y + 30, 56, 56, c), A('zoom-in', { start: 'withPrev' })), withAnims(icon('check', x + 40, y + 42, 32, BG), A('fade-in', { start: 'withPrev' }))]; }),
+          withAnims(shape('ellipse', x + 28, y + 30, 56, 56, c), A('fade-up', { start: 'withPrev' })), withAnims(icon('check', x + 40, y + 42, 32, BG), A('fade-up', { start: 'withPrev' }))]; }),
         notes: 'Cerrar el círculo: lo que se pidió el año pasado y lo que se ha hecho. Las cuatro tarjetas entran en cadena con un clic.' },
       { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'qa', fontSize: 34, question: 'Preguntas para el comité de dirección', options: [], x: 80, y: 50, w: 1120, h: 620 })],
         notes: 'Preguntas del público, anónimas: se envían desde el móvil y se votan las más interesantes.' },
@@ -547,6 +548,13 @@ export default {
         text('Dosier para inversores · confidencial', 90, 520, 640, 40, { fontSize: 22, color: MUTE }),
         { ...model('kh-WaterBottle', 780, 90, 400, 560, { autoRotate: true, view: 'three' }), id: bottle }],
         notes: 'Portada en negro y oro: Text Art «Oro» y el producto en 3D girando. Hidra es una empresa inventada; las cifras son de ejemplo.' },
+      { layout: 'blank', bg: BG, autoAnimate: true, extra: [
+        { ...text('Hidra', 90, 60, 400, 110, { fontFamily: head('classic'), fontSize: 80, wordart: 'gold' }), id: name },
+        { ...model('kh-WaterBottle', 90, 170, 340, 480, { autoRotate: true, view: 'three' }), id: bottle },
+        ...[['Recuerda beber', 'Una luz suave cuando toca, sin notificaciones.'], ['Mide lo que bebes', 'Y lo envía al móvil sin que hagas nada.'], ['Panel para la empresa', 'Datos agregados y anónimos por oficina.'], ['Hecha para durar', 'Acero, rellenable y con diez años de vida.']].flatMap(([h, d], i) => [
+          withAnims(text(`<div style="font-size:30px;font-family:${head('classic')};color:${GOLD}">${h}</div><div>${d}</div>`, 560, 170 + i * 120, 620, 110, { fontSize: 23, color: W }), chain(i, 'fade-left')),
+          withAnims(shape('rect', 520, 186 + i * 120, 4, 70, GOLD), A('fade-in', { start: 'withPrev' }))])],
+        notes: 'Transformar: el nombre y la botella viajan desde la portada a su sitio. Un clic y las cuatro ventajas entran en cadena.' },
       { layout: 'blank', bg: BG, extra: [
         kicker('EL PROBLEMA', 90, 110, 600, GOLD, 20),
         withAnims(text('3 de 4', 84, 150, 700, 240, { fontFamily: head('classic'), fontSize: 200, color: GOLD }), A('zoom-in', { start: 'afterPrev', duration: 800 })),
@@ -555,13 +563,6 @@ export default {
         withAnims(text(`<div style="font-size:60px;font-family:${head('classic')};color:${W}">−12 %</div><div>de concentración con una deshidratación leve</div>`, 850, 170, 340, 180, { fontSize: 22, color: MUTE }), A('fade-left')),
         withAnims(text(`<div style="font-size:60px;font-family:${head('classic')};color:${W}">1 de 3</div><div>empresas ya paga programas de bienestar</div>`, 850, 380, 340, 180, { fontSize: 22, color: MUTE }), A('fade-left', { start: 'afterPrev' }))],
         notes: 'Una cifra gigante que entra sola y dos de apoyo con un clic. Cifras de ejemplo: en una presentación real, citar la fuente.' },
-      { layout: 'blank', bg: BG, autoAnimate: true, extra: [
-        { ...text('Hidra', 90, 60, 400, 110, { fontFamily: head('classic'), fontSize: 80, wordart: 'gold' }), id: name },
-        { ...model('kh-WaterBottle', 90, 170, 340, 480, { autoRotate: true, view: 'three' }), id: bottle },
-        ...[['Recuerda beber', 'Una luz suave cuando toca, sin notificaciones.'], ['Mide lo que bebes', 'Y lo envía al móvil sin que hagas nada.'], ['Panel para la empresa', 'Datos agregados y anónimos por oficina.'], ['Hecha para durar', 'Acero, rellenable y con diez años de vida.']].flatMap(([h, d], i) => [
-          withAnims(text(`<div style="font-size:30px;font-family:${head('classic')};color:${GOLD}">${h}</div><div>${d}</div>`, 560, 170 + i * 120, 620, 110, { fontSize: 23, color: W }), chain(i, 'fade-left')),
-          withAnims(shape('rect', 520, 186 + i * 120, 4, 70, GOLD), A('fade-in', { start: 'withPrev' }))])],
-        notes: 'Transformar: el nombre y la botella viajan desde la portada a su sitio. Un clic y las cuatro ventajas entran en cadena.' },
       { title: 'Un mercado que despega', layout: 'titleOnly', bg: BG, extra: [
         ...[[230, '#2a2620'], [160, '#5c4d24'], [90, GOLD]].map(([r, c], i) => withAnims(shape('ellipse', 330 - r, 420 - r, 2 * r, 2 * r, c), chain(i, 'zoom-in', { duration: 500 }))),
         ...[['12.000 M€', 'Bienestar corporativo en Europa', 200], ['1.800 M€', 'Empresas de más de 200 personas', 350], ['90 M€', 'Nuestro objetivo a cinco años (5 %)', 500]].map(([n, l, y], i) =>
@@ -579,14 +580,14 @@ export default {
         text(`Margen bruto <b style="color:${GOLD}">61 %</b> · coste de captación recuperado en <b style="color:${GOLD}">9 meses</b>`, 90, 540, 1100, 50, { fontSize: 28, textAlign: 'center', color: W })],
         notes: 'Tres fuentes de ingresos; la suscripción es la que da valor a la compañía.' },
       { title: 'Uso de los fondos', layout: 'titleOnly', bg: BG, extra: [
-        chartBlock({ x: 100, y: 180, w: 440, h: 440, chartType: 'doughnut', color: GOLD, data: funds.map(([label, value]) => ({ label, value })) }),
+        chartBlock({ x: 100, y: 180, w: 440, h: 440, chartType: 'doughnut', legend: false, color: GOLD, data: funds.map(([label, value], i) => ({ label, value, color: PIE[i] })) }),
         legend(funds.map(([l, v], i) => [PIE[i], `${l} · <b>${v} %</b>`]), 620, 210, 570, W, 28),
         text(`Con <b style="color:${GOLD}">3 M€</b>: 18 meses de recorrido y entrada en Francia y Portugal.`, 620, 450, 570, 100, { fontSize: 28, color: W })],
         notes: 'Gráfico de dona con su leyenda: a qué se dedica cada euro de la ronda.' },
       { title: 'Equipo', layout: 'titleOnly', bg: BG, extra: [...[['ED', 'Elena Duarte', 'CEO · 12 años en salud digital'], ['MV', 'Marcos Vidal', 'CTO · dispositivos conectados'], ['SL', 'Sofía Lin', 'Producto · diseño industrial'], ['JO', 'Javier Ortega', 'Ventas · grandes empresas']]
         .flatMap(([ini, n, r], i) => { const x = 90 + i * 280;
           return [withAnims(shape('ellipse', x + 55, 200, 150, 150, DIM, { stroke: GOLD, strokeWidth: 3 }), chain(i, 'fade-up')),
-            withAnims(text(ini, x + 55, 240, 150, 70, { fontFamily: head('classic'), fontSize: 52, textAlign: 'center', vAlign: 'middle', color: GOLD }), A('fade-in', { start: 'withPrev' })),
+            withAnims(text(ini, x + 55, 240, 150, 70, { fontFamily: head('classic'), fontSize: 52, textAlign: 'center', vAlign: 'middle', color: GOLD }), A('fade-up', { start: 'withPrev' })),
             withAnims(text(`<div style="font-size:26px;font-weight:700;color:${W}">${n}</div><div>${r}</div>`, x, 380, 260, 120, { fontSize: 21, textAlign: 'center', color: MUTE }), A('fade-up', { start: 'withPrev' }))]; }),
         text('Asesoras y asesores: dos exdirectivos de recursos humanos y una médica del trabajo', 90, 560, 1100, 40, { fontSize: 22, textAlign: 'center', color: MUTE })],
         notes: 'Equipo fundador (personas inventadas). Contar en una frase por qué este equipo puede ganar.' },

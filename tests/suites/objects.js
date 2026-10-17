@@ -3679,6 +3679,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); }
   });
 
+  await test('gráfico apilado: la cifra de cada tramo se lee sobre su color (oscura sobre claro, blanca sobre oscuro)', async () => {
+    const SV = await frame.contentWindow.eval("import('/src/render/svg.js')");
+    const h = SV.chartSVG({ chartType: 'stacked', dataLabels: true, data: [{ label: 'a', value: 5 }], seriesName: 'A', color: '#ffe066', series: [{ name: 'B', values: [3], color: '#203040' }], w: 400, h: 300 });
+    assert(/fill="#1e2a3a"[^>]*>5</.test(h) && /fill="#fff"[^>]*>3</.test(h), 'sobre amarillo, oscura; sobre azul noche, blanca');
+  });
+
   await test('exportar otra presentación (no la abierta): sus diagramas con su paleta', async () => {
     reset(); await sleep(10);
     const d = structuredClone(R.state.deck); d.palette = 'forest';
