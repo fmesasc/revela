@@ -1132,10 +1132,12 @@ export function curvedTextSVG(b) {
   const R = th > Math.PI ? Math.max(0.92 * W / th, Math.min(W, H) / 2 - fs * 0.9) : 0.92 * W / th, len = R * th, long = txt.length * fs * 0.55 > len, fit = long || th > 1.9 * Math.PI;
   const cy = up ? fs + R : H - fs * 0.3 - R, y = up ? cy - R * Math.cos(th / 2) : cy + R * Math.cos(th / 2), f = v => v.toFixed(1);
   const d = `M${f(W / 2 - R * Math.sin(th / 2))},${f(y)} A${f(R)},${f(R)} 0 ${th > Math.PI ? 1 : 0} ${up ? 1 : 0} ${f(W / 2 + R * Math.sin(th / 2))},${f(y)}`;
-  const id = `ct${++curveN}`;
+  const id = `ct${++curveN}`, joined = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(txt);
   return `<svg class="curve-txt" viewBox="0 0 ${W} ${H}" width="100%" height="100%" style="display:block;overflow:visible" role="img" aria-label="${txt}">`
     + `<defs><path id="${id}" d="${d}"/></defs><text font-size="${fs}" fill="currentColor"${bold ? ' font-weight="700"' : ''} text-anchor="middle">`
-    + `<textPath href="#${id}" startOffset="50%"${fit ? ` textLength="${f(len * 0.98)}" lengthAdjust="${long ? 'spacingAndGlyphs' : 'spacing'}"` : ''}>${txt}</textPath></text></svg>`;
+    // (Joined scripts — Arabic —: never spread letter from letter, which unjoined them — round a whole circle, it keeps
+    // its own length —; squeezed glyphs and all if it is longer than the arc; read right to left.)
+    + `<textPath href="#${id}" startOffset="50%"${fit && (!joined || long) ? ` textLength="${f(len * 0.98)}" lengthAdjust="${long ? 'spacingAndGlyphs' : 'spacing'}"` : ''}${joined ? ' direction="rtl"' : ''}>${txt}</textPath></text></svg>`;
 }
 export const CURVES = [['0', 'Recto'], ['20', 'Arco suave'], ['45', 'Arco'], ['75', 'Arco cerrado'], ['-20', 'Hacia abajo suave'], ['-45', 'Hacia abajo'], ['100', 'Círculo']];
 

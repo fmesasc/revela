@@ -1516,6 +1516,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); const W = frame.contentWindow, S = await W.eval("import('/src/render/svg.js')");
     const base = { id: 't1', type: 'text', html: '<b>Hola</b> <i>mundo</i> & <script>x</script>', fontSize: 40, x: 0, y: 0, w: 400, h: 200 };
     const up = S.curvedTextSVG({ ...base, curve: 45 }), down = S.curvedTextSVG({ ...base, curve: -45 });
+    // Arabic: its letters stay joined — never spread one from another — and it reads right to left.
+    const ar = S.curvedTextSVG({ ...base, html: 'رحلة حول العالم في ثلاث سنوات', curve: 100 });
+    assert(/direction="rtl"/.test(ar) && !/lengthAdjust="spacing"/.test(ar), 'en árabe, sin separar las letras y de derecha a izquierda');
     assert(/<textPath[^>]*>Hola mundo &amp; x<\/textPath>/.test(up), 'el texto, sin formato ni etiquetas, sobre el arco');
     assert(/ A[\d.]+,[\d.]+ 0 0 1 /.test(up) && / A[\d.]+,[\d.]+ 0 0 0 /.test(down), 'arriba como un arco iris, abajo como una sonrisa');
     assert(/font-weight="700"/.test(up), 'en negrita si lo está');

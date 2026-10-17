@@ -149,7 +149,7 @@ export default {
         text('La tilde sin miedo', 124, 118, 1000, 150, { fontFamily: HAND, fontSize: 124, color: BLUE, fontWeight: 700 }),
         text('Agudas, llanas, esdrújulas… y las trampas de siempre', 130, 278, 760, 50, { fontSize: 30, color: INK }),
         text(`can<span style="color:${RED}">ción</span>`, 130, 380, 700, 190, { fontFamily: H, fontSize: 150, fontWeight: 700, color: INK }),
-        after(loop(598, 482, 78, 92, RED, 6), 'draw', { duration: 1200, delay: 400 }),
+        after(loop(600, 486, 182, 94, RED, 6), 'draw', { duration: 1200, delay: 400 }),
         shape('rect', 860, 380, 300, 230, '#ffe66d', { rotation: 4, shadow: { x: 4, y: 10, blur: 16, color: '#0000002e' },
           html: 'Regla de oro: primero busca la sílaba que suena más fuerte.', fontFamily: HAND, fontSize: 38, color: BLUE, textAlign: 'left' })],
         notes: 'Portada en un cuaderno cuadriculado. Al llegar, el boli rojo rodea solo la sílaba tónica de «canción» (efecto Dibujar sobre un trazo a mano). Pregunta: ¿por qué lleva tilde «canción» y no «examen»?' },
@@ -168,8 +168,8 @@ export default {
         notes: 'La tabla resume las reglas generales. Al hacer clic aparece la frase clave en boli rojo: lo que en las agudas lleva tilde, en las llanas no, y al revés.' },
       { title: 'El camino para decidir', layout: 'titleOnly', back: book(), extra: [
         dg('hierarchy', '¿Dónde está la sílaba tónica?\n  En la última: AGUDA\n    Tilde si acaba en n, s o vocal\n  En la penúltima: LLANA\n    Tilde si no acaba en n, s o vocal\n  Antes: ESDRÚJULA\n    Siempre con tilde', 120, 180, 1060, 470,
-          { oneByOne: true, colors: 'colorful', fontScale: 1.1 })],
-        notes: 'Árbol de decisión que aparece nivel a nivel al presentar (Diagrama ▸ Uno a uno al presentar). Proyecta una palabra cualquiera y recorre el árbol con la clase.' },
+          { oneByOne: true, colors: 'colorful', fontScale: 0.95 })],
+        notes: 'Árbol de decisión que aparece rama a rama al presentar (Diagrama ▸ Uno a uno al presentar). Proyecta una palabra cualquiera y recorre el árbol con la clase.' },
       { title: 'Corrige el dictado', layout: 'titleOnly', back: book(), transition: 'push', extra: [
         ...[['exámen', 'examen', 'Llana acabada en -n: sin tilde.'], ['jardin', 'jardín', 'Aguda acabada en -n: con tilde.'], ['jóven', 'joven', 'Llana acabada en -n: sin tilde.'], ['dificil', 'difícil', 'Llana acabada en -l: con tilde.']].map(([bad, good, why], i) => {
           const x = 130 + (i % 2) * 530, y = 185 + Math.floor(i / 2) * 230;
@@ -233,14 +233,14 @@ export default {
         ],
         notes: 'Primera lectura con tres colores: cada clic pasa el fluorescente por un verso y escribe la nota en el margen. El poema es de dominio público.' }]; })(),
       { title: 'Cinco pasos, siempre en orden', layout: 'titleOnly', bg: PAGE, transition: 'slide', extra: [
-        dg('chevrons', 'Localizar\n  Autor, obra, época\nTema\n  La idea, en una frase\nEstructura\n  Partes y cómo se unen\nForma\n  Recursos con su efecto\nValoración\n  Opinión con argumentos', 100, 200, 1080, 320, { oneByOne: true, colors: 'accent', fontScale: 1.4 }),
+        dg('chevrons', 'Localizar\n  Autor, obra, época\nTema\n  La idea, en una frase\nEstructura\n  Partes y cómo se unen\nForma\n  Recursos con su efecto\nValoración\n  Opinión con argumentos', 100, 200, 1080, 320, { oneByOne: true, colors: 'accent', fontScale: 1.1 }),
         text('Un comentario no es un resumen: explica <b>cómo</b> dice el texto lo que dice.', 100, 560, 1080, 50, { fontSize: 28, color: GREY, textAlign: 'center' })],
         notes: 'Los cinco pasos en galones que aparecen uno a uno. Insiste en la frase de abajo: la diferencia entre resumir e interpretar.' },
       { title: 'Localizar: quién, cuándo, dónde', layout: 'titleOnly', bg: PAGE, extra: [
         dg('timeline', '1875\n  Nace en Sevilla\n1903\n  Publica «Soledades»\n1912\n  «Campos de Castilla»\n1939\n  Muere en Colliure', 100, 170, 1080, 280, { oneByOne: true, colors: 'accent' }),
         ...[['Autor', 'Antonio Machado'], ['Movimiento', 'Generación del 98, con raíz modernista'], ['Género', 'Lírica: poema breve, sentencioso']].map(([h, d], i) =>
-          after(card(`<div style="font-size:18px;letter-spacing:3px;color:${GREY}">${h.toUpperCase()}</div><div style="font-family:${H};font-size:25px;font-weight:700">${d}</div>`, 100 + i * 365, 480, 345, 140, '#ffffff', { fontSize: 22, color: INK, borderColor: '#d9d6cf', radius: 6 }), 'fade-up'))],
-        notes: 'Cronología del autor uno a uno y, al final, la ficha de localización. En el examen basta con dos o tres líneas: no es una biografía.' },
+          card(`<div style="font-size:18px;letter-spacing:3px;color:${GREY}">${h.toUpperCase()}</div><div style="font-family:${H};font-size:25px;font-weight:700">${d}</div>`, 100 + i * 365, 480, 345, 140, '#ffffff', { fontSize: 22, color: INK, borderColor: '#d9d6cf', radius: 6 }))],
+        notes: 'Cronología del autor uno a uno, con la ficha de localización debajo. En el examen basta con dos o tres líneas: no es una biografía.' },
       { title: 'El tema, en una frase', layout: 'titleOnly', bg: PAGE, extra: [
         mathBlock({ x: 100, y: 170, w: 1080, h: 100, fontSize: 42, color: INK, latex: '\\text{Tema} = \\text{sustantivo abstracto} + \\text{matiz}' }),
         card(`<b style="color:#2b8a3e">✓</b> La vida como un camino que cada uno construye al vivir.`, 100, 300, 1080, 90, '#eaf8ec', { fontSize: 30, color: INK, fontFamily: H, radius: 8, vAlign: 'middle' }),
@@ -325,7 +325,9 @@ export default {
         ...fragment('SEGISMUNDO: ¿Qué es la vida? Un frenesí. ¿Qué es la vida? Una ilusión…', 'Calderón de la Barca, La vida es sueño', 'DRAMA', DRA, 840)],
         notes: 'Tres fichas de biblioteca: lee cada fragmento, deja que voten a mano alzada y pon el sello con un clic. El de Calderón está en verso, pero es teatro: lo decide quién habla y para qué.' },
       { title: 'Las fronteras se cruzan', layout: 'titleOnly', bg: BG, back: lamp(), transition: 'fade', extra: [
-        dg('venn', 'Lírica\nNarrativa\nDrama', 100, 170, 560, 470, { colors: 'colorful', fontScale: 1.4 }),
+        // (a Venn of our own, so each circle has its genre's colour, the same as the dots of the examples)
+        ...[[288, 327, LYR], [472, 327, NAR], [380, 482, DRA]].map(([cx, cy, c]) => shape('ellipse', cx - 152, cy - 152, 304, 304, c, { opacity: 55, stroke: '#ffffff', strokeWidth: 2 })),
+        ...[['Lírica', 235, 281], ['Narrativa', 525, 281], ['Drama', 380, 543]].map(([t, cx, cy]) => text(`<b>${t}</b>`, cx - 90, cy - 25, 180, 50, { fontFamily: H, fontSize: 30, color: '#ffffff', textAlign: 'center', vAlign: 'middle' })),
         ...[['Romance', 'un poema que cuenta una historia', LYR, NAR], ['Teatro en verso', 'del Siglo de Oro: drama con música de poema', DRA, LYR], ['Novela dialogada', 'casi todo son diálogos, como una obra', NAR, DRA]].map(([h, d, c1, c2], i) =>
           on(text(`<b style="font-size:30px"><span style="color:${c1}">●</span><span style="color:${c2}">●</span> ${h}</b><br>${d}`, 710, 200 + i * 145, 470, 120, { fontSize: 24, color: CREAM }), 'fade-left'))],
         notes: 'Diagrama de Venn: las obras pueden mezclar géneros. Cada ejemplo aparece con un clic con los colores de los dos géneros que mezcla.' },
@@ -375,7 +377,7 @@ export default {
         notes: 'Portada nocturna: tres golondrinas cruzan la luna solas al llegar (trayectorias encadenadas) y el primer verso de la Rima LIII se curva sobre la luna (Cuadro de texto ▸ Curvar texto). El nombre es Text Art en degradado violeta.' },
       { title: 'Una vida corta', layout: 'titleOnly', bg: NIGHT, back: sky(false), extra: [
         dg('timeline', '1836\n  Nace en Sevilla\n1854\n  Se va a Madrid a ser poeta\n1868\n  Pierde el manuscrito y lo reescribe\n1870\n  Muere en Madrid, con 34 años\n1871\n  Sus amigos publican las Rimas', 100, 180, 1080, 300, { oneByOne: true, colors: 'accent', fontScale: 1.2 }),
-        on(text('El manuscrito rehecho de memoria se llama <i>Libro de los gorriones</i>: casi todo lo que leemos de Bécquer se publicó después de su muerte.', 100, 520, 1080, 100, { fontSize: 28, color: INK, textAlign: 'center' }), 'fade-up')],
+        text('El manuscrito rehecho de memoria se llama <i>Libro de los gorriones</i>: casi todo lo que leemos de Bécquer se publicó después de su muerte.', 100, 520, 1080, 100, { fontSize: 28, color: INK, textAlign: 'center' })],
         notes: 'Cronología uno a uno. Subraya la anécdota del manuscrito perdido durante la revolución de 1868: Bécquer reescribió sus poemas de memoria.' },
       { layout: 'blank', bg: NIGHT, back: sky(), transition: 'fade', extra: [
         kicker('RIMA LIII', 100, 120, 400, GOLD),
@@ -447,7 +449,7 @@ export default {
           along(text(`<span style="color:${GOLD}">${i + 1}</span> · <b>${h}</b><br><span style="color:${DIM}">${d}</span>`, 710, 176 + i * 96, 490, 90, { fontSize: 21, color: CREAM, lineHeight: 1.25 }), 'fade-left')]).flat()],
         notes: 'Plano dibujado de un corral de comedias. Cada clic marca una zona con su número y su explicación. Las funciones eran por la tarde, con luz natural.' },
       { title: 'La historia en tres jornadas', layout: 'titleOnly', bg: STAGE, back: valance(), extra: [
-        dg('process', 'Jornada I\n  Segismundo vive encadenado en una torre\nJornada II\n  Despierta en palacio y actúa como una fiera\nJornada III\n  Una rebelión lo libera y elige perdonar', 100, 200, 1080, 330, { oneByOne: true, colors: 'accent', fontScale: 1.25 }),
+        dg('process', 'Jornada I\n  Segismundo vive encadenado en una torre\nJornada II\n  Despierta en palacio y actúa como una fiera\nJornada III\n  Una rebelión lo libera y elige perdonar', 100, 200, 1080, 330, { oneByOne: true, colors: 'accent', fontScale: 1.1 }),
         text('Las obras del Siglo de Oro se dividen en tres actos llamados <b>jornadas</b>.', 100, 570, 1080, 50, { fontSize: 26, color: DIM, textAlign: 'center' })],
         notes: 'El argumento en un proceso de tres pasos que aparece uno a uno. Insiste en el cambio de Segismundo: de fiera a príncipe prudente.' },
       { layout: 'blank', bg: STAGE, back: [glow(560, 40, 700, '#5a2a6b', STAGE, 55)], transition: 'fade', extra: [
@@ -460,7 +462,7 @@ export default {
         throne(60, 170, 380, 440, { autoRotate: false, view: 'front', arrive: 'turn', edge: 'fade' }),
         kicker('EL MONÓLOGO · FINAL DE LA JORNADA II', 500, 110, 700, GOLD),
         ...['¿Qué es la vida? Un frenesí.', '¿Qué es la vida? Una ilusión,', 'una sombra, una ficción,', 'y el mayor bien es pequeño;', 'que toda la vida es sueño,', 'y los sueños, sueños son.'].map((v, i) =>
-          (i ? after : on)(text(v, 500, 170 + i * 72, 700, 64, { fontFamily: H, fontSize: i > 3 ? 46 : 42, fontWeight: i > 3 ? 700 : 400, fontStyle: 'italic', color: i > 3 ? GOLD : CREAM }), 'fade-in', { duration: 900 }))],
+          after(text(v, 500, 170 + i * 72, 700, 64, { fontFamily: H, fontSize: i > 3 ? 46 : 42, fontWeight: i > 3 ? 700 : 400, fontStyle: 'italic', color: i > 3 ? GOLD : CREAM }), 'fade-in', { duration: 900, ...(!i && { delay: 800 }) }))],
         notes: 'Transformar: el trono viaja desde la diapositiva anterior y llega girando hasta quedar de frente. Luego los versos aparecen solos uno tras otro: léelos despacio.' },
       { title: 'Los personajes', layout: 'titleOnly', bg: STAGE, back: valance(), transition: 'slide', extra: [
         dg('radial', 'Segismundo\n  Basilio, su padre y rey\n  Clotaldo, su carcelero y maestro\n  Rosaura, dama agraviada\n  Astolfo, rival al trono\n  Estrella, prima y heredera', 140, 160, 1000, 510, { oneByOne: true, colors: 'accent', fontScale: 1.15 })],
@@ -476,8 +478,8 @@ export default {
         options: ['Desconfío de todo', 'Lo disfruto', 'Busco la verdad', 'Pido explicaciones'] })],
         notes: 'Votación para ponerse en el lugar de Segismundo. Compara con lo que hace él en la Jornada II.' },
       { layout: 'blank', bg: STAGE, transition: 'fade', back: lights(), extra: [
-        text('Gracias por venir al corral', 140, 150, 1000, 80, { fontFamily: H, fontSize: 60, color: CREAM, textAlign: 'center' }),
         ...curtains(false), ...valance(),
+        text('Gracias por venir al corral', 140, 150, 1000, 80, { fontFamily: H, fontSize: 60, color: CREAM, textAlign: 'center', shadow: { x: 0, y: 3, blur: 10, color: '#000000' } }),
         after(text('FIN', 340, 300, 600, 160, { fontFamily: H, fontSize: 150, fontWeight: 700, color: GOLD, textAlign: 'center', letterSpacing: 20 }), 'zoom-in', { duration: 700 }),
         text('Modelo 3D: ' + lib3d('kh-ChairDamaskPurplegold').label + ' — ' + lib3d('kh-ChairDamaskPurplegold').credit, 140, 600, 1000, 30, { fontSize: 13, color: '#f3e3c3aa', textAlign: 'center' })],
         notes: 'Cierre: el telón se cierra solo con aplausos y aparece «FIN» sobre él. Recuerda la tarea: leer la Jornada III para la próxima clase.' },
@@ -514,7 +516,7 @@ export default {
         notes: 'Dos viñetas para no confundirlas nunca. Cada clic explica una; con la segunda salta la pegatina «¡COMO!». Pide que conviertan una metáfora en símil y al revés.' },
       { layout: 'blank', bg: '#d9f1ff', back: comicBg('#9fd8f5', '#d9f1ff'), extra: [
         text(pop('EL TIEMPO VUELA', YEL, 6), 100, 70, 1080, 140, { fontFamily: H, fontSize: 130, color: K, textAlign: 'center' }),
-        withAnims(m3d('kh-ChronographWatch', 70, 330, 260, 260, { autoRotate: true, spin: 60, view: 'front' }), path([[280, -110], [560, -40], [860, -150]], { duration: 3200, start: 'afterPrev', sound: 'whoosh' })),
+        withAnims(m3d('kh-ChronographWatch', 70, 280, 260, 260, { autoRotate: true, spin: 60, view: 'front' }), path([[260, -70], [560, -50], [880, -95]], { duration: 3200, start: 'afterPrev', sound: 'whoosh' })),
         panel(380, 470, 800, 170, W),
         text('Una metáfora de todos los días: el tiempo no tiene alas, pero pasa tan deprisa como un pájaro. ¡Hasta el reloj se echa a volar!', 410, 490, 740, 130, { fontSize: 27, color: K, vAlign: 'middle' }),
         { ...credits(['kh-ChronographWatch'], 100, 652, 1080, '#3a5a72'), h: 44 }],
@@ -522,7 +524,7 @@ export default {
       { layout: 'blank', bg: YEL, back: comicBg(), transition: 'push', extra: [
         text(pop('LA LIGA DE LAS FIGURAS', W, 4), 100, 40, 1080, 90, { fontFamily: H, fontSize: 72, color: K }),
         ...[['PERSONIFICACIÓN', '«La luna nos espía desde el tejado.»', RED], ['HIPÉRBOLE', '«Te lo he dicho un millón de veces.»', CY], ['ANÁFORA', '«Aquí te espero, aquí te sueño, aquí me quedo.»', GRN],
-          ['ALITERACIÓN', '«El ruido con que rueda la ronca tempestad.»', PUR], ['ONOMATOPEYA', '«El tic, tac del reloj no me deja dormir.»', '#f7a325'], ['EPÍTETO', '«La blanca nieve cubría el campo.»', '#e85d9e']].map(([h, ex, c], i) => {
+          ['ALITERACIÓN', '«El ruido con que rueda la ronca tempestad.»', PUR], ['ONOMATOPEYA', '«El tictac del reloj no me deja dormir.»', '#f7a325'], ['EPÍTETO', '«La blanca nieve cubría el campo.»', '#e85d9e']].map(([h, ex, c], i) => {
           const x = 100 + (i % 3) * 365, y = 165 + Math.floor(i / 3) * 255;
           return [on(panel(x, y, 330, 220, W), 'zoom-in', { sound: 'pop', duration: 300 }), along(tag(h, x + 16, y - 18, 298, c, c === '#f7a325' ? K : W), 'zoom-in', { duration: 300 }),
             along(text(ex, x + 22, y + 50, 286, 150, { fontSize: 26, fontWeight: 700, color: K, vAlign: 'middle' }), 'fade-in')]; }).flat()],
@@ -658,7 +660,7 @@ export default {
         notes: 'Cuatro rasgos de la novela picaresca en tarjetas que aparecen una a una. Frente a los libros de caballerías, aquí el héroe pasa hambre.' },
       { title: 'El camino de Lázaro', layout: 'titleOnly', bg: PARCH, back: parchment(), extra: [
         img(OLD_MAP, 100, 180, 1080, 440, 'Mapa antiguo de Castilla con el camino de Salamanca a Toledo'),
-        withAnims(m3d('kk-Rogue_Hooded', 130, 140, 160, 200, { walk: { clip: 'Walking_A', end: 'Cheer', endOnce: true, face: true } }),
+        withAnims(m3d('kk-Rogue_Hooded', 130, 175, 160, 200, { walk: { clip: 'Walking_A', end: 'Cheer', endOnce: true, face: true } }),
           path([[530, 150], [610, 90], [710, 40], [870, 170]], { duration: 7000 })),
         text('Nace junto al río Tormes, en Salamanca, y acaba en Toledo «en la cumbre de toda buena fortuna».', 100, 630, 1080, 50, { fontSize: 22, color: SEPIA, fontStyle: 'italic', textAlign: 'center' })],
         notes: 'Con un clic, Lázaro (pícaro 3D) camina por el mapa de pueblo en pueblo y celebra al llegar a Toledo (Modelo 3D ▸ Mientras se mueve). El mapa es un dibujo propio.' },
@@ -666,7 +668,7 @@ export default {
         tableBlock({ x: 100, y: 170, w: 1080, h: 470, fontSize: 21, header: true, headBg: RED, headFg: '#f3d9b0', stroke: '#b89a66', banded: true, band: '#8e1b1b',
           rows: [['Tratado', 'Amo', 'Lo que aprende Lázaro'], ['I', 'Un ciego', 'Astucia: saber «un punto más que el diablo»'], ['II', 'Un clérigo de Maqueda', 'Hambre: el arca del pan bajo llave'],
             ['III', 'Un escudero de Toledo', 'Apariencias: honra sin un real'], ['IV', 'Un fraile de la Merced', 'Lo deja pronto: andaba demasiado'], ['V', 'Un buldero', 'Engaño: falsos milagros para vender bulas'],
-            ['VI', 'Un capellán', 'Trabajo: aguador con su propio burro'], ['VII', 'Un arcipreste', 'Se casa y llega a pregonero en Toledo']], colW: [1.1, 2.8, 5] })],
+            ['VI', 'Un capellán', 'Trabajo: aguador con el asno del capellán'], ['VII', 'Un arcipreste', 'Pregonero en Toledo; se casa con la criada del arcipreste']], colW: [1.1, 2.8, 5] })],
         notes: 'Los siete tratados en una tabla con filas alternas. El ciego, el clérigo y el escudero son los tres grandes capítulos; los demás son muy breves.' },
       { title: 'El hambre de Lázaro', layout: 'titleOnly', bg: PARCH, back: parchment(), extra: [
         chartBlock({ x: 100, y: 170, w: 720, h: 470, chartType: 'line', color: RED, grid: true, dataLabels: true, yMin: 0, yMax: 10, yTitle: 'hambre (de 0 a 10)',
@@ -737,7 +739,7 @@ export default {
       { title: 'El árbol de la oración', layout: 'titleOnly', bg: BP, back: grid(), transition: 'slide', extra: [
         dg('hierarchy', 'Oración\n  SN · Sujeto\n    Det: La\n    N: profesora\n  SV · Predicado\n    V: explica\n    CD: el poema', 100, 175, 1080, 430, { oneByOne: true, colors: 'light', fontScale: 1.2 }),
         ...stamp()],
-        notes: 'El mismo análisis en forma de árbol, que crece nivel a nivel. Es la representación que veréis en bachillerato.' },
+        notes: 'El mismo análisis en forma de árbol, que crece rama a rama. Es la representación que veréis en bachillerato.' },
       { title: 'Los complementos del verbo', layout: 'titleOnly', bg: BP, back: grid(), extra: [
         tableBlock({ x: 100, y: 180, w: 1080, h: 380, fontSize: 24, header: true, headBg: CY, headFg: BP, stroke: '#3c6a96', banded: true, band: '#7fdbff',
           rows: [['Complemento', 'Pregunta al verbo', 'Ejemplo'], ['Directo (CD)', '¿Qué?', 'Explica <b>el poema</b>.'], ['Indirecto (CI)', '¿A quién? ¿Para quién?', 'Explica el poema <b>a la clase</b>.'],
@@ -779,7 +781,7 @@ export default {
         notes: 'Cuatro rasgos de la fábula, uno por clic, en las dos páginas de un libro abierto.' },
       { title: 'Veintiséis siglos de fábulas', layout: 'titleOnly', bg: CREAM, back: page(), extra: [
         dg('timeline', 's. VI a. C.\n  Esopo, en Grecia\ns. I\n  Fedro, en Roma\n1668\n  La Fontaine, en Francia\n1781\n  Samaniego, en España\n1782\n  Iriarte: fábulas literarias', 110, 200, 1060, 300, { oneByOne: true, colors: 'colorful', fontScale: 1.15 }),
-        on(text('La misma historia de la zorra y las uvas la contaron Esopo, Fedro, La Fontaine y Samaniego.', 110, 530, 1060, 110, { fontFamily: HAND, fontSize: 36, color: FOX, textAlign: 'center' }), 'fade-up')],
+        text('La misma historia de la zorra y las uvas la contaron Esopo, Fedro, La Fontaine y Samaniego.', 110, 530, 1060, 110, { fontFamily: HAND, fontSize: 36, color: FOX, textAlign: 'center' })],
         notes: 'Cronología de fabulistas uno a uno. Todos son de dominio público: sus fábulas se pueden leer, copiar y representar libremente.' },
       { layout: 'blank', bg: '#bfe3ff', back: meadow(), transition: 'fade', extra: [
         img(VINE, 700, 60, 520, 440, 'Parra con racimos de uvas en lo alto'),
