@@ -75,12 +75,6 @@ export default {
  "VÍA ORAL · VÍA IV": "VIA ORAL · VIA IV",
  "Diagrama de proceso que aparece paso a paso. Por vía intravenosa no hay liberación ni absorción: la biodisponibilidad es del 100 %.": "Diagrama de procés que apareix pas a pas. Per via intravenosa no hi ha alliberament ni absorció: la biodisponibilitat és del 100 %.",
  "LADME: el viaje de un fármaco": "LADME: el viatge d'un fàrmac",
- "Liberación\nAbsorción\nDistribución\nMetabolismo\nExcreción": "Alliberament\nAbsorció\nDistribució\nMetabolisme\nExcreció",
- "Se disgrega la forma": "Es disgrega la forma",
- "Pasa a la sangre": "Passa a la sang",
- "Llega a los tejidos": "Arriba als teixits",
- "Sobre todo en el hígado": "Sobretot al fetge",
- "Riñón, bilis, aire": "Ronyó, bilis, aire",
  "<b style=\"color:#0f8b8d\">Farmacocinética</b>: lo que el cuerpo hace al fármaco. <b style=\"color:#c45c0a\">Farmacodinamia</b>: lo que el fármaco hace al cuerpo.": "<b style=\"color:#0f8b8d\">Farmacocinètica</b>: el que el cos fa al fàrmac. <b style=\"color:#c45c0a\">Farmacodinàmia</b>: el que el fàrmac fa al cos.",
  "Datos simulados de un fármaco con vida media de 4 horas: 500 mg en bolo frente a la misma dosis oral con una biodisponibilidad del 80 %. Cada clic añade un parámetro.": "Dades simulades d'un fàrmac amb vida mitjana de 4 hores: 500 mg en bol davant de la mateixa dosi oral amb una biodisponibilitat del 80 %. Cada clic afegeix un paràmetre.",
  "La curva de concentración en plasma": "La corba de concentració en plasma",
@@ -638,5 +632,7 @@ export default {
  "cuadritos R–R": "quadrets R–R",
  "Dosis": "Dosi",
  "mL/min": "mL/min",
- "HbA1c": "HbA1c"
+ "HbA1c": "HbA1c",
+ "Liberación\n  Se disgrega la forma\nAbsorción\n  Pasa a la sangre\nDistribución\n  Llega a los tejidos\nMetabolismo\n  Sobre todo en el hígado\nExcreción\n  Riñón, bilis, aire": "Alliberament\n  Es disgrega la forma\nAbsorció\n  Passa a la sang\nDistribució\n  Arriba als teixits\nMetabolisme\n  Sobretot al fetge\nExcreció\n  Ronyó, bilis, aire",
+ "Total (orina)": "Total (orina)"
 };

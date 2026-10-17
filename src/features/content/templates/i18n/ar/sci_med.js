@@ -75,12 +75,6 @@ export default {
  "VÍA ORAL · VÍA IV": "فموي · وريدي",
  "Diagrama de proceso que aparece paso a paso. Por vía intravenosa no hay liberación ni absorción: la biodisponibilidad es del 100 %.": "مخطط عملية يظهر خطوة بخطوة. في الطريق الوريدي لا تحرر ولا امتصاص: التوافر الحيوي 100 %.",
  "LADME: el viaje de un fármaco": "LADME: رحلة الدواء",
- "Liberación\nAbsorción\nDistribución\nMetabolismo\nExcreción": "التحرر\nالامتصاص\nالتوزع\nالاستقلاب\nالإطراح",
- "Se disgrega la forma": "يتفكك الشكل الدوائي",
- "Pasa a la sangre": "ينتقل إلى الدم",
- "Llega a los tejidos": "يصل إلى الأنسجة",
- "Sobre todo en el hígado": "في الكبد خصوصًا",
- "Riñón, bilis, aire": "الكلية، الصفراء، الهواء",
  "<b style=\"color:#0f8b8d\">Farmacocinética</b>: lo que el cuerpo hace al fármaco. <b style=\"color:#c45c0a\">Farmacodinamia</b>: lo que el fármaco hace al cuerpo.": "<b style=\"color:#0f8b8d\">الحرائك الدوائية</b>: ما يفعله الجسم بالدواء. <b style=\"color:#c45c0a\">الديناميكا الدوائية</b>: ما يفعله الدواء بالجسم.",
  "Datos simulados de un fármaco con vida media de 4 horas: 500 mg en bolo frente a la misma dosis oral con una biodisponibilidad del 80 %. Cada clic añade un parámetro.": "بيانات محاكاة لدواء عمر نصفه 4 ساعات: 500 مغ دفعةً وريدية مقابل الجرعة نفسها فمويًا بتوافر حيوي 80 %. كل نقرة تضيف معاملًا.",
  "La curva de concentración en plasma": "منحنى التركيز في البلازما",
@@ -638,5 +632,7 @@ export default {
  "cuadritos R–R": "مربعات R–R",
  "Dosis": "الجرعة",
  "mL/min": "mL/min",
- "HbA1c": "HbA1c"
+ "HbA1c": "HbA1c",
+ "Liberación\n  Se disgrega la forma\nAbsorción\n  Pasa a la sangre\nDistribución\n  Llega a los tejidos\nMetabolismo\n  Sobre todo en el hígado\nExcreción\n  Riñón, bilis, aire": "التحرر\n  يتفكك الشكل الدوائي\nالامتصاص\n  ينتقل إلى الدم\nالتوزع\n  يصل إلى الأنسجة\nالاستقلاب\n  في الكبد خصوصًا\nالإطراح\n  الكلية، الصفراء، الهواء",
+ "Total (orina)": "المجموع (البول)"
 };

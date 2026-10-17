@@ -75,12 +75,6 @@ export default {
  "VÍA ORAL · VÍA IV": "VÍA ORAL · VÍA IV",
  "Diagrama de proceso que aparece paso a paso. Por vía intravenosa no hay liberación ni absorción: la biodisponibilidad es del 100 %.": "Diagrama de proceso que aparece paso a paso. Por vía intravenosa non hai liberación nin absorción: a biodisponibilidade é do 100 %.",
  "LADME: el viaje de un fármaco": "LADME: a viaxe dun fármaco",
- "Liberación\nAbsorción\nDistribución\nMetabolismo\nExcreción": "Liberación\nAbsorción\nDistribución\nMetabolismo\nExcreción",
- "Se disgrega la forma": "Desfaise a forma",
- "Pasa a la sangre": "Pasa ao sangue",
- "Llega a los tejidos": "Chega aos tecidos",
- "Sobre todo en el hígado": "Sobre todo no fígado",
- "Riñón, bilis, aire": "Ril, bile, aire",
  "<b style=\"color:#0f8b8d\">Farmacocinética</b>: lo que el cuerpo hace al fármaco. <b style=\"color:#c45c0a\">Farmacodinamia</b>: lo que el fármaco hace al cuerpo.": "<b style=\"color:#0f8b8d\">Farmacocinética</b>: o que o corpo lle fai ao fármaco. <b style=\"color:#c45c0a\">Farmacodinamia</b>: o que o fármaco lle fai ao corpo.",
  "Datos simulados de un fármaco con vida media de 4 horas: 500 mg en bolo frente a la misma dosis oral con una biodisponibilidad del 80 %. Cada clic añade un parámetro.": "Datos simulados dun fármaco con vida media de 4 horas: 500 mg en bolo fronte á mesma dose oral cunha biodisponibilidade do 80 %. Cada clic engade un parámetro.",
  "La curva de concentración en plasma": "A curva de concentración en plasma",
@@ -638,5 +632,7 @@ export default {
  "cuadritos R–R": "cadradiños R–R",
  "Dosis": "Dose",
  "mL/min": "mL/min",
- "HbA1c": "HbA1c"
+ "HbA1c": "HbA1c",
+ "Liberación\n  Se disgrega la forma\nAbsorción\n  Pasa a la sangre\nDistribución\n  Llega a los tejidos\nMetabolismo\n  Sobre todo en el hígado\nExcreción\n  Riñón, bilis, aire": "Liberación\n  Desfaise a forma\nAbsorción\n  Pasa ao sangue\nDistribución\n  Chega aos tecidos\nMetabolismo\n  Sobre todo no fígado\nExcreción\n  Ril, bile, aire",
+ "Total (orina)": "Total (ouriña)"
 };

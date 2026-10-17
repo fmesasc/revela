@@ -34,6 +34,9 @@ const stat = (n, label, x, y, w, color, fg, size = 72, props = {}) => text(`<div
 // The same pseudo-random numbers every time (so the decks don't change between builds).
 const rng = (seed = 7) => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const MONO = "'Courier New', Courier, monospace";
+// One click: [object, effect] pairs that enter together (the first on the click, the rest with it).
+// (Every object gets its own play order with A(): plain anim() orders would each become a click of their own.)
+const onClick = (...pairs) => pairs.map(([b, fx = 'fade-in', props = {}], i) => withAnims(b, A(fx, { start: i ? 'withPrev' : 'click', duration: 500, ...props })));
 
 // An ECG trace from x0 to x1 on the baseline y: QRS complexes at the R positions Rs, amplitude a (px).
 // p: with P waves; bl(x): something added to the baseline (fibrillation, flutter); w: wider waves.
@@ -103,12 +106,12 @@ export default {
         notes: 'Primer clic: las cuatro estaciones del sistema de conducción, una tras otra. Segundo clic: el impulso sale del nódulo sinusal y recorre el corazón (trayectoria con sonido). El retraso en el nódulo AV es lo que da tiempo a llenar los ventrículos.' },
       { title: 'Anatomía de un latido', layout: 'titleOnly', ...P, extra: [
         draw(tr(ecg(90, 820, 500, 240, [430], { w: 2.6, step: 1 }), 5), 'afterPrev', 2200),
-        ...[['P', 280, 400], ['QRS', 400, 200], ['T', 640, 370]].map(([t, x, y], i) => anim(text(t, x - 60, y, 120, 40, { fontFamily: H, fontSize: 30, fontWeight: 700, color: [TEAL, RED, AMB][i], textAlign: 'center' }), i + 1, 'fade-down')),
-        ...bracket(238, 405, 590, TEAL).map(b => anim(b, 1, 'fade-in')), anim(text('PR', 412, 574, 80, 32, { fontSize: 20, fontWeight: 700, color: TEAL }), 1, 'fade-in'),
-        ...bracket(405, 455, 625, RED).map(b => anim(b, 2, 'fade-in')), anim(text('QRS', 462, 609, 80, 32, { fontSize: 20, fontWeight: 700, color: RED }), 2, 'fade-in'),
-        ...bracket(405, 712, 660, AMB).map(b => anim(b, 3, 'fade-in')), anim(text('QT', 720, 644, 80, 32, { fontSize: 20, fontWeight: 700, color: AMB }), 3, 'fade-in'),
-        ...[['Onda P', 'Despolarización de las aurículas', TEAL], ['Complejo QRS', 'Despolarización de los ventrículos', RED], ['Onda T', 'Repolarización de los ventrículos', AMB]].map(([h, d, c], i) =>
-          anim(text(`<div style="font-weight:700;color:${c};font-size:26px">${h}</div><div>${d}</div>`, 860, 200 + i * 150, 330, 120, { fontSize: 22, color: INK, bg: '#ffffffe6', radius: 12, pad: [14, 18, 14, 18] }), i + 1, 'fade-left'))],
+        // Three clicks: each wave with its letter, its interval (bracket and name) and its card.
+        ...[['P', 280, 400, TEAL, 238, 405, 590, 'PR', 'Onda P', 'Despolarización de las aurículas'], ['QRS', 400, 200, RED, 405, 455, 625, 'QRS', 'Complejo QRS', 'Despolarización de los ventrículos'],
+          ['T', 640, 370, AMB, 405, 712, 660, 'QT', 'Onda T', 'Repolarización de los ventrículos']].flatMap(([t, x, y, c, x1, x2, by, iv, h, d], i) => onClick(
+          [text(t, x - 60, y, 120, 40, { fontFamily: H, fontSize: 30, fontWeight: 700, color: c, textAlign: 'center' }), 'fade-down'],
+          ...bracket(x1, x2, by, c).map(b => [b]), [text(iv, x2 + 7, by - 16, 80, 32, { fontSize: 20, fontWeight: 700, color: c })],
+          [text(`<div style="font-weight:700;color:${c};font-size:26px">${h}</div><div>${d}</div>`, 860, 200 + i * 150, 330, 120, { fontSize: 22, color: INK, bg: '#ffffffe6', radius: 12, pad: [14, 18, 14, 18] }), 'fade-left']))],
         notes: 'El latido se dibuja al llegar. Tres clics: P y el intervalo PR, el QRS y su anchura, y la T con el QT. Insistir en que el QRS tapa la repolarización auricular.' },
       { title: 'Valores de referencia en el adulto', layout: 'titleOnly', ...P, extra: [
         tableBlock({ x: 90, y: 190, w: 700, h: 330, fontSize: 24, header: true, headBg: INK, headFg: '#ffffff', stroke: '#eaa29d', banded: true, band: '#eaa29d',
@@ -119,16 +122,15 @@ export default {
         notes: 'Tabla con fórmulas: si alguien cambia un máximo, los cuadritos se recalculan. Valores orientativos de manuales docentes; cada laboratorio y cada guía usan rangos algo distintos.' },
       { title: 'La frecuencia en cinco segundos', layout: 'titleOnly', ...P, extra: [
         draw(tr(ecg(90, 1190, 330, 120, every(240, 320, 1190))), 'afterPrev', 2000),
-        anim(line(560, 200, 560, 420, RED, 2, { dash: '6 6' }), 1, 'fade-in'), anim(line(880, 200, 880, 420, RED, 2, { dash: '6 6' }), 1, 'fade-in'),
-        ...bracket(560, 880, 420, RED).map(b => anim(b, 1, 'fade-in')),
-        anim(text('R–R = 4 cuadros grandes', 560, 432, 320, 34, { fontSize: 22, fontWeight: 700, color: RED, textAlign: 'center' }), 1, 'fade-in'),
-        withAnims(mathBlock({ x: 90, y: 490, w: 520, h: 120, fontSize: 46, color: INK, latex: '\\text{FC} = \\frac{300}{4} = 75\\ \\text{lpm}' }), A('zoom-in', { sound: 'chime' })),
-        anim(mathBlock({ x: 640, y: 490, w: 550, h: 120, fontSize: 40, color: TEAL, latex: '\\text{FC} = \\frac{1500}{\\text{cuadritos R–R}}' }), 3, 'fade-up'),
+        ...onClick([line(560, 200, 560, 420, RED, 2, { dash: '6 6' })], [line(880, 200, 880, 420, RED, 2, { dash: '6 6' })], ...bracket(560, 880, 420, RED).map(b => [b]),
+          [text('R–R = 4 cuadros grandes', 560, 432, 320, 34, { fontSize: 22, fontWeight: 700, color: RED, textAlign: 'center' })]),
+        ...onClick([mathBlock({ x: 90, y: 490, w: 520, h: 120, fontSize: 46, color: INK, latex: '\\text{FC} = \\frac{300}{4} = 75\\ \\text{lpm}' }), 'zoom-in', { sound: 'chime', duration: 600 }]),
+        ...onClick([mathBlock({ x: 640, y: 490, w: 550, h: 120, fontSize: 40, color: TEAL, latex: '\\text{FC} = \\frac{1500}{\\text{cuadritos R–R}}' }), 'fade-up']),
         text('Regla del 300 para ritmos regulares; la de los 1500, más precisa.', 90, 630, 1100, 36, { fontSize: 20, color: DIM })],
         notes: 'El primer clic marca dos ondas R y cuenta los cuadros; el segundo hace la cuenta (con campanilla); el tercero da la fórmula fina. En ritmos irregulares: QRS en 6 segundos × 10.' },
       { title: 'Tres ritmos que hay que reconocer', layout: 'titleOnly', ...P, extra: rows.flatMap(([h, d, pts], i) => { const y = 250 + i * 150;
-        return [anim(text(`<div style="font-weight:700;font-size:26px;color:${[TEAL, RED, AMB][i]}">${h}</div><div style="color:${DIM}">${d}</div>`, 90, y - 66, 270, 132, { fontSize: 19, bg: '#ffffffe6', radius: 10, pad: [10, 14, 10, 14] }), i + 1, 'fade-right'),
-          withAnims(tr(pts.map(([x, v]) => [x, y + v]), 3), A('draw', { start: 'withPrev', duration: 1800 }))]; }),
+        return onClick([text(`<div style="font-weight:700;font-size:26px;color:${[TEAL, RED, AMB][i]}">${h}</div><div style="color:${DIM}">${d}</div>`, 90, y - 66, 270, 132, { fontSize: 19, bg: '#ffffffe6', radius: 10, pad: [10, 14, 10, 14] }), 'fade-right'],
+          [tr(pts.map(([x, v]) => [x, y + v]), 3), 'draw', { duration: 1800 }]); }),
         notes: 'Cada clic presenta un ritmo y se dibuja su tira. La fibrilación auricular es «irregularmente irregular»; el flutter típico da unas 300 ondas F por minuto con conducción variable (aquí 4:1).' },
       { layout: 'blank', ...P, extra: [pollBlock({ kind: 'quiz', fontSize: 38, x: 60, y: 40, w: 1160, h: 640, time: 20, correct: [1],
         question: 'R–R irregular, sin ondas P y con la línea de base temblorosa: ¿qué ritmo sugiere?', options: ['Ritmo sinusal', 'Fibrilación auricular', 'Flutter auricular', 'Bloqueo AV de primer grado'] })],
@@ -176,8 +178,8 @@ export default {
         ...Array.from({ length: 10 }, (_, i) => capsule(900 + (i % 2) * 150, 140 + Math.floor(i / 2) * 94, i)).flat()],
         notes: 'La portada imita la caja de un medicamento y un blíster que se llena solo, cápsula a cápsula, al llegar (animaciones encadenadas). Todo son formas con degradados.' },
       { title: 'LADME: el viaje de un fármaco', layout: 'titleOnly', bg: '#ffffff', extra: [
-        dg('process', 'Liberación\nAbsorción\nDistribución\nMetabolismo\nExcreción', 90, 190, 1100, 170, { colors: 'accent', oneByOne: true }),
-        ...['Se disgrega la forma', 'Pasa a la sangre', 'Llega a los tejidos', 'Sobre todo en el hígado', 'Riñón, bilis, aire'].map((t, i) => text(t, 90 + i * 226, 380, 196, 70, { fontSize: 20, color: SOFT, textAlign: 'center' })),
+        // (Each stage with its line under it, so they appear together, one by one.)
+        dg('chevrons', 'Liberación\n  Se disgrega la forma\nAbsorción\n  Pasa a la sangre\nDistribución\n  Llega a los tejidos\nMetabolismo\n  Sobre todo en el hígado\nExcreción\n  Riñón, bilis, aire', 90, 180, 1100, 280, { colors: 'accent', oneByOne: true }),
         shape('rounded', 90, 500, 1100, 130, MINT, { radius: 16 }),
         text(`<b style="color:${TEAL}">Farmacocinética</b>: lo que el cuerpo hace al fármaco. <b style="color:${ORANGE}">Farmacodinamia</b>: lo que el fármaco hace al cuerpo.`, 130, 515, 1020, 100, { fontSize: 27, color: INK, vAlign: 'middle' })],
         notes: 'Diagrama de proceso que aparece paso a paso. Por vía intravenosa no hay liberación ni absorción: la biodisponibilidad es del 100 %.' },
@@ -185,7 +187,7 @@ export default {
         chartBlock({ x: 80, y: 170, w: 760, h: 470, chartType: 'line', color: TEAL, seriesName: 'Intravenosa', grid: true, xTitle: 'Horas tras la dosis', yTitle: 'mg/L',
           data: hrs.map((t, i) => ({ label: String(t), value: iv[i] })), series: [{ name: 'Oral', values: oral, color: ORANGE }] }),
         ...[['C<sub>máx</sub>', 'la concentración más alta', ORANGE], ['t<sub>máx</sub>', 'cuándo se alcanza', ORANGE], ['AUC', 'área bajo la curva: exposición total', TEAL], ['F', 'fracción que llega a la sangre (biodisponibilidad)', TEAL]].map(([h, d, c], i) =>
-          anim(text(`<span style="font-family:${H};font-weight:800;font-size:30px;color:${c}">${h}</span><br>${d}`, 880, 180 + i * 116, 320, 100, { fontSize: 21, color: INK }), i + 1, 'fade-left'))],
+          onClick([text(`<span style="font-family:${H};font-weight:800;font-size:30px;color:${c}">${h}</span><br>${d}`, 880, 180 + i * 116, 320, 100, { fontSize: 21, color: INK }), 'fade-left'])).flat()],
         notes: 'Datos simulados de un fármaco con vida media de 4 horas: 500 mg en bolo frente a la misma dosis oral con una biodisponibilidad del 80 %. Cada clic añade un parámetro.' },
       { title: 'Cuatro ecuaciones que lo explican casi todo', layout: 'titleOnly', bg: '#ffffff', extra: [
         ...[['C(t) = C_0\\, e^{-k\\,t}', 'Eliminación de primer orden'], ['t_{1/2} = \\frac{\\ln 2}{k} \\approx \\frac{0{,}693}{k}', 'Vida media'], ['V_d = \\frac{\\text{Dosis}}{C_0}', 'Volumen de distribución'], ['CL = k \\cdot V_d', 'Aclaramiento']].map(([l, c], i) => {
@@ -198,9 +200,9 @@ export default {
         tableBlock({ x: 90, y: 180, w: 470, h: 380, fontSize: 24, header: true, headBg: TEAL, headFg: '#ffffff', stroke: '#c9d3d8', banded: true, band: TEAL,
           rows: [['Vidas medias', 'Horas', 'Queda (%)'], ...[0, 1, 2, 3, 4, 5].map(n => [String(n), `=A${n + 2}*4`, `=REDONDEAR(100/2^A${n + 2};1)`])], colW: [3, 2, 3] }),
         text('Las columnas «Horas» y «Queda» son fórmulas (vida media de 4 h).', 90, 575, 470, 60, { fontSize: 18, color: SOFT }),
-        anim(chartBlock({ x: 610, y: 180, w: 580, h: 380, chartType: 'bar', color: TEAL, dataLabels: true, xTitle: 'Vidas medias', yTitle: '% que queda',
-          data: [100, 50, 25, 12.5, 6.3, 3.1].map((v, i) => ({ label: String(i), value: v, color: i === 5 ? ORANGE : undefined })) }), 1, 'fade-up'),
-        anim(text(`Tras <b style="color:${ORANGE}">5 vidas medias</b> queda ≈ 3 %: se considera eliminado.`, 610, 575, 580, 60, { fontSize: 22, color: INK }), 2, 'fade-in')],
+        ...onClick([chartBlock({ x: 610, y: 180, w: 580, h: 380, chartType: 'bar', color: TEAL, dataLabels: true, xTitle: 'Vidas medias', yTitle: '% que queda',
+          data: [100, 50, 25, 12.5, 6.3, 3.1].map((v, i) => ({ label: String(i), value: v, color: i === 5 ? ORANGE : undefined })) }), 'fade-up']),
+        ...onClick([text(`Tras <b style="color:${ORANGE}">5 vidas medias</b> queda ≈ 3 %: se considera eliminado.`, 610, 575, 580, 60, { fontSize: 22, color: INK })])],
         notes: 'La misma regla vale al revés: con dosis repetidas se alcanza el estado estacionario en unas 4–5 vidas medias.' },
       { title: 'Dosis repetidas: simularlo en Python', layout: 'titleOnly', bg: '#ffffff', extra: [
         codeBlock({ x: 80, y: 170, w: 600, h: 470, fontSize: 19, lang: 'python', lineSteps: '1-5|7-10|12',
@@ -217,8 +219,8 @@ export default {
         line(463, 110, 463, 610, '#c9d3d8', 2, { dash: '8 8' }), line(816, 110, 816, 610, '#c9d3d8', 2, { dash: '8 8' }),
         text('PROSPECTO · INFORMACIÓN PARA EL ESTUDIANTE', 150, 106, 980, 36, { fontSize: 18, letterSpacing: 4, color: TEAL, fontWeight: 700 }),
         ...[['1. Qué es la vida media', 'El tiempo que tarda la concentración en plasma en bajar a la mitad.'], ['2. Por qué importa', 'Decide cada cuánto se repite una dosis y cuándo se alcanza el estado estacionario.'], ['3. Recuerde', 'Cinco vidas medias para eliminarlo; cinco para estabilizarlo.']].map(([h, d], i) =>
-          [anim(text(`<div style="font-family:${H};font-weight:800;font-size:28px;color:${INK};margin-bottom:12px">${h}</div><div>${d}</div>`, 150 + i * 353, 170, 290, 240, { fontSize: 24, color: SOFT, lineHeight: 1.45 }), i + 1, 'fade-up'),
-            anim(text(['t½', '⟳', '5×'][i], 150 + i * 353, 420, 290, 110, { fontFamily: H, fontSize: 88, fontWeight: 800, color: i === 1 ? ORANGE : TEAL }), i + 1, 'zoom-in')]).flat(),
+          onClick([text(`<div style="font-family:${H};font-weight:800;font-size:28px;color:${INK};margin-bottom:12px">${h}</div><div>${d}</div>`, 150 + i * 353, 170, 290, 240, { fontSize: 24, color: SOFT, lineHeight: 1.45 }), 'fade-up'],
+            [text(['t½', '⟳', '5×'][i], 150 + i * 353, 420, 290, 110, { fontFamily: H, fontSize: 88, fontWeight: 800, color: i === 1 ? ORANGE : TEAL }), 'zoom-in'])).flat(),
         text('Información general con fines docentes. No sustituye la ficha técnica ni el criterio de un profesional sanitario.', 150, 560, 980, 50, { fontSize: 17, color: SOFT, fontStyle: 'italic' })],
         notes: 'Cierre en forma de prospecto plegado en tres (líneas discontinuas). Cada columna entra con un clic.' },
     ]));
@@ -250,10 +252,10 @@ export default {
         ...[['Innata', 'Desde el nacimiento', GREEN, ['Responde en minutos u horas', 'Reconoce patrones comunes', 'No genera memoria', 'Barreras, fagocitos, NK, complemento']],
           ['Adaptativa', 'Se educa con cada encuentro', MAG, ['Tarda días la primera vez', 'Es específica de cada antígeno', 'Deja memoria duradera', 'Linfocitos B y T, anticuerpos']]].map(([h, s, c, items], i) => {
           const x = 90 + i * 570;
-          return [anim(shape('rounded', x, 180, 530, 440, '#0d1020', { radius: 22, stroke: c, strokeWidth: 2, shadow: { x: 0, y: 0, blur: 30, color: c + '66' } }), i + 1, i ? 'fade-left' : 'fade-right'),
-            anim(text(`<div style="font-family:${H};font-size:44px;font-weight:800;color:${c}">${h}</div><div style="color:${DIM}">${s}</div>`, x + 36, 206, 460, 110, { fontSize: 22 }), i + 1, 'fade-in'),
-            anim(text(ul(...items), x + 36, 330, 470, 280, { fontSize: 27, color: FG, lineHeight: 1.6 }), i + 1, 'fade-in')]; }).flat(),
-        anim(sphere(640, 410, 26, '#ffffff', BLUE), 3, 'zoom-in'), anim(text('↔', 615, 388, 50, 44, { fontSize: 30, color: BG, textAlign: 'center', fontWeight: 800 }), 3, 'zoom-in')],
+          return onClick([shape('rounded', x, 180, 530, 440, '#0d1020', { radius: 22, stroke: c, strokeWidth: 2, shadow: { x: 0, y: 0, blur: 30, color: c + '66' } }), i ? 'fade-left' : 'fade-right'],
+            [text(`<div style="font-family:${H};font-size:44px;font-weight:800;color:${c}">${h}</div><div style="color:${DIM}">${s}</div>`, x + 36, 206, 460, 110, { fontSize: 22 })],
+            [text(ul(...items), x + 36, 330, 470, 280, { fontSize: 27, color: FG, lineHeight: 1.6 })]); }).flat(),
+        ...onClick([sphere(640, 410, 26, '#ffffff', BLUE), 'zoom-in'], [text('↔', 615, 388, 50, 44, { fontSize: 30, color: BG, textAlign: 'center', fontWeight: 800 }), 'zoom-in'])],
         notes: 'Dos clics, un brazo cada uno; el tercero los une: la innata presenta los antígenos y activa a la adaptativa, y los anticuerpos ayudan a la innata.' },
       { title: 'Quién es quién', layout: 'titleOnly', bg: BG, transition: 'concave', extra: [
         dg('hierarchy', 'Sistema inmunitario\n  Innato\n    Fagocitos\n    Células NK\n    Complemento\n  Adaptativo\n    Linfocitos B\n    Linfocitos T CD4\n    Linfocitos T CD8', 90, 180, 1100, 460, { colors: 'colorful', oneByOne: true })],
@@ -266,7 +268,7 @@ export default {
           withAnims(ink([[cx + 14, base], [cx + 14, hinge], [tipR[0] - 14, tipR[1] + 30]], MAG, 22), A('draw', { start: 'withPrev', duration: 900 })),
           withAnims(ink([[cx - 44, hinge - 20], [tipL[0] - 10, tipL[1] + 10]], GREEN, 16), A('draw', { start: 'afterPrev', duration: 600 })),
           withAnims(ink([[cx + 44, hinge - 20], [tipR[0] + 10, tipR[1] + 10]], GREEN, 16), A('draw', { start: 'withPrev', duration: 600 })),
-          ...[['Fab<br>reconoce el antígeno', 520, 300, GREEN], ['Fc<br>avisa a otras células', 900, 500, MAG]].map(([t, x, y, c], i) => anim(text(t, x, y, 180, 86, { fontSize: 20, color: c, fontWeight: 700 }), i + 1, 'fade-in')),
+          ...[['Fab<br>reconoce el antígeno', 520, 300, GREEN], ['Fc<br>avisa a otras células', 900, 500, MAG]].map(([t, x, y, c], i) => onClick([text(t, x, y, 180, 86, { fontSize: 20, color: c, fontWeight: 700 })])).flat(),
           text('Cadenas pesadas', 1000, 600, 200, 30, { fontSize: 18, color: MAG }), text('Cadenas ligeras', 1000, 630, 200, 30, { fontSize: 18, color: GREEN }),
           withAnims(shape('star', 1120, 110, 56, 56, BLUE, { fill2: '#a9c0ff', gradType: 'radial' }), path([[-40, 60], [-100, 92]], { duration: 1400, start: 'click', sound: 'pop' })),
           text('Cada linfocito B fabrica un anticuerpo con una sola especificidad. Las puntas de los brazos encajan con un antígeno como una llave en su cerradura.', 90, 190, 400, 300, { fontSize: 26, color: FG, lineHeight: 1.45 }),
@@ -274,7 +276,7 @@ export default {
         notes: 'La «Y» se dibuja sola: primero las cadenas pesadas y luego las ligeras. Dos clics para las regiones Fab y Fc; el tercero lleva el antígeno (la estrella) hasta su sitio de unión, con sonido.' },
       { title: 'Fagocitosis', layout: 'titleOnly', bg: BG, extra: [
         mac(160, 200, 380, 320), sphere(320, 330, 40, '#ffffff', BLUE, { opacity: 85 }),
-        bact(B1, 820, 270, 110, 20), bact(B2, 900, 420, 96, -30),
+        bact(B1, 800, 320, 110, 20), bact(B2, 900, 450, 96, -30),
         text('El macrófago detecta moléculas típicas de bacterias (patrones) con sus receptores.', 640, 200, 560, 60, { fontSize: 22, color: DIM }),
         ...steps([0, 0])],
         notes: 'Primera de dos diapositivas con Transformar: el macrófago, las bacterias y la barra de progreso tienen el mismo identificador en ambas.' },
@@ -282,15 +284,15 @@ export default {
         mac(330, 160, 560, 440), sphere(460, 300, 40, '#ffffff', BLUE, { opacity: 85 }),
         ring(660, 420, 92, '#ffd166', { strokeWidth: 4, dash: '8 6' }),
         bact(B1, 610, 390, 70, 60, 70), bact(B2, 640, 430, 62, -10, 70),
-        anim(text('Fagolisosoma: enzimas y radicales de oxígeno destruyen la bacteria', 900, 300, 300, 160, { fontSize: 22, color: '#ffd166' }), 1, 'fade-left'),
+        ...onClick([text('Fagolisosoma: enzimas y radicales de oxígeno destruyen la bacteria', 900, 300, 300, 160, { fontSize: 22, color: '#ffd166' }), 'fade-left']),
         ...steps([1, 2])],
         notes: 'Transformar: el macrófago crece y engulle a las dos bacterias, que se encogen dentro del fagolisosoma. Luego presenta trozos de la bacteria a los linfocitos T.' },
       { title: 'La segunda vez, más rápido y más fuerte', layout: 'titleOnly', bg: BG, extra: [
         chartBlock({ x: 80, y: 220, w: 800, h: 420, chartType: 'area', color: MAG, grid: true, xTitle: 'Días', yTitle: 'Anticuerpos (unidades arbitrarias)', seriesName: 'Anticuerpos',
           data: [0, 4, 7, 10, 14, 21, 28, 31, 35, 42, 49, 56].map((d, i) => ({ label: String(d), value: [0, 2, 8, 18, 22, 12, 6, 30, 90, 110, 95, 80][i] })) }),
-        anim(text('1.ª exposición', 140, 170, 300, 36, { fontSize: 22, color: GREEN, fontWeight: 700 }), 1, 'fade-down'),
-        anim(text('2.ª exposición', 520, 170, 300, 36, { fontSize: 22, color: MAG, fontWeight: 700 }), 2, 'fade-down'),
-        anim(text(`La memoria inmunitaria es la base de las <b style="color:${GREEN}">vacunas</b>: un primer encuentro seguro prepara una respuesta secundaria rápida.`, 920, 260, 290, 300, { fontSize: 24, color: FG, lineHeight: 1.45 }), 3, 'fade-left')],
+        ...onClick([text('1.ª exposición', 140, 170, 300, 36, { fontSize: 22, color: GREEN, fontWeight: 700 }), 'fade-down']),
+        ...onClick([text('2.ª exposición', 520, 170, 300, 36, { fontSize: 22, color: MAG, fontWeight: 700 }), 'fade-down']),
+        ...onClick([text(`La memoria inmunitaria es la base de las <b style="color:${GREEN}">vacunas</b>: un primer encuentro seguro prepara una respuesta secundaria rápida.`, 920, 260, 290, 300, { fontSize: 24, color: FG, lineHeight: 1.45 }), 'fade-left'])],
         notes: 'Curva ilustrativa (no son datos reales). La respuesta secundaria tiene menos latencia, más anticuerpos y sobre todo IgG de mayor afinidad.' },
       { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'match', fontSize: 30, x: 60, y: 40, w: 1160, h: 640, question: 'Une cada célula con lo que hace',
         options: ['Linfocito B = Produce anticuerpos', 'Linfocito T CD8 = Destruye células infectadas', 'Linfocito T CD4 = Coordina la respuesta', 'Macrófago = Fagocita y presenta antígenos', 'Célula NK = Ataca células que esconden su MHC I'] })],
@@ -343,14 +345,11 @@ export default {
       { layout: 'blank', bg: KRAFT, extra: [
         head('Anamnesis'), sheet(70, 150, 1140, 530, 0.4),
         ...Array.from({ length: 12 }, (_, i) => line(110, 238 + i * 36, 1170, 238 + i * 36, '#d6e1ef', 1)), line(600, 175, 600, 655, '#e7b7b2', 2),
-        anim(label('MOTIVO DE CONSULTA', 110, 180, 460), 1, 'fade-in'),
-        anim(typed('Fiebre de 39 °C y tos con expectoración herrumbrosa desde hace 3 días.', 110, 220, 460, 110), 1, 'fade-in'),
-        anim(label('ANTECEDENTES', 110, 360, 460), 2, 'fade-in'),
-        anim(typed('Exfumador (30 paquetes-año). Hipertensión tratada. Sin alergias. No se vacunó de la gripe este año.', 110, 400, 460, 180), 2, 'fade-in'),
-        anim(label('ENFERMEDAD ACTUAL', 640, 180, 520), 3, 'fade-in'),
-        anim(typed('Comienzo brusco con escalofríos. Dolor en el costado derecho que aumenta al respirar hondo. Disnea con esfuerzos moderados. Su familia lo nota «más cansado», sin confusión.', 640, 220, 530, 300), 3, 'fade-in'),
-        withAnims(ink([[640, 560], [1150, 560]], '#ffe14d', 22, { opacity: 70 }), A('draw', { start: 'afterPrev', duration: 700 })),
-        anim(typed('<b>Pista:</b> dolor pleurítico + fiebre + tos productiva', 650, 532, 520, 70, { fontSize: 20 }), 3, 'fade-in')],
+        ...onClick([label('MOTIVO DE CONSULTA', 110, 180, 460)], [typed('Fiebre de 39 °C y tos con expectoración herrumbrosa desde hace 3 días.', 110, 220, 460, 110)]),
+        ...onClick([label('ANTECEDENTES', 110, 360, 460)], [typed('Exfumador (30 paquetes-año). Hipertensión tratada. Sin alergias. No se vacunó de la gripe este año.', 110, 400, 460, 180)]),
+        ...onClick([label('ENFERMEDAD ACTUAL', 640, 180, 520)], [typed('Comienzo brusco con escalofríos. Dolor en el costado derecho que aumenta al respirar hondo. Disnea con esfuerzos moderados. Su familia lo nota «más cansado», sin confusión.', 640, 220, 530, 300)],
+          [typed('<b>Pista:</b> dolor pleurítico + fiebre + tos productiva', 650, 532, 520, 70, { fontSize: 20 })]),
+        withAnims(ink([[640, 560], [1150, 560]], '#ffe14d', 22, { opacity: 70 }), A('draw', { start: 'afterPrev', duration: 700 }))],
         notes: 'Tres clics: motivo, antecedentes y enfermedad actual, como en la hoja de ingreso. El subrayado amarillo se dibuja al final. Pedir al grupo que piense ya un diagnóstico diferencial.' },
       { layout: 'blank', bg: KRAFT, extra: [
         head('Exploración física'),
@@ -360,16 +359,14 @@ export default {
             withAnims(shape('rect', x, 170, 200, 14, c, { rotation: i % 2 ? 1.2 : -1.2 }), A('fade-in', { start: 'withPrev', duration: 300 })),
             withAnims(text(`<div style="font-family:${MONO};font-size:15px;color:${DIM};letter-spacing:1px">${l.toUpperCase()}</div><div style="font-family:${H};font-size:${v.length > 4 ? 46 : 60}px;color:${c};margin-top:18px;line-height:1">${v}</div><div style="font-family:${MONO};font-size:20px;color:${INK}">${u}</div>`,
               x + 14, 200, 172, 180, { fontSize: 20, textAlign: 'center', rotation: i % 2 ? 1.2 : -1.2 }), A('fade-in', { start: 'withPrev', duration: 300, sound: 'pop' }))]; }).flat(),
-        anim(sheet(90, 440, 1100, 210, 0), 2, 'fade-up'),
-        anim(label('AUSCULTACIÓN Y PERCUSIÓN', 130, 465, 600), 2, 'fade-up'),
-        anim(typed('Crepitantes y soplo tubárico en la base derecha. Matidez a la percusión en la misma zona. Resto sin hallazgos relevantes. Consciente y orientado.', 130, 505, 1020, 130, { fontSize: 23 }), 2, 'fade-up')],
+        ...onClick([sheet(90, 440, 1100, 210, 0), 'fade-up'], [label('AUSCULTACIÓN Y PERCUSIÓN', 130, 465, 600), 'fade-up'], [typed('Crepitantes y soplo tubárico en la base derecha. Matidez a la percusión en la misma zona. Resto sin hallazgos relevantes. Consciente y orientado.', 130, 505, 1020, 130, { fontSize: 23 }), 'fade-up'])],
         notes: 'Primer clic: las cinco constantes entran una tras otra (con sonido); en rojo, las alteradas. Segundo clic: la exploración pulmonar, que localiza el problema.' },
       { layout: 'blank', bg: KRAFT, extra: [
         head('Pruebas complementarias'),
         shape('rounded', 80, 160, 560, 500, '#e8eef2', { radius: 16, stroke: '#9aa4ab', strokeWidth: 3, shadow: { x: 0, y: 10, blur: 24, color: '#00000033' } }),
         img(xray, 110, 190, 500, 440, 'Radiografía de tórax simulada con una condensación en la base derecha'),
-        withAnims(ink(Array.from({ length: 41 }, (_, i) => { const a = i / 40 * Math.PI * 2.1; return [110 + 160 + 86 * Math.cos(a), 190 + 330 + 64 * Math.sin(a)]; }), RED, 5), A('draw', { duration: 1200, sound: 'whoosh' })),
-        anim(text('Condensación en el lóbulo inferior derecho', 110, 592, 440, 34, { fontSize: 18, color: '#ffffff', bg: '#b8322acc', pad: [4, 10, 4, 10], radius: 6 }), 1, 'fade-in'),
+        ...onClick([ink(Array.from({ length: 41 }, (_, i) => { const a = i / 40 * Math.PI * 2.1; return [110 + 160 + 86 * Math.cos(a), 190 + 330 + 64 * Math.sin(a)]; }), RED, 5), 'draw', { duration: 1200, sound: 'whoosh' }],
+          [text('Condensación en el lóbulo inferior derecho', 110, 592, 440, 34, { fontSize: 18, color: '#ffffff', bg: '#b8322acc', pad: [4, 10, 4, 10], radius: 6 })]),
         sheet(680, 160, 520, 500, 0),
         label('ANALÍTICA DE URGENCIAS', 710, 180, 460),
         tableBlock({ x: 700, y: 220, w: 480, h: 360, fontSize: 21, header: true, headBg: INK, headFg: '#ffffff', stroke: '#d9cfbd', lines: true, fontFamily: MONO,
@@ -385,8 +382,8 @@ export default {
           rows: [['Criterio', 'Umbral', 'Paciente', 'Punto'], ['<b>C</b>onfusión', 'Nueva', 'No', '0'], ['<b>U</b>rea', '> 42 mg/dL', '48', '1'], ['<b>R</b>espiración', '≥ 30 rpm', '26', '0'],
             ['<b>B</b>lood pressure', 'PAS < 90 o PAD ≤ 60', '102/64', '0'], ['Edad', '≥ <b>65</b>', '68', '1'], ['<b>Total</b>', '', '', '=SUMA(ARRIBA)']], colW: [4, 5, 3, 2] }),
         typed('El total es una fórmula: cambia un punto y se recalcula.', 100, 615, 660, 40, { fontSize: 17, color: DIM }),
-        ...[['0–1', 'Riesgo bajo', '#4f8a3c'], ['2', 'Riesgo intermedio', AMB], ['3–5', 'Riesgo alto', RED]].map(([n, l, c], i) =>
-          anim(text(`<span style="font-family:${H};font-size:44px;font-weight:700">${n}</span><br>${l}`, 840, 190 + i * 140, 340, 120, { fontSize: 22, color: '#ffffff', bg: c, radius: 12, pad: [10, 20, 10, 20] }), 1, 'fade-left')),
+        ...onClick(...[['0–1', 'Riesgo bajo', '#4f8a3c'], ['2', 'Riesgo intermedio', AMB], ['3–5', 'Riesgo alto', RED]].map(([n, l, c], i) =>
+          [text(`<span style="font-family:${H};font-size:44px;font-weight:700">${n}</span><br>${l}`, 840, 190 + i * 140, 340, 120, { fontSize: 22, color: '#ffffff', bg: c, radius: 12, pad: [10, 20, 10, 20] }), 'fade-left'])),
         withAnims(shape('leftarrow', 1150, 352, 90, 56, INK), A('fade-in', { start: 'afterPrev', duration: 300 }), path([[-30, 0], [0, 0]], { start: 'afterPrev', duration: 600 }))],
         notes: 'CURB-65 suma un punto por criterio (la B es de «blood pressure»). Nuestro paciente suma 2: riesgo intermedio, en el que las guías suelen aconsejar valorar el ingreso. La decisión real siempre es clínica e individual.' },
       { layout: 'blank', bg: KRAFT, extra: [
@@ -400,8 +397,8 @@ export default {
       { layout: 'blank', bg: KRAFT, transition: 'page', extra: [
         head('Mensajes para llevar'), sheet(90, 160, 1100, 470, -0.6),
         ...['Fiebre + tos productiva + dolor pleurítico + crepitantes focales: piensa en neumonía.', 'La radiografía confirma; las escalas (CURB-65) ayudan a decidir dónde tratar.', 'Reevalúa a las 48–72 h: si no mejora, busca complicaciones u otro diagnóstico.'].map((t, i) => [
-          anim(text(String(i + 1), 130, 200 + i * 140, 70, 70, { fontFamily: H, fontSize: 40, color: '#ffffff', bg: RED, radius: 35, textAlign: 'center', vAlign: 'middle' }), i + 1, 'zoom-in'),
-          anim(typed(t, 230, 200 + i * 140, 900, 110, { fontSize: 25 }), i + 1, 'fade-right')]).flat(),
+          ...onClick([text(String(i + 1), 130, 200 + i * 140, 70, 70, { fontFamily: H, fontSize: 40, color: '#ffffff', bg: RED, radius: 35, textAlign: 'center', vAlign: 'middle' }), 'zoom-in'],
+            [typed(t, 230, 200 + i * 140, 900, 110, { fontSize: 25 }), 'fade-right'])]).flat(),
         clip(1130, 136)],
         notes: 'Tres ideas, una por clic. Recordar que el caso es ficticio y que la información es general.' },
       { layout: 'blank', bg: KRAFT, extra: [pollBlock({ kind: 'qa', fontSize: 34, x: 80, y: 60, w: 1120, h: 600, question: 'Preguntas para la sesión clínica', options: [] })],
@@ -424,10 +421,12 @@ export default {
       c1: box('Intervención <b>n = 400</b>', 150, 422, 400, 56), c2: box('Control <b>n = 400</b>', 730, 422, 400, 56),
       d1: box('Pérdidas de seguimiento: 12', 150, 512, 400, 48, { fontSize: 17, bg: PALE }), d2: box('Pérdidas de seguimiento: 9', 730, 512, 400, 48, { fontSize: 17, bg: PALE }),
       e1: box('Analizados (por intención de tratar) <b>n = 400</b>', 150, 594, 400, 60, { fontSize: 17 }), e2: box('Analizados (por intención de tratar) <b>n = 400</b>', 730, 594, 400, 60, { fontSize: 17 }) };
-    const link = (f, t, o) => anim({ ...base(0, 0, 1280, 720), type: 'connector', from: bx[f].id, to: bx[t].id, color: GREY, arrow: true }, o, 'fade-in');
-    const step = { a: 1, x: 2, b: 2, c1: 3, c2: 3, d1: 4, d2: 4, e1: 4, e2: 4 };
+    const link = (f, t) => ({ ...base(0, 0, 1280, 720), type: 'connector', from: bx[f].id, to: bx[t].id, color: GREY, arrow: true });
+    // Four clicks: screening, randomisation, allocation and analysis (each with the arrows that lead to its boxes).
+    const flow = [[bx.a], [bx.x, bx.b, link('a', 'b'), link('a', 'x')], [bx.c1, bx.c2, link('b', 'c1'), link('b', 'c2')],
+      [bx.d1, bx.d2, bx.e1, bx.e2, link('c1', 'd1'), link('d1', 'e1'), link('c2', 'd2'), link('d2', 'e2')]];
     // Forest plot: HR and 95 % CI per subgroup, on a linear scale from 0,4 to 1,6.
-    const FX = 470, FW = 520, X = v => FX + (v - 0.4) / 1.2 * FW;
+    const FX = 470, FW = 520, X = v => FX + (v - 0.4) / 1.2 * FW, f2 = v => v.toFixed(2).replace('.', ',');
     const sub = [['Global', 0.72, 0.58, 0.89, 1], ['Menores de 65 años', 0.70, 0.50, 0.98], ['65 años o más', 0.75, 0.56, 1.01], ['Mujeres', 0.69, 0.48, 0.99], ['Hombres', 0.74, 0.56, 0.98], ['Con diabetes', 0.80, 0.55, 1.17], ['Sin diabetes', 0.68, 0.52, 0.89]];
     return numbered(build({ name: 'Ensayo clínico: leer los resultados', palette: 'grayscale', fonts: 'editorial', title: { color: INK, size: 40 }, body: { color: INK }, decor: () => masthead }, [
       { layout: 'blank', bg: '#ffffff', transition: 'fade', extra: [
@@ -436,18 +435,17 @@ export default {
         text('Unidad docente de Medicina Preventiva · sesión para residentes de primer año', 90, 340, 1000, 36, { fontSize: 22, color: GREY }),
         shape('rect', 90, 400, 1100, 230, PALE),
         ...[['Objetivo', 'Aprender a pasar del resumen de un ensayo a una decisión informada.'], ['Métodos', 'Un ensayo ficticio de 800 pacientes, leído de la tabla 1 a la figura 3.'], ['Resultados', 'Riesgo relativo, absoluto, NNT e intervalos de confianza, sin miedo.']].map(([h, d], i) =>
-          anim(text(`<div style="font-family:${H};font-weight:700;color:${RED};font-size:24px;margin-bottom:8px">${h}</div>${d}`, 120 + i * 360, 425, 330, 190, { fontSize: 21, color: INK, lineHeight: 1.45 }), i + 1, 'fade-in'))],
+          onClick([text(`<div style="font-family:${H};font-weight:700;color:${RED};font-size:24px;margin-bottom:8px">${h}</div>${d}`, 120 + i * 360, 425, 330, 190, { fontSize: 21, color: INK, lineHeight: 1.45 })])).flat()],
         notes: 'Portada con aspecto de artículo: cabecera de revista (ficticia) en todas las diapositivas y un resumen estructurado que aparece por partes.' },
       { layout: 'blank', bg: '#ffffff', extra: [
         head('Dónde está el ensayo en la pirámide'),
-        dg('pyramid', 'Revisiones\nEnsayos\nCohortes\nCasos y controles\nSeries de casos\nOpinión experta', 80, 160, 600, 480, { colors: 'accent', oneByOne: true }),
+        dg('pyramid', 'Revisiones\nEnsayos\nCohortes\nCasos y controles\nSeries de casos\nOpinión experta', 80, 160, 600, 480, { colors: 'light', oneByOne: true }),
         text(`<p style="margin:0 0 14px"><span style="float:left;font-family:${H};font-size:76px;line-height:.85;color:${RED};padding:4px 10px 0 0">A</span>leatorizar reparte al azar todo lo que no medimos —edad, gravedad, hábitos—, así que la única diferencia sistemática entre los grupos es el tratamiento.</p><p style="margin:0">Por eso el ensayo bien hecho está tan alto en la pirámide: es el diseño que mejor separa la causa de la casualidad.</p>`,
           700, 180, 490, 440, { fontSize: 23, color: INK, lineHeight: 1.5 })],
         notes: 'Pirámide de la evidencia que se construye nivel a nivel. A la derecha, un texto con capitular, como en una revista.' },
       { layout: 'blank', bg: '#ffffff', extra: [
         cap('Figura 1. Diagrama de flujo CONSORT del ensayo (datos ficticios).', 90, 100, 900),
-        ...Object.entries(bx).map(([k, b]) => anim(b, step[k], 'fade-in')),
-        link('a', 'b', 2), link('a', 'x', 2), link('b', 'c1', 3), link('b', 'c2', 3), link('c1', 'd1', 4), link('d1', 'e1', 4), link('c2', 'd2', 4), link('d2', 'e2', 4)],
+        ...flow.flatMap(g => onClick(...g.map(b => [b])))],
         notes: 'Diagrama CONSORT con cajas unidas por conectores, en cuatro clics: cribado, aleatorización, asignación y análisis. Comprobar siempre cuántos se perdieron y si se analizó por intención de tratar.' },
       { layout: 'blank', bg: '#ffffff', extra: [
         head('Supervivencia libre de evento'),
@@ -455,18 +453,18 @@ export default {
           data: [0, 3, 6, 9, 12, 15, 18, 21, 24].map((m, i) => ({ label: String(m), value: [100, 96, 92, 89, 87, 86, 85, 85, 85][i] })),
           series: [{ name: 'Control', values: [100, 94, 88, 84, 81, 80, 79, 78, 78], color: RED }] }),
         cap('Figura 2. Curvas de Kaplan–Meier (simuladas).', 80, 620, 760),
-        anim(text(`<div style="font-size:18px;letter-spacing:3px;color:${GREY}">HAZARD RATIO</div><div style="font-family:${H};font-size:64px;font-weight:700;color:${INK};line-height:1.1">0,72</div><div>IC 95 %: 0,58–0,89</div><div style="color:${GREY}">p = 0,003</div>`,
-          890, 200, 300, 230, { fontSize: 24, color: INK, borderColor: RULE, pad: [18, 22, 18, 22] }), 1, 'fade-left'),
-        anim(text('Un 28 % menos de riesgo instantáneo de evento con la intervención.', 890, 460, 300, 120, { fontSize: 21, color: GREY }), 2, 'fade-in')],
+        ...onClick([text(`<div style="font-size:18px;letter-spacing:3px;color:${GREY}">HAZARD RATIO</div><div style="font-family:${H};font-size:64px;font-weight:700;color:${INK};line-height:1.1">0,72</div><div>IC 95 %: 0,58–0,89</div><div style="color:${GREY}">p = 0,003</div>`,
+          890, 200, 300, 230, { fontSize: 24, color: INK, borderColor: RULE, pad: [18, 22, 18, 22] }), 'fade-left']),
+        ...onClick([text('Un 28 % menos de riesgo instantáneo de evento con la intervención.', 890, 460, 300, 120, { fontSize: 21, color: GREY })])],
         notes: 'Las curvas se separan pronto y se mantienen. El HR resume la diferencia a lo largo de todo el seguimiento; el intervalo no incluye el 1. Datos ficticios.' },
       { layout: 'blank', bg: '#ffffff', extra: [
         head('Del riesgo relativo al NNT'),
         tableBlock({ x: 90, y: 170, w: 600, h: 230, fontSize: 22, header: true, headBg: INK, headFg: '#ffffff', stroke: RULE, lines: true,
           rows: [['Grupo', 'Eventos', 'Pacientes', 'Riesgo (%)'], ['Control', '88', '400', '=REDONDEAR(B2/C2*100;1)'], ['Intervención', '60', '400', '=REDONDEAR(B3/C3*100;1)'], ['<b>Diferencia (RRA)</b>', '', '', '=D2-D3']], colW: [4, 3, 3, 3] }),
         cap('Tabla 2. La columna de riesgo y la diferencia son fórmulas.', 90, 410, 600),
-        anim(mathBlock({ x: 730, y: 170, w: 460, h: 90, fontSize: 30, color: BLUE, latex: 'RRA = 0{,}22 - 0{,}15 = 0{,}07' }), 1, 'fade-left'),
-        anim(mathBlock({ x: 730, y: 280, w: 460, h: 110, fontSize: 30, color: GREY, latex: 'RRR = \\frac{0{,}07}{0{,}22} \\approx 0{,}32' }), 2, 'fade-left'),
-        anim(mathBlock({ x: 730, y: 410, w: 460, h: 110, fontSize: 30, color: RED, latex: 'NNT = \\frac{1}{0{,}07} \\approx 14{,}3' }), 3, 'fade-left'),
+        ...onClick([mathBlock({ x: 730, y: 170, w: 460, h: 90, fontSize: 30, color: BLUE, latex: 'RRA = 0{,}22 - 0{,}15 = 0{,}07' }), 'fade-left']),
+        ...onClick([mathBlock({ x: 730, y: 280, w: 460, h: 110, fontSize: 30, color: GREY, latex: 'RRR = \\frac{0{,}07}{0{,}22} \\approx 0{,}32' }), 'fade-left']),
+        ...onClick([mathBlock({ x: 730, y: 410, w: 460, h: 110, fontSize: 30, color: RED, latex: 'NNT = \\frac{1}{0{,}07} \\approx 14{,}3' }), 'fade-left']),
         withAnims(text(`<div style="font-family:${H};font-size:80px;font-weight:700;color:${RED};line-height:1">NNT = 15</div><div style="margin-top:10px">pacientes tratados durante dos años para evitar un evento</div>`, 90, 470, 600, 170, { fontSize: 24, color: INK }), A('zoom-in', { sound: 'drumroll', duration: 700 }))],
         notes: 'Un «32 % menos» suena mejor que «7 puntos menos», pero es la misma diferencia. El NNT se redondea hacia arriba: 15. Datos inventados.' },
       { layout: 'blank', bg: '#ffffff', extra: [
@@ -479,7 +477,7 @@ export default {
           return [withAnims(text(n, 90, y - 16, 360, 32, { fontSize: 20, color: INK, fontWeight: all ? 700 : 400 }), A('fade-in', st)),
             withAnims(line(X(lo), y, X(hi), y, all ? RED : INK, 3), A('fade-in', { start: 'withPrev', duration: 300 })),
             withAnims(shape(all ? 'diamond' : 'rect', X(hr) - (all ? 18 : 8), y - (all ? 14 : 8), all ? 36 : 16, all ? 28 : 16, all ? RED : INK), A('zoom-in', { start: 'withPrev', duration: 300 })),
-            withAnims(text(`${String(hr).replace('.', ',')} (${String(lo).replace('.', ',')}–${String(hi).replace('.', ',')})`, 1010, y - 16, 200, 32, { fontSize: 18, color: INK }), A('fade-in', { start: 'withPrev', duration: 300 }))]; }).flat()],
+            withAnims(text(`${f2(hr)} (${f2(lo)}–${f2(hi)})`, 1010, y - 16, 200, 32, { fontSize: 18, color: INK }), A('fade-in', { start: 'withPrev', duration: 300 }))]; }).flat()],
         notes: 'Forest plot dibujado con formas: un clic y los subgrupos aparecen uno tras otro. Los que cruzan el 1 no son significativos por sí solos, pero son coherentes con el global: no hay que «cazar» subgrupos.' },
       { layout: 'blank', bg: '#ffffff', extra: [pollBlock({ kind: 'quiz', fontSize: 36, x: 60, y: 70, w: 1160, h: 590, time: 25, correct: [1],
         question: 'Si el intervalo de confianza del 95 % de un HR incluye el 1, ¿qué podemos decir?', options: ['Que el tratamiento es perjudicial', 'Que la diferencia no es estadísticamente significativa', 'Que el ensayo está mal diseñado', 'Que el efecto es muy grande'] })],
@@ -488,7 +486,7 @@ export default {
         head('Antes de creerte un ensayo'),
         ...['¿La asignación fue aleatoria y oculta?', '¿Hubo enmascaramiento de pacientes y evaluadores?', '¿Se perdió menos del 20 % del seguimiento?', '¿Se analizó por intención de tratar?', '¿La variable principal le importa al paciente?', '¿Quién financió el estudio?'].map((t, i) => {
           const x = 90 + (i % 2) * 560, y = 180 + Math.floor(i / 2) * 140;
-          return [anim(icon('check', x, y + 8, 44, RED), i + 1, 'zoom-in'), anim(text(t, x + 64, y, 470, 110, { fontFamily: H, fontSize: 25, color: INK, lineHeight: 1.35 }), i + 1, 'fade-in')]; }).flat(),
+          return onClick([icon('check', x, y + 8, 44, RED), 'zoom-in'], [text(t, x + 64, y, 470, 110, { fontFamily: H, fontSize: 25, color: INK, lineHeight: 1.35 })]); }).flat(),
         text('Ensayo, cifras y revista inventados para la docencia.', 90, 620, 1100, 36, { fontSize: 18, color: GREY, fontStyle: 'italic' })],
         notes: 'Lista de comprobación que se completa con seis clics. Es una versión resumida de las listas de lectura crítica habituales.' },
     ]));
@@ -513,14 +511,18 @@ export default {
       + `<path d="M330 290 L 324 450" stroke="#b88a5a" stroke-width="11" opacity=".85"/><path d="M70 296 L 66 418" stroke="#b88a5a" stroke-width="7" opacity=".85"/>`
       + `<ellipse cx="200" cy="255" rx="44" ry="54" fill="#efdcb2" stroke="${SEPIA}" stroke-width="3" opacity=".92"/>`);
     // The tibial plateau seen from above: the menisci and the cruciate insertions, 600 × 400.
-    const PLATEAU = svgURL(600, 400, `<path d="M60 200 C 60 90, 200 50, 300 80 C 400 50, 540 90, 540 200 C 540 300, 420 350, 300 320 C 180 350, 60 300, 60 200 Z" fill="${BONE}" stroke="${SEPIA}" stroke-width="3"/>`
+    // (Mirrored: the right tibia seen from above, front at the top, has its lateral side — the «O» — on our right.)
+    const PLATEAU = svgURL(600, 400, `<g transform="translate(600 0) scale(-1 1)"><path d="M60 200 C 60 90, 200 50, 300 80 C 400 50, 540 90, 540 200 C 540 300, 420 350, 300 320 C 180 350, 60 300, 60 200 Z" fill="${BONE}" stroke="${SEPIA}" stroke-width="3"/>`
       + `<ellipse cx="180" cy="196" rx="92" ry="84" fill="none" stroke="${RUST}" stroke-width="30" opacity=".8" stroke-dasharray="500 28" transform="rotate(-20 180 196)"/>`
       + `<path d="M380 112 C 470 90, 520 150, 515 205 C 510 270, 460 312, 380 292" fill="none" stroke="${RUST}" stroke-width="26" opacity=".8" stroke-linecap="round"/>`
       + `<circle cx="300" cy="140" r="16" fill="#c96f3b"/><circle cx="300" cy="268" r="16" fill="#7a5a3a"/>`
-      + Array.from({ length: 10 }, (_, i) => `<path d="M${90 + i * 45} 330 l20 30" stroke="${SEPIA}" stroke-width="1" opacity=".3"/>`).join(''));
+      + Array.from({ length: 10 }, (_, i) => `<path d="M${90 + i * 45} 330 l20 30" stroke="${SEPIA}" stroke-width="1" opacity=".3"/>`).join('') + '</g>');
+    // (The same drawing in a wide picture for «Etiquetar»: a tall one overflowed the slide when presenting.)
+    const KNEE_WIDE = svgURL(800, 560, `<image href="${KNEE_SVG}" x="200" y="0" width="400" height="560"/>`);
     const knee = (x, y, w, h, props = {}) => ({ ...img(KNEE_SVG, x, y, w, h, 'Rodilla derecha en vista anterior, dibujada como un grabado', props), id: KNEE });
-    const lead = (x1, y1, x2, y2, t, tx, ty, o, align = 'left', w = 220) => [anim(line(x1, y1, x2, y2, SEPIA, 2), o, 'fade-in'),
-      anim(text(t, tx, ty, w, 80, { fontFamily: H, fontSize: 26, fontStyle: 'italic', color: INK, textAlign: align }), o, 'fade-in')];
+    // A name with its leader line: one click each, in the order they are written.
+    const lead = (x1, y1, x2, y2, t, tx, ty, align = 'left', w = 220) => onClick([line(x1, y1, x2, y2, SEPIA, 2)],
+      [text(t, tx, ty, w, 80, { fontFamily: H, fontSize: 26, fontStyle: 'italic', color: INK, textAlign: align })]);
     const runner = lib3d('kh-CesiumMan');
     return numbered(build({ name: 'Anatomía: la rodilla', palette: 'paper', fonts: 'classic', title: { color: INK, size: 46 }, body: { color: INK }, decor: () => frame }, [
       { layout: 'blank', ...P, transition: 'fade', extra: [
@@ -536,9 +538,9 @@ export default {
       { layout: 'blank', ...P, extra: [
         plate('Huesos y superficies'),
         knee(160, 150, 360, 504),
-        ...lead(330, 200, 560, 200, 'Fémur', 570, 176, 1), ...lead(380, 380, 560, 300, 'Rótula', 570, 276, 2),
-        ...lead(430, 476, 560, 410, 'Menisco medial', 570, 386, 3), ...lead(345, 600, 560, 520, 'Tibia', 570, 496, 4), ...lead(226, 600, 150, 630, 'Peroné', 60, 610, 5),
-        anim(text(ul('Dos articulaciones en una: femorotibial y femoropatelar', 'Sinovial, en bisagra, con algo de rotación', 'La rótula, el mayor hueso sesamoideo'), 800, 190, 400, 420, { fontSize: 24, color: INK, lineHeight: 1.5 }), 6, 'fade-in')],
+        ...lead(330, 200, 560, 200, 'Fémur', 570, 176), ...lead(380, 380, 560, 300, 'Rótula', 570, 276),
+        ...lead(430, 476, 560, 410, 'Menisco medial', 570, 386), ...lead(345, 600, 560, 520, 'Tibia', 570, 496), ...lead(226, 600, 150, 630, 'Peroné', 60, 610),
+        ...onClick([text(ul('Dos articulaciones en una: femorotibial y femoropatelar', 'Sinovial, en bisagra, con algo de rotación', 'La rótula, el mayor hueso sesamoideo'), 800, 190, 400, 420, { fontSize: 24, color: INK, lineHeight: 1.5 })])],
         notes: 'Cinco clics para las estructuras, con líneas guía como en un grabado; el sexto, las ideas clave. Vista anterior de la rodilla derecha: el peroné queda a nuestra izquierda.' },
       { layout: 'blank', ...P, autoAnimate: true, extra: [
         plate('Los meniscos, vistos desde arriba'),
@@ -546,9 +548,10 @@ export default {
         text('Corte por la interlínea →', 70, 380, 200, 60, { fontSize: 18, color: DIM, fontStyle: 'italic', textAlign: 'center' }),
         img(PLATEAU, 300, 160, 600, 400, 'Meseta tibial vista desde arriba con los dos meniscos'),
         text('Anterior', 560, 140, 80, 30, { fontSize: 18, color: DIM, fontStyle: 'italic', textAlign: 'center' }),
-        ...lead(250, 470, 330, 420, 'Menisco lateral<br>en «O»', 30, 470, 1, 'right'),
-        ...lead(870, 470, 800, 420, 'Menisco medial<br>en «C»', 890, 470, 2),
-        ...lead(600, 300, 940, 250, 'Inserción del LCA', 950, 230, 3, 'left', 270), ...lead(600, 428, 940, 340, 'Inserción del LCP', 950, 320, 4, 'left', 270),
+        // (Seen from above with the front at the top, the outer side of the right knee is on our right.)
+        ...lead(250, 470, 330, 420, 'Menisco medial<br>en «C»', 30, 470, 'right'),
+        ...lead(870, 470, 800, 420, 'Menisco lateral<br>en «O»', 890, 470),
+        ...lead(600, 300, 940, 250, 'Inserción del LCA', 950, 230, 'left', 270), ...lead(600, 428, 940, 340, 'Inserción del LCP', 950, 320, 'left', 270),
         text('Fibrocartílago que reparte la carga y estabiliza: el medial, más fijo, se lesiona más.', 300, 600, 680, 60, { fontSize: 20, color: INK, textAlign: 'center' })],
         notes: 'Transformar: la rodilla de la lámina anterior se encoge a la esquina (mismo objeto) y aparece la meseta tibial vista desde arriba. Cuatro clics para los nombres.' },
       { layout: 'blank', ...P, transition: 'convex', extra: [
@@ -571,9 +574,9 @@ export default {
         line(60, 672, 1220, 672, SEPIA, 2),
         withAnims(model('kh-CesiumMan', 60, 440, 220, 232, { caption: '', clip: '*', view: 'side', bleed: 1.3 }), path([[760, 0]], { duration: 7000, ease: 'linear' }))],
         notes: 'La figura 3D camina en bucle; con un clic recorre la lámina. Valores de flexión aproximados de la literatura docente.' },
-      { layout: 'blank', ...P, extra: [pollBlock({ kind: 'label', fontSize: 30, x: 60, y: 50, w: 1160, h: 620, question: 'Pon nombre a cada estructura', image: KNEE_SVG,
+      { layout: 'blank', ...P, extra: [pollBlock({ kind: 'label', fontSize: 30, x: 60, y: 50, w: 1160, h: 620, question: 'Pon nombre a cada estructura', image: KNEE_WIDE,
         options: ['Fémur', 'Rótula', 'Menisco lateral', 'Tibia', 'Peroné', 'Ligamento colateral medial'],
-        points: [{ x: 50, y: 15 }, { x: 50, y: 45 }, { x: 32, y: 64 }, { x: 52, y: 88 }, { x: 18, y: 88 }, { x: 83, y: 66 }] })],
+        points: [{ x: 50, y: 15 }, { x: 50, y: 45 }, { x: 41, y: 64 }, { x: 51, y: 88 }, { x: 34, y: 88 }, { x: 66.5, y: 66 }] })],
         notes: 'Actividad «Etiquetar una imagen» con nota: cada estudiante arrastra los nombres a los números desde el móvil.' },
       { layout: 'blank', ...P, transition: 'zoom', extra: [
         text('Sin rodilla<br>no hay paso', 90, 170, 640, 260, { fontFamily: H, fontSize: 96, fontStyle: 'italic', color: INK, lineHeight: 1.05 }),
@@ -615,8 +618,8 @@ export default {
       { title: 'Dos tipos de ictus', layout: 'titleOnly', bg: BG, transition: 'slide', extra: [
         chartBlock({ x: 80, y: 170, w: 460, h: 460, chartType: 'doughnut', color: RED, labelColor: FG,
           data: [{ label: 'Isquémico', value: 85, color: BLUE }, { label: 'Hemorrágico', value: 15, color: RED }] }),
-        anim(text(`<div style="font-family:${H};font-size:52px;color:${BLUE}">Isquémico · 85 %</div>Un trombo o un émbolo tapona una arteria. Se puede intentar abrirla: fármacos trombolíticos o trombectomía.`, 600, 190, 600, 200, { fontSize: 25, color: FG, lineHeight: 1.4 }), 1, 'fade-left'),
-        anim(text(`<div style="font-family:${H};font-size:52px;color:${RED}">Hemorrágico · 15 %</div>Se rompe un vaso. Abrir arterias empeoraría el sangrado: por eso la imagen va antes que el tratamiento.`, 600, 420, 600, 200, { fontSize: 25, color: FG, lineHeight: 1.4 }), 2, 'fade-left')],
+        ...onClick([text(`<div style="font-family:${H};font-size:52px;color:${BLUE}">Isquémico · 85 %</div>Un trombo o un émbolo tapona una arteria. Se puede intentar abrirla: fármacos trombolíticos o trombectomía.`, 600, 190, 600, 200, { fontSize: 25, color: FG, lineHeight: 1.4 }), 'fade-left']),
+        ...onClick([text(`<div style="font-family:${H};font-size:52px;color:${RED}">Hemorrágico · 15 %</div>Se rompe un vaso. Abrir arterias empeoraría el sangrado: por eso la imagen va antes que el tratamiento.`, 600, 420, 600, 200, { fontSize: 25, color: FG, lineHeight: 1.4 }), 'fade-left'])],
         notes: 'Proporciones aproximadas en países occidentales. Desde fuera no se distinguen: hace falta un TC.' },
       { title: 'La cadena contra el reloj', layout: 'titleOnly', bg: BG, extra: [
         dg('chevrons', 'Reconocer\n112\nPreaviso\nTC\nReperfusión', 90, 170, 1100, 170, { colors: 'colorful', oneByOne: true }),
@@ -627,8 +630,8 @@ export default {
       { title: 'Cada minuto cuenta', layout: 'titleOnly', bg: BG, extra: [
         chartBlock({ x: 80, y: 170, w: 760, h: 460, chartType: 'area', color: RED, grid: true, xTitle: 'Horas desde el inicio', yTitle: 'Beneficio relativo (%)', seriesName: 'Beneficio',
           data: [['0,5', 100], ['1', 90], ['1,5', 79], ['2', 68], ['2,5', 58], ['3', 48], ['3,5', 39], ['4', 30], ['4,5', 22]].map(([l, v]) => ({ label: l, value: v })) }),
-        anim(big('−15 MIN', 890, 220, 320, 120, 110, YEL), 1, 'zoom-in'),
-        anim(text('Cada cuarto de hora que se adelanta el tratamiento se traduce en más pacientes independientes a los tres meses.', 890, 350, 320, 220, { fontSize: 24, color: FG, lineHeight: 1.4 }), 1, 'fade-up')],
+        ...onClick([big('−15 MIN', 890, 220, 320, 120, 110, YEL), 'zoom-in'],
+          [text('Cada cuarto de hora que se adelanta el tratamiento se traduce en más pacientes independientes a los tres meses.', 890, 350, 320, 220, { fontSize: 24, color: FG, lineHeight: 1.4 }), 'fade-up'])],
         notes: 'Curva ilustrativa, no son datos de un estudio concreto: el beneficio de la reperfusión cae a medida que pasa el tiempo.' },
       { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'order', fontSize: 34, x: 60, y: 50, w: 1160, h: 620, question: 'Ordena la cadena del código ictus',
         options: ['Reconocer los síntomas', 'Llamar al 112', 'Preaviso al hospital', 'TC craneal', 'Tratamiento de reperfusión'] })],
@@ -674,10 +677,10 @@ export default {
         ...block('PLANO N.º 3 · NEFRONA', 90, 600)],
         notes: 'Portada de plano técnico: cuadrícula, cajetín abajo a la derecha y la nefrona, que se dibuja sola al llegar.' },
       { title: 'Las cotas del riñón', layout: 'titleOnly', ...P, extra: [
-        ...[['1 millón', 'de nefronas en cada riñón', 90], ['180 L', 'de plasma filtrado al día', 470], ['1,5 L', 'de orina al día', 850]].map(([n, l, x], i) => [
-          ...dim(x, x + 340, 260, `cota ${i + 1}`).map(b => anim(b, i + 1, 'fade-in')),
-          anim(text(`<div style="font-family:${H};font-size:78px;font-weight:700;color:${i === 2 ? YEL : FG};line-height:1.1">${n}</div><div>${l}</div>`, x, 300, 340, 190, { fontSize: 26, color: DIM, textAlign: 'center' }), i + 1, 'zoom-in')]).flat(),
-        anim(note('→ se reabsorbe más del 99 % de lo que se filtra', 90, 560, 1100, 40, { color: YEL, textAlign: 'center', fontSize: 24 }), 4, 'fade-in')],
+        ...[['1 millón', 'de nefronas en cada riñón', 90], ['180 L', 'de plasma filtrado al día', 470], ['1,5 L', 'de orina al día', 850]].map(([n, l, x], i) => onClick(
+          ...dim(x, x + 340, 260, `cota ${i + 1}`).map(b => [b]),
+          [text(`<div style="font-family:${H};font-size:78px;font-weight:700;color:${i === 2 ? YEL : FG};line-height:1.1">${n}</div><div>${l}</div>`, x, 300, 340, 190, { fontSize: 26, color: DIM, textAlign: 'center' }), 'zoom-in'])).flat(),
+        ...onClick([note('→ se reabsorbe más del 99 % de lo que se filtra', 90, 560, 1100, 40, { color: YEL, textAlign: 'center', fontSize: 24 })])],
         notes: 'Tres cifras con líneas de cota, como en un plano, una por clic. Valores de un adulto sano, redondeados.' },
       { title: 'Recorrido de una gota', layout: 'titleOnly', ...P, extra: [
         ...glom(-60, 0), neph(-60, 0),
@@ -688,15 +691,15 @@ export default {
         notes: 'Un clic suelta la gota, que recorre la nefrona entera (trayectoria con sonido); después aparecen los nombres de cada tramo, encadenados.' },
       { title: 'De 180 litros a 1,5', layout: 'titleOnly', ...P, extra: [
         chartBlock({ x: 80, y: 160, w: 1120, h: 470, chartType: 'waterfall', color: CY, dataLabels: true, yTitle: 'Litros al día', labelColor: FG,
-          data: [{ label: 'Filtrado', value: 180 }, { label: 'Túbulo proximal', value: -117 }, { label: 'Asa de Henle', value: -36 }, { label: 'Distal y colector', value: -25.5 }, { label: 'Orina', value: 0 }] }),
+          data: [{ label: 'Filtrado', value: 180 }, { label: 'Túbulo proximal', value: -117 }, { label: 'Asa de Henle', value: -36 }, { label: 'Distal y colector', value: -25.5 }, { label: 'Total (orina)', value: 0 }] }),
         note('Valores redondeados de un adulto; el colector ajusta según la hormona antidiurética.', 80, 640, 1120, 30, { fontSize: 16, color: DIM })],
         notes: 'Gráfico de cascada: cada tramo resta lo que reabsorbe y la última barra es lo que queda, la orina.' },
       { title: 'Aclaramiento: medir el filtro', layout: 'titleOnly', ...P, extra: [
         mathBlock({ x: 90, y: 180, w: 620, h: 150, fontSize: 56, color: FG, latex: 'C_x = \\frac{U_x \\cdot V}{P_x}' }),
-        anim(mathBlock({ x: 90, y: 370, w: 620, h: 130, fontSize: 40, color: CY, latex: 'C_{cr} = \\frac{125 \\cdot 1}{1} = 125\\ \\text{mL/min}' }), 1, 'fade-up'),
-        anim(note('U = 125 mg/dL en orina · V = 1 mL/min · P = 1 mg/dL en plasma', 90, 520, 620, 60, { color: DIM }), 1, 'fade-up'),
-        anim(shape('rounded', 780, 190, 410, 300, '#0b2747', { radius: 14, stroke: YEL, strokeWidth: 2 }), 2, 'zoom-in'),
-        anim(text(`<div style="font-family:${H};font-size:70px;font-weight:700;color:${YEL}">≈ TFG</div>La creatinina se filtra y apenas se secreta, así que su aclaramiento se acerca a la tasa de filtrado glomerular.`, 810, 210, 350, 260, { fontSize: 22, color: FG, lineHeight: 1.4 }), 2, 'fade-in')],
+        ...onClick([mathBlock({ x: 90, y: 370, w: 620, h: 130, fontSize: 40, color: CY, latex: 'C_{cr} = \\frac{125 \\cdot 1}{1} = 125\\ \\text{mL/min}' }), 'fade-up'],
+          [note('U = 125 mg/dL en orina · V = 1 mL/min · P = 1 mg/dL en plasma', 90, 520, 620, 60, { color: DIM }), 'fade-up']),
+        ...onClick([shape('rounded', 780, 190, 410, 300, '#0b2747', { radius: 14, stroke: YEL, strokeWidth: 2 }), 'zoom-in'],
+          [text(`<div style="font-family:${H};font-size:70px;font-weight:700;color:${YEL}">≈ TFG</div>La creatinina se filtra y apenas se secreta, así que su aclaramiento se acerca a la tasa de filtrado glomerular.`, 810, 210, 350, 260, { fontSize: 22, color: FG, lineHeight: 1.4 })])],
         notes: 'La fórmula general, un ejemplo con números redondos y la conclusión. En la práctica la TFG se estima con ecuaciones que usan la creatinina en sangre.' },
       { title: 'Balance de agua en un día', layout: 'titleOnly', ...P, extra: [
         tableBlock({ x: 90, y: 170, w: 760, h: 400, fontSize: 23, header: true, headBg: CY, headFg: BP, stroke: '#3d6aa3', lines: true,
@@ -751,8 +754,8 @@ export default {
       { title: 'Sobrecarga oral de glucosa', layout: 'titleOnly', bg: BG, extra: [
         chartBlock({ x: 80, y: 170, w: 780, h: 460, chartType: 'line', color: MINT, grid: true, xTitle: 'Minutos tras 75 g de glucosa', yTitle: 'mg/dL', seriesName: 'Sin diabetes',
           data: [0, 30, 60, 90, 120].map((m, i) => ({ label: String(m), value: [85, 140, 125, 108, 95][i] })), series: [{ name: 'Diabetes tipo 2', values: [135, 215, 255, 245, 225], color: PINK }] }),
-        anim(text(`<div style="font-family:${H};font-size:56px;font-weight:700;color:${PINK};line-height:1.1">≥ 200</div>mg/dL a las 2 horas es uno de los criterios diagnósticos de diabetes`, 900, 210, 300, 230, { fontSize: 23, color: FG }), 1, 'fade-left'),
-        anim(text('Curvas ilustrativas de dos personas ficticias.', 900, 470, 300, 80, { fontSize: 19, color: DIM }), 2, 'fade-in')],
+        ...onClick([text(`<div style="font-family:${H};font-size:56px;font-weight:700;color:${PINK};line-height:1.1">≥ 200</div>mg/dL a las 2 horas es uno de los criterios diagnósticos de diabetes`, 900, 210, 300, 230, { fontSize: 23, color: FG }), 'fade-left']),
+        ...onClick([text('Curvas ilustrativas de dos personas ficticias.', 900, 470, 300, 80, { fontSize: 19, color: DIM })])],
         notes: 'Dos series en líneas. Los criterios diagnósticos reales combinan varias pruebas y siempre los valora un profesional.' },
       { title: 'Tipo 1 y tipo 2', layout: 'titleOnly', bg: BG, transition: 'slide', extra: [
         chartBlock({ x: 70, y: 170, w: 400, h: 460, chartType: 'doughnut', color: VIO, labelColor: FG,
@@ -766,13 +769,13 @@ export default {
         ...bars.map(([l, v, c], i) => [
           text(l, 400, 320 + i * 100, 220, 40, { fontSize: 24, color: DIM }),
           shape('rounded', 620, 324 + i * 100, 480, 30, '#3a2a5c', { radius: 15 }),
-          withAnims(shape('rounded', 620, 324 + i * 100, Math.max(30, 480 * v / 100), 30, c, { radius: 15 }), A('grow', { start: i ? 'afterPrev' : 'click', duration: 500 })),
+          withAnims(shape('rounded', 620, 324 + i * 100, Math.max(30, 480 * v / 100), 30, c, { radius: 15 }), A('wipe', { dir: 'left', start: i ? 'afterPrev' : 'click', duration: 500 })),
           withAnims(text(v + ' %', 1110, 318 + i * 100, 100, 40, { fontSize: 26, fontWeight: 700, color: c }), A('fade-in', { start: 'withPrev' }))]).flat()],
         notes: 'Un clic y las tres barras del «tiempo en rango» crecen una tras otra. Ejemplo ficticio; los objetivos los fija cada equipo con su paciente.' },
       { title: 'La HbA1c: la memoria de 3 meses', layout: 'titleOnly', bg: BG, extra: [
         mathBlock({ x: 90, y: 170, w: 640, h: 120, fontSize: 40, color: FG, latex: '\\bar{G}\\,(\\text{mg/dL}) = 28{,}7 \\cdot \\text{HbA1c} - 46{,}7' }),
         tableBlock({ x: 90, y: 320, w: 640, h: 320, fontSize: 24, header: true, headBg: PINK, headFg: '#ffffff', stroke: '#45336b', lines: true,
-          rows: [['HbA1c (%)', 'Glucosa media estimada (mg/dL)'], ...[5, 6, 7, 8, 9].map((v, i) => [String(v), `=REDONDEAR(28,7*A${i + 2}-46,7;0)`])], colW: [2, 4] }),
+          rows: [['HbA1c (%)', 'Glucosa media estimada (mg/dL)'], ...[5, 6, 7, 8, 9].map((v, i) => [String(v), `=REDONDEAR((287*A${i + 2}-467)/10;0)`])], colW: [2, 4] }),
         card('La hemoglobina se «azucara» según la glucosa media de los últimos 2–3 meses: por eso no cambia con una sola comida.', 780, 200, 420, 300, CARD, { fontSize: 25, color: FG, lineHeight: 1.45 }),
         text('La columna de la derecha es una fórmula.', 780, 540, 420, 40, { fontSize: 19, color: DIM })],
         notes: 'Ecuación de estimación de la glucosa media a partir de la HbA1c y una tabla que la aplica con fórmulas.' },
@@ -841,7 +844,7 @@ export default {
       { title: 'El antibiograma', layout: 'titleOnly', bg: BG, extra: [
         ...dish(340, 420, 230),
         ...discs.map(([n, mm, r], i) => { const a = i / 6 * Math.PI * 2 - Math.PI / 2, x = 340 + 140 * Math.cos(a), y = 420 + 140 * Math.sin(a), halo = 26 + mm * 2.2;
-          return [anim(shape('ellipse', x - halo, y - halo, halo * 2, halo * 2, '#fff8e6', { opacity: 45 }), 1, 'grow'), shape('ellipse', x - 24, y - 24, 48, 48, '#ffffff', { stroke: '#aaaaaa', strokeWidth: 1 }),
+          return [withAnims(shape('ellipse', x - halo, y - halo, halo * 2, halo * 2, '#fff8e6', { opacity: 45 }), A('zoom-in', { start: i ? 'withPrev' : 'click', duration: 700 })), shape('ellipse', x - 24, y - 24, 48, 48, '#ffffff', { stroke: '#aaaaaa', strokeWidth: 1 }),
             text(n, x - 24, y - 12, 48, 24, { fontSize: 13, fontWeight: 700, color: '#333333', textAlign: 'center' })]; }).flat(),
         tableBlock({ x: 640, y: 180, w: 560, h: 400, fontSize: 22, header: true, headBg: AGAR, headFg: BG, stroke: '#5a4030', lines: true,
           rows: [['Disco', 'Halo (mm)', 'Corte (mm)', 'Resultado'], ...discs.map(([n, mm, r], i) => [n, String(mm), String([14, 20, 21, 15, 22, 11][i]), r === 'S' ? 'Sensible' : 'Resistente'])], colW: [2, 2, 2, 3],
@@ -852,8 +855,9 @@ export default {
         dg('radial', 'Resistencia\n  Enzimas que destruyen el fármaco\n  Cambiar la diana\n  Bombas que lo expulsan\n  Cerrar la puerta: menos permeables\n  Compartir genes con otras', 190, 160, 900, 490, { colors: 'colorful', oneByOne: true })],
         notes: 'Diagrama radial uno a uno. El último punto, la transferencia horizontal de genes (plásmidos), explica por qué la resistencia se extiende tan deprisa.' },
       { title: 'Una carrera de casi un siglo', layout: 'titleOnly', bg: BG, extra: [
-        dg('timeline', '1928\n  Se descubre la penicilina\n1940s\n  Uso clínico generalizado\n1960s\n  Primeros estafilococos resistentes a meticilina\n1990s\n  Muy pocas familias nuevas\nHoy\n  Planes de «una sola salud»', 90, 180, 1100, 300, { colors: 'accent', oneByOne: true }),
-        anim(text('La resistencia aparece casi siempre pocos años después de que un antibiótico se empiece a usar.', 140, 520, 1000, 80, { fontSize: 26, color: AGAR, textAlign: 'center' }), 6, 'fade-up')],
+        // (With an entrance of its own, its milestones come right after it, before the closing line.)
+        withAnims(dg('timeline', '1928\n  Se descubre la penicilina\n1940s\n  Uso clínico generalizado\n1960s\n  Primeros estafilococos resistentes a meticilina\n1990s\n  Muy pocas familias nuevas\nHoy\n  Planes de «una sola salud»', 90, 180, 1100, 300, { colors: 'accent', oneByOne: true }), A('fade-in', { start: 'afterPrev', duration: 400 })),
+        ...onClick([text('La resistencia aparece casi siempre pocos años después de que un antibiótico se empiece a usar.', 140, 520, 1000, 80, { fontSize: 26, color: AGAR, textAlign: 'center' }), 'fade-up'])],
         notes: 'Cronología que aparece hito a hito; el último clic da la idea principal.' },
       { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'word', fontSize: 34, x: 80, y: 60, w: 1120, h: 600, question: '¿Qué palabra asocias con el buen uso de los antibióticos?', options: [] })],
         notes: 'Nube de palabras en directo para cerrar la discusión.' },

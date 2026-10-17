@@ -75,12 +75,6 @@ export default {
  "VÍA ORAL · VÍA IV": "ORAL · I.V.",
  "Diagrama de proceso que aparece paso a paso. Por vía intravenosa no hay liberación ni absorción: la biodisponibilidad es del 100 %.": "Prozessdiagramm, das Schritt für Schritt erscheint. Intravenös gibt es weder Freisetzung noch Resorption: Die Bioverfügbarkeit beträgt 100 %.",
  "LADME: el viaje de un fármaco": "LADME: die Reise eines Arzneimittels",
- "Liberación\nAbsorción\nDistribución\nMetabolismo\nExcreción": "Liberation\nAbsorption\nDistribution\nMetabolismus\nElimination",
- "Se disgrega la forma": "Die Arzneiform zerfällt",
- "Pasa a la sangre": "Gelangt ins Blut",
- "Llega a los tejidos": "Erreicht die Gewebe",
- "Sobre todo en el hígado": "Vor allem in der Leber",
- "Riñón, bilis, aire": "Niere, Galle, Atemluft",
  "<b style=\"color:#0f8b8d\">Farmacocinética</b>: lo que el cuerpo hace al fármaco. <b style=\"color:#c45c0a\">Farmacodinamia</b>: lo que el fármaco hace al cuerpo.": "<b style=\"color:#0f8b8d\">Pharmakokinetik</b>: was der Körper mit dem Arzneimittel macht. <b style=\"color:#c45c0a\">Pharmakodynamik</b>: was das Arzneimittel mit dem Körper macht.",
  "Datos simulados de un fármaco con vida media de 4 horas: 500 mg en bolo frente a la misma dosis oral con una biodisponibilidad del 80 %. Cada clic añade un parámetro.": "Simulierte Daten eines Arzneimittels mit 4 Stunden Halbwertszeit: 500 mg als Bolus gegenüber derselben Dosis oral mit 80 % Bioverfügbarkeit. Jeder Klick fügt einen Parameter hinzu.",
  "La curva de concentración en plasma": "Die Plasmakonzentrationskurve",
@@ -638,5 +632,7 @@ export default {
  "cuadritos R–R": "Kästchen R–R",
  "Dosis": "Dosis",
  "mL/min": "mL/min",
- "HbA1c": "HbA1c"
+ "HbA1c": "HbA1c",
+ "Liberación\n  Se disgrega la forma\nAbsorción\n  Pasa a la sangre\nDistribución\n  Llega a los tejidos\nMetabolismo\n  Sobre todo en el hígado\nExcreción\n  Riñón, bilis, aire": "Liberation\n  Die Arzneiform zerfällt\nAbsorption\n  Gelangt ins Blut\nDistribution\n  Erreicht die Gewebe\nMetabolismus\n  Vor allem in der Leber\nElimination\n  Niere, Galle, Atemluft",
+ "Total (orina)": "Gesamt (Urin)"
 };

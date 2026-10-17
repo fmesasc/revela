@@ -75,12 +75,6 @@ export default {
  "VÍA ORAL · VÍA IV": "AHO BIDEA · ZAIN BIDEA",
  "Diagrama de proceso que aparece paso a paso. Por vía intravenosa no hay liberación ni absorción: la biodisponibilidad es del 100 %.": "Pausoz pauso agertzen den prozesu-diagrama. Zain barneko bidean ez dago askapenik ez xurgapenik: bioerabilgarritasuna %100ekoa da.",
  "LADME: el viaje de un fármaco": "LADME: farmako baten bidaia",
- "Liberación\nAbsorción\nDistribución\nMetabolismo\nExcreción": "Askapena\nXurgapena\nBanaketa\nMetabolismoa\nIraizpena",
- "Se disgrega la forma": "Forma desegiten da",
- "Pasa a la sangre": "Odolera igarotzen da",
- "Llega a los tejidos": "Ehunetara iristen da",
- "Sobre todo en el hígado": "Batez ere gibelean",
- "Riñón, bilis, aire": "Giltzurruna, behazuna, airea",
  "<b style=\"color:#0f8b8d\">Farmacocinética</b>: lo que el cuerpo hace al fármaco. <b style=\"color:#c45c0a\">Farmacodinamia</b>: lo que el fármaco hace al cuerpo.": "<b style=\"color:#0f8b8d\">Farmakozinetika</b>: gorputzak farmakoari egiten diona. <b style=\"color:#c45c0a\">Farmakodinamika</b>: farmakoak gorputzari egiten diona.",
  "Datos simulados de un fármaco con vida media de 4 horas: 500 mg en bolo frente a la misma dosis oral con una biodisponibilidad del 80 %. Cada clic añade un parámetro.": "4 orduko erdibizitza duen farmako baten datu simulatuak: 500 mg bolo gisa, dosi bera aho bidez %80ko bioerabilgarritasunarekin alderatuta. Klik bakoitzak parametro bat gehitzen du.",
  "La curva de concentración en plasma": "Plasmako kontzentrazio-kurba",
@@ -638,5 +632,7 @@ export default {
  "cuadritos R–R": "laukitxoak R–R",
  "Dosis": "Dosia",
  "mL/min": "mL/min",
- "HbA1c": "HbA1c"
+ "HbA1c": "HbA1c",
+ "Liberación\n  Se disgrega la forma\nAbsorción\n  Pasa a la sangre\nDistribución\n  Llega a los tejidos\nMetabolismo\n  Sobre todo en el hígado\nExcreción\n  Riñón, bilis, aire": "Askapena\n  Forma desegiten da\nXurgapena\n  Odolera igarotzen da\nBanaketa\n  Ehunetara iristen da\nMetabolismoa\n  Batez ere gibelean\nIraizpena\n  Giltzurruna, behazuna, airea",
+ "Total (orina)": "Guztira (gernua)"
 };

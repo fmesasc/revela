@@ -75,12 +75,6 @@ export default {
  "VÍA ORAL · VÍA IV": "ORAAL · IV",
  "Diagrama de proceso que aparece paso a paso. Por vía intravenosa no hay liberación ni absorción: la biodisponibilidad es del 100 %.": "Procesdiagram dat stap voor stap verschijnt. Bij intraveneuze toediening is er geen vrijmaking of absorptie: de biologische beschikbaarheid is 100 %.",
  "LADME: el viaje de un fármaco": "LADME: de reis van een geneesmiddel",
- "Liberación\nAbsorción\nDistribución\nMetabolismo\nExcreción": "Liberatie\nAbsorptie\nDistributie\nMetabolisme\nExcretie",
- "Se disgrega la forma": "De vorm valt uiteen",
- "Pasa a la sangre": "Gaat het bloed in",
- "Llega a los tejidos": "Bereikt de weefsels",
- "Sobre todo en el hígado": "Vooral in de lever",
- "Riñón, bilis, aire": "Nier, gal, lucht",
  "<b style=\"color:#0f8b8d\">Farmacocinética</b>: lo que el cuerpo hace al fármaco. <b style=\"color:#c45c0a\">Farmacodinamia</b>: lo que el fármaco hace al cuerpo.": "<b style=\"color:#0f8b8d\">Farmacokinetiek</b>: wat het lichaam met het geneesmiddel doet. <b style=\"color:#c45c0a\">Farmacodynamiek</b>: wat het geneesmiddel met het lichaam doet.",
  "Datos simulados de un fármaco con vida media de 4 horas: 500 mg en bolo frente a la misma dosis oral con una biodisponibilidad del 80 %. Cada clic añade un parámetro.": "Gesimuleerde gegevens van een geneesmiddel met een halfwaardetijd van 4 uur: 500 mg als bolus tegenover dezelfde orale dosis met een biologische beschikbaarheid van 80 %. Elke klik voegt een parameter toe.",
  "La curva de concentración en plasma": "De plasmaconcentratiecurve",
@@ -638,5 +632,7 @@ export default {
  "cuadritos R–R": "hokjes R–R",
  "Dosis": "Dosis",
  "mL/min": "mL/min",
- "HbA1c": "HbA1c"
+ "HbA1c": "HbA1c",
+ "Liberación\n  Se disgrega la forma\nAbsorción\n  Pasa a la sangre\nDistribución\n  Llega a los tejidos\nMetabolismo\n  Sobre todo en el hígado\nExcreción\n  Riñón, bilis, aire": "Liberatie\n  De vorm valt uiteen\nAbsorptie\n  Gaat het bloed in\nDistributie\n  Bereikt de weefsels\nMetabolisme\n  Vooral in de lever\nExcretie\n  Nier, gal, lucht",
+ "Total (orina)": "Totaal (urine)"
 };

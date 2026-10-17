@@ -75,12 +75,6 @@ export default {
  "VÍA ORAL · VÍA IV": "ORAL · IV",
  "Diagrama de proceso que aparece paso a paso. Por vía intravenosa no hay liberación ni absorción: la biodisponibilidad es del 100 %.": "Process diagram that appears step by step. Intravenously there's no liberation or absorption: bioavailability is 100%.",
  "LADME: el viaje de un fármaco": "LADME: a drug's journey",
- "Liberación\nAbsorción\nDistribución\nMetabolismo\nExcreción": "Liberation\nAbsorption\nDistribution\nMetabolism\nExcretion",
- "Se disgrega la forma": "The dosage form breaks down",
- "Pasa a la sangre": "Enters the blood",
- "Llega a los tejidos": "Reaches the tissues",
- "Sobre todo en el hígado": "Mainly in the liver",
- "Riñón, bilis, aire": "Kidney, bile, breath",
  "<b style=\"color:#0f8b8d\">Farmacocinética</b>: lo que el cuerpo hace al fármaco. <b style=\"color:#c45c0a\">Farmacodinamia</b>: lo que el fármaco hace al cuerpo.": "<b style=\"color:#0f8b8d\">Pharmacokinetics</b>: what the body does to the drug. <b style=\"color:#c45c0a\">Pharmacodynamics</b>: what the drug does to the body.",
  "Datos simulados de un fármaco con vida media de 4 horas: 500 mg en bolo frente a la misma dosis oral con una biodisponibilidad del 80 %. Cada clic añade un parámetro.": "Simulated data for a drug with a 4-hour half-life: a 500 mg bolus versus the same oral dose with 80% bioavailability. Each click adds a parameter.",
  "La curva de concentración en plasma": "The plasma concentration curve",
@@ -638,5 +632,7 @@ export default {
  "cuadritos R–R": "small squares R–R",
  "Dosis": "Dose",
  "mL/min": "mL/min",
- "HbA1c": "HbA1c"
+ "HbA1c": "HbA1c",
+ "Liberación\n  Se disgrega la forma\nAbsorción\n  Pasa a la sangre\nDistribución\n  Llega a los tejidos\nMetabolismo\n  Sobre todo en el hígado\nExcreción\n  Riñón, bilis, aire": "Liberation\n  The dosage form breaks down\nAbsorption\n  Enters the blood\nDistribution\n  Reaches the tissues\nMetabolism\n  Mainly in the liver\nExcretion\n  Kidney, bile, breath",
+ "Total (orina)": "Total (urine)"
 };

@@ -75,12 +75,6 @@ export default {
  "VÍA ORAL · VÍA IV": "VOIE ORALE · VOIE IV",
  "Diagrama de proceso que aparece paso a paso. Por vía intravenosa no hay liberación ni absorción: la biodisponibilidad es del 100 %.": "Diagramme de processus qui apparaît étape par étape. Par voie intraveineuse, il n'y a ni libération ni absorption : la biodisponibilité est de 100 %.",
  "LADME: el viaje de un fármaco": "LADME : le voyage d'un médicament",
- "Liberación\nAbsorción\nDistribución\nMetabolismo\nExcreción": "Libération\nAbsorption\nDistribution\nMétabolisme\nÉlimination",
- "Se disgrega la forma": "La forme se désagrège",
- "Pasa a la sangre": "Passe dans le sang",
- "Llega a los tejidos": "Atteint les tissus",
- "Sobre todo en el hígado": "Surtout dans le foie",
- "Riñón, bilis, aire": "Rein, bile, air",
  "<b style=\"color:#0f8b8d\">Farmacocinética</b>: lo que el cuerpo hace al fármaco. <b style=\"color:#c45c0a\">Farmacodinamia</b>: lo que el fármaco hace al cuerpo.": "<b style=\"color:#0f8b8d\">Pharmacocinétique</b> : ce que le corps fait au médicament. <b style=\"color:#c45c0a\">Pharmacodynamie</b> : ce que le médicament fait au corps.",
  "Datos simulados de un fármaco con vida media de 4 horas: 500 mg en bolo frente a la misma dosis oral con una biodisponibilidad del 80 %. Cada clic añade un parámetro.": "Données simulées d'un médicament à demi-vie de 4 heures : 500 mg en bolus face à la même dose orale avec une biodisponibilité de 80 %. Chaque clic ajoute un paramètre.",
  "La curva de concentración en plasma": "La courbe de concentration plasmatique",
@@ -638,5 +632,7 @@ export default {
  "cuadritos R–R": "petits carreaux R–R",
  "Dosis": "Dose",
  "mL/min": "mL/min",
- "HbA1c": "HbA1c"
+ "HbA1c": "HbA1c",
+ "Liberación\n  Se disgrega la forma\nAbsorción\n  Pasa a la sangre\nDistribución\n  Llega a los tejidos\nMetabolismo\n  Sobre todo en el hígado\nExcreción\n  Riñón, bilis, aire": "Libération\n  La forme se désagrège\nAbsorption\n  Passe dans le sang\nDistribution\n  Atteint les tissus\nMétabolisme\n  Surtout dans le foie\nÉlimination\n  Rein, bile, air",
+ "Total (orina)": "Total (urine)"
 };

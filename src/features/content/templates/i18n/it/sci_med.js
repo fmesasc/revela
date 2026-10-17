@@ -75,12 +75,6 @@ export default {
  "VÍA ORAL · VÍA IV": "VIA ORALE · VIA EV",
  "Diagrama de proceso que aparece paso a paso. Por vía intravenosa no hay liberación ni absorción: la biodisponibilidad es del 100 %.": "Diagramma di processo che compare passo dopo passo. Per via endovenosa non c'è liberazione né assorbimento: la biodisponibilità è del 100 %.",
  "LADME: el viaje de un fármaco": "LADME: il viaggio di un farmaco",
- "Liberación\nAbsorción\nDistribución\nMetabolismo\nExcreción": "Liberazione\nAssorbimento\nDistribuzione\nMetabolismo\nEscrezione",
- "Se disgrega la forma": "La forma si disgrega",
- "Pasa a la sangre": "Passa nel sangue",
- "Llega a los tejidos": "Arriva ai tessuti",
- "Sobre todo en el hígado": "Soprattutto nel fegato",
- "Riñón, bilis, aire": "Rene, bile, aria",
  "<b style=\"color:#0f8b8d\">Farmacocinética</b>: lo que el cuerpo hace al fármaco. <b style=\"color:#c45c0a\">Farmacodinamia</b>: lo que el fármaco hace al cuerpo.": "<b style=\"color:#0f8b8d\">Farmacocinetica</b>: ciò che il corpo fa al farmaco. <b style=\"color:#c45c0a\">Farmacodinamica</b>: ciò che il farmaco fa al corpo.",
  "Datos simulados de un fármaco con vida media de 4 horas: 500 mg en bolo frente a la misma dosis oral con una biodisponibilidad del 80 %. Cada clic añade un parámetro.": "Dati simulati di un farmaco con emivita di 4 ore: 500 mg in bolo rispetto alla stessa dose orale con una biodisponibilità dell'80 %. Ogni clic aggiunge un parametro.",
  "La curva de concentración en plasma": "La curva di concentrazione plasmatica",
@@ -638,5 +632,7 @@ export default {
  "cuadritos R–R": "quadratini R–R",
  "Dosis": "Dose",
  "mL/min": "mL/min",
- "HbA1c": "HbA1c"
+ "HbA1c": "HbA1c",
+ "Liberación\n  Se disgrega la forma\nAbsorción\n  Pasa a la sangre\nDistribución\n  Llega a los tejidos\nMetabolismo\n  Sobre todo en el hígado\nExcreción\n  Riñón, bilis, aire": "Liberazione\n  La forma si disgrega\nAssorbimento\n  Passa nel sangue\nDistribuzione\n  Arriva ai tessuti\nMetabolismo\n  Soprattutto nel fegato\nEscrezione\n  Rene, bile, aria",
+ "Total (orina)": "Totale (urine)"
 };

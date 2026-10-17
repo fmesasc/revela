@@ -75,12 +75,6 @@ export default {
  "VÍA ORAL · VÍA IV": "VIA ORAL · VIA IV",
  "Diagrama de proceso que aparece paso a paso. Por vía intravenosa no hay liberación ni absorción: la biodisponibilidad es del 100 %.": "Diagrama de processo que aparece passo a passo. Por via intravenosa não há libertação nem absorção: a biodisponibilidade é de 100 %.",
  "LADME: el viaje de un fármaco": "LADME: a viagem de um fármaco",
- "Liberación\nAbsorción\nDistribución\nMetabolismo\nExcreción": "Libertação\nAbsorção\nDistribuição\nMetabolismo\nExcreção",
- "Se disgrega la forma": "Desagrega-se a forma",
- "Pasa a la sangre": "Passa para o sangue",
- "Llega a los tejidos": "Chega aos tecidos",
- "Sobre todo en el hígado": "Sobretudo no fígado",
- "Riñón, bilis, aire": "Rim, bílis, ar",
  "<b style=\"color:#0f8b8d\">Farmacocinética</b>: lo que el cuerpo hace al fármaco. <b style=\"color:#c45c0a\">Farmacodinamia</b>: lo que el fármaco hace al cuerpo.": "<b style=\"color:#0f8b8d\">Farmacocinética</b>: o que o corpo faz ao fármaco. <b style=\"color:#c45c0a\">Farmacodinâmica</b>: o que o fármaco faz ao corpo.",
  "Datos simulados de un fármaco con vida media de 4 horas: 500 mg en bolo frente a la misma dosis oral con una biodisponibilidad del 80 %. Cada clic añade un parámetro.": "Dados simulados de um fármaco com semivida de 4 horas: 500 mg em bólus face à mesma dose oral com uma biodisponibilidade de 80 %. Cada clique acrescenta um parâmetro.",
  "La curva de concentración en plasma": "A curva de concentração plasmática",
@@ -638,5 +632,7 @@ export default {
  "cuadritos R–R": "quadradinhos R–R",
  "Dosis": "Dose",
  "mL/min": "mL/min",
- "HbA1c": "HbA1c"
+ "HbA1c": "HbA1c",
+ "Liberación\n  Se disgrega la forma\nAbsorción\n  Pasa a la sangre\nDistribución\n  Llega a los tejidos\nMetabolismo\n  Sobre todo en el hígado\nExcreción\n  Riñón, bilis, aire": "Libertação\n  Desagrega-se a forma\nAbsorção\n  Passa para o sangue\nDistribuição\n  Chega aos tecidos\nMetabolismo\n  Sobretudo no fígado\nExcreção\n  Rim, bílis, ar",
+ "Total (orina)": "Total (urina)"
 };
