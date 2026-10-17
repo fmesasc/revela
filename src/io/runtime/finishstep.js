@@ -23,7 +23,15 @@ export function finishStepRuntime() {
     var go = R[name]; if (typeof go !== 'function') return;
     R[name] = function () {
       var list = running();
-      if (list.length) { list.forEach(function (a) { try { a.finish(); } catch (e) {} }); return; }
+      if (list.length) {
+        list.forEach(function (a) { try { a.finish(); } catch (e) {} });
+        // (And what those set off as they end — an exit after its entrance, the next link of a long chain —, finished
+        // too as it starts, for half a second: the whole step at once, as PowerPoint does. A breathing exercise with
+        // a 10 s chain needed four clicks to move on.)
+        var until = performance.now() + 500;
+        (function more() { running().forEach(function (a) { try { a.finish(); } catch (e) {} }); if (performance.now() < until) requestAnimationFrame(more); })();
+        return;
+      }
       return go.apply(R, arguments);
     };
   };

@@ -122,6 +122,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   await test('al presentar, «siguiente» con una animación a medias la termina (no salta al siguiente punto)', async () => {
     reset(); const b = slide().blocks[0]; select(b);
     R.trans.addAnimation('path', { dx: 300, dy: 0 });
+    // (And after it, by itself, an exit: the whole step — the chain — is finished by one click.)
+    R.trans.addAnimation('fade-out', { start: 'afterPrev', duration: 3000 });
     R.store.commit(() => { slide().blocks[0].animation.duration = 4000; R.state.deck.slides.push({ ...JSON.parse(JSON.stringify(slide())), id: 'x2', blocks: [] }); });
     const html = R.io.buildHTML(R.state.deck, { inApp: true });
     assert(/finishStepRuntime|\.finish\(\)/.test(html), 'la página lleva el arreglo');
@@ -135,7 +137,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(live().length > 0, 'la animación está en marcha');
       Rv.next(); await sleep(50);
       eq(at(), step, 'siguiente con la animación a medias: no avanza');
-      eq(live().length, 0, 'la termina');
+      await sleep(600); eq(live().length, 0, 'la termina, y lo que venía detrás en el mismo paso también');
       Rv.next(); await sleep(100);
       assert(at() !== step, 'y el siguiente clic ya avanza');
     } finally { f.remove(); }
