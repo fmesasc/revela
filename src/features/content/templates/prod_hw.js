@@ -202,11 +202,11 @@ export default {
           text('Misión de ejemplo', 84, 52, 520, 40, { fontSize: 20, color: ORG, fontWeight: 700, letterSpacing: 3 }),
           text('9,4 km de barrido en 23 minutos', 84, 88, 520, 50, { fontFamily: head, fontSize: 32, fontWeight: 700, color: INK }),
           shape('ellipse', 166, 486, 28, 28, INK), text('Base · refugio', 130, 524, 200, 30, { fontSize: 20, color: INK, fontWeight: 700 }),
-          withAnims(ink(route.map(([x, y]) => [x * 1.4, y * 1.6]), 180, 500, ORG, 6, { dash: 'dash' }), A('draw', { duration: 3200 })),
+          withAnims(ink(route.map(([x, y]) => [x * 1.4, y * 1.6]), 180, 500, ORG, 6), A('draw', { duration: 3200 })),
           withAnims(img(droneTop(ORG), 140, 460, 80, 80, 'El dron'), path(route.map(([x, y]) => [x * 1.4, y * 1.6]), { start: 'withPrev', duration: 3200 })),
           withAnims(icon('location', 1116, 290, 56, '#d11a2a'), A('bounce', { start: 'afterPrev', sound: 'pop' })),
           withAnims(text('Hallazgo · 23:41', 900, 236, 230, 40, { fontSize: 22, color: '#d11a2a', fontWeight: 700, textAlign: 'center', bg: MAP, radius: 8 }), A('fade-up', { start: 'afterPrev' }))],
-          notes: 'El recorrido (un trazo de tinta discontinuo) se dibuja mientras el dron lo sigue con una trayectoria de la misma forma, al mismo tiempo. Al final aparece el punto del hallazgo con un «pop».' },
+          notes: 'El recorrido (un trazo de tinta) se dibuja mientras el dron lo sigue con una trayectoria de la misma forma, al mismo tiempo. Al final aparece el punto del hallazgo con un «pop».' },
         { layout: 'blank', bg: MAP, transition: 'fade', extra: [pollBlock({ kind: 'quiz', fontSize: 32, x: 80, y: 60, w: 1120, h: 600, time: 20,
           question: 'De noche, ¿qué delata antes a una persona perdida?', options: ['El color de su ropa', 'Su calor corporal', 'El ruido que hace', 'Su teléfono móvil'], correct: [1] })],
           notes: 'Concurso con tiempo: gana quien acierta antes. La respuesta es el calor: la cámara térmica lo ve aunque la persona esté inconsciente y sin cobertura. La diapositiva siguiente lo enseña.' },
@@ -218,7 +218,7 @@ export default {
         { layout: 'titleOnly', title: 'Del maletero al aire en un minuto', bg: MAP, transition: 'slide', back: [img(map1, 0, 0, 1280, 720, 'Mapa topográfico', { fit: 'cover', opacity: 35, decorative: true })], extra: [
           timer(60, 820, 190, 360, { color: ORG, endText: '¡Despegue!' }),
           ...chain(['Desplegar los brazos', 'Encajar la batería', 'Calibrar la brújula', 'Marcar la zona en la tableta', 'Despegue automático'].map((t, i) =>
-            text(`<span style="color:${ORG};font-weight:800">${String(i + 1).padStart(2, '0')}</span>  ${t}`, 90, 190 + i * 82, 640, 64, { fontSize: 28, color: INK, bg: '#ffffffcc', radius: 10, pad: [12, 20, 12, 20], vAlign: 'middle' })), 'fade-right', 'click', { duration: 350, sound: 'click' })],
+            text(`<span style="color:${ORG};font-weight:800">${String(i + 1).padStart(2, '0')}</span>  ${t}`, 90, 190 + i * 82, 640, 64, { fontSize: 28, color: INK, bg: '#ffffffcc', radius: 10, pad: [12, 20, 12, 20], vAlign: 'middle' })), 'fade-right', 'click', { duration: 350, sound: 'click' }, 'click')],
           notes: 'Cuenta atrás de 60 segundos (empieza sola). Mientras corre, ve mostrando los cinco pasos de la lista con un clic cada uno.' },
         { layout: 'titleOnly', title: '¿Llega la batería?', bg: MAP, transition: 'fade', extra: [
           tableBlock({ x: 90, y: 170, w: 1100, h: 330, fontSize: 26, color: INK, header: true, headBg: INK, headFg: '#ffffff', stroke: LINE, banded: true, band: ORG, bandAlpha: 0.08, colW: [4, 3, 3, 3],
@@ -260,7 +260,7 @@ export default {
           withAnims(m3d('kh-Fox', 40, 300, 340, 300, { view: 'side', clip: fox.rest, walk: { clip: fox.walk, face: true, look: true } }), path([[820, 0]], { duration: 4200 })),
           withAnims(text('● MOVIMIENTO DETECTADO', 700, 150, 480, 50, { fontFamily: MONO, fontSize: 26, fontWeight: 700, color: RED, textAlign: 'right' }), A('fade-in', { start: 'afterPrev', sound: 'click' }), A('pulse', { start: 'afterPrev', duration: 900 })),
           withAnims(text('FOTO 1/3 · VÍDEO 20 s', 700, 200, 480, 40, { fontFamily: MONO, fontSize: 22, color: NV, textAlign: 'right' }), A('fade-in', { start: 'afterPrev' }))],
-          notes: 'Con un clic el zorro cruza el encuadre andando (Modelo 3D ▸ Al moverse ▸ Mientras se mueve). Al salir, salta el aviso de detección con un clic de obturador y late.' },
+          notes: 'Con un clic el zorro cruza el encuadre andando (Modelo 3D ▸ Al moverse ▸ Mientras se mueve). Cuando se para, salta el aviso de detección con un clic de obturador y late.' },
         { layout: 'blank', bg: BG, transition: 'fade', back: [lines()], extra: [
           text('Lo que ve, y hasta dónde', 90, 60, 700, 60, { fontFamily: head, fontSize: 44, fontWeight: 700, color: NV }),
           withAnims(img(reach(760, 520, NV, RED), 60, 150, 760, 520, 'Vista desde arriba: la cámara y su cono de detección con distancias de 8, 16 y 22 metros'), A('fade-right', { duration: 900 })),
@@ -271,13 +271,13 @@ export default {
           text('Hecha para quedarse en el monte', 90, 70, 1100, 60, { fontFamily: head, fontSize: 44, fontWeight: 700, color: NV }),
           ...[['0,2 s', 'desde que algo se mueve hasta la foto'], ['8 meses', 'de espera con 8 pilas AA'], ['−20 °C', 'aguanta heladas, lluvia y polvo']].map(([n, l], i) =>
             withAnims(text(`<div style="font-family:${MONO};font-size:64px;font-weight:700;color:${NV};text-shadow:0 0 18px ${NV}66">${n}</div><div style="margin-top:18px">${l}</div>`, 90 + i * 375, 220, 345, 280,
-              { fontSize: 26, color: FG, textAlign: 'center', vAlign: 'middle', borderColor: NV2, pad: [30, 24, 30, 24], radius: 4 }), A('zoom-in', { start: i ? 'afterPrev' : 'click', duration: 500 }))),
+              { fontSize: 26, color: FG, textAlign: 'center', vAlign: 'middle', borderColor: NV2, pad: [30, 24, 30, 24], radius: 4 }), A('zoom-in', { duration: 500 }))),
           text('Cifras de ejemplo.', 90, 560, 1100, 30, { fontSize: 18, color: DIM, textAlign: 'center' })],
-          notes: 'Tres cifras en recuadros de visor, que entran una detrás de otra. Pregunta al público cuánto creen que duran las pilas antes de enseñarlo.' },
+          notes: 'Tres cifras en recuadros de visor, una por clic. Pregunta al público cuánto creen que duran las pilas antes de enseñarlo.' },
         { layout: 'titleOnly', title: 'Quién pasa, y a qué hora', bg: BG, transition: 'slide', extra: [
           chartBlock({ x: 80, y: 150, w: 1120, h: 470, chartType: 'area', color: NV, seriesName: 'Zorro', grid: true, yTitle: 'Detecciones (un mes)',
             data: ['0 h', '2 h', '4 h', '6 h', '8 h', '10 h', '12 h', '14 h', '16 h', '18 h', '20 h', '22 h'].map((l, i) => ({ label: l, value: [34, 41, 30, 18, 4, 1, 0, 1, 3, 9, 22, 31][i] })),
-            series: [{ name: 'Jabalí', values: [22, 26, 19, 8, 1, 0, 0, 0, 2, 6, 15, 20], color: '#e0c25a' }, { name: 'Corzo', values: [3, 2, 6, 19, 14, 5, 2, 3, 6, 17, 9, 4], color: '#7fc9ff' }] }),
+            series: [{ name: 'Jabalí', values: [24, 29, 22, 10, 2, 0, 0, 0, 3, 8, 17, 19], color: '#e0c25a' }, { name: 'Corzo', values: [3, 2, 6, 20, 15, 5, 2, 3, 6, 17, 9, 4], color: '#7fc9ff' }] }),
           text('Un mes de una cámara junto a un abrevadero. Datos de ejemplo.', 80, 640, 1120, 30, { fontSize: 16, color: DIM })],
           notes: 'Gráfico de áreas con tres especies: el zorro y el jabalí son nocturnos; el corzo sale al amanecer y al atardecer (crepuscular).' },
         { layout: 'titleOnly', title: 'El recuento del mes', bg: BG, transition: 'fade', extra: [
@@ -423,9 +423,9 @@ export default {
         { layout: 'titleOnly', title: 'Tu pantalla, a tu manera', bg: BG, transition: 'fade', extra: [
           codeBlock({ x: 90, y: 170, w: 640, h: 440, fontSize: 24, lang: 'yaml', lineSteps: '1-4|5-8|9',
             code: 'pantalla:\n  arriba_izquierda: velocidad\n  arriba_derecha: pulso\n  abajo: proximo_giro\navisos:\n  coche_detras: vibrar\n  pulso_maximo: 175\n  beber_agua: cada 20 min\nmodo_noche: automatico' }),
-          ...chain([['Qué ves', 'elige el dato de cada esquina.'], ['Cuándo te avisa', 'vibración, sonido o un destello.'], ['De noche', 'el brillo baja solo al anochecer.']].map(([h, d], i) =>
-            text(`<b style="color:${HUD}">${h}</b><br>${d}`, 780, 200 + i * 130, 420, 100, { fontSize: 25, color: FG, lineHeight: 1.35 })), 'fade-left', 'click', { duration: 400 })],
-          notes: 'Código con pasos de resaltado: cada clic ilumina un bloque del archivo de ajustes y su explicación. Quien no quiera tocar código tiene lo mismo en la app.' },
+          ...[['Qué ves', 'elige el dato de cada esquina.'], ['Cuándo te avisa', 'vibración, sonido o un destello.'], ['De noche', 'el brillo baja solo al anochecer.']].map(([h, d], i) =>
+            text(`<b style="color:${HUD}">${h}</b><br>${d}`, 780, 200 + i * 130, 420, 100, { fontSize: 25, color: FG, lineHeight: 1.35 }))],
+          notes: 'Código con pasos de resaltado: cada clic ilumina el bloque siguiente del archivo de ajustes; a la derecha, qué hace cada bloque. Quien no quiera tocar código tiene lo mismo en la app.' },
         { layout: 'titleOnly', title: 'Se entiende con todo lo que ya llevas', bg: BG, transition: 'fade', extra: [
           dg('radial', 'Horizonte\n  Pulsómetro\n  Radar trasero\n  Potenciómetro\n  Móvil\n  Casco con luces\n  Sensor de cadencia', 190, 150, 900, 520, { colors: 'colorful', fontScale: 1.7, oneByOne: true })],
           notes: 'Diagrama radial que aparece pieza a pieza. Todo se conecta por Bluetooth de bajo consumo y protocolos abiertos.' },
@@ -477,7 +477,7 @@ export default {
           codeBlock({ x: 90, y: 160, w: 720, h: 470, fontSize: 21, lang: 'c', lineSteps: '1-6|8-13',
             code: '// Capa 0: escribir\n[CAPA_BASE] = TECLAS(\n  ESC,   Q, W, E, R, T,\n  TAB,   A, S, D, F, G,\n  MAYUS, Z, X, C, V, B\n),\n\n// Capa 1: mientras mantienes FN\n[CAPA_FN] = TECLAS(\n  _, F1,     F2,      F3, F4, F5,\n  _, VOL_MAS, VOL_MENOS, _, _, _,\n  _, LUZ_MAS, LUZ_MENOS, _, _, _\n),' }),
           text(`<b style="color:${Y}">Capa base</b>: lo que escribes cada día.<br><br><b style="color:${P}">Capa FN</b>: mantén FN y las mismas teclas suben el volumen o la luz.<br><br>El mapa se edita en el navegador, sin instalar nada.`, 850, 180, 350, 420, { fontSize: 24, color: FG, lineHeight: 1.4 })],
-          notes: 'Código con pasos de resaltado: primer clic, la capa base; segundo clic, la capa FN. El formato es inventado, parecido al de los firmwares libres de teclados.' },
+          notes: 'Código con pasos de resaltado: al llegar se ilumina la capa base; con un clic, la capa FN. El formato es inventado, parecido al de los firmwares libres de teclados.' },
         { layout: 'blank', bg: BG, transition: 'slide', extra: [
           text('MONTA EL TUYO', 90, 50, 1100, 80, { fontFamily: head, fontSize: 64, color: FG, letterSpacing: 2 }),
           tableBlock({ x: 90, y: 160, w: 1100, h: 380, fontSize: 26, color: FG, header: true, headBg: P, headFg: '#1b1030', stroke: '#4b3a78', banded: true, band: Y, bandAlpha: 0.07, colW: [5, 3, 2, 3],
@@ -540,12 +540,12 @@ export default {
           ...[[164, 352, 'Salón', '21 °C', HEAT], [406, 352, 'Dormitorio', '18 °C', COLD], [164, 489, 'Cocina', '20 °C', HEAT], [406, 489, 'Estudio', '20 °C', HEAT]].map(([x, y, n, t, c], i) =>
             withAnims(text(`<b>${n}</b> <span style="color:${c};font-weight:800">${t}</span>`, x, y, 210, 36, { fontSize: 20, color: INK, bg: '#ffffffdd', radius: 8, pad: [4, 10, 4, 10] }), A('zoom-in', { start: i ? 'afterPrev' : 'click', duration: 350 }))),
           withAnims(card(`<b style="color:${COLD}">Ventana abierta en el dormitorio</b><br>Templa lo nota por la bajada brusca y pausa esa habitación.`, 740, 200, 450, 170, CARD, { fontSize: 24, color: INK, lineHeight: 1.4, borderColor: COLD, pad: [24, 76, 24, 26] }), A('fade-left', { start: 'click' })),
-          withAnims(icon('wind', 1124, 222, 44, COLD), A('teeter', { start: 'afterPrev', duration: 900 })),
+          withAnims(icon('wind', 1124, 222, 44, COLD), A('fade-in', { start: 'withPrev' }), A('teeter', { start: 'afterPrev', duration: 900 })),
           withAnims(card(`<b style="color:${HEAT}">Válvulas en cada radiador</b><br>Cuatro zonas, cuatro horarios distintos.`, 740, 400, 450, 140, CARD, { fontSize: 24, color: INK, lineHeight: 1.4 }), A('fade-left', { start: 'click' }))],
           notes: 'Transformar: la esfera de la portada se encoge en la esquina. Luego aparecen las temperaturas de cada habitación y el aviso de ventana abierta, con un icono que se balancea.' },
         { layout: 'titleOnly', title: 'De dónde sale el ahorro', bg: BG, transition: 'slide', extra: [
           chartBlock({ x: 80, y: 160, w: 1120, h: 470, chartType: 'waterfall', color: HEAT, dataLabels: true, grid: true, yTitle: 'Euros al año',
-            data: [{ label: 'Factura actual', value: 1240 }, { label: 'Horarios', value: -160 }, { label: 'Casa vacía', value: -110 }, { label: 'Ventanas abiertas', value: -70 }, { label: 'Ajuste fino', value: -45 }, { label: 'Total con Templa', value: 0 }] }),
+            data: [{ label: 'Factura actual', value: 1240 }, { label: 'Horarios', value: -110 }, { label: 'Casa vacía', value: -160 }, { label: 'Ventanas abiertas', value: -70 }, { label: 'Ajuste fino', value: -45 }, { label: 'Total con Templa', value: 0 }] }),
           text('Vivienda de 90 m² con gas natural. Cifras de ejemplo.', 80, 640, 1120, 30, { fontSize: 16, color: MID })],
           notes: 'Cascada: de la factura de hoy a la factura con Templa (la última barra, «Total…», se calcula sola: 855 €). Lo que más ahorra es no calentar la casa vacía de día.' },
         { layout: 'blank', bg: BG, transition: 'fade', extra: [pollBlock({ kind: 'choice', fontSize: 32, x: 80, y: 60, w: 1120, h: 600,
@@ -624,8 +624,8 @@ export default {
           notes: 'La ficha de Chispa recorre el tablero siguiendo el programa (trayectoria) mientras el camino se dibuja a la vez (tinta, «Con la anterior»). Al llegar, pita con una campanilla.' },
         { layout: 'blank', bg: INK, transition: 'fade', extra: [
           text('Cuando crecen: el mismo programa, en código', 90, 60, 1100, 70, { fontFamily: head, fontSize: 42, fontWeight: 800, color: '#ffffff' }),
-          codeBlock({ x: 90, y: 160, w: 700, h: 440, fontSize: 26, lang: 'python', lineSteps: '1-3|4-6|7',
-            code: '# De la casa a la estrella\nadelante(2)\nderecha()\nrepetir(3):\n    adelante(1)\n    luces("verde")\npitar()' }),
+          codeBlock({ x: 90, y: 160, w: 700, h: 440, fontSize: 26, lang: 'python', lineSteps: '1-3|4-5|6',
+            code: '# De la casa a la estrella\nadelante(2)\nderecha()\nrepetir(3):\n    adelante(1)\npitar()' }),
           text(`Con la tableta, las cartas se convierten en código de verdad.<br><br><b style="color:${YEL}">repetir</b> ahorra cartas: es su primer bucle.`, 830, 190, 370, 380, { fontSize: 26, color: '#e6e9f2', lineHeight: 1.45 })],
           notes: 'Código con pasos de resaltado. El idioma es inventado y en español, inspirado en Python, para niños de 8 años en adelante.' },
         { layout: 'blank', bg: CREAM, transition: 'fade', extra: [pollBlock({ kind: 'quiz', fontSize: 32, x: 80, y: 60, w: 1120, h: 600, time: 20,
@@ -691,8 +691,8 @@ export default {
           text('Las llaves ganan con diferencia: por eso Miga cabe en un llavero y pesa 8 gramos.', 90, 570, 1100, 50, { fontFamily: head, fontSize: 28, fontStyle: 'italic', color: INK, textAlign: 'center' })],
           notes: 'Dona con colores de tinta antigua; la leyenda con porcentajes sale sola. Transición «Página» para mantener la idea de cuaderno de mapas.' },
         { layout: 'titleOnly', title: 'Tres maneras de encontrarlo', bg: PARCH, transition: 'page', back: [back()], extra: [
-          dg('target', 'A un metro\n  Suena y vibra\nEn tu casa\n  Bluetooth, hasta 120 m\nEn la ciudad\n  Red anónima de móviles', 90, 160, 1100, 470, { colors: 'colorful', fontScale: 1.2, oneByOne: true })],
-          notes: 'Diana de tres anillos, uno por clic: de lo más cercano (lo haces sonar) a lo más lejano (otros móviles lo detectan sin saber de quién es).' },
+          dg('target', 'En la ciudad\n  Red anónima de móviles\nEn tu casa\n  Bluetooth, hasta 120 m\nA un metro\n  Suena y vibra', 90, 160, 1100, 470, { colors: 'colorful', fontScale: 1.0, oneByOne: true })],
+          notes: 'Diana de tres anillos, uno por clic, de fuera adentro: de lo más lejano (otros móviles lo detectan sin saber de quién es) a lo más cercano, en el centro (lo haces sonar).' },
         { layout: 'blank', bg: PARCH, transition: 'page', back: [back()], extra: [
           text('El rastro de una mañana', 90, 50, 900, 70, { fontFamily: head, fontSize: 48, fontWeight: 700, color: INK }),
           img(town, 90, 140, 760, 500, 'Plano dibujado de un barrio con un río'),
