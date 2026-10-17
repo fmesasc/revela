@@ -120,6 +120,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.querySelector('.path-draw'), 'Esc cancela');
   });
 
+  await test('rebotar, girar o voltear al entrar: acaban en la opacidad propia del objeto, no opacos del todo', async () => {
+    reset();
+    R.store.commit(() => { slide().blocks = [{ id: 'op', type: 'shape', shape: 'star', x: 100, y: 100, w: 200, h: 200, rotation: 0, fill: '#f5b700', opacity: 0.25,
+      animation: { effect: 'bounce', order: 1, seq: 1, start: 'click', duration: 600, delay: 0 } }]; });
+    const html = R.io.buildHTML();
+    assert(/--o:0\.25;/.test(html) && /@keyframes rvBounce\{[^}]*\}[^@]*100%\{opacity:var\(--o,1\)/.test(html), 'la estrella al 25 % sigue al 25 % tras rebotar');
+  });
+
   await test('«Dibujar» en una forma estirada: nada antes de su turno y la línea entera al acabar', async () => {
     reset();
     R.store.commit(() => { slide().blocks = [{ id: 'st', type: 'shape', shape: 'star', x: 100, y: 250, w: 1080, h: 160, rotation: 0, fill: 'none', stroke: '#e63946', strokeWidth: 8,

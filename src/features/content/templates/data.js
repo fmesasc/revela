@@ -59,17 +59,17 @@ const salesRegions = () => {
       text('INFORME ANUAL · 2026', 70, 160, 440, 36, { fontSize: 20, letterSpacing: 5, color: '#cfe8f5' }),
       text('Ventas<br>por región', 70, 205, 500, 210, { fontSize: 76, lineHeight: 1.02, fontFamily: F.heading, color: '#ffffff', fontWeight: 800 }),
       text('Cinco regiones, cuatro trimestres y tres líneas de producto', 70, 450, 460, 90, { fontSize: 26, color: '#e6f3fa' }),
-      auto(chartBlock({ x: 660, y: 110, w: 540, h: 360, chartType: 'bar', color: BLUE, data: D(R, tot), dataLabels: true }), 'grow', { duration: 900, delay: 200 }),
+      auto(chartBlock({ x: 660, y: 110, w: 540, h: 360, chartType: 'bar', color: BLUE, data: D(R, tot), dataLabels: true }), 'zoom-in', { duration: 900, delay: 200 }),
       auto(text('18,4 M€', 660, 490, 540, 90, { fontSize: 76, fontWeight: 800, color: BLUE, fontFamily: F.heading }), 'zoom-in'),
       auto(text('facturación total · <b style="color:#196b24">+12 %</b> sobre 2025', 664, 585, 540, 40, { fontSize: 24, color: MUTED }), 'fade-in')],
-      notes: 'Todas las cifras de este informe son ficticias. Con el primer clic el gráfico de la portada crece (animación «Crecer») y la cifra total aparece detrás, en cadena; resume la facturación anual por región en miles de euros.' },
+      notes: 'Todas las cifras de este informe son ficticias. Al entrar, el gráfico de la portada aparece solo (animación «Zoom») y la cifra total llega detrás, en cadena; resume la facturación anual por región en miles de euros.' },
     { title: 'El año en cuatro cifras', layout: 'titleOnly', extra: [
       ...kpi('18,4 M€', 'facturación total', '▲ 12 % sobre 2025', true, 100, BLUE),
       ...kpi('31 %', 'de las ventas, en Centro', '▲ 2 puntos', true, 375, ORANGE),
       ...kpi('3 de 5', 'regiones sobre objetivo', '▼ Este e Islas no llegan', false, 650, GREEN),
       ...kpi('2.140', 'clientes activos', '▲ 180 nuevos', true, 925, '#0f9ed5'),
       click(text('Centro y Norte tiran del año; <b>Este e Islas</b> se quedan por debajo del objetivo y marcan las prioridades de 2027.', 100, 510, 1080, 100, { fontSize: 28, color: INK }), 'fade-in')],
-      notes: 'Con un clic las cuatro tarjetas entran una tras otra, encadenadas («Después de la anterior»). La frase final llega con el segundo clic: es el mensaje que queremos que se lleven.' },
+      notes: 'Al entrar, las cuatro tarjetas aparecen solas, una tras otra, encadenadas («Después de la anterior»). La frase final llega con el clic: es el mensaje que queremos que se lleven.' },
     { title: 'Ventas por región y trimestre', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'bar', color: '#b7d4e8', seriesName: 'T1', data: D(R, Q[0]), grid: true, xTitle: 'Región', yTitle: 'Miles de euros',
         series: [{ name: 'T2', values: Q[1], color: '#79add1' }, { name: 'T3', values: Q[2], color: '#3a86b8' }, { name: 'T4', values: Q[3], color: BLUE }] }), 'fade-up', { duration: 900 })],
@@ -118,7 +118,7 @@ const survey = () => {
       auto(shape('smiley', 920, 230, 280, 280, YEL, { sketch: true, stroke: '#1b1030', strokeWidth: 5, rotation: 8 }), 'bounce', { duration: 900, sound: 'pop' }),
       auto(shape('star', 1110, 160, 90, 90, PINK, { sketch: true, stroke: '#1b1030', strokeWidth: 4, rotation: -12 }), 'zoom-in'),
       auto(shape('heart', 880, 510, 90, 90, CYAN, { sketch: true, stroke: '#1b1030', strokeWidth: 4, rotation: -10 }), 'zoom-in')],
-      notes: 'Resultados de una encuesta inventada a 1.284 clientes. Al primer clic la cara sonriente cae rebotando, con sonido, y detrás aparecen la estrella y el corazón.' },
+      notes: 'Resultados de una encuesta inventada a 1.284 clientes. Al entrar, la cara sonriente cae rebotando, con sonido, y detrás aparecen solas la estrella y el corazón.' },
     { title: 'Quién ha respondido', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 110, y: 170, w: 470, h: 470, chartType: 'doughnut', legend: false, data: slices(['Web', 'App', 'Tienda', 'Teléfono'], [46, 28, 17, 9], [CYAN, PINK, YEL, MINT]) }), 'spin', { duration: 900 }),
       text('<b style="font-size:40px">1.284</b><br>respuestas', 245, 365, 200, 90, { fontSize: 22, color: FG, textAlign: 'center' }),
@@ -159,7 +159,7 @@ const survey = () => {
       pollBlock({ kind: 'word', question: 'Resume en una palabra tu experiencia con nosotros', options: [], fontSize: 36, x: 80, y: 60, w: 1120, h: 600 })],
       notes: 'Nube de palabras en directo: las palabras más repetidas se ven más grandes.' },
     { title: 'Plan de mejora', layout: 'titleOnly', transition: 'convex', extra: [
-      dg('steps', 'Web\n  Nuevo buscador en noviembre\nPrecio\n  Programa de puntos para clientes fieles\nDevoluciones\n  Recogida gratis en casa', 100, 180, 1080, 450, { oneByOne: true, colors: 'colorful', fontScale: 1.4 })],
+      dg('steps', 'Web\n  Nuevo buscador en noviembre\nPrecio\n  Programa de puntos para clientes fieles\nDevoluciones\n  Recogida gratis en casa', 100, 180, 1080, 450, { oneByOne: true, colors: 'colorful', fontScale: 1.1 })],
       notes: 'Diagrama de escalera, un peldaño por clic: tres cambios ligados a lo que peor puntúa.' },
   ]));
 };
@@ -185,7 +185,7 @@ const finance = () => {
         'fade-down', { duration: 350, ...(i === 0 && { delay: 300 }), sound: 'click' })),
       auto(text('€', 880, 278, 250, 80, { fontSize: 56, fontWeight: 700, color: '#8b5a2b', textAlign: 'center', fontFamily: F.heading }), 'zoom-in'),
       auto(text('+400 € al mes', 800, 150, 420, 80, { fontSize: 50, fontFamily: F.heading, wordart: 'gold', textAlign: 'center' }), 'fade-up')],
-      notes: 'Una familia inventada con datos verosímiles. Con un clic las monedas se apilan una tras otra, con un pequeño sonido en cada una.' },
+      notes: 'Una familia inventada con datos verosímiles. Al entrar, las monedas se apilan solas una tras otra, con un pequeño sonido en cada una.' },
     { title: 'Septiembre: previsto y real', layout: 'titleOnly', extra: [
       auto(tableBlock({ x: 100, y: 180, w: 720, h: 448, fontSize: 24, header: true, lines: true, headBg: INK, headFg: '#f7f1e3', stroke: '#c9bfae', cellPad: [10, 14, 10, 14], colW: [3, 2, 2, 2.2],
         rows: [['Concepto', 'Previsto', 'Real', 'Diferencia'],
@@ -197,7 +197,7 @@ const finance = () => {
       notes: 'Tabla de estilo «Mínima» (solo líneas horizontales) con fórmulas: Diferencia = Real − Previsto (=C2-B2) y totales con =SUMA(ARRIBA). Cambia un importe y todo se recalcula.' },
     { title: 'Del sueldo al ahorro', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 170, w: 1080, h: 480, chartType: 'waterfall', color: OLIVE,
-        data: [{ label: 'Sueldos', value: 2600 }, ...OUT.map(([, v], i) => ({ label: ['Casa', 'Comida', 'Seguros', 'Ocio', 'Luz y agua', 'Bus y coche'][i], value: -v })), { label: 'Total ahorro', value: 0 }] }), 'fade-up', { duration: 900 })],
+        data: [{ label: 'Sueldos', value: 2600 }, ...OUT.map(([, v], i) => ({ label: ['Casa', 'Comida', 'Seguros', 'Ocio', 'Luz y agua', 'Bus y coche'][i], value: -v })), { label: 'Total', value: 0 }] }), 'fade-up', { duration: 900 })],
       notes: 'Gráfico de cascada: cada gasto resta desde donde acabó el anterior y la barra «Total» muestra lo que queda, 400 € al mes.' },
     { title: '¿Adónde va cada euro?', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 110, y: 175, w: 460, h: 460, chartType: 'pie', legend: false, data: slices(OUT.map(o => o[0]), OUT.map(o => o[1]), SLICE) }), 'spin', { duration: 900 }),
@@ -219,10 +219,10 @@ const finance = () => {
       auto(fig('4.890 €', 'ahorrados en el año', 230, 200, 420, 140, { color: STEEL, fg: INK, size: 64, align: 'left', fontFamily: F.heading }), 'zoom-in', { sound: 'chime' })],
       notes: 'Gráfico de área con etiquetas de datos: el ahorro acumulado mes a mes. Julio es el único mes que baja.' },
     { title: 'La regla que nos funciona', layout: 'titleOnly', transition: 'page', extra: [
-      dg('pyramid', 'Ahorro\nCaprichos\nNecesidades', 100, 175, 620, 470, { oneByOne: true, colors: 'colorful' }),
+      click(dg('pyramid', 'Ahorro\nCaprichos\nNecesidades', 100, 175, 620, 470, { oneByOne: true, colors: 'colorful' }), 'fade-in'),
       ...[['20 % ahorro', 'Lo primero, el mismo día de cobro', BROWN], ['30 % caprichos', 'Ocio, ropa, regalos y viajes', OLIVE], ['50 % necesidades', 'Casa, comida, transporte y facturas', STEEL]].map(([h, t, c], i) =>
-        click(text(`<b style="color:${c}">${h}</b><br>${t}`, 780, 200 + i * 145, 400, 120, { fontSize: 26, color: INK }), 'fade-left'))],
-      notes: 'La regla 50/30/20 como pirámide que se construye con cada clic. Datos y familia inventados.' },
+        withAnims(text(`<b style="color:${c}">${h}</b><br>${t}`, 780, 200 + i * 145, 400, 120, { fontSize: 26, color: INK }), A('fade-left', { start: i ? 'click' : 'withPrev' })))],
+      notes: 'La regla 50/30/20 como pirámide que se construye con cada clic: cada piso llega con su explicación. Datos y familia inventados.' },
   ]));
 };
 
@@ -281,7 +281,7 @@ const webMetrics = () => {
       text('«Coste por venta» = Inversión ÷ Ventas (=REDONDEAR(B2/C2;2)); la fila Total suma con =SUMA(ARRIBA).', 100, 575, 1080, 36, { fontSize: 20, color: SOFT })],
       notes: 'Tabla con bandas y fórmulas que dividen dos columnas y redondean. «Clientes fieles» sale a 6,25 € por venta: la más eficiente.' },
     { title: 'Próximos pasos', layout: 'titleOnly', transition: 'slide', extra: [
-      dg('chevrons', 'Móvil\n  Página de producto el doble de rápida\nCarrito\n  Envío gratis desde 40 €\nEmail\n  Doblar la inversión', 100, 220, 1080, 420, { oneByOne: true, colors: 'accent', fontScale: 1.4 })],
+      dg('chevrons', 'Móvil\n  Página de producto el doble de rápida\nCarrito\n  Envío gratis desde 40 €\nEmail\n  Doblar la inversión', 100, 220, 1080, 420, { oneByOne: true, colors: 'accent', fontScale: 1.1 })],
       notes: 'Diagrama de galones, uno por clic: cada paso ataca un dato del informe (rebote en móvil, fuga del carrito, retorno del email).' },
   ]));
 };
@@ -309,7 +309,7 @@ const marketStudy = () => {
       auto(fig('38 %', 'de los hogares compra', 840, 170, 340, 150, { color: BLUE, fg: SOFT, size: 64, fontFamily: F.heading }), 'zoom-in', { sound: 'pop' }),
       auto(chartBlock({ x: 100, y: 345, w: 1080, h: 310, chartType: 'bar', color: RED, seriesName: 'Ventas (M€)', dataLabels: true,
         data: D(['2021', '2022', '2023', '2024', '2025', '2026'], [820, 905, 980, 1060, 1150, 1240]) }), 'fade-up', { duration: 900 })],
-      notes: 'Con un clic, tres cifras grandes entran encadenadas con un sonido y, debajo, las ventas de los últimos seis años en millones de euros.' },
+      notes: 'Al entrar, tres cifras grandes aparecen solas, encadenadas, con un sonido y, debajo, las ventas de los últimos seis años en millones de euros.' },
     { title: 'Quién se lleva el mercado', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 170, w: 1080, h: 450, chartType: 'treemap', color: RED,
         data: D(['Avenal', 'Marca blanca', 'Soyuna', 'Almendra Real', 'VerdeVida', 'Otras', 'Nubia'], [27, 22, 19, 12, 8, 7, 5]) }), 'zoom-in', { duration: 900 }),
@@ -319,7 +319,7 @@ const marketStudy = () => {
       // (x = the price per litre, on the chart's own axis; the names over each bubble — below Soyuna's,
       // which would run into Avenal —, placed where the chart draws them with these fixed ends.)
       auto(chartBlock({ ...bub, chartType: 'bubble', color: GOLD, xMin: 1, xMax: 3.5, yMin: 0, yMax: 400, xTitle: 'Precio por litro (€)', yTitle: 'Ventas (M€)',
-        data: D(PRICE, [273, 236, 335, 62, 149, 99]), series: [{ name: 'Margen', values: MARGIN }] }), 'grow', { duration: 900 }),
+        data: D(PRICE, [273, 236, 335, 62, 149, 99]), series: [{ name: 'Margen', values: MARGIN }] }), 'zoom-in', { duration: 900 }),
       ...BR.map((name, i) => {
         const p = +PRICE[i].replace(',', '.'), v = [273, 236, 335, 62, 149, 99][i], r = bub.h * (0.02 + 0.11 * Math.sqrt(MARGIN[i] / 35));
         const cx = bub.x + bub.w * (10.5 + (p - 1) / 2.5 * 87.5) / 100, cy = bub.y + bub.h * (50 - v / 400 * 46) / 60, below = name === 'Soyuna';
@@ -364,7 +364,7 @@ const demographics = () => {
       text('Así cambia<br>nuestra población', 90, 225, 660, 170, { fontSize: 60, lineHeight: 1.08, fontFamily: F.heading, fontWeight: 800, color: INK }),
       text('Un municipio de 48.000 habitantes en veinte años de datos', 92, 420, 560, 90, { fontSize: 28, color: MUTED }),
       ...Array.from({ length: 12 }, (_, i) => auto(icon('user', 760 + (i % 4) * 110, 170 + Math.floor(i / 4) * 130, 90, [MEN, WOMEN, LEAF][i % 3]), 'fade-up', { duration: 300 }))],
-      notes: 'Un municipio imaginario; todas las cifras son simuladas. Con un clic, los iconos de personas aparecen uno tras otro, encadenados.' },
+      notes: 'Un municipio imaginario; todas las cifras son simuladas. Al entrar, los iconos de personas aparecen solos, uno tras otro, encadenados.' },
     { title: 'Pirámide de población 2026', layout: 'titleOnly', extra: [
       text('Hombres', 300, 168, 260, 36, { fontSize: 26, fontWeight: 700, color: MEN, textAlign: 'right' }),
       text('Mujeres', 720, 168, 260, 36, { fontSize: 26, fontWeight: 700, color: WOMEN }),
@@ -383,7 +383,7 @@ const demographics = () => {
         data: D(['Centro', 'Ensanche', 'La Vega', 'Los Pinos', 'El Molino', 'Las Eras'], [11200, 9800, 8100, 7300, 6400, 5200]) }), 'fade-right', { duration: 900 }),
       click(fig('+31 %', 'crece Las Eras desde 2016, el barrio de las casas nuevas', 900, 200, 280, 200, { color: GREEN, fg: INK, size: 64, labelSize: 22 }), 'zoom-in'),
       click(fig('−8 %', 'pierde el Centro: casas más pequeñas y vecinos mayores', 900, 420, 280, 200, { color: WOMEN, fg: INK, size: 64, labelSize: 22 }), 'zoom-in')],
-      notes: 'Barras horizontales ordenadas de mayor a menor, con etiquetas de datos. Las dos cifras de la derecha entran con un clic.' },
+      notes: 'Barras horizontales ordenadas de mayor a menor, con etiquetas de datos. Las dos cifras de la derecha entran una por clic.' },
     { title: 'Nacimientos y defunciones', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 170, w: 1080, h: 415, chartType: 'line', color: LEAF, seriesName: 'Nacimientos', grid: true, xTitle: 'Año', yTitle: 'Personas al año',
         data: D(['2006', '2010', '2014', '2018', '2022', '2026'], [520, 505, 460, 410, 380, 365]), series: [{ name: 'Defunciones', values: [330, 345, 370, 395, 430, 445], color: '#8d6e63' }] }), 'fade-right', { duration: 1000 }),
@@ -404,7 +404,7 @@ const demographics = () => {
       auto(fig('+16 %', 'más habitantes que en 2006', 100, 280, 340, 220, { color: GREEN, fg: INK, size: 96, labelSize: 26 }), 'zoom-in', { sound: 'pop' }),
       auto(fig('44,6', 'años de edad media (6,4 más)', 470, 280, 340, 220, { color: '#8d6e63', fg: INK, size: 96, labelSize: 26 }), 'zoom-in', { sound: 'pop' }),
       auto(fig('1 de 6', 'vecinos nació en otro país', 840, 280, 340, 220, { color: WOMEN, fg: INK, size: 96, labelSize: 26 }), 'zoom-in', { sound: 'pop' })],
-      notes: 'Cierre con tres cifras grandes que entran encadenadas tras un clic, con sonido. Datos simulados.' },
+      notes: 'Cierre con tres cifras grandes que aparecen solas, encadenadas, con sonido. Datos simulados.' },
   ]));
 };
 
@@ -424,11 +424,11 @@ const season = () => {
       text('CB RIBERA', 90, 150, 600, 50, { fontSize: 34, letterSpacing: 8, color: OR, fontFamily: F.heading }),
       text('TEMPORADA<br>2025–26', 90, 200, 680, 290, { fontSize: 140, lineHeight: 0.95, fontFamily: F.heading, color: FG }),
       text('La temporada en cifras · Informe para socios', 92, 500, 640, 44, { fontSize: 28, color: GREY })],
-      notes: 'Un club y unos jugadores inventados. Al primer clic el balón (cuatro formas animadas a la vez) cae y rebota con un silbido.' },
+      notes: 'Un club y unos jugadores inventados. Al entrar, el balón (cuatro formas animadas a la vez) cae solo y rebota con un silbido.' },
     { title: 'El año en cuatro números', layout: 'titleOnly', extra: [
       big('24', 'victorias en 34 partidos', 100, 0), big('86,4', 'puntos por partido', 375, 1), big('3.º', 'puesto en la liga', 650, 2), big('12.800', 'espectadores de media', 925, 3),
       click(text('La mejor temporada del club desde 2011', 100, 520, 1080, 60, { fontSize: 40, textAlign: 'center', color: OR, fontFamily: F.heading, letterSpacing: 2 }), 'fade-up', { sound: 'applause' })],
-      notes: 'Un clic y las cuatro cifras entran encadenadas, con redoble y golpes de sonido. El último clic trae la frase y un aplauso.' },
+      notes: 'Al entrar, las cuatro cifras aparecen solas, encadenadas, con redoble y golpes de sonido. El clic trae la frase y un aplauso.' },
     { title: 'Clasificación final', layout: 'titleOnly', extra: [
       auto(tableBlock({ x: 100, y: 165, w: 1080, h: 468, fontSize: 24, header: true, banded: true, headBg: OR, headFg: BG, band: '#ffffff', bandAlpha: 0.06, stroke: '#2a2f36', cellPad: [8, 16, 8, 16], colW: [0.8, 4, 1, 1, 1, 1.4],
         rows: [['Pos.', 'Equipo', 'G', 'P', 'PJ', 'Puntos'], ...T.map(([t, g, p], i) => {
@@ -465,7 +465,7 @@ const season = () => {
         withAnims(shape(s, x, y, 150, 150, c, { opacity: 90 }), A('bounce', { start: i ? 'withPrev' : 'afterPrev', delay: i * 150, ...(i === 0 && { sound: 'applause' }) }))),
       text('¡GRACIAS, AFICIÓN!', 140, 230, 1000, 170, { fontSize: 140, fontFamily: F.heading, wordart: 'fire', textAlign: 'center' }),
       text('Nos vemos en la pretemporada · Datos ficticios', 240, 420, 800, 50, { fontSize: 30, color: GREY, textAlign: 'center' })],
-      notes: 'Con un clic las estrellas rebotan, con un aplauso. Texto con efecto WordArt «Fuego».' },
+      notes: 'Al entrar, las estrellas rebotan solas, con un aplauso. Texto con efecto WordArt «Fuego».' },
   ]));
 };
 
@@ -488,7 +488,7 @@ const energy = () => {
       text('INFORME DE CONSUMO · 2026', 90, 190, 600, 36, { fontSize: 22, letterSpacing: 5, color: GREEN }),
       text('Energía<br>en casa', 90, 235, 600, 230, { fontSize: 96, lineHeight: 1.02, fontFamily: F.heading, fontWeight: 800, color: FG }),
       text('Un año de consumo, placas solares y factura en una vivienda de cuatro personas', 92, 480, 600, 90, { fontSize: 26, color: SOFT })],
-      notes: 'Datos simulados de una vivienda tipo. Al primer clic el sol gira y los paneles solares se colocan uno tras otro.' }),
+      notes: 'Datos simulados de una vivienda tipo. Al entrar, el sol gira y los paneles solares se colocan solos, uno tras otro.' }),
     S({ title: 'Un día de consumo, hora a hora', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'stackedArea', color: GREEN, seriesName: 'Base', data: D(H, baseL), grid: true, xTitle: 'Hora del día', yTitle: 'Potencia (kW)',
         series: [{ name: 'Climatización', values: clima, color: CYAN }, { name: 'Cocina y otros', values: cook, color: PINK }] }), 'fade-up', { duration: 1000 })],
@@ -558,9 +558,9 @@ const abTest = () => {
       click(text('Si |z| > 1,96, la diferencia no es casualidad (95 % de confianza).', 640, 580, 540, 60, { fontSize: 22, color: MUTED, textAlign: 'center' }), 'fade-in')],
       notes: 'Las dos ecuaciones aparecen con un clic cada una: la conversión de cada versión y la prueba z para comparar dos proporciones.' },
     { title: 'Cómo lo hicimos', layout: 'titleOnly', extra: [
-      dg('process', 'Reparto al azar\n  La mitad ve A y la otra mitad B\n14 días\n  Dos semanas completas\n48.000 visitas\n  24.000 por versión\nMedición\n  Compras por visita', 100, 190, 1080, 330, { oneByOne: true, colors: 'accent', fontScale: 1.3 }),
-      click(card('<b>Regla de parada fijada antes de empezar:</b> 14 días completos y 24.000 visitas por versión. Nada de mirar los datos a mitad y parar cuando «parece» que gana una.', 100, 530, 1080, 120, '#f3f5f6', { fontSize: 22, color: INK, borderColor: '#cfd6da' }), 'fade-up')],
-      notes: 'Diagrama de proceso, un paso por clic. Dos semanas completas evitan que pese más un día de la semana que otro.' },
+      dg('process', 'Reparto al azar\n  La mitad ve A y la otra mitad B\n14 días\n  Dos semanas completas\n48.000 visitas\n  24.000 por versión\nMedición\n  Compras por visita', 100, 190, 1080, 330, { oneByOne: true, colors: 'accent', fontScale: 1.1 }),
+      auto(card('<b>Regla de parada fijada antes de empezar:</b> 14 días completos y 24.000 visitas por versión. Nada de mirar los datos a mitad y parar cuando «parece» que gana una.', 100, 530, 1080, 120, '#f3f5f6', { fontSize: 22, color: INK, borderColor: '#cfd6da' }), 'fade-up')],
+      notes: 'La regla de parada aparece sola al entrar; luego el diagrama de proceso, un paso por clic. Dos semanas completas evitan que pese más un día de la semana que otro.' },
     { title: 'Compras por cada 1.000 visitas', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 170, w: 1080, h: 490, chartType: 'bar', color: GA, seriesName: 'A · actual', grid: true, dataLabels: true, xTitle: 'Dispositivo', yTitle: 'Compras por 1.000 visitas',
         data: D(['Móvil', 'Ordenador', 'Tableta', 'Total'], [21, 34, 26, 26]), series: [{ name: 'B · nuevo', values: [29, 37, 28, 32], color: OB }] }), 'fade-up', { duration: 900 })],
@@ -583,7 +583,7 @@ const abTest = () => {
       auto(text('al año: 1,2 millones de visitas × 0,6 puntos más de conversión × 26 € de pedido medio', 190, 430, 900, 90, { fontSize: 26, color: MUTED, textAlign: 'center' }), 'fade-in')],
       notes: 'Estimación sencilla del impacto anual: visitas × mejora de conversión × pedido medio. Cifras inventadas.' },
     { title: 'Conclusiones', layout: 'titleOnly', transition: 'fade', extra: [
-      dg('list', 'Adoptar B\n  En todos los dispositivos desde el lunes\nEl móvil, el gran ganador\n  +38 % de conversión: 29 frente a 21 por mil\nSiguiente prueba\n  Separar el color del texto del botón', 100, 180, 1080, 450, { oneByOne: true, colors: 'light', fontScale: 1.4 })],
+      dg('list', 'Adoptar B\n  En todos los dispositivos desde el lunes\nEl móvil, el gran ganador\n  +38 % de conversión: 29 frente a 21 por mil\nSiguiente prueba\n  Separar el color del texto del botón', 100, 180, 1080, 450, { oneByOne: true, colors: 'light' })],
       notes: 'Lista que aparece punto a punto. La siguiente prueba separa los dos cambios para saber cuál pesa más.' },
   ]));
 };
@@ -618,7 +618,7 @@ const execPanel = () => {
         text(`<b style="font-size:36px;line-height:1">${n}</b><br><span style="color:${MUTED}">${l}</span>`, 228 + i * 240, 432, 210, 84, { fontSize: 20, color: INK })], 'bounce', { duration: 600 })),
       auto(spark([3410, 3280, 3550, 3600, 3720, 3900, 3480, 3310, 3820], 860, 170, 290, 200, BLUE), 'fade-left', { duration: 800 }),
       text('Ingresos mensuales 2026', 860, 380, 290, 30, { fontSize: 18, color: MUTED, textAlign: 'center' })],
-      notes: 'Panel mensual de una empresa inventada. Los semáforos resumen los doce indicadores del mes y rebotan con el primer clic.' }),
+      notes: 'Panel mensual de una empresa inventada. Los semáforos resumen los doce indicadores del mes y rebotan solos al entrar.' }),
     S({ title: 'Indicadores del mes', layout: 'titleOnly', extra: [
       ...tile('INGRESOS', '3,82 M€', '3,70 M€', OK, [3.41, 3.28, 3.55, 3.6, 3.72, 3.9, 3.48, 3.31, 3.82], 100, 160),
       ...tile('MARGEN BRUTO', '36,4 %', '38 %', MID, [38.5, 38.1, 37.9, 37.6, 37.2, 37.0, 36.8, 36.6, 36.4], 470, 160),
@@ -626,7 +626,7 @@ const execPanel = () => {
       ...tile('RECOMENDACIÓN', '+41', '+40', OK, [33, 35, 34, 36, 38, 37, 39, 40, 41], 100, 410),
       ...tile('ENTREGA', '3,6 días', '3 días', BAD, [2.8, 2.9, 2.9, 3.0, 3.1, 3.2, 3.4, 3.5, 3.6], 470, 410),
       ...tile('ROTACIÓN', '1,1 %', '1,5 %', OK, [1.6, 1.5, 1.4, 1.4, 1.3, 1.2, 1.3, 1.2, 1.1], 840, 410)],
-      notes: 'Seis indicadores con su semáforo y un minigráfico de los nueve meses. Con un clic las tarjetas entran una tras otra, encadenadas.' }),
+      notes: 'Seis indicadores con su semáforo y un minigráfico de los nueve meses. Al entrar, las tarjetas aparecen solas, una tras otra, encadenadas.' }),
     S({ title: 'Ingresos frente a presupuesto', layout: 'titleOnly', extra: [
       auto(chartBlock({ x: 100, y: 165, w: 1080, h: 495, chartType: 'bar', combo: true, color: BLUE, seriesName: 'Real', grid: true, xTitle: 'Mes', yTitle: 'Miles de euros',
         data: D(M9, [3410, 3280, 3550, 3600, 3720, 3900, 3480, 3310, 3820]), series: [{ name: 'Presupuesto', values: [3400, 3350, 3500, 3550, 3650, 3800, 3550, 3400, 3700], color: MID }] }), 'fade-up', { duration: 900 })],

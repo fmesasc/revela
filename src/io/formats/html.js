@@ -67,7 +67,7 @@ const tfCSS = b => b.animation
   : `transform:${tf(b)};`;
 const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
   + `height:${b.h}px;${tfCSS(b)}`
-  + (opacityOf(b) < 1 ? `opacity:${+opacityOf(b).toFixed(3)};` : '')
+  + (opacityOf(b) < 1 ? `opacity:${+opacityOf(b).toFixed(3)};--o:${+opacityOf(b).toFixed(3)};` : '')
   + (shadowCSS(b) ? `filter:${shadowCSS(b)};` : '')   // (a picture's styled shadow: in its own filter)
   + animVars(b);
 // Timing (and motion path) of one of an object's animations (its first by
@@ -79,9 +79,10 @@ const animVars = (b, a = b.animation, key = b.id) => (a ? `transition-duration:$
 
 // Custom entrance effects that reveal.js doesn't provide (used only if present).
 const CUSTOM_KF = {
-  spin: ['rvSpin', '@keyframes rvSpin{from{opacity:0;transform:rotate(-200deg) scale(.6)}to{opacity:1;transform:none}}'],
-  flip: ['rvFlip', '@keyframes rvFlip{from{opacity:0;transform:perspective(600px) rotateY(90deg)}to{opacity:1;transform:none}}'],
-  bounce: ['rvBounce', '@keyframes rvBounce{0%{opacity:0;transform:translateY(-60px)}60%{opacity:1;transform:translateY(12px)}80%{transform:translateY(-6px)}100%{transform:none}}'],
+  // (Ending at the object's own opacity, --o — box() —, not at 1: a star at a quarter came in whole.)
+  spin: ['rvSpin', '@keyframes rvSpin{from{opacity:0;transform:rotate(-200deg) scale(.6)}to{opacity:var(--o,1);transform:none}}'],
+  flip: ['rvFlip', '@keyframes rvFlip{from{opacity:0;transform:perspective(600px) rotateY(90deg)}to{opacity:var(--o,1);transform:none}}'],
+  bounce: ['rvBounce', '@keyframes rvBounce{0%{opacity:0;transform:translateY(-60px)}60%{opacity:var(--o,1);transform:translateY(12px)}80%{transform:translateY(-6px)}100%{opacity:var(--o,1);transform:none}}'],
 };
 // One keyframe set per object with a motion path (curves are sampled).
 // (a 3D model turns to face its way instead; the next animations turn their layer, not the object).
