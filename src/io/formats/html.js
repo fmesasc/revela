@@ -78,7 +78,9 @@ const imgBox = b => box({ ...b, opacity: opacityOf(b) * imgOpacity(b) * 100 });
 const cssKey = key => String(key).replace(/[^\w-]/g, '_');
 const animVars = (b, a = b.animation, key = b.id) => (a ? `transition-duration:${a.duration ?? 500}ms;transition-delay:${a.delay ?? 0}ms;`
     + `--anim-dur:${a.duration ?? 500}ms;--anim-del:${a.delay ?? 0}ms;` + (SIZE_FX.includes(a.effect) ? `--anim-scale:${animScale(a)};` : '')
-    + (a.effect === 'path' ? `--dx:${pathEnd(a)[0]}px;--dy:${pathEnd(a)[1]}px;--pk:rvP${cssKey(key)};` : '') + fxVars(a) : '');
+    + (a.effect === 'path' ? `--dx:${pathEnd(a)[0]}px;--dy:${pathEnd(a)[1]}px;--pk:rvP${cssKey(key)};` : '')
+    // (A path at an even speed, without its smooth start and end — «Inicio y final suaves» off —: a car crossing the scene.)
+    + (a.effect === 'path' && a.ease === 'linear' ? 'transition-timing-function:linear;--anim-ease:linear;' : '') + fxVars(a) : '');
 
 // Custom entrance effects that reveal.js doesn't provide (used only if present).
 const CUSTOM_KF = {
@@ -191,11 +193,13 @@ Reveal.on('ready',upd);Reveal.on('slidechanged',upd);if(Reveal.isReady())upd();}
 // while the path's own length is the unstretched one: drawn only in part, or bits of it shown before its turn (a
 // freeform arrow made wider than tall). Those: without pathLength, their dash as long as the line really is on the
 // slide (in its pixels, as such a line's dashes are measured) and a quarter more — measured exactly, the tip where a
-// closed outline starts and ends was left out —, in --rvdl.
+// closed outline starts and ends was left out —, in --rvdl. It is drawn to its measured length (--rvde: what the dash
+// has left over) and then shown whole: drawn to the dash's end, it was complete at four fifths of its time, ahead of
+// a path of the same duration.
 const DRAW_JS = `(function(){function ratio(p){try{var m=p.getCTM(),L=p.getTotalLength();if(!m||!L)return 1;var n=Math.max(8,Math.min(300,Math.ceil(L/3))),t=0,a=p.getPointAtLength(0);
 for(var i=1;i<=n;i++){var b=p.getPointAtLength(L*i/n),dx=b.x-a.x,dy=b.y-a.y;t+=Math.hypot(m.a*dx+m.c*dy,m.b*dx+m.d*dy);a=b;}return t>0?t/L:1;}catch(e){return 1;}}
 function all(){var s=Reveal.getCurrentSlide();if(!s)return;s.querySelectorAll('.fragment.draw .rvd').forEach(function(p){if(getComputedStyle(p).vectorEffect!=='non-scaling-stroke')return;
-var L=p.getTotalLength&&p.getTotalLength();if(!L)return;p.removeAttribute('pathLength');p.style.setProperty('--rvdl',(ratio(p)*L*1.25+4).toFixed(1));});}
+var L=p.getTotalLength&&p.getTotalLength();if(!L)return;p.removeAttribute('pathLength');var Ls=ratio(p)*L;p.style.setProperty('--rvdl',(Ls*1.25+4).toFixed(1));p.style.setProperty('--rvde',(Ls*0.25+4).toFixed(1));});}
 Reveal.on('ready',all);Reveal.on('slidechanged',all);Reveal.on('resize',all);if(Reveal.isReady())all();})();`;
 
 // Slides whose first animation starts by itself: on arriving (forwards), their first step plays.
@@ -906,12 +910,21 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${fxCSS(deck)}
  ${customTransitionCSS(usedTransitions(deck), deck.size)}
  ${backdropCSS(bd, w, h)}
+ /* (Highlight and strike on text with a colour or wrapper of its own: reveal.js colours and strikes the box, and the text's
+    own colour — or a Morph wrapper, which a line-through doesn't reach — won.) */
+ .reveal .slides section .fragment.highlight-red.visible *,.reveal .slides section .fragment.highlight-current-red.current-fragment *{color:#ff2c2d!important}
+ .reveal .slides section .fragment.highlight-green.visible *,.reveal .slides section .fragment.highlight-current-green.current-fragment *{color:#17ff2e!important}
+ .reveal .slides section .fragment.highlight-blue.visible *,.reveal .slides section .fragment.highlight-current-blue.current-fragment *{color:#1b91ff!important}
+ .reveal .slides section .fragment.highlight-red.visible,.reveal .slides section .fragment.highlight-current-red.current-fragment{color:#ff2c2d!important}
+ .reveal .slides section .fragment.highlight-green.visible,.reveal .slides section .fragment.highlight-current-green.current-fragment{color:#17ff2e!important}
+ .reveal .slides section .fragment.highlight-blue.visible,.reveal .slides section .fragment.highlight-current-blue.current-fragment{color:#1b91ff!important}
+ .reveal .slides section .fragment.strike.visible *{text-decoration:line-through}
  .reveal .slides section .fragment.rv-path{opacity:1;visibility:inherit}
  .reveal .slides section .fragment.rv-path.visible{translate:var(--dx) var(--dy)}
  .reveal .slides section .fragment.spin360,.reveal .slides section .fragment.clip3d,.reveal .slides section .fragment.pdfview,.reveal .slides section .fragment.mapfly,.reveal .slides section .fragment.draw,.reveal .slides section .fragment[data-mfx]{opacity:1;visibility:inherit}
  .reveal .fragment.draw .rvd{stroke-dasharray:var(--rvdl,1);stroke-dashoffset:var(--rvdl,1);fill-opacity:0}
  .reveal .fragment.draw.visible .rvd{animation:rvDraw var(--anim-dur,1500ms) ease-in-out var(--anim-del,0ms) forwards}
- @keyframes rvDraw{70%{fill-opacity:0}to{stroke-dashoffset:0;fill-opacity:1}}
+ @keyframes rvDraw{70%{fill-opacity:0}99.9%{stroke-dasharray:var(--rvdl,1)}to{stroke-dashoffset:var(--rvde,0);stroke-dasharray:none;fill-opacity:1}}
  [data-goto],[data-href],[data-popup]{cursor:pointer}
  [data-drag]{cursor:grab;touch-action:none}
  .rv-pop{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:rgba(0,0,0,.45);animation:rvPopIn .2s ease both} @keyframes rvPopIn{from{opacity:0}to{opacity:1}}
@@ -928,7 +941,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${emphasisCSS(deck)}
  .reveal .slides section .rv-step{pointer-events:none}.reveal .slides section .rv-step>*{pointer-events:auto}
  .reveal .slides section .fragment.rv-pathc{opacity:1;visibility:inherit}
- .reveal .slides section .fragment.rv-pathc.visible{animation:var(--pk) var(--anim-dur,600ms) ease-in-out var(--anim-del,0ms) both}
+ .reveal .slides section .fragment.rv-pathc.visible{animation:var(--pk) var(--anim-dur,600ms) var(--anim-ease,ease-in-out) var(--anim-del,0ms) both}
  ${pathKeyframes(deck)}
  ${/ data-pdf[ >]/.test(slides) ? PDF_CSS : ''}
  ${hasTrig ? `[data-bid]{cursor:pointer} .rv-trig.rv-in:not(.on){opacity:0} ${EFFECT_KF_CSS.replace(/\n/g, ' ')}` : ''}

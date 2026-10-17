@@ -236,7 +236,6 @@ export default {
  "Cada prenda, varias vidas": "Cada peza, varias vidas",
  "Comprar\nUsar\nDevolver\nReparar\nRevender": "Mercar\nUsar\nDevolver\nArranxar\nRevender",
  "<div style=\"font-family:'Merriweather', serif;font-size:80px;font-weight:900;color:#b5523b;line-height:1\">3,4</div><div style=\"font-size:26px;margin:8px 0 22px\">dueños de media por prenda en Retal</div><div style=\"font-size:22px;color:#6b705c;line-height:1.45\">Cada vuelta deja una comisión del 25 % para Retal y crédito para quien devuelve la prenda, que vuelve a comprar.</div>": "<div style=\"font-family:'Merriweather', serif;font-size:80px;font-weight:900;color:#b5523b;line-height:1\">3,4</div><div style=\"font-size:26px;margin:8px 0 22px\">donos de media por peza en Retal</div><div style=\"font-size:22px;color:#6b705c;line-height:1.45\">Cada volta deixa unha comisión do 25 % para Retal e crédito para quen devolve a peza, que volve mercar.</div>",
- "Un clic y la vida de una prenda real (inventada) se cuenta sola: cada etiqueta cae en su fecha, una tras otra. Cinco momentos, tres dueños y un arreglo.": "Un clic e a vida dunha peza real (inventada) cóntase soa: cada etiqueta cae na súa data, unha tras outra. Cinco momentos, tres donos e un arranxo.",
  "La vida de la chaqueta nº 0417": "A vida da chaqueta nº 0417",
  "<b style=\"letter-spacing:2px\">MAR 2024</b><br>Nueva. La compra Lucía": "<b style=\"letter-spacing:2px\">MAR 2024</b><br>Nova. Mércaa Lucía",
  "<b style=\"letter-spacing:2px\">OCT 2024</b><br>Lucía la devuelve: 30 € de crédito": "<b style=\"letter-spacing:2px\">OUT 2024</b><br>Lucía devólvea: 30 € de crédito",
@@ -610,5 +609,6 @@ export default {
  "Paula Riera y Nico Ferrer · guau@hocico.example": "Paula Riera e Nico Ferrer · guau@hocico.example",
  "Modelos 3D: Zorro — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)": "Modelos 3D: Raposa — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)",
  "mes": "mes",
- "peso": "peso"
+ "peso": "peso",
+ "Un clic y la vida de una prenda real (inventada) se cuenta sola: cada etiqueta cae en su fecha, una tras otra. Cinco momentos, tres personas y un arreglo.": "Un clic e a vida dunha peza real (inventada) cóntase soa: cada etiqueta cae na súa data, unha tras outra. Cinco momentos, tres persoas e un arranxo."
 };

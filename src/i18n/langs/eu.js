@@ -2278,6 +2278,7 @@ export default {
   "Nada (como siempre)": "Ezer ez (ohi bezala)",
   "Al terminar el recorrido": "Ibilbidearen amaieran",
   "Volver al reposo": "Geldirik geratu berriro",
+  "Inicio y final suaves": "Hasiera eta amaiera leunak",
   "Una vez y volver al reposo": "Behin eta geldirik berriro",
   "Mirar hacia donde va": "Doan norabidera begiratu",
   "Al terminar, mirar al público": "Amaieran, ikusleei begiratu",

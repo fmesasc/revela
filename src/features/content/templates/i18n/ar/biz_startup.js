@@ -236,7 +236,6 @@ export default {
  "Cada prenda, varias vidas": "كل قطعة، حيوات عدة",
  "Comprar\nUsar\nDevolver\nReparar\nRevender": "شراء\nاستخدام\nإرجاع\nإصلاح\nإعادة بيع",
  "<div style=\"font-family:'Merriweather', serif;font-size:80px;font-weight:900;color:#b5523b;line-height:1\">3,4</div><div style=\"font-size:26px;margin:8px 0 22px\">dueños de media por prenda en Retal</div><div style=\"font-size:22px;color:#6b705c;line-height:1.45\">Cada vuelta deja una comisión del 25 % para Retal y crédito para quien devuelve la prenda, que vuelve a comprar.</div>": "<div style=\"font-family:'Merriweather', serif;font-size:80px;font-weight:900;color:#b5523b;line-height:1\">3,4</div><div style=\"font-size:26px;margin:8px 0 22px\">مالكين في المتوسط لكل قطعة في Retal</div><div style=\"font-size:22px;color:#6b705c;line-height:1.45\">كل دورة تترك عمولة 25 % لـRetal ورصيدًا لمن يُرجع القطعة، فيعود للشراء.</div>",
- "Un clic y la vida de una prenda real (inventada) se cuenta sola: cada etiqueta cae en su fecha, una tras otra. Cinco momentos, tres dueños y un arreglo.": "نقرة واحدة وتُروى حياة قطعة حقيقية (مُتخيَّلة) وحدها: كل بطاقة تسقط في تاريخها، واحدة تلو الأخرى. خمس لحظات وثلاثة مالكين وإصلاح واحد.",
  "La vida de la chaqueta nº 0417": "حياة السترة رقم 0417",
  "<b style=\"letter-spacing:2px\">MAR 2024</b><br>Nueva. La compra Lucía": "<b style=\"letter-spacing:2px\">مارس 2024</b><br>جديدة. تشتريها Lucía",
  "<b style=\"letter-spacing:2px\">OCT 2024</b><br>Lucía la devuelve: 30 € de crédito": "<b style=\"letter-spacing:2px\">أكتوبر 2024</b><br>Lucía تُرجعها: رصيد 30 €",
@@ -610,5 +609,6 @@ export default {
  "Paula Riera y Nico Ferrer · guau@hocico.example": "Paula Riera وNico Ferrer · guau@hocico.example",
  "Modelos 3D: Zorro — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)": "نماذج ثلاثية الأبعاد: ثعلب — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)",
  "mes": "الشهر",
- "peso": "الوزن"
+ "peso": "الوزن",
+ "Un clic y la vida de una prenda real (inventada) se cuenta sola: cada etiqueta cae en su fecha, una tras otra. Cinco momentos, tres personas y un arreglo.": "نقرة واحدة وتُروى حياة قطعة حقيقية (مُتخيَّلة) وحدها: كل بطاقة تسقط في تاريخها، واحدة تلو الأخرى. خمس لحظات وثلاثة أشخاص وإصلاح واحد."
 };

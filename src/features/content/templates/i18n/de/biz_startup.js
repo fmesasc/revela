@@ -236,7 +236,6 @@ export default {
  "Cada prenda, varias vidas": "Jedes Teil, mehrere Leben",
  "Comprar\nUsar\nDevolver\nReparar\nRevender": "Kaufen\nTragen\nZurückgeben\nReparieren\nWeiterverkaufen",
  "<div style=\"font-family:'Merriweather', serif;font-size:80px;font-weight:900;color:#b5523b;line-height:1\">3,4</div><div style=\"font-size:26px;margin:8px 0 22px\">dueños de media por prenda en Retal</div><div style=\"font-size:22px;color:#6b705c;line-height:1.45\">Cada vuelta deja una comisión del 25 % para Retal y crédito para quien devuelve la prenda, que vuelve a comprar.</div>": "<div style=\"font-family:'Merriweather', serif;font-size:80px;font-weight:900;color:#b5523b;line-height:1\">3,4</div><div style=\"font-size:26px;margin:8px 0 22px\">Besitzer im Schnitt pro Teil bei Retal</div><div style=\"font-size:22px;color:#6b705c;line-height:1.45\">Jede Runde bringt Retal 25 % Provision und der Person, die das Teil zurückgibt, Guthaben für den nächsten Kauf.</div>",
- "Un clic y la vida de una prenda real (inventada) se cuenta sola: cada etiqueta cae en su fecha, una tras otra. Cinco momentos, tres dueños y un arreglo.": "Ein Klick, und das Leben eines echten (erfundenen) Kleidungsstücks erzählt sich selbst: Jedes Etikett fällt auf sein Datum, eins nach dem anderen. Fünf Momente, drei Besitzer und eine Reparatur.",
  "La vida de la chaqueta nº 0417": "Das Leben der Jacke Nr. 0417",
  "<b style=\"letter-spacing:2px\">MAR 2024</b><br>Nueva. La compra Lucía": "<b style=\"letter-spacing:2px\">MÄR 2024</b><br>Neu. Lucía kauft sie",
  "<b style=\"letter-spacing:2px\">OCT 2024</b><br>Lucía la devuelve: 30 € de crédito": "<b style=\"letter-spacing:2px\">OKT 2024</b><br>Lucía gibt sie zurück: 30 € Guthaben",
@@ -610,5 +609,6 @@ export default {
  "Paula Riera y Nico Ferrer · guau@hocico.example": "Paula Riera und Nico Ferrer · guau@hocico.example",
  "Modelos 3D: Zorro — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)": "3D-Modelle: Fuchs — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)",
  "mes": "Monat",
- "peso": "Gewicht"
+ "peso": "Gewicht",
+ "Un clic y la vida de una prenda real (inventada) se cuenta sola: cada etiqueta cae en su fecha, una tras otra. Cinco momentos, tres personas y un arreglo.": "Ein Klick, und das Leben eines echten (erfundenen) Kleidungsstücks erzählt sich selbst: Jedes Etikett fällt auf sein Datum, eins nach dem anderen. Fünf Momente, drei Personen und eine Reparatur."
 };

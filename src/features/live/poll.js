@@ -245,9 +245,12 @@ export function pollResultsHTML(poll, res, accent, L) {
       : kind === 'sort' ? [].concat.apply([], labels.map(function (l) { var c = String(l).split(':'); return c.slice(1).join(':').split(/[,;]/).filter(function (x) { return x.trim(); }).map(function (x) { return x.trim() + ' → ' + c[0].trim(); }); }))
       : (String(poll.text || '').match(/\[([^\]]+)\]/g) || []).map(function (g, i) { return (i + 1) + '. ' + g.slice(1, -1).split('|')[0]; });
     var avg = Math.round((res.average || 0) * 100), nv = res.voters || 0;
-    var pic = kind === 'label' && poll.image ? '<div style="position:relative;flex:0 0 58%;align-self:center"><img src="' + esc(poll.image) + '" alt="" style="width:100%;display:block;border-radius:.2em">'
+    // (The picture as big as its side of the box allows, either way — a tall one, at its width, ran out at the bottom
+    // and took points with it —; the points on the picture itself.)
+    var pic = kind === 'label' && poll.image ? '<div style="flex:0 0 58%;align-self:stretch;min-height:0;container-type:size;display:grid;place-items:center"><div style="position:relative">'
+      + '<img src="' + esc(poll.image) + '" alt="" style="display:block;max-width:100cqw;max-height:100cqh;border-radius:.2em">'
       + (poll.points || []).map(function (pt, i) { return '<b style="position:absolute;left:' + pt.x + '%;top:' + pt.y + '%;transform:translate(-50%,-50%);background:' + cols[0] + ';color:#fff;border-radius:1em;padding:0 .35em;font-size:.55em;white-space:nowrap">'
-        + (i + 1) + (res.revealed ? ' ' + esc(labels[i] || '') : '') + '</b>'; }).join('') + '</div>'
+        + (i + 1) + (res.revealed ? ' ' + esc(labels[i] || '') : '') + '</b>'; }).join('') + '</div></div>'
       : res.layout && (res.layout.w || res.layout.items) ? '<div style="flex:0 0 46%;align-self:center;min-height:0">' + gridSVG(res.layout, res.revealed) + '</div>' : '';
     // (The solutions fill the box's height, centred; long ones in two lines rather than cut with «…».)
     // (A wheel's letters, up to 27: small, side by side, each with its answer and how many got it right.)

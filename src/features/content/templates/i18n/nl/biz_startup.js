@@ -236,7 +236,6 @@ export default {
  "Cada prenda, varias vidas": "Elk kledingstuk, meerdere levens",
  "Comprar\nUsar\nDevolver\nReparar\nRevender": "Kopen\nDragen\nTerugbrengen\nRepareren\nDoorverkopen",
  "<div style=\"font-family:'Merriweather', serif;font-size:80px;font-weight:900;color:#b5523b;line-height:1\">3,4</div><div style=\"font-size:26px;margin:8px 0 22px\">dueños de media por prenda en Retal</div><div style=\"font-size:22px;color:#6b705c;line-height:1.45\">Cada vuelta deja una comisión del 25 % para Retal y crédito para quien devuelve la prenda, que vuelve a comprar.</div>": "<div style=\"font-family:'Merriweather', serif;font-size:80px;font-weight:900;color:#b5523b;line-height:1\">3,4</div><div style=\"font-size:26px;margin:8px 0 22px\">eigenaren gemiddeld per kledingstuk bij Retal</div><div style=\"font-size:22px;color:#6b705c;line-height:1.45\">Elke ronde levert Retal een commissie van 25 % op en tegoed voor wie het kledingstuk terugbrengt, die dan weer koopt.</div>",
- "Un clic y la vida de una prenda real (inventada) se cuenta sola: cada etiqueta cae en su fecha, una tras otra. Cinco momentos, tres dueños y un arreglo.": "Met één klik vertelt het leven van een echt (verzonnen) kledingstuk zichzelf: elk label valt op zijn datum, na elkaar. Vijf momenten, drie eigenaren en een reparatie.",
  "La vida de la chaqueta nº 0417": "Het leven van jasje nr. 0417",
  "<b style=\"letter-spacing:2px\">MAR 2024</b><br>Nueva. La compra Lucía": "<b style=\"letter-spacing:2px\">MRT 2024</b><br>Nieuw. Lucía koopt het",
  "<b style=\"letter-spacing:2px\">OCT 2024</b><br>Lucía la devuelve: 30 € de crédito": "<b style=\"letter-spacing:2px\">OKT 2024</b><br>Lucía brengt het terug: € 30 tegoed",
@@ -610,5 +609,6 @@ export default {
  "Paula Riera y Nico Ferrer · guau@hocico.example": "Paula Riera en Nico Ferrer · guau@hocico.example",
  "Modelos 3D: Zorro — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)": "3D-modellen: Vos — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)",
  "mes": "maand",
- "peso": "gewicht"
+ "peso": "gewicht",
+ "Un clic y la vida de una prenda real (inventada) se cuenta sola: cada etiqueta cae en su fecha, una tras otra. Cinco momentos, tres personas y un arreglo.": "Met één klik vertelt het leven van een echt (verzonnen) kledingstuk zichzelf: elk label valt op zijn datum, na elkaar. Vijf momenten, drie mensen en een reparatie."
 };

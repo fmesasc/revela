@@ -2278,6 +2278,7 @@ export default {
   "Nada (como siempre)": "Nada (coma sempre)",
   "Al terminar el recorrido": "Ao rematar o percorrido",
   "Volver al reposo": "Volver ao repouso",
+  "Inicio y final suaves": "Inicio e final suaves",
   "Una vez y volver al reposo": "Unha vez e volver ao repouso",
   "Mirar hacia donde va": "Mirar cara a onde vai",
   "Al terminar, mirar al público": "Ao rematar, mirar ao público",

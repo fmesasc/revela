@@ -236,7 +236,6 @@ export default {
  "Cada prenda, varias vidas": "Ogni capo, più vite",
  "Comprar\nUsar\nDevolver\nReparar\nRevender": "Comprare\nUsare\nRestituire\nRiparare\nRivendere",
  "<div style=\"font-family:'Merriweather', serif;font-size:80px;font-weight:900;color:#b5523b;line-height:1\">3,4</div><div style=\"font-size:26px;margin:8px 0 22px\">dueños de media por prenda en Retal</div><div style=\"font-size:22px;color:#6b705c;line-height:1.45\">Cada vuelta deja una comisión del 25 % para Retal y crédito para quien devuelve la prenda, que vuelve a comprar.</div>": "<div style=\"font-family:'Merriweather', serif;font-size:80px;font-weight:900;color:#b5523b;line-height:1\">3,4</div><div style=\"font-size:26px;margin:8px 0 22px\">proprietari in media per capo su Retal</div><div style=\"font-size:22px;color:#6b705c;line-height:1.45\">Ogni giro lascia una commissione del 25% a Retal e un credito a chi restituisce il capo, che torna a comprare.</div>",
- "Un clic y la vida de una prenda real (inventada) se cuenta sola: cada etiqueta cae en su fecha, una tras otra. Cinco momentos, tres dueños y un arreglo.": "Un clic e la vita di un capo reale (inventato) si racconta da sola: ogni etichetta cade sulla sua data, una dopo l'altra. Cinque momenti, tre proprietari e una riparazione.",
  "La vida de la chaqueta nº 0417": "La vita della giacca n. 0417",
  "<b style=\"letter-spacing:2px\">MAR 2024</b><br>Nueva. La compra Lucía": "<b style=\"letter-spacing:2px\">MAR 2024</b><br>Nuova. La compra Lucía",
  "<b style=\"letter-spacing:2px\">OCT 2024</b><br>Lucía la devuelve: 30 € de crédito": "<b style=\"letter-spacing:2px\">OTT 2024</b><br>Lucía la restituisce: 30 € di credito",
@@ -610,5 +609,6 @@ export default {
  "Paula Riera y Nico Ferrer · guau@hocico.example": "Paula Riera e Nico Ferrer · guau@hocico.example",
  "Modelos 3D: Zorro — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)": "Modelli 3D: Volpe — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)",
  "mes": "mese",
- "peso": "peso"
+ "peso": "peso",
+ "Un clic y la vida de una prenda real (inventada) se cuenta sola: cada etiqueta cae en su fecha, una tras otra. Cinco momentos, tres personas y un arreglo.": "Un clic e la vita di un capo reale (inventato) si racconta da sola: ogni etichetta cade sulla sua data, una dopo l'altra. Cinque momenti, tre persone e una riparazione."
 };

@@ -123,8 +123,9 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
       if (tall) { y += ph - m; h -= ph - m; o = { ...o, valign: o.valign === 'bottom' ? 'bottom' : 'top' }; } else { x += pw - m; w -= pw - m; o = { ...o, align: o.align === 'center' ? 'left' : o.align }; }
     }
     // (Bigger letters asked for — fontScale over 1 — also get more room: the text may spill a little past its shape,
-    // up to 25 % each way, within the diagram. Without it a small shape kept them small whatever the scale.)
-    if (scale > 1 && !o.fs) { const k = Math.min(1.5, scale), nw = Math.min(W, w * k), nh = Math.min(H, h * Math.sqrt(k));
+    // above and below, within the diagram. Without it a small shape kept them small whatever the scale. Not sideways:
+    // there its neighbours are — an organisation chart's boxes, wider, ran into each other, one line each, cut.)
+    if (scale > 1 && !o.fs) { const k = Math.min(1.5, scale), nw = w, nh = Math.min(H, h * Math.sqrt(k));
       x = Math.max(0, Math.min(W - nw, x - (nw - w) / 2)); y = Math.max(0, Math.min(H - nh, y - (nh - h) / 2)); w = nw; h = nh; }
     const pad = Math.min(w, h) * 0.08, max = (o.max || 30) * roomy * Math.max(1, scale);
     // (Bigger: up to what fits the box; smaller: always.)

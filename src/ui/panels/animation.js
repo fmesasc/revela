@@ -191,6 +191,7 @@ function detailOne(box, { b, a, i }, clash = null) {
       ${b.type === 'model' ? `<p class="host-help an-wide">${t('Un objeto 3D gira hacia donde va: se elige en Movimiento 3D.')}</p>`
         : `<label>${t('Giro en el camino')}<select data-p="turn"><option value="">${t('Sin girar')}</option><option value="follow"${a.turn === 'follow' ? ' selected' : ''}>${t('Seguir el camino')}</option></select></label>
       <label>${t('Vueltas (grados)')}<input type="number" data-p="spin" value="${a.spin || 0}" step="90" title="${t('360 = una vuelta entera; negativo: al revés')}"></label>`}
+      <label class="an-chk an-wide"><input type="checkbox" data-p="smooth"${a.ease === 'linear' ? '' : ' checked'}> ${t('Inicio y final suaves')}</label>
       <label>${t('Mover X')} (px)<input type="number" data-p="dx" value="${a.dx || 0}" step="10"></label>
       <label>${t('Mover Y')} (px)<input type="number" data-p="dy" value="${a.dy || 0}" step="10"></label>` : ''}
       ${a.effect === 'grow' || a.effect === 'shrink' ? `<label title="${t('Agrandar 130 % y después Encoger 77 % lo deja como estaba')}">${t('Tamaño')} (%)<input type="number" data-p="size" value="${a.size || (a.effect === 'grow' ? 130 : 70)}" step="5" min="5" max="500"></label>` : ''}
@@ -202,6 +203,8 @@ function detailOne(box, { b, a, i }, clash = null) {
     <div class="an-actions"><button type="button" data-add><i class="ms">add</i> ${t('Añadir otra animación a este objeto')}</button></div>`;
   for (const p of ['effect', 'start', 'trigger', 'pathShape', 'turn', 'clip']) box.querySelector(`[data-p="${p}"]`)?.addEventListener('change', e => set(p, p === 'trigger' ? e.target.value || null : e.target.value));
   box.querySelector('[data-p="once"]')?.addEventListener('change', e => set('once', e.target.checked));
+  // (Off: at an even speed all the way, as PowerPoint's «Smooth start / end» unticked.)
+  box.querySelector('[data-p="smooth"]')?.addEventListener('change', e => set('ease', e.target.checked ? null : 'linear'));
   box.querySelectorAll('input[type=number][data-p]').forEach(inp => inp.addEventListener('change', e => set(inp.dataset.p, e.target.value)));
   // A PDF step: its page and zoom, typed or chosen on the page itself.
   box.querySelectorAll('[data-pdf-p]').forEach(x => x.addEventListener('change', () => set(x.dataset.pdfP, +x.value)));

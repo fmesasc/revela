@@ -30,8 +30,26 @@ export function model3dRuntime() {
   function playClip(mv, n, once) {
     mv.__step = false; n = clipName(mv, n); var k = mv.__clip = {};
     if (!n) { mv.pause(); return; }
+    // A pose that is the end of another clip («Death_A_Pose», of «Death_A»): that clip, once, and it stays at its end.
+    // (The pose itself has no length: looped, its time went NaN; once, the model stood up again — either way, standing.)
+    var base = n.replace(/[_ ]?pose$/i, '');
+    if (base !== n && (mv.availableAnimations || []).indexOf(base) >= 0) { n = base; once = true; }
+    // (A pose — a clip of no length, «Death_A_Pose» —: played once, it stays put; looped, its time went NaN and the
+    // model was left halfway between the fall and its pose, standing.)
     var go = function () { if (mv.__clip === k) mv.play(once ? { repetitions: 1 } : undefined); };
     if (mv.animationName !== n && mv.updateComplete) { mv.animationName = n; mv.updateComplete.then(go); } else { mv.animationName = n; go(); }
+  }
+  // After a clip played once, back to rest — only if that clip is still the one playing and it is what ended: an
+  // earlier one, cut short by the next and fading out, ended later and sent the model back to rest in the middle of
+  // the next (a warrior's fall left half lying, half standing).
+  function afterOnce(mv, fn) {
+    var k = mv.__clip;
+    function h() {
+      if (mv.__clip !== k) { mv.removeEventListener('finished', h); return; }
+      if (mv.duration && mv.currentTime < mv.duration - 0.1) return;
+      mv.removeEventListener('finished', h); fn();
+    }
+    mv.addEventListener('finished', h);
   }
   function rest(mv) { var idle = mv.hasAttribute('autoplay') ? (mv.getAttribute('animation-name') || '*') : null; mv.__step = false; if (idle) playClip(mv, idle); else mv.pause(); }
   // The camera's distance: further away when the view has room around the model (data-bleed).
@@ -62,7 +80,7 @@ export function model3dRuntime() {
     if (!end) { rest(mv); return; }
     var once = mv.hasAttribute('data-end-once');
     playClip(mv, end, once);
-    if (once) mv.addEventListener('finished', function () { rest(mv); }, { once: true });
+    if (once) afterOnce(mv, function () { rest(mv); });
   }
   function secs(v) { v = String(v || '').split(',')[0].trim(); return v.slice(-2) === 'ms' ? parseFloat(v) : parseFloat(v) * 1000 || 0; }
   // In the presentation it moves by CSS (a transition of its position, or the
@@ -86,7 +104,7 @@ export function model3dRuntime() {
     if (!show) { rest(mv); return; }
     setTimeout(function () {
       var once = f.hasAttribute('data-clip-once'); playClip(mv, name, once); mv.__step = true;
-      if (once) mv.addEventListener('finished', function () { if (mv.__step) rest(mv); }, { once: true });
+      if (once) afterOnce(mv, function () { if (mv.__step) rest(mv); });
     }, secs(getComputedStyle(f).getPropertyValue('--anim-del')));
   }
   function stop(mv) { var t = timers.get(mv); if (t) { cancelAnimationFrame(t.raf); clearInterval(t.iv); clearTimeout(t.iv); } timers.delete(mv); mv.style.marginTop = ''; }
@@ -246,5 +264,5 @@ export function model3dRuntime() {
     (function wait(n) { if (begun) return; if (Reveal.isReady && Reveal.isReady()) begin(); else if (n < 300) setTimeout(function () { wait(n + 1); }, 50); })(0);
     Reveal.on('fragmentshown', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, true); }); });
     Reveal.on('fragmenthidden', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, false); }); }); }
-  return { enter: enter, handoff: handoff, start: start, stop: stop, move: move, step: clipStep, clip: function (mv, name, once) { playClip(mv, name, once); if (once) mv.addEventListener('finished', function () { rest(mv); }, { once: true }); } };
+  return { enter: enter, handoff: handoff, start: start, stop: stop, move: move, step: clipStep, clip: function (mv, name, once) { playClip(mv, name, once); if (once) afterOnce(mv, function () { rest(mv); }); } };
 }

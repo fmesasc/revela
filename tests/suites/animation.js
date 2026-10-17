@@ -150,6 +150,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const p = f.contentDocument.querySelector('.fragment.draw .rvd'), L = p.getTotalLength(), d = parseFloat(p.style.getPropertyValue('--rvdl'));
       assert(!p.hasAttribute('pathLength') && d > L * 5, 'su raya, tan larga como la línea en la diapositiva (estirada): ' + d + ' frente a ' + L);
       eq(f.contentWindow.getComputedStyle(p).strokeDashoffset, d + 'px', 'antes de su turno, oculta del todo');
+      // On time: half drawn at half its time (drawn to the dash's end, it was whole at four fifths of it), whole at the end.
+      f.contentWindow.Reveal.next(); await sleep(50);
+      const an = p.getAnimations()[0], cs = () => f.contentWindow.getComputedStyle(p), e = parseFloat(p.style.getPropertyValue('--rvde'));
+      an.pause(); an.currentTime = 200;
+      const half = (d - parseFloat(cs().strokeDashoffset)) / (d - e);
+      assert(half > 0.4 && half < 0.6, 'a mitad de tiempo, la mitad de la línea: ' + half.toFixed(2));
+      an.currentTime = 400; await sleep(20);
+      eq(cs().strokeDasharray, 'none', 'al acabar, entera');
     } finally { f.remove(); }
   });
 
@@ -504,6 +512,42 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     html = R.io.buildHTML();
     assert(/class="fragment fade-in" data-fragment-index="2"[^>]*pointer-events:none/.test(html), 'con la segunda caja, no desde el principio');
     assert(!/data-rv-start/.test(html), 'y la diapositiva no arranca sola');
+  });
+
+  await test('trayectoria sin inicio ni final suaves: a velocidad constante', async () => {
+    reset(); const b = newText(); b.animation = { effect: 'path', order: 1, dx: 300, dy: 0, duration: 1000 };
+    assert(!/--anim-ease:linear/.test(R.io.buildHTML()), 'por defecto, suave al empezar y al acabar');
+    b.animation.ease = 'linear'; let html = R.io.buildHTML();
+    assert(/transition-timing-function:linear;--anim-ease:linear;/.test(html), 'recta, al mismo ritmo');
+    b.animation = { ...b.animation, pathShape: 'arc' }; html = R.io.buildHTML();
+    assert(/--anim-ease:linear/.test(html) && /rv-pathc\.visible\{animation:var\(--pk\) var\(--anim-dur,600ms\) var\(--anim-ease,ease-in-out\)/.test(html), 'en curva, también');
+    // From the Animation pane: the box unticked.
+    const cur = () => slide().blocks.find(x => x.id === b.id).animation;
+    R.trans.setAnimPropForId(b.id, 'ease', null); assert(!('ease' in cur()), 'marcada: suave');
+    R.trans.setAnimPropForId(b.id, 'ease', 'linear'); eq(cur().ease, 'linear', 'desmarcada: constante');
+  });
+
+  await test('resaltar y tachar al presentar: también un texto con color propio o que se transforma', async () => {
+    reset();
+    R.store.commit(() => {
+      slide().blocks = [
+        { id: 'hi', type: 'text', html: '<span style="color:#333333">Cifra</span>', color: '#222222', x: 100, y: 100, w: 400, h: 80, animation: { effect: 'highlight-red', order: 1, seq: 1, start: 'click', duration: 300, delay: 0 } },
+        { id: 'st', type: 'text', html: 'Palabra', x: 100, y: 300, w: 400, h: 80, animation: { effect: 'strike', order: 2, seq: 2, start: 'click', duration: 300, delay: 0 } }];
+      slide().autoAnimate = true; R.state.deck.slides.push({ ...JSON.parse(JSON.stringify(slide())), id: 'nx', autoAnimate: true });
+    });
+    const html = R.io.buildHTML(R.state.deck, { inApp: true });
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    f.srcdoc = html;
+    try {
+      for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
+      const doc = f.contentDocument, W2 = f.contentWindow, sec = doc.querySelector('section'), span = sec.querySelector('.highlight-red span');
+      assert(W2.getComputedStyle(span).color !== 'rgb(255, 44, 45)', 'antes, su color');
+      W2.Reveal.next(); await sleep(400);
+      eq(W2.getComputedStyle(span).color, 'rgb(255, 44, 45)', 'resaltado en rojo, aunque tuviera color propio');
+      W2.Reveal.next(); await sleep(400);
+      const inner = [...sec.querySelectorAll('.strike *')].find(x => /Palabra/.test(x.textContent) && !x.children.length) || sec.querySelector('.strike');
+      assert(/line-through/.test(W2.getComputedStyle(inner).textDecorationLine), 'tachado, también dentro de lo que Transformar envuelve');
+    } finally { f.remove(); }
   });
 
   await test('auto-animate: data-auto-animate y data-id en el export', async () => {

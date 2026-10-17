@@ -236,7 +236,6 @@ export default {
  "Cada prenda, varias vidas": "Every garment, several lives",
  "Comprar\nUsar\nDevolver\nReparar\nRevender": "Buy\nWear\nReturn\nRepair\nResell",
  "<div style=\"font-family:'Merriweather', serif;font-size:80px;font-weight:900;color:#b5523b;line-height:1\">3,4</div><div style=\"font-size:26px;margin:8px 0 22px\">dueños de media por prenda en Retal</div><div style=\"font-size:22px;color:#6b705c;line-height:1.45\">Cada vuelta deja una comisión del 25 % para Retal y crédito para quien devuelve la prenda, que vuelve a comprar.</div>": "<div style=\"font-family:'Merriweather', serif;font-size:80px;font-weight:900;color:#b5523b;line-height:1\">3.4</div><div style=\"font-size:26px;margin:8px 0 22px\">owners on average per garment at Retal</div><div style=\"font-size:22px;color:#6b705c;line-height:1.45\">Each round leaves Retal a 25% commission and gives credit to whoever returns the garment, who buys again.</div>",
- "Un clic y la vida de una prenda real (inventada) se cuenta sola: cada etiqueta cae en su fecha, una tras otra. Cinco momentos, tres dueños y un arreglo.": "One click and the life of a real (made-up) garment tells itself: each tag drops on its date, one after another. Five moments, three owners and one repair.",
  "La vida de la chaqueta nº 0417": "The life of jacket no. 0417",
  "<b style=\"letter-spacing:2px\">MAR 2024</b><br>Nueva. La compra Lucía": "<b style=\"letter-spacing:2px\">MAR 2024</b><br>New. Lucía buys it",
  "<b style=\"letter-spacing:2px\">OCT 2024</b><br>Lucía la devuelve: 30 € de crédito": "<b style=\"letter-spacing:2px\">OCT 2024</b><br>Lucía returns it: €30 credit",
@@ -610,5 +609,6 @@ export default {
  "Paula Riera y Nico Ferrer · guau@hocico.example": "Paula Riera and Nico Ferrer · guau@hocico.example",
  "Modelos 3D: Zorro — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)": "3D models: Fox — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)",
  "mes": "month",
- "peso": "weight"
+ "peso": "weight",
+ "Un clic y la vida de una prenda real (inventada) se cuenta sola: cada etiqueta cae en su fecha, una tras otra. Cinco momentos, tres personas y un arreglo.": "One click and the life of a real (made-up) garment tells itself: each tag drops on its date, one after another. Five moments, three people and one repair."
 };

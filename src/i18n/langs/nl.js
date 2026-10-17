@@ -2278,6 +2278,7 @@ export default {
   "Nada (como siempre)": "Niets (zoals altijd)",
   "Al terminar el recorrido": "Aan het eind van het pad",
   "Volver al reposo": "Terug naar rust",
+  "Inicio y final suaves": "Zacht begin en einde",
   "Una vez y volver al reposo": "Eén keer, dan terug naar rust",
   "Mirar hacia donde va": "Kijken waar het heen gaat",
   "Al terminar, mirar al público": "Aan het eind naar het publiek kijken",

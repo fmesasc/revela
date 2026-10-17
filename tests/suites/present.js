@@ -237,6 +237,18 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(P.gradeActivity(gaps, ['100', 'Cero']).score, 1, 'varias respuestas válidas');
     const label = { kind: 'label', pollId: 'l1', options: ['Núcleo', 'Membrana'], points: [{ x: 50, y: 50 }, { x: 90, y: 20 }], image: 'data:image/png;base64,iVBORw0KGgo=' };
     const lp = P.publicActivity(label); eq(lp.points.length, 2, 'etiquetar: los puntos'); assert(lp.labels.length === 2 && lp.image, 'las etiquetas y la imagen');
+    // A tall picture: inside its box, the points on it (at its width, it ran out at the bottom and took points with it).
+    const tall = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="400"><rect width="100" height="400" fill="#c00"/></svg>');
+    const host = D.createElement('div'); host.style.cssText = 'position:fixed;left:0;top:0;width:900px;height:400px;display:flex;flex-direction:column;font-size:32px';
+    host.innerHTML = '<div class="rv-poll-res" style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center">'
+      + P.pollResultsHTML({ ...label, image: tall, points: [{ x: 50, y: 95 }, { x: 50, y: 5 }] }, { counts: [0, 0], voters: 0, revealed: true }) + '</div>';
+    D.body.appendChild(host);
+    try {
+      const im = host.querySelector('img'); for (let k = 0; k < 40 && !im.complete; k++) await sleep(25); await sleep(30);
+      const hb = host.getBoundingClientRect(), ib = im.getBoundingClientRect(), dot = host.querySelector('b').getBoundingClientRect();
+      assert(ib.height > 200 && ib.bottom <= hb.bottom + 1 && ib.top >= hb.top - 1, 'la imagen alta cabe en su caja: ' + Math.round(ib.top) + '–' + Math.round(ib.bottom));
+      assert(Math.abs((dot.top + dot.bottom) / 2 - (ib.top + ib.height * 0.95)) < 4, 'y sus puntos, sobre ella');
+    } finally { host.remove(); }
     const sort = { kind: 'sort', pollId: 's1', options: ['Mamíferos: perro, ballena', 'Aves: pingüino; águila'] };
     const sp = P.publicActivity(sort); eq(sp.cats.join(), 'Mamíferos,Aves', 'clasificar: los grupos');
     eq(sp.items.map(x => x.t).sort().join(), 'ballena,perro,pingüino,águila', 'y todos los elementos (desordenados), sin decir de qué grupo es cada uno');

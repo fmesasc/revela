@@ -365,6 +365,7 @@ function applyAnimProp(a, prop, value) {
   else if (prop === 'spin') { if (+value) a.spin = Math.round(+value); else delete a.spin; }
   else if (prop === 'size') { const v = Math.round(+value); if (v >= 5 && v <= 500 && v !== (a.effect === 'grow' ? 130 : 70)) a.size = v; else delete a.size; }
   else if (prop === 'turn' && !value) delete a.turn;
+  else if (prop === 'ease') { if (value === 'linear') a.ease = 'linear'; else delete a.ease; }   // (smooth start and end: the default)
   else if (prop === 'points') { a.points = value; [a.dx, a.dy] = value.at(-1); }
   else if (prop === 'trigger' && !value) delete a.trigger;
   else if (prop === 'once') { if (value) a.once = true; else delete a.once; }

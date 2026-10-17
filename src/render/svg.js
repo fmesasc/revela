@@ -478,7 +478,8 @@ function bubbleSVG(b) {
   const pts = bubblePoints(b), color = b.color || '#3f6497', maxS = Math.max(1e-9, ...pts.map(p => p.s));
   // Round whatever the box's shape (the drawing stretches with it): radii in the box's pixels.
   const W = b.w || 100, H = b.h || 60, side = Math.min(W, H), [, sy] = chartSqueeze(b);
-  const f = xyFrame(b, pts.map(p => p.x), pts.map(p => p.y), false, 0.08);
+  // (Bubbles with names — «Ciencias», «Salud»…— stand in their order: 1, 2, 3… under them meant nothing.)
+  const f = xyFrame(b, pts.map(p => p.x), pts.map(p => p.y), false, 0.08, { xNums: !pts.every(p => p.name) });
   const dots = pts.map(p => { const r = side * (0.02 + 0.11 * Math.sqrt(p.s / maxS)), rx = r / W * 100, ry = r / H * 60, cx = f.X(p.x), cy = f.Y(p.y);
     // (The name inside if it fits; else beside the bubble, on the side with room.)
     const fs = 3, tw = textWidth(p.name, fs, b), inside = tw <= rx * 1.8 && fs * sy <= ry * 1.7, right = cx + rx + 1 + tw <= 100;
@@ -508,22 +509,22 @@ function scatterSVG(b) {
 // The axes of a scatter or bubble chart: both with their scale (round numbers), the gridlines
 // with b.grid, the titles (b.xTitle, b.yTitle) and the ends if given (b.xMin/xMax, b.yMin/yMax).
 // Zero is kept in a range that starts near it, as Excel does; `pad`: room around the points.
-function xyFrame(b, xs, ys, legend, pad = 0) {
+function xyFrame(b, xs, ys, legend, pad = 0, { xNums = true } = {}) {
   const ext = v => {
     let a = v.length ? Math.min(...v) : 0, z = v.length ? Math.max(...v) : 1;
     if (a > 0 && a <= z / 2) a = 0; if (z < 0 && z >= a / 2) z = 0;
     const r = (z - a) || Math.abs(z) || 1; return [a >= 0 ? Math.max(0, a - r * pad) : a - r * pad, z <= 0 ? Math.min(0, z + r * pad) : z + r * pad];
   };
   const sx = axisScale(...ext(xs), b.xMin, b.xMax), sY = axisScale(...ext(ys), b.yMin, b.yMax), [, sy] = chartSqueeze(b), fs = 3;
-  const T = legend ? 9 : 4, B = 60 - fs * sy - 2.5 - (b.xTitle ? 4.5 : 0), R = 98;
+  const T = legend ? 9 : 4, B = 60 - (xNums ? fs * sy + 2.5 : 1) - (b.xTitle ? 4.5 : 0), R = 98;
   const L = Math.max(4, ...sY.ticks.map(v => textWidth(fmtNum(v), fs, b))) + 2 + (b.yTitle ? 4.5 : 0);
   const X = v => L + (v - sx.lo) / (sx.hi - sx.lo) * (R - L), Y = v => B - (v - sY.lo) / (sY.hi - sY.lo) * (B - T);
   const line = (x1, y1, x2, y2, o) => `<line x1="${+x1.toFixed(1)}" y1="${+y1.toFixed(1)}" x2="${+x2.toFixed(1)}" y2="${+y2.toFixed(1)}" stroke="#8a8a8a"${o ? ' stroke-opacity="0.3" stroke-width="0.3"' : ' stroke-width="0.4"'} vector-effect="non-scaling-stroke"/>`;
   // (The numbers under the x axis: every other one if they'd run into each other.)
   const xw = Math.max(...sx.ticks.map(v => textWidth(fmtNum(v), fs, b))), room = sx.ticks.length > 1 ? X(sx.ticks[1]) - X(sx.ticks[0]) : 100, every = Math.max(1, Math.ceil((xw + 1.5) / room));
-  const svg = (b.grid ? sx.ticks.map(v => line(X(v), T, X(v), B, 1)).join('') + sY.ticks.map(v => line(L, Y(v), R, Y(v), 1)).join('') : '')
+  const svg = (b.grid ? (xNums ? sx.ticks.map(v => line(X(v), T, X(v), B, 1)).join('') : '') + sY.ticks.map(v => line(L, Y(v), R, Y(v), 1)).join('') : '')
     + sY.ticks.map(v => `<text x="${(L - 1).toFixed(1)}" y="${(Y(v) + 1.1 * sy).toFixed(1)}" font-size="${fs}" text-anchor="end" fill="#8a8a8a">${escSvg(fmtNum(v))}</text>`).join('')
-    + sx.ticks.map((v, i) => (i % every ? '' : `<text x="${X(v).toFixed(1)}" y="${(B + 1.5 + fs * sy).toFixed(1)}" font-size="${fs}" text-anchor="middle" fill="#8a8a8a">${escSvg(fmtNum(v))}</text>`)).join('')
+    + sx.ticks.map((v, i) => (i % every || !xNums ? '' : `<text x="${X(v).toFixed(1)}" y="${(B + 1.5 + fs * sy).toFixed(1)}" font-size="${fs}" text-anchor="middle" fill="#8a8a8a">${escSvg(fmtNum(v))}</text>`)).join('')
     + line(L, B, R, B) + line(L, T - 2, L, B)
     + (b.xTitle ? `<text x="${((L + R) / 2).toFixed(1)}" y="59" font-size="3.6" text-anchor="middle" fill="#8a8a8a">${escSvg(b.xTitle)}</text>` : '')
     + (b.yTitle ? `<text x="2.6" y="${((T + B) / 2).toFixed(1)}" font-size="3.6" text-anchor="middle" fill="#8a8a8a" transform="rotate(-90 2.6 ${((T + B) / 2).toFixed(1)})">${escSvg(b.yTitle)}</text>` : '');

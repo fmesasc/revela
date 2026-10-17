@@ -2278,6 +2278,7 @@ export default {
   "Nada (como siempre)": "لا شيء (كالمعتاد)",
   "Al terminar el recorrido": "في نهاية المسار",
   "Volver al reposo": "العودة إلى السكون",
+  "Inicio y final suaves": "بداية ونهاية سلستان",
   "Una vez y volver al reposo": "مرة واحدة ثم العودة إلى السكون",
   "Mirar hacia donde va": "النظر إلى حيث يتجه",
   "Al terminar, mirar al público": "في النهاية، ينظر إلى الجمهور",

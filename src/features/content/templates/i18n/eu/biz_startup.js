@@ -236,7 +236,6 @@ export default {
  "Cada prenda, varias vidas": "Jantzi bakoitza, hainbat bizitza",
  "Comprar\nUsar\nDevolver\nReparar\nRevender": "Erosi\nErabili\nItzuli\nKonpondu\nBerriro saldu",
  "<div style=\"font-family:'Merriweather', serif;font-size:80px;font-weight:900;color:#b5523b;line-height:1\">3,4</div><div style=\"font-size:26px;margin:8px 0 22px\">dueños de media por prenda en Retal</div><div style=\"font-size:22px;color:#6b705c;line-height:1.45\">Cada vuelta deja una comisión del 25 % para Retal y crédito para quien devuelve la prenda, que vuelve a comprar.</div>": "<div style=\"font-family:'Merriweather', serif;font-size:80px;font-weight:900;color:#b5523b;line-height:1\">3,4</div><div style=\"font-size:26px;margin:8px 0 22px\">jabe batez beste jantziko Retalen</div><div style=\"font-size:22px;color:#6b705c;line-height:1.45\">Bira bakoitzak % 25eko komisioa uzten dio Retali, eta kreditua jantzia itzultzen duenari, berriro erosten baitu.</div>",
- "Un clic y la vida de una prenda real (inventada) se cuenta sola: cada etiqueta cae en su fecha, una tras otra. Cinco momentos, tres dueños y un arreglo.": "Klik bat, eta benetako jantzi baten (asmatua) bizitza berez kontatzen da: etiketa bakoitza bere datan erortzen da, bata bestearen atzetik. Bost une, hiru jabe eta konponketa bat.",
  "La vida de la chaqueta nº 0417": "0417 zenbakiko jaka baten bizitza",
  "<b style=\"letter-spacing:2px\">MAR 2024</b><br>Nueva. La compra Lucía": "<b style=\"letter-spacing:2px\">2024 MAR</b><br>Berria. Lucíak erosten du",
  "<b style=\"letter-spacing:2px\">OCT 2024</b><br>Lucía la devuelve: 30 € de crédito": "<b style=\"letter-spacing:2px\">2024 URR</b><br>Lucíak itzultzen du: 30 €-ko kreditua",
@@ -610,5 +609,6 @@ export default {
  "Paula Riera y Nico Ferrer · guau@hocico.example": "Paula Riera eta Nico Ferrer · guau@hocico.example",
  "Modelos 3D: Zorro — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)": "3D ereduak: Azeria — Model: PixelMannen (CC0-1.0); Rigging & Animation: tomkranis (CC-BY-4.0); Conversion to glTF: @AsoboStudio and @scurest (CC-BY-4.0)",
  "mes": "hilea",
- "peso": "pisua"
+ "peso": "pisua",
+ "Un clic y la vida de una prenda real (inventada) se cuenta sola: cada etiqueta cae en su fecha, una tras otra. Cinco momentos, tres personas y un arreglo.": "Klik bat, eta benetako jantzi baten (asmatua) bizitza berez kontatzen da: etiketa bakoitza bere datan erortzen da, bata bestearen atzetik. Bost une, hiru pertsona eta konponketa bat."
 };

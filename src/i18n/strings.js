@@ -2251,6 +2251,7 @@ export const ROWS = [
   ['Nada (como siempre)', 'Nothing (as usual)', 'Rien (comme d\'habitude)', 'Nichts (wie immer)', 'Niente (come sempre)', 'Nada (como sempre)', 'Res (com sempre)'],
   ['Al terminar el recorrido', 'At the end of the path', 'À la fin du trajet', 'Am Ende des Pfads', 'Alla fine del percorso', 'No fim do percurso', 'En acabar el recorregut'],
   ['Volver al reposo', 'Back to rest', 'Revenir au repos', 'Zurück in Ruhe', 'Tornare a riposo', 'Voltar ao repouso', 'Tornar al repòs'],
+  ['Inicio y final suaves', 'Smooth start and end', 'Début et fin progressifs', 'Sanfter Start und Stopp', 'Inizio e fine graduali', 'Início e fim suaves', 'Inici i final suaus'],
   ['Una vez y volver al reposo', 'Once, then back to rest', 'Une fois, puis retour au repos', 'Einmal, dann zurück in Ruhe', 'Una volta e poi a riposo', 'Uma vez e voltar ao repouso', 'Una vegada i tornar al repòs'],
   ['Mirar hacia donde va', 'Face where it goes', 'Regarder où il va', 'Blick in Laufrichtung', 'Guardare dove va', 'Olhar para onde vai', 'Mirar cap on va'],
   ['Al terminar, mirar al público', 'At the end, face the audience', 'À la fin, regarder le public', 'Am Ende zum Publikum schauen', 'Alla fine, guardare il pubblico', 'No fim, olhar para o público', 'En acabar, mirar al públic'],

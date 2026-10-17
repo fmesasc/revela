@@ -222,7 +222,7 @@ export default {
           panel(head('EL ARCHIPIÉLAGO', 'Cuatro islas, cuatro puertos'), 60, 50, 470, 140),
           ...Object.keys(P).flatMap((k, i) => [withAnims(E(P[k][0] - 12, P[k][1] - 12, 24, 24, LINES[['l1', 'l2', 'l3', 'l4'][i]], { stroke: '#ffffff', strokeWidth: 4 }), A('bounce', { start: i ? 'afterPrev' : 'click', duration: 600, sound: 'pop' })),
             withAnims(tag(k, k === 'mayor' ? -220 : 18, k === 'norte' ? -46 : 4), A('fade-right', { start: 'withPrev', duration: 400 }))]),
-          withAnims(panel(`<b>Puerto Mayor</b> es la base: de allí salen tres de las cuatro líneas.`, 60, 560, 340, 110, { fontSize: 20 }), A('fade-up'))],
+          withAnims(panel(`<b>Puerto Mayor</b> es la base: tres de las cuatro líneas pasan por allí.`, 60, 560, 340, 110, { fontSize: 20 }), A('fade-up'))],
           notes: 'Un clic: los cuatro puertos caen uno tras otro (Rebotar con sonido Pop) y su nombre entra a la vez («con la anterior»). El segundo clic añade la nota de Puerto Mayor.' },
 
         { layout: 'blank', bg: SEA, transition: 'fade', back: map(), extra: [
@@ -277,8 +277,8 @@ export default {
 
         { layout: 'blank', bg: SEA, transition: 'zoom', back: map(false), extra: [
           panel(`<div style="font-size:64px;font-weight:800;line-height:1">¡Buen viaje!</div><div style="color:${MUTE};margin-top:12px">Billetes en el puerto y en la web de las Islas Albas.</div>`, 60, 50, 560, 200),
-          withAnims(boat('mayor', LINES.l1), path([[180, 40], [420, 120], [760, 150]], { turn: 'follow', start: 'afterPrev', duration: 3600, delay: 300, sound: 'whoosh' }), A('fade-out', { start: 'afterPrev', duration: 500 }))],
-          notes: 'Despedida: el ferri zarpa solo al llegar a la diapositiva, recorre la costa y desaparece al final (Trayectoria y, después, Desaparecer en el mismo objeto).' },
+          withAnims(boat('mayor', LINES.l1), path([[160, -40], [400, -170], [700, -300]], { turn: 'follow', start: 'afterPrev', duration: 3600, delay: 300, sound: 'whoosh' }), A('fade-out', { start: 'afterPrev', duration: 500 }))],
+          notes: 'Despedida: el ferri zarpa solo al llegar a la diapositiva, se aleja mar adentro y desaparece al final (Trayectoria y, después, Desaparecer en el mismo objeto).' },
       ]), INK));
     } },
 
@@ -429,12 +429,15 @@ export default {
             notes: 'Una frase por clic: entra la nueva y la anterior se atenúa («Atenuar», con la anterior). Así el público lee solo lo que se está diciendo. La barra de abajo es la cuenta atrás de los cinco minutos del turno de palabra.' };
         })(),
 
-        { layout: 'blank', bg: PAPER, transition: 'fade', back: notepad(), extra: [
+        (() => {   // The figure grows (its explanation follows), the comparison, and the figure turns red: created in that order.
+          const grow_ = A('zoom-in', { duration: 700 }), expl = A('fade-up', { start: 'afterPrev' }), cmp = A('fade-in'), red = A('highlight-red', { duration: 800 });
+          return { layout: 'blank', bg: PAPER, transition: 'fade', back: notepad(), extra: [
           kicker('PRÉSTAMOS EN 2025', 160, 170, 600, MUTE),
-          withAnims(text('41.236', 150, 200, 1000, 230, { fontFamily: M, fontSize: 200, color: INK, fontWeight: 700 }), A('zoom-in', { duration: 700 }), A('highlight-red', { start: 'click', duration: 800 })),
-          at(text('libros, películas y revistas que salieron de un local de 400 m².', 160, 440, 1000, 50, { fontSize: 30, color: INK }), 'fade-up', { start: 'afterPrev' }),
-          at(text('Más que el polideportivo y el centro cultural juntos.', 160, 520, 1000, 60, { fontFamily: M, fontSize: 34, fontStyle: 'italic', color: BLUE }), 'fade-in')],
-          notes: 'Primer clic: la cifra crece y aparece su explicación. Segundo: la comparación. Tercero: la cifra se vuelve roja (Resaltar en rojo) justo al repetirla en voz alta. Datos inventados.' },
+          withAnims(text('41.236', 150, 200, 1000, 230, { fontFamily: M, fontSize: 200, fontWeight: 700 }), grow_, red),
+          withAnims(text('libros, películas y revistas que salieron de un local de 400 m².', 160, 440, 1000, 50, { fontSize: 30, color: INK }), expl),
+          withAnims(text('Más que el polideportivo y el centro cultural juntos.', 160, 520, 1000, 60, { fontFamily: M, fontSize: 34, fontStyle: 'italic', color: BLUE }), cmp)],
+          notes: 'Primer clic: la cifra crece y aparece su explicación. Segundo: la comparación. Tercero: la cifra se vuelve roja (Resaltar en rojo) justo al repetirla en voz alta. Datos inventados.' };
+        })(),
 
         (() => {   // Proposal against demand: each click strikes one out and writes its answer.
           const L = ['Cerrar por las tardes', 'Cerrar los sábados', 'Suprimir el club de lectura infantil'], Rt = ['Mantener el horario de tarde', 'Abrir los sábados con voluntariado', 'Club de lectura con la asociación'];
@@ -461,8 +464,8 @@ export default {
         { layout: 'blank', bg: PAPER, transition: 'fade', back: notepad(), extra: [
           text('“', 110, 30, 220, 300, { fontFamily: M, fontSize: 200, color: RED, opacity: 40 }),
           text('Quien cierra una biblioteca', 140, 170, 1000, 90, { fontFamily: M, fontSize: 58, color: INK, textAlign: 'center' }),
-          at(text('no ahorra:', 140, 270, 1000, 90, { fontFamily: M, fontSize: 58, color: INK, textAlign: 'center', fontWeight: 700 }), 'highlight-red', { duration: 800 }),
-          at(text('aplaza el gasto.', 140, 370, 1000, 90, { fontFamily: M, fontSize: 58, color: INK, textAlign: 'center', fontWeight: 700 }), 'highlight-blue', { duration: 800 }),
+          at(text('no ahorra:', 140, 270, 1000, 90, { fontFamily: M, fontSize: 58, textAlign: 'center', fontWeight: 700 }), 'highlight-red', { duration: 800 }),
+          at(text('aplaza el gasto.', 140, 370, 1000, 90, { fontFamily: M, fontSize: 58, textAlign: 'center', fontWeight: 700 }), 'highlight-blue', { duration: 800 }),
           at(text('Lo dijo una bibliotecaria de este barrio en 1995. Sigue siendo verdad.', 140, 520, 1000, 50, { fontSize: 26, color: MUTE, textAlign: 'center', fontStyle: 'italic' }), 'fade-up')],
           notes: 'La cita entera está a la vista; cada clic resalta una parte (en rojo «no ahorra», en azul «aplaza el gasto») mientras se pronuncia. El último clic trae la atribución.' },
 
@@ -534,16 +537,20 @@ export default {
           withAnims(side(`<div style="font-size:44px;font-weight:700;color:${YEL};line-height:1">71 m²</div><div style="margin-top:8px">construidos · 2 dormitorios · 1 baño · cocina cerrada</div>`, 140, 170), A('fade-left', { start: 'afterPrev' }))],
           notes: 'Primer clic: el perímetro y los tabiques se trazan en cadena, luego las puertas y las cotas. Segundo clic: los nombres de cada estancia aparecen uno tras otro y la ficha del piso.' },
 
-        { layout: 'blank', bg: BP, transition: 'fade', back: grid(), extra: [
+        (() => {   // Click 1: the wall is marked in red and its card comes in; click 2: the wall, its mark and the two names go (created in that order).
+          const mark = A('draw', { duration: 900 }), info = A('fade-left', { start: 'withPrev' }), down = A('fade-out', { duration: 700, sound: 'pop' });
+          const markOut = A('fade-out', { start: 'withPrev', duration: 700 }), n1 = A('fade-out', { start: 'withPrev', duration: 500 }), n2 = A('fade-out', { start: 'withPrev', duration: 500 });
+          return { layout: 'blank', bg: BP, transition: 'fade', back: grid(), extra: [
           ...ttl('DERRIBO', 'Lo que se tira'),
           ...walls(['o1', 'o2', 'o3', 'o4', 'w2', 'w3', 'w4', 'w5', 'w6']), ...doors(), ...dims(),
-          withAnims(lab('Salón', '13,1 m²', 140, 245, 280), A('fade-out', { start: 'click', duration: 500 })),
-          withAnims(lab('Cocina', '15,9 m²', 420, 245, 340), A('fade-out', { start: 'withPrev', duration: 500 })),
+          withAnims(lab('Salón', '13,1 m²', 140, 245, 280), n1),
+          withAnims(lab('Cocina', '15,9 m²', 420, 245, 340), n2),
           ...OLD.slice(2).map(([t, a, x, y, w]) => lab(t, a, x, y, w)),
-          withAnims(withId(ink(WALLS.w1, RED, 18, { opacity: 70 }), uid()), A('draw', { duration: 900, start: 'click' })),
-          withAnims(side(`<div style="font-weight:700;color:${RED}">Tabique cocina-salón</div><div style="margin-top:6px">3,40 m de largo · no es muro de carga (informe de la arquitecta, 2/10).</div>`, 140, 170), A('fade-left', { start: 'withPrev' })),
-          withAnims(wall('w1'), A('fade-out', { start: 'click', duration: 700, sound: 'pop' }))],
-          notes: 'Primer clic: se marca en rojo el tabique (una tinta gruesa que se dibuja) y aparece la ficha. Segundo: el tabique desaparece con un «pop» y con él los nombres de las dos estancias. La siguiente diapositiva usa Transformar.' },
+          withAnims(wall('w1'), down),
+          withAnims(withId(ink(WALLS.w1, RED, 18, { opacity: 70 }), uid()), mark, markOut),
+          withAnims(side(`<div style="font-weight:700;color:${RED}">Tabique cocina-salón</div><div style="margin-top:6px">3,40 m de largo · no es muro de carga (informe de la arquitecta, 2/10).</div>`, 140, 170), info)],
+          notes: 'Primer clic: se marca en rojo el tabique (una tinta gruesa que se dibuja) y aparece la ficha. Segundo: el tabique desaparece con un «pop» y con él los nombres de las dos estancias. La siguiente diapositiva usa Transformar.' }
+        })(),
 
         { layout: 'blank', bg: BP, transition: 'fade', autoAnimate: true, back: grid(), extra: [
           ...ttl('NUEVA DISTRIBUCIÓN', 'Salón-cocina abierto y baño más grande'),
@@ -571,7 +578,8 @@ export default {
           ...[['rounded', 170, 300, 210, 70], ['ellipse', 300, 170, 90, 90], ['rounded', 520, 180, 200, 56], ['rect', 560, 147, 190, 28], ['rounded', 170, 450, 160, 130], ['rounded', 420, 470, 130, 140], ['rect', 790, 150, 90, 120], ['ellipse', 812, 300, 60, 60]].map(([k, x, y, w, h], i) =>
             withAnims(shape(k, x, y, w, h, '#7fd6ff22', { stroke: CY, strokeWidth: 3, sketch: true }), A('draw', { start: i ? 'afterPrev' : 'click', duration: 450 }))),
           m3d('kh-SheenChair', 950, 140, 280, 300, { motion: 'orbit', view: 'three' }),
-          side('Silla del comedor en 3D: se gira con el ratón para verla desde cualquier lado.', 460, 120, { fontSize: 18 })],
+          side('Silla del comedor en 3D: se gira con el ratón para verla desde cualquier lado.', 460, 120, { fontSize: 18 }),
+          text('Silla 3D: Eric Chadwick, Khronos glTF Sample Assets (CC0)', 950, 596, 280, 44, { fontSize: 13, color: DIM })],
           notes: 'Los muebles se dibujan a mano alzada uno tras otro (Dibujar sobre formas con trazo a mano). A la derecha, la silla elegida en 3D, con una vuelta de cámara al llegar.' },
 
         { title: 'Presupuesto', layout: 'titleOnly', bg: BP, back: grid(), extra: [
@@ -652,12 +660,13 @@ export default {
 
         (() => {   // A fight in turns: walk up and strike, block, the final blow; health drops in blocks.
           const kn = lib3d('kk-Knight');
-          const walk = path([[180, 10], [370, 0]], { duration: 1800 }), chop = clip('1H_Melee_Attack_Chop', { start: 'afterPrev', duration: 1100, sound: 'whoosh' });
+          const walk = path([[250, 10], [500, 0]], { duration: 2200 }), chop = clip('1H_Melee_Attack_Chop', { start: 'afterPrev', duration: 1100, sound: 'whoosh' });
           const hit = clip('Hit_A', { start: 'withPrev', delay: 500, duration: 900 }), dmg1 = A('zoom-in', { start: 'withPrev', delay: 500, duration: 300, sound: 'pop' });
           const hp1 = [A('fade-out', { start: 'withPrev', delay: 500, duration: 300 }), A('fade-out', { start: 'withPrev', delay: 500, duration: 300 })];
           const sk = clip('1H_Melee_Attack_Slice_Diagonal', { duration: 1200, sound: 'whoosh' }), block = clip('Block', { start: 'withPrev', delay: 300, duration: 1200 }), blk = A('zoom-in', { start: 'withPrev', delay: 500, duration: 300, sound: 'click' });
-          const spin = clip('2H_Melee_Attack_Spin', { duration: 1300, sound: 'whoosh' }), die = A('clip3d', { clip: 'Death_A', start: 'withPrev', delay: 600, duration: 1500 }), lie = A('clip3d', { clip: 'Death_A_Pose', start: 'afterPrev', duration: 500 });
+          const spin = clip('2H_Melee_Attack_Spin', { duration: 1300, sound: 'whoosh' }), die = A('clip3d', { clip: 'Death_B', start: 'withPrev', delay: 600, duration: 2600 });
           const dmg2 = A('zoom-in', { start: 'withPrev', delay: 600, duration: 300, sound: 'pop' }), hp2 = [0, 1, 2].map(() => A('fade-out', { start: 'withPrev', delay: 600, duration: 300 }));
+          const lie = A('fade-out', { start: 'withPrev', delay: 2400, duration: 700 });   // (it vanishes as it falls — made after the blocks of health, so the cheer waits for it)
           const win = A('bounce', { start: 'afterPrev', sound: 'applause' });
           return { layout: 'blank', bg: STONE, transition: 'fade', back: dungeon(), extra: [
             H('Un combate por turnos', 80, 40, 700, 70, 52),
@@ -668,10 +677,10 @@ export default {
             withAnims(m3d('kk-Knight', 80, 210, 300, 400, { clip: 'Idle', edge: 'fade', walk: { clip: kn.walk, face: true } }), walk, chop, block, spin),
             withAnims(m3d('kk-Skeleton_Warrior', 820, 210, 300, 400, { clip: 'Idle', edge: 'fade' }), hit, sk, die, lie),
             withAnims(H('−2', 1060, 230, 120, 70, 60, BLOOD, { textAlign: 'center' }), dmg1),
-            withAnims(text('¡Bloqueado!', 380, 230, 260, 50, { fontFamily: C, fontSize: 40, fontWeight: 700, color: GOLD, textAlign: 'center' }), blk),
+            withAnims(text('¡Bloqueado!', 600, 230, 260, 50, { fontFamily: C, fontSize: 40, fontWeight: 700, color: GOLD, textAlign: 'center' }), blk),
             withAnims(H('−3', 1060, 310, 120, 70, 60, BLOOD, { textAlign: 'center' }), dmg2),
             withAnims(plate('<b>Victoria.</b> Tres turnos: atacar, defender y rematar.', 360, 620, 560, 60, GOLD, { textAlign: 'center', vAlign: 'middle', pad: [6, 12, 6, 12] }), win)],
-            notes: 'Clic 1: el caballero anda hasta el esqueleto (trayectoria con la animación de andar), ataca, el esqueleto encaja el golpe y pierde dos bloques de vida. Clic 2: el esqueleto ataca y el caballero bloquea. Clic 3: golpe giratorio, el esqueleto cae y se queda en el suelo (dos animaciones del modelo seguidas), y aplausos.' };
+            notes: 'Clic 1: el caballero anda hasta el esqueleto (trayectoria con la animación de andar), ataca, el esqueleto encaja el golpe y pierde dos bloques de vida. Clic 2: el esqueleto ataca y el caballero bloquea. Clic 3: golpe giratorio, el esqueleto cae (animación del modelo) y se desvanece (Desaparecer), y aplausos.' };
         })(),
 
         (() => {   // Magic: the mage casts, a fireball flies (arc), it bursts, the minion falls.
@@ -793,10 +802,10 @@ export default {
           notes: 'Las cinco maderas habituales en una guitarra clásica de taller y por qué se eligen. Densidades aproximadas.' },
 
         { title: 'Ciento cincuenta horas de taller', layout: 'titleOnly', bg: WOOD, back: back(), extra: [
-          dg('process', 'Tapa\nAros y fondo\nMástil\nMontaje\nBarniz', 70, 160, 1140, 170, { colors: 'accent', oneByOne: true, fontScale: 1.4 }),
-          chartBlock({ x: 70, y: 350, w: 560, h: 320, chartType: 'doughnut', data: [{ label: 'Tapa', value: 40, color: '#e8c48a' }, { label: 'Aros y fondo', value: 30, color: '#8c3b2b' }, { label: 'Mástil', value: 25, color: ROSE }, { label: 'Montaje', value: 20, color: BRASS }, { label: 'Barniz', value: 35, color: ACC }] }),
+          withAnims(dg('process', 'Tapa\nAros y fondo\nMástil\nMontaje\nBarniz', 70, 160, 1140, 170, { colors: 'accent', oneByOne: true }), A('fade-in', { duration: 400 })),
+          chartBlock({ x: 70, y: 350, w: 560, h: 320, chartType: 'doughnut', data: [{ label: 'Tapa', value: 40, color: '#e8c48a' }, { label: 'Aros y fondo', value: 30, color: '#8c3b2b' }, { label: 'Mástil', value: 25, color: ROSE }, { label: 'Montaje', value: 20, color: '#6c8ea4' }, { label: 'Barniz', value: 35, color: ACC }] }),
           withAnims(text('El barniz a muñequilla, en capas finísimas, lleva casi una cuarta parte del tiempo.', 680, 440, 520, 110, { fontSize: 24, color: CREAM }), A('fade-up'))],
-          notes: 'El proceso aparece paso a paso (diagrama «uno a uno»). En la dona, las horas de cada fase (inventadas pero razonables).' },
+          notes: 'El proceso aparece paso a paso (diagrama «uno a uno»: un clic por fase) y, en el último clic, el comentario del barniz. En la dona, las horas de cada fase (inventadas pero razonables).' },
 
         (() => {   // Classical or flamenco: the differences, one per click, both columns at once.
           const ROWS = [['Tapa', 'Más gruesa: sonido redondo', 'Más fina: sonido seco y brillante'], ['Fondo y aros', 'Palosanto oscuro', 'Ciprés claro'], ['Acción', 'Cuerdas algo más altas', 'Cuerdas bajas, para el rasgueo'], ['Golpeador', 'Sin golpeador', 'Golpeador transparente']];
@@ -877,7 +886,9 @@ export default {
 
         (() => {   // A draft, corrected: words struck out and one written above by hand.
           const D = [['el', 'el1'], ['agua'], ['del'], ['charco', 'charco'], ['refleja'], ['el', 'el2'], ['cielo', 'cielo'], ['azul']], size = 36;
-          let off = 0; const B = D.map(([w, id]) => { const b = text(w, Math.round(200 + off * CW * size - 6), 230, Math.round(w.length * CW * size + 14), 60, { fontFamily: MONO, fontSize: size, color: INK }); off += w.length + 1; return id ? withId(b, ids[id]) : b; });
+          // (The words struck out carry a see-through background: a text that may travel with Transformar is wrapped in a box of its
+          // own when exported, and the line of «Tachar» doesn't reach into it — with a background it isn't.)
+          let off = 0; const B = D.map(([w, id]) => { const b = text(w, Math.round(200 + off * CW * size - 6), 230, Math.round(w.length * CW * size + 14), 60, { fontFamily: MONO, fontSize: size, color: INK, ...(!id && { bg: '#ffffff00' }) }); off += w.length + 1; return id ? withId(b, ids[id]) : b; });
           const s1 = A('strike', { duration: 400 }), s2 = A('strike', { start: 'withPrev', duration: 400 }), s3 = A('strike', { duration: 400 }), g = A('fade-down', { start: 'afterPrev', duration: 500 }), s4 = A('strike', { duration: 400 });
           const n = A('zoom-in', { start: 'afterPrev', sound: 'chime' });
           return { layout: 'blank', bg: PAPER, transition: 'fade', back: sheet(), extra: [head('Corregir un borrador'),
@@ -1090,12 +1101,14 @@ export default {
 
         (() => {   // The derailleur steps down the cassette: one click, one gear, one "click".
           const COGS = [32, 28, 24, 21, 17, 13, 11];   // (the same sprockets as the table)
-          const steps = COGS.slice(1).map(() => path([[0, 30], [0, 62]], { pathShape: 'line', duration: 350, sound: 'click' }));
+          // (Each tip made right after its shift, so it comes in with it: the three first shifts bring the three tips.)
+          const steps = [], tips = [];
+          COGS.slice(1).forEach((_, i) => { steps.push(path([[0, 30], [0, 62]], { pathShape: 'line', duration: 350, sound: 'click' })); if (i < 3) tips.push(A('fade-left', { start: 'withPrev', delay: 100 })); });
           return { title: 'CAMBIAR, PASO A PASO', layout: 'titleOnly', bg: BG, back: [R(0, 0, 1280, 14, OR)], extra: [
             ...COGS.map((n, i) => shape('rounded', 380 - (100 + n * 5) / 2, 190 + i * 62, 100 + n * 5, 40, i % 2 ? STEEL : '#b8c0c8', { radius: 8, html: n + ' dientes', fontSize: 18, color: INK, fontWeight: 700 })),
             withAnims(shape('rightarrow', 70, 190, 90, 40, OR), ...steps),
             ...[['Pedalea suave mientras cambias', 'La cadena sube o baja de piñón solo si gira.'], ['De uno en uno', 'Cada clic de la maneta, un piñón.'], ['No cruces la cadena', 'Plato grande con piñón grande la desgasta.']].map(([h, d], i) =>
-              withAnims(text(`<div style="font-family:${B};font-size:34px;color:${[OR, BLUE, GREEN][i]}">${h}</div><div>${d}</div>`, 640, 190 + i * 140, 560, 120, { fontSize: 22, color: INK }), A('fade-left', { start: 'withPrev', delay: 100 }))).map((b, i) => b),
+              withAnims(text(`<div style="font-family:${B};font-size:34px;color:${[OR, BLUE, GREEN][i]}">${h}</div><div>${d}</div>`, 640, 190 + i * 140, 560, 120, { fontSize: 22, color: INK }), tips[i])),
           ],
             notes: 'Cada clic baja la flecha (el cambio) un piñón, con su «clic», como la maneta de verdad: la misma flecha lleva seis trayectorias cortas seguidas. Los consejos aparecen con los tres primeros cambios.' };
         })(),

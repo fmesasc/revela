@@ -2633,6 +2633,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const bs = S.chartSVG({ chartType: 'bubble', data, series: [{ name: 'Tamaño', values: [1, 4, 9] }] });
     const ry = [...bs.matchAll(/ry="([\d.]+)"/g)].map(m => +m[1]);
     assert(ry.length === 3 && ry[0] < ry[1] && ry[1] < ry[2], 'burbujas más grandes con más tamaño');
+    const xnums = h => (h.match(/text-anchor="middle" fill="#8a8a8a"[^>]*>\d+</g) || []).length;
+    assert(xnums(bs) > 0, 'con números en x, su escala debajo');
+    const named = S.chartSVG({ chartType: 'bubble', data: [{ label: 'Ciencias', value: 7.9 }, { label: 'Salud', value: 11.2 }], series: [{ values: [18, 6] }] });
+    eq(xnums(named), 0, 'con nombres, sin un 1, 2, 3… que no significa nada');
     R.blocks.addChart(); const b = last(); select(b); await sleep(20);
     const kind = [...D.querySelectorAll('#ribbon [data-page="ctx"] select')].find(x => [...x.options].some(o => o.value === 'treemap'));
     assert(kind && [...kind.options].some(o => o.value === 'bubble'), 'en la pestaña Gráfico');
