@@ -156,14 +156,14 @@ export default {
         notes: 'Plano dibujado con cinco lugares. Con cada clic aparece una preposición con su ejemplo: que la clase la compruebe en el plano antes de leer la frase.' + NOTE },
       { title: 'La ruta: de Westgate al museo', layout: 'titleOnly', bg: BG, back: lines(), transition: 'fade', extra: [
         img(TUBE(true), 60, 170, 780, 440, 'Plano del metro de Riverton: línea roja, azul y verde, con la ruta de Westgate a Museum marcada'),
-        ...(() => { // (made in play order: the first leg, steps 1 and 2; the second leg, step 3)
-          const step = ([c, n, en, es], i) => [after(badge(n, 870, 190 + i * 140, 56, c), 'zoom-in', { sound: 'pop', duration: 300 }),
+        ...(() => { // (made in play order: the first leg and step 1; on the next click step 2, the second leg and step 3)
+          const step = ([c, n, en, es], i, first = after) => [first(badge(n, 870, 190 + i * 140, 56, c), 'zoom-in', { sound: 'pop', duration: 300 }),
             along(text(`<b>${E(en)}</b><br><span style="font-size:20px;color:${GREY}">${es}</span>`, 940, 182 + i * 140, 290, 134, { fontSize: 23, color: INK }), 'fade-left')];
           const S = [[RED, '1', 'Take the red line to Central.', 'Coge la línea roja hasta Central (2 paradas).'], [BLUE, '2', 'Change to the blue line.', 'Haz transbordo a la línea azul.'], [GREEN, '3', 'Get off at Museum.', 'Bájate en Museum.']];
-          const leg1 = path([[180, 0], [370, 0]], { duration: 1800 }), s1 = step(S[0], 0), s2 = step(S[1], 1);
-          const leg2 = path([[0, 80], [90, 170], [280, 170]], { duration: 2200 }), s3 = step(S[2], 2);
+          const leg1 = path([[180, 0], [370, 0]], { duration: 1800 }), s1 = step(S[0], 0), s2 = step(S[1], 1, on);
+          const leg2 = path([[0, 80], [90, 170], [280, 170]], { start: 'afterPrev', duration: 2200 }), s3 = step(S[2], 2);
           return [withAnims(shape('ellipse', 60 + ST.westgate[0] - 16, 170 + ST.westgate[1] - 16, 32, 32, YEL, { stroke: INK, strokeWidth: 5 }), leg1, leg2), ...s1, ...s2, ...s3]; })()],
-        notes: 'Primer clic: el tren (punto amarillo) va de Westgate a Central y aparece el paso 1. Segundo clic: cambia a la línea azul y llega a Museum. La línea punteada es la ruta completa.' + NOTE },
+        notes: 'Primer clic: el tren (punto amarillo) va de Westgate a Central y aparece el paso 1. Segundo clic: aparece el paso 2, cambia a la línea azul y llega a Museum (paso 3). La línea punteada es la ruta completa.' + NOTE },
       { title: 'En el andén', layout: 'titleOnly', bg: BG, back: lines(), extra: [
         ...[[E('Excuse me, how do I get to the museum?'), 'left', 90, 175, '#ffffff', INK], [E('Take the red line and change at Central.'), 'right', 520, 280, BLUE, '#ffffff'],
           [E('Is it far?'), 'left', 90, 385, '#ffffff', INK], [E("No, it's only four stops. You can't miss it!"), 'right', 520, 490, BLUE, '#ffffff']].map(([t, side, x, y, f, fg], i) => {
@@ -214,7 +214,7 @@ export default {
           [F('Sur place ou à emporter ?'), 'left', 90, 395, '#2f6f63'], [F('Sur place. Merci beaucoup !'), 'right', 470, 505, '#7a2a30']].map(([t, side, x, y, f]) => {
           const [b, tail, tx] = bubble(t, x, y, 720, 86, f, CH, side, { text: { fontSize: 30 } });
           return [on(b, side === 'left' ? 'fade-right' : 'fade-left', { duration: 400 }), along(tail, 'fade-in', { duration: 400 }), along(tx, side === 'left' ? 'fade-right' : 'fade-left', { duration: 400 })]; }).flat(),
-        text('le serveur', 830, 192, 300, 50, { fontFamily: HAND, fontSize: 34, color: DIM }), text('le client', 260, 302, 190, 50, { fontFamily: HAND, fontSize: 34, color: DIM, textAlign: 'right' })],
+        text(fx('le serveur', 'fr'), 830, 192, 300, 50, { fontFamily: HAND, fontSize: 34, color: DIM }), text(fx('le client', 'fr'), 260, 302, 190, 50, { fontFamily: HAND, fontSize: 34, color: DIM, textAlign: 'right' })],
         notes: 'Diálogo en cuatro réplicas, una por clic. «Sur place ou à emporter ?» = ¿para tomar aquí o para llevar? Representadlo por parejas con la carta delante.' + NOTE },
       { title: 'L’addition, s’il vous plaît', layout: 'titleOnly', bg: '#18201d', back: board(false), transition: 'fade', extra: [
         tableBlock({ x: 90, y: 180, w: 700, h: 420, fontSize: 28, header: true, headBg: '#7a2a30', headFg: CH, stroke: '#55625b', color: CH, colW: [3.4, 1.6, 1.2, 1.8],
@@ -290,7 +290,7 @@ export default {
         tableBlock({ x: 90, y: 180, w: 1100, h: 400, fontSize: 25, header: true, headBg: K, headFg: '#ffffff', stroke: '#cfc6b3', colW: [3.2, 1.4, 4.2],
           cellBg: { '1,1': '#f6c9c4', '2,1': '#f6c9c4', '3,1': '#fbe6a6', '4,1': '#c5d3ec', '5,1': '#c5d3ec' },
           rows: [['Si la palabra…', 'Artículo', 'Ejemplos'], ['termina en -ung, -heit, -keit, -ion', D('die'), D('die Zeitung, die Freiheit, die Station')], ['termina en -e (casi siempre)', D('die'), D('die Lampe, die Schule, die Blume')],
-            ['termina en -chen o -lein (diminutivo)', D('das'), D('das Mädchen, das Brötchen, das Fräulein')], ['nombra a quien hace algo (-er)', D('der'), D('der Lehrer, der Fahrer')], ['es un día, un mes o una estación', D('der'), D('der Montag, der Mai, der Winter')]] }),
+            ['termina en -chen o -lein (diminutivo)', D('das'), D('das Mädchen, das Brötchen, das Büchlein')], ['nombra a quien hace algo (-er)', D('der'), D('der Lehrer, der Fahrer')], ['es un día, un mes o una estación', D('der'), D('der Montag, der Mai, der Winter')]] }),
         on(text('Son pistas, no reglas sin excepción: <b>' + D('der Käse') + '</b> acaba en -e y es masculino.', 90, 610, 1100, 50, { fontSize: 24, color: GREY }), 'fade-up')],
         notes: 'Tabla de terminaciones con el color del género en la segunda columna. Con estas cinco pistas se acierta la mayoría de las veces; la última frase recuerda que hay excepciones.' + NOTE },
       { title: '¿Cuántos hay de cada uno?', layout: 'titleOnly', bg: P, back: stripe(), transition: 'fade', extra: [
@@ -319,7 +319,7 @@ export default {
       { layout: 'blank', bg: P, back: stripe(), extra: [quiz('¿Qué artículo lleva «Mädchen» (niña)?', ['der', 'die', 'das'], 2, { time: 15, fontSize: 48 })],
         notes: 'Concurso con puntos. La trampa: aunque sea una niña, «Mädchen» es neutro porque acaba en -chen. Respuesta: das.' + NOTE },
       { title: 'Tu rutina con las fichas', layout: 'titleOnly', bg: P, back: stripe(), transition: 'zoom', extra: [
-        dg('process', 'Lee\n  la palabra con su artículo\nColorea\n  azul, rojo o amarillo\nDilo\n  en voz alta, tres veces\nRepasa\n  mañana y dentro de una semana', 90, 190, 1100, 260, { oneByOne: true, colors: 'outline', textColor: K, fontScale: 1.3 }),
+        dg('process', 'Lee\n  la palabra con su artículo\nColorea\n  azul, rojo o amarillo\nDilo\n  en voz alta, tres veces\nRepasa\n  mañana y dentro de una semana', 90, 190, 1100, 260, { oneByOne: true, colors: 'outline', textColor: K, fontScale: 1.1 }),
         ...[['der', D('der Tisch')], ['die', D('die Lampe')], ['das', D('das Buch')]].map(([g, w], i) => [form(g, 250 + i * 300, 500, 60), text(w, 330 + i * 300, 505, 200, 50, { fontSize: 30, color: K, vAlign: 'middle' })]).flat()],
         notes: 'Cierre con una rutina para las fichas de vocabulario, paso a paso al presentar. Pide que hagan diez fichas con los colores de la unidad para la próxima clase.' + NOTE },
     ]));
@@ -472,7 +472,7 @@ export default {
         ...[['Turn off the music.', true], ['Turn the music off.', true], ['Turn it off.', true], ['Turn off it.', false]].map(([s, ok], i) => [
           text(E(s), 160, 190 + i * 100, 640, 80, { fontSize: 42, color: FG, vAlign: 'middle' }),
           on(icon(ok ? 'circle-check' : 'circle-x', 90, 205 + i * 100, 50, ok ? GRN : PINK), 'zoom-in', { sound: ok ? 'pop' : 'click', duration: 300 }),
-          ...(ok ? [] : [after(shape('rect', 155, 230 + i * 100, 215, 6, PINK), 'grow', { duration: 400 })])]).flat(),
+          ...(ok ? [] : [after(shape('rect', 155, 230 + i * 100, 215, 6, PINK), 'wipe', { dir: 'left', duration: 400 })])]).flat(),
         card(`<b style="color:${YEL}">Regla</b><br>Si el objeto es un pronombre (${E('it, them, me')}), va <b>en medio</b>: ${E('turn it off')}, nunca ${E('turn off it')}.`, 840, 190, 360, 300, '#ffffff10', { fontSize: 28, color: FG, borderColor: YEL, radius: 14 })],
         notes: 'Los phrasal verbs separables admiten el objeto delante o detrás de la partícula, pero un pronombre siempre va en medio. El último ejemplo se marca y se tacha con un clic.' + NOTE },
       { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'match', fontSize: 32, question: 'Une cada phrasal verb con su significado', x: 90, y: 50, w: 1100, h: 620,
@@ -539,7 +539,7 @@ export default {
         text('Revisión de 200 redacciones de 1.º de Bachillerato (datos inventados).', 850, 560, 350, 70, { fontSize: 18, color: DIM, fontStyle: 'italic' })],
         notes: 'Barras horizontales con el porcentaje de redacciones que contienen cada error (cifras inventadas). Las etiquetas del gráfico son palabras inglesas: no se traducen.' + NOTE },
       { title: 'Interrogatorio: corrige la declaración', layout: 'titleOnly', bg: BG, back: lamp(), transition: 'push', extra: [
-        ...[['I’m constipated, I need a tissue.', 'I’ve got a cold, I need a tissue.'], ['Actually I live in Madrid.', 'Currently I live in Madrid.'], ['My sister is very sensible: she cries at films.', 'My sister is very sensitive: she cries at films.']].map(([bad, good], i) => {
+        ...[['I’m constipated, I need a tissue.', 'I’ve got a cold, I need a tissue.'], ['Actually I live in Madrid.', 'I currently live in Madrid.'], ['My sister is very sensible: she cries at films.', 'My sister is very sensitive: she cries at films.']].map(([bad, good], i) => {
           const y = 190 + i * 150;
           return [shape('rect', 90, y, 1100, 124, '#ffffff', { opacity: 6 }),
             on(text(E(bad), 110, y + 10, 520, 104, { fontFamily: TW, fontSize: 25, color: PAPER, vAlign: 'middle' }), 'strike', { duration: 500 }),
@@ -618,14 +618,14 @@ export default {
         text('Con la h aspirada, sin enlace: ' + F('les | héros') + ' (si no, sonaría como «les zéros», los ceros).', 90, 620, 1100, 50, { fontSize: 22, color: DIM })],
         notes: 'Tabla de casos con el resultado coloreado: verde, siempre; rojo, nunca. El ejemplo de «les héros» suele hacer gracia y ayuda a recordarlo.' + NOTE },
       { title: 'La e que se cae', layout: 'titleOnly', bg: BG, transition: 'push', extra: [
-        ...[['sam<span style="color:#e85d75">e</span>di', 'sam’di', 'sábado'], ['maint<span style="color:#e85d75">e</span>nant', 'maint’nant', 'ahora'], ['j<span style="color:#e85d75">e</span> n<span style="color:#e85d75">e</span> sais pas', 'j’sais pas', 'no sé (coloquial)']].map(([w, said, es], i) => {
+        ...[['sam<span style="color:#e85d75">e</span>di', 'sam’di', 'sábado'], ['maint<span style="color:#e85d75">e</span>nant', 'maint’nant', 'ahora'], ['je n<span style="color:#e85d75">e</span> sais pas', 'je n’sais pas', 'no sé (coloquial)']].map(([w, said, es], i) => {
           const y = 190 + i * 140;
           return [text(fx(w, 'fr'), 90, y, 460, 80, { fontFamily: AB, fontSize: 46, color: CREAM, vAlign: 'middle' }),
             on(icon('volume-2', 570, y + 15, 50, AMBER), 'zoom-in', { sound: 'click', duration: 250 }),
             after(text(`<b>${fx(said, 'fr')}</b>`, 650, y, 330, 80, { fontFamily: AB, fontSize: 46, color: AMBER, vAlign: 'middle' }), 'fade-left'),
             along(text(es, 990, y + 20, 220, 50, { fontSize: 22, color: DIM }), 'fade-in')]; }).flat(),
         text('Por escrito la e sigue ahí; al hablar rápido, desaparece.', 90, 610, 1100, 50, { fontSize: 24, color: DIM })],
-        notes: 'La e en rosa es la que se pierde al hablar. Cada clic «reproduce» la versión hablada. En un examen escrito se escribe completa; la forma «j’sais pas» es solo oral y coloquial.' + NOTE },
+        notes: 'La e en rosa es la que se pierde al hablar. Cada clic «reproduce» la versión hablada. En un examen escrito se escribe completa; la forma «je n’sais pas» es solo oral y coloquial (y aún más coloquial, sin «ne»: «j’sais pas»).' + NOTE },
       { title: 'Cómo hemos mejorado', layout: 'titleOnly', bg: BG, extra: [
         chartBlock({ x: 90, y: 160, w: 640, h: 500, chartType: 'radar', color: DIM, seriesName: 'Septiembre', yMax: 100, labelColor: CREAM,
           data: [['[ɑ̃] an', 40], ['[ɔ̃] on', 55], ['[ɛ̃] in', 35], ['[y] tu', 45], ['[ʁ] r', 30], ['liaison', 50]].map(([label, value]) => ({ label, value })),
@@ -682,9 +682,10 @@ export default {
         const doors = [], opens = [];
         NUM.forEach((n, i) => { const x = 100 + (i % 6) * 182, y = 180 + Math.floor(i / 6) * 117, c = [RED, '#1f5c4a', '#2b3f6b', '#7a3b6b'][(i + Math.floor(i / 6)) % 4];
           doors.push(shape('rounded', x, y, 170, 105, c, { stroke: GOLD, strokeWidth: 2, radius: 10, html: `<b>${n}</b>`, fontFamily: H, fontSize: 42, color: CREAM }));
-          if (OPEN[n]) opens.push([n, on(text(`<div style="font-family:${H};font-size:21px;font-weight:700">${fx(OPEN[n][0], 'de')}</div><div style="font-size:16px;color:#6b5a3a">${OPEN[n][1]}</div>`, x, y, 170, 105,
-            { bg: CREAM, color: BG, radius: 10, textAlign: 'center', vAlign: 'middle', pad: [6, 6, 6, 6], fontSize: 16, borderColor: GOLD }), 'flip', { sound: 'pop', duration: 500 })]); });
-        return [...doors, ...opens.sort((a, b) => a[0] - b[0]).map(o => o[1])]; })(),
+          if (OPEN[n]) opens.push([n, text(`<div style="font-family:${H};font-size:21px;font-weight:700">${fx(OPEN[n][0], 'de')}</div><div style="font-size:16px;color:#6b5a3a">${OPEN[n][1]}</div>`, x, y, 170, 105,
+            { bg: CREAM, color: BG, radius: 10, textAlign: 'center', vAlign: 'middle', pad: [6, 6, 6, 6], fontSize: 16, borderColor: GOLD })]); });
+        // (the doors open by date: the animations are made in that order)
+        return [...doors, ...opens.sort((a, b) => a[0] - b[0]).map(o => on(o[1], 'flip', { sound: 'pop', duration: 500 }))]; })(),
         notes: 'Un calendario de Adviento: 24 puertas, del 1 de diciembre a Nochebuena. Cada clic abre una puerta (la 1, la 6, la 13 y la 24) con una palabra de la Navidad alemana.' + NOTE },
       { title: 'De San Martín a Reyes', layout: 'titleOnly', bg: BG, back: night(), extra: [
         dg('timeline', '11. November\n  Sankt Martin: farolillos\n1. Advent\n  Primera vela de la corona\n6. Dezember\n  Nikolaus: dulces en las botas\n24. Dezember\n  Heiligabend: los regalos\n6. Januar\n  Heilige Drei Könige', 80, 190, 1120, 330, { oneByOne: true, colors: 'colorful', fontScale: 1.2, textColor: CREAM }),
@@ -782,7 +783,7 @@ export default {
         text('Uso en una encuesta a hablantes nativos (datos inventados).', 830, 570, 370, 60, { fontSize: 18, color: DIM, fontStyle: 'italic' })],
         notes: 'Barras al 100 %: qué pregunta usan más los hablantes de cada país (cifras inventadas para ilustrar la tendencia). Las leyendas son frases en inglés y no se traducen.' + NOTE },
       { title: 'Decide en dos preguntas', layout: 'titleOnly', bg: BG, transition: 'push', extra: [
-        dg('hierarchy', '¿Dices cuándo pasó?\n  Sí, un momento terminado\n    PAST SIMPLE\n  No, o llega hasta ahora\n    PRESENT PERFECT', 90, 180, 1100, 460, { oneByOne: true, colors: 'outline', textColor: W, fontScale: 1.4 })],
+        dg('hierarchy', '¿Dices cuándo pasó?\n  Sí, un momento terminado\n    PAST SIMPLE\n  No, o llega hasta ahora\n    PRESENT PERFECT', 90, 180, 1100, 460, { oneByOne: true, colors: 'outline', textColor: W, fontScale: 1.15 })],
         notes: 'Árbol de decisión, nivel a nivel. Proyecta frases sueltas («I ___ to London in 2018», «I ___ never ___ sushi») y recorred el árbol con la clase.' + NOTE },
       { layout: 'blank', bg: W, extra: [quiz('I ___ my homework. Can I go out now?', ['did', 'have done', 'do', 'was doing'], 1, { time: 20 })],
         notes: 'Concurso con puntos. «Have done»: la acción está terminada pero importa ahora (puedo salir). Las opciones están en inglés y no se traducen.' + NOTE },
@@ -812,7 +813,7 @@ export default {
       + '<text x="130" y="134" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="16" font-weight="700" fill="#8a6a12">28</text>'
       + '<rect x="14" y="140" width="232" height="10" rx="3" fill="#555"/><circle cx="60" cy="154" r="12" fill="#333"/><circle cx="200" cy="154" r="12" fill="#333"/>');
     // Lisbon's hills: the track along them, little houses under it and the river at the bottom (slide coordinates − 300 in y).
-    const TRACK = [[70, 560], [420, 470], [800, 520], [1140, 420]];
+    const TRACK = [[130, 562], [420, 470], [800, 520], [1140, 420]];
     const HILLS = svgURL(1280, 420, '<path d="M0 280C200 250 300 170 420 170C560 170 660 230 800 220C930 210 1020 120 1280 110V420H0Z" fill="#e8dcc4"/>'
       + `<path d="M0 270C200 240 300 170 420 170C560 170 660 230 800 220C930 210 1020 120 1280 110" stroke="#6b5a48" stroke-width="5" fill="none"/>`
       + Array.from({ length: 22 }, (_, i) => { const x = 20 + i * 58, y = 300 + (i % 3) * 20 - (i > 12 ? 60 : i > 6 ? 30 : 0), c = ['#f2c4a0', '#f6e3a1', '#b9d3ee', '#f3b8b0', '#ffffff', '#cfe8c9'][i % 6];
@@ -840,7 +841,7 @@ export default {
           return withAnims(card(`<div style="font-family:${H};font-size:44px;font-weight:800;color:${AZ}">${fx(pt, 'pt')}</div><div style="font-size:24px;color:${DIM};margin-top:6px">${es}</div>`, x, y, 345, 200, '#ffffff',
             { color: INK, textAlign: 'center', vAlign: 'middle', borderColor: AZ, radius: 4, shadow: { x: 0, y: 6, blur: 0, color: LIGHT } }), A('flip', { start: i ? 'afterPrev' : 'click', duration: 450, sound: 'pop' })); })],
         notes: 'Un clic y los seis azulejos giran uno tras otro. «Bom dia» se usa hasta la hora de comer; «boa noite» sirve para saludar y para despedirse por la noche.' + NOTE },
-      { title: P('Obrigado') + ' u ' + P('obrigada') + '?', layout: 'titleOnly', bg: BG, back: tileBand(), extra: [
+      { title: '¿' + P('Obrigado') + ' u ' + P('obrigada') + '?', layout: 'titleOnly', bg: BG, back: tileBand(), extra: [
         ...[['Obrigado!', 'Lo dice un hombre', AZ], ['Obrigada!', 'Lo dice una mujer', TERRA]].map(([w, d, c], i) => {
           const x = 120 + i * 560;
           return [on(icon('user', x, 260, 120, c), 'zoom-in', { duration: 300 }),
