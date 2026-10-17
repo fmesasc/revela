@@ -261,12 +261,16 @@ export function pollResultsHTML(poll, res, accent, L) {
       // count: the slide showed only «0 respuestas» and the room didn't know what the activity was about.)
       ? (kind === 'order' || kind === 'match' ? (function () {
           var mix = function (a) { return a.map(function (x, i) { var h = 0, t = String(x); for (var k = 0; k < t.length; k++) h = (h * 31 + t.charCodeAt(k)) | 0; return [h, x]; }).sort(function (p, q) { return p[0] - q[0]; }).map(function (p) { return p[1]; }); };
-          var chip = function (t, c) { return '<span style="display:inline-block;margin:.12em;padding:.12em .5em;border-radius:.35em;background:' + c + ';color:#fff">' + esc(t) + '</span>'; };
+          // (Dark words on a light colour: white on light green or sky blue hardly read.)
+          var ink = function (c) { var m = /^#([0-9a-f]{6})$/i.exec(c || ''); if (!m) return '#fff'; var v = parseInt(m[1], 16); return (0.299 * (v >> 16) + 0.587 * ((v >> 8) & 255) + 0.114 * (v & 255)) > 160 ? '#1e2a3a' : '#fff'; };
+          var chip = function (t, c) { return '<span style="display:inline-block;margin:.12em;padding:.12em .5em;border-radius:.35em;background:' + c + ';color:' + ink(c) + '">' + esc(t) + '</span>'; };
           var lefts = kind === 'match' ? labels.map(function (l) { return two(l)[0]; }) : labels, rights = kind === 'match' ? mix(labels.map(function (l) { return two(l)[1]; })) : [];
           var cells = kind === 'match' ? '<div style="display:flex;gap:1.2em;justify-content:center"><div>' + lefts.map(function (t, i) { return '<div>' + chip(t, cols[i % cols.length]) + '</div>'; }).join('') + '</div><div>'
               + rights.map(function (t) { return '<div>' + chip(t, '#5b6577') + '</div>'; }).join('') + '</div></div>'
             : '<div style="text-align:center">' + mix(lefts).map(function (t, i) { return chip(t, cols[i % cols.length]); }).join('') + '</div>';
-          return '<div style="display:flex;flex-direction:column;justify-content:center;height:100%;gap:.3em"><div style="font-size:.6em">' + cells + '</div><div style="text-align:center;font-size:.5em;opacity:.8">' + nv + ' '
+          // (As big as the box allows: few of them at the box's own size — at .6em they looked lost in it.)
+          var fs = labels.length <= 5 ? 1 : labels.length <= 8 ? .8 : .6;
+          return '<div style="display:flex;flex-direction:column;justify-content:center;height:100%;gap:.3em"><div style="font-size:' + fs + 'em">' + cells + '</div><div style="text-align:center;font-size:.5em;opacity:.8">' + nv + ' '
             + T(nv === 1 ? 'respuesta' : 'respuestas') + (nv ? ' · ' + avg + ' ' + T('% de aciertos') : '') + ' · ' + T('Clic para ver las soluciones') + '</div></div>'; })()
       : '<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;gap:.2em"><div style="font-size:2.2em;font-weight:800">' + nv + '</div><div style="font-size:.6em;opacity:.8">'
         + T(nv === 1 ? 'respuesta' : 'respuestas') + (nv ? ' · ' + avg + ' ' + T('% de aciertos') : '') + '</div><div style="font-size:.45em;opacity:.6;margin-top:.4em">' + T('Clic para ver las soluciones') + '</div></div>')

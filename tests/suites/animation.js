@@ -494,6 +494,18 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/class="fragment fade-up" data-fragment-index="4"/.test(html), 'el texto, después de las líneas (iban después de todo)');
   });
 
+  await test('un conector sin animación propia entra con la última de las cajas que une', async () => {
+    reset(); R.blocks.addShape('rect'); const a = last(); R.blocks.addShape('ellipse'); const c = last(); c.x = 800;
+    R.store.setMulti([a.id, c.id]); R.blocks.addConnector(); await sleep(20); const k = last();
+    eq(k.type, 'connector');
+    let html = R.io.buildHTML();
+    assert(!/class="fragment/.test(html), 'cajas sin animación: el conector, quieto');
+    a.animation = { effect: 'fade-in', order: 1 }; c.animation = { effect: 'zoom-in', order: 2 };
+    html = R.io.buildHTML();
+    assert(/class="fragment fade-in" data-fragment-index="2"[^>]*pointer-events:none/.test(html), 'con la segunda caja, no desde el principio');
+    assert(!/data-rv-start/.test(html), 'y la diapositiva no arranca sola');
+  });
+
   await test('auto-animate: data-auto-animate y data-id en el export', async () => {
     reset(); const b = newText(); slide().autoAnimate = true;
     const html = R.io.buildHTML();

@@ -1128,8 +1128,9 @@ export function curvedTextSVG(b) {
   const txt = escA(plainText(b.html || '').replace(/\s+/g, ' ').trim());
   const bold = /<(b|strong)\b/i.test(b.html || '') || +b.fontWeight >= 600 || b.fontWeight === 'bold';
   const th = Math.min(1.98 * Math.PI, Math.max(0.05, Math.abs(c) / 100 * 2 * Math.PI)), up = c >= 0;
-  // (More than half a turn: the circle takes the box; the text squeezes in if it is longer than the arc.)
-  const R = th > Math.PI ? Math.max(0.92 * W / th, Math.min(W, H) / 2 - fs * 0.9) : 0.92 * W / th, len = R * th, long = txt.length * fs * 0.55 > len, fit = long || th > 1.9 * Math.PI;
+  // (More than half a turn: the circle takes the box; the text squeezes in if it is longer than the arc — its letter
+  // spacing counted: a spaced-out motto was cut at both ends.)
+  const R = th > Math.PI ? Math.max(0.92 * W / th, Math.min(W, H) / 2 - fs * 0.9) : 0.92 * W / th, len = R * th, long = txt.length * (fs * 0.55 + (+b.letterSpacing || 0)) > len, fit = long || th > 1.9 * Math.PI;
   const cy = up ? fs + R : H - fs * 0.3 - R, y = up ? cy - R * Math.cos(th / 2) : cy + R * Math.cos(th / 2), f = v => v.toFixed(1);
   const d = `M${f(W / 2 - R * Math.sin(th / 2))},${f(y)} A${f(R)},${f(R)} 0 ${th > Math.PI ? 1 : 0} ${up ? 1 : 0} ${f(W / 2 + R * Math.sin(th / 2))},${f(y)}`;
   const id = `ct${++curveN}`, joined = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(txt);

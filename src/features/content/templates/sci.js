@@ -52,9 +52,9 @@ export default {
         ...[['location', 'Agua helada', 'Hay hielo bajo la superficie y en los polos: agua para beber y para fabricar combustible.'],
           ['clock', 'Un pasado habitable', 'Hace 3.500 millones de años tuvo ríos y lagos. ¿Hubo vida?'],
           ['star', 'El siguiente paso', 'Es el planeta más parecido a la Tierra al que podemos llegar hoy.']]
-          .map(([ic, h, d], i) => withAnims(card(`<div style="font-size:34px;font-weight:700;color:${SAND};margin-top:74px">${h}</div><div style="opacity:.85;margin-top:8px">${d}</div>`,
-            90 + i * 380, 200, 340, 340, '#ffffff10', { color: '#fff4ec', fontSize: 25, borderColor: '#e4572e55' }), A('fade-up', { start: i ? 'afterPrev' : 'click', delay: i ? 150 : 0 }))),
-        ...[0, 1, 2].map(i => icon(['location', 'clock', 'star'][i], 122 + i * 380, 232, 54, [RUST, '#f3a712', '#a8c686'][i]))],
+          .flatMap(([ic, h, d], i) => [withAnims(card(`<div style="font-size:34px;font-weight:700;color:${SAND};margin-top:74px">${h}</div><div style="opacity:.85;margin-top:8px">${d}</div>`,
+            90 + i * 380, 200, 340, 340, '#ffffff10', { color: '#fff4ec', fontSize: 25, borderColor: '#e4572e55' }), A('fade-up', { start: i ? 'afterPrev' : 'click', delay: i ? 150 : 0 })),
+            withAnims(icon(ic, 122 + i * 380, 232, 54, [RUST, '#f3a712', '#a8c686'][i]), A('fade-up', { start: 'withPrev', delay: i ? 150 : 0 }))])],
         notes: 'Las tres tarjetas entran con un solo clic, una detrás de otra («después de la anterior» con un pequeño retardo).' },
       { title: 'El viaje: una órbita de transferencia', layout: 'titleOnly', bg: BG, extra: [
         sphere(SX, SY, 34, '#fff3b0', '#f3a712'), ring(SX, SY, R1, '#669bbc', { dash: 'dash' }), ring(SX, SY, R2, '#e4572e', { dash: 'dash' }),
@@ -85,7 +85,7 @@ export default {
         notes: 'El mismo rover llega girando hasta quedar de frente (Al llegar: «Girar hasta quedar de frente»). Cifras aproximadas y públicas de las misiones.' },
       { title: 'Siete minutos de terror', layout: 'titleOnly', bg: BG, transition: 'fade', extra: [
         dg('timeline', 'Entrada\n  20.000 km/h\nParacaídas\n  1.600 km/h\nRetrocohetes\n  Frenado final\nGrúa aérea\n  Lo baja con cables\nContacto\n  «Toma confirmada»', 90, 180, 1100, 420, { colors: 'colorful', oneByOne: true }),
-        text('La señal tarda más de 7 minutos en llegar: el aterrizaje es automático.', 90, 620, 1100, 50, { fontSize: 26, textAlign: 'center', color: '#c9a88f' })],
+        text('La señal tardó 11 minutos con Perseverance, más que el descenso: aterrizó solo.', 90, 620, 1100, 50, { fontSize: 26, textAlign: 'center', color: '#c9a88f' })],
         notes: 'Cronología uno a uno. Cuando llega la señal de que ha entrado en la atmósfera, en realidad ya ha aterrizado… o no.' },
       { layout: 'blank', bg: BG, extra: [
         { ...nasa('ingenuity-mars-helicopter', 80, 110, 460, 500, { caption: '', view: 'low', motion: 'orbit', edge: 'free' }), id: heli },
@@ -135,7 +135,7 @@ export default {
         text('Ocho mundos, un Sol y muchas preguntas', 560, 470, 640, 60, { fontSize: 32, color: SOFT })],
         notes: 'El Sol es un degradado radial que se sale por la izquierda; las órbitas son elipses sin relleno con trazo discontinuo.' },
       { title: 'Los planetas, a escala', layout: 'titleOnly', bg: BG, extra: [...scale,
-        text('Diámetros a escala; las distancias, no: Neptuno estaría a 70 metros de esta pantalla.', 90, 600, 1100, 50, { fontSize: 24, textAlign: 'center', color: SOFT })],
+        text('Diámetros a escala; las distancias, no: Neptuno estaría a kilómetros de esta pantalla.', 90, 600, 1100, 50, { fontSize: 24, textAlign: 'center', color: SOFT })],
         notes: 'Un clic y los planetas aparecen en cadena, del Sol hacia fuera («después de la anterior»). Júpiter mide 11 veces la Tierra.' },
       { title: '¿A qué distancia del Sol?', layout: 'titleOnly', bg: BG, extra: [
         chartBlock({ x: 90, y: 180, w: 680, h: 470, chartType: 'hbar', color: '#4a90d9', dataLabels: true,
@@ -180,8 +180,8 @@ export default {
   // a ball that follows its parabola while the parabola draws itself, and fill the gaps.
   sci_newton: { name: 'Física: las leyes de Newton', cat: 'sci', summary: 'Cuaderno de física: ecuaciones, coche 3D en movimiento, tiro parabólico que se dibuja, tabla con fórmulas y rellenar huecos', make: () => {
     const INK = '#2b2a33', RED = '#c0392b', BLUE = '#2f6690', H = pairStacks('websafe').heading;
-    // The parabola: launched at 45°, 900 px of range and 300 px high, ground at y = 620.
-    const X0 = 130, G0 = 620, parab = Array.from({ length: 31 }, (_, i) => { const x = i / 30; return [X0 + 900 * x, G0 - 1200 * x * (1 - x)]; });
+    // The parabola: launched at 45°, 900 px of range and 225 px high (range / 4), ground at y = 620.
+    const X0 = 130, G0 = 620, parab = Array.from({ length: 31 }, (_, i) => { const x = i / 30; return [X0 + 900 * x, G0 - 900 * x * (1 - x)]; });
     return numbered(build({ name: 'Las leyes de Newton', palette: 'paper', fonts: 'websafe', title: { size: 48, color: INK }, body: { color: INK },
       decor: () => [...Array.from({ length: 17 }, (_, i) => shape('rect', 0, 40 + i * 40, 1280, 1, '#4682b4', { opacity: 18 })), shape('rect', 66, 0, 2, 720, RED, { opacity: 45 })] }, [
       { layout: 'blank', extra: [
@@ -195,10 +195,11 @@ export default {
       { title: '1.ª ley · Inercia', layout: 'titleOnly', extra: [
         text('Si sobre un cuerpo no actúa ninguna fuerza neta, sigue <b>en reposo</b> o moviéndose <b>en línea recta a velocidad constante</b>.', 100, 170, 680, 160, { fontSize: 30, color: INK }),
         mathBlock({ x: 800, y: 180, w: 400, h: 120, fontSize: 34, color: BLUE, latex: '\\sum \\vec F = 0 \\iff \\vec v = \\text{cte}' }),
-        withAnims(model('kh-ToyCar', 100, 400, 280, 200, { view: 'side', autoRotate: false }), path([[780, 0]], { duration: 3500, ease: 'linear' })),
+        withAnims(model('kh-CarConcept', 100, 474, 320, 180, { caption: '', view: 'side2', autoRotate: false }), path([[760, 0]], { duration: 3500, ease: 'linear' })),
         line(100, 606, 1180, 606, INK, 3),
-        text('Clic: sin rozamiento, el coche no frenaría nunca.', 100, 630, 1080, 40, { fontSize: 22, color: '#6b5d4f', fontStyle: 'italic' })],
-        notes: 'Un modelo 3D (coche de juguete, vista de lado) que se mueve por una trayectoria recta. Pregunta: ¿por qué se para un coche de verdad?' },
+        text('Clic: sin rozamiento, el coche no frenaría nunca.', 100, 630, 1080, 40, { fontSize: 22, color: '#6b5d4f', fontStyle: 'italic' }),
+        text('Coche 3D: Eric Chadwick, Khronos (CC BY 4.0)', 780, 676, 400, 26, { fontSize: 14, textAlign: 'right', color: '#8a7d6e' })],
+        notes: 'Un modelo 3D (coche, vista de lado) que se mueve por una trayectoria recta. Pregunta: ¿por qué se para un coche de verdad?' },
       { title: '2.ª ley · Fuerza y aceleración', layout: 'titleOnly', extra: [
         mathBlock({ x: 100, y: 180, w: 440, h: 150, fontSize: 96, color: BLUE, latex: '\\vec F = m\\,\\vec a' }),
         anim(text('La misma fuerza acelera más a lo que tiene menos masa.', 100, 360, 440, 140, { fontSize: 30, color: INK }), 1, 'fade-up'),
@@ -210,9 +211,9 @@ export default {
         text('Si A empuja a B, B empuja a A con una fuerza <b>igual y opuesta</b>.', 100, 170, 720, 110, { fontSize: 30, color: INK }),
         mathBlock({ x: 100, y: 290, w: 720, h: 100, fontSize: 48, color: BLUE, latex: '\\vec F_{A \\to B} = -\\,\\vec F_{B \\to A}' }),
         withAnims(shape('uparrow', 150, 420, 110, 210, BLUE), A('fade-up')),
+        withAnims(text('<b>Empuje</b><br>los gases empujan el cohete hacia arriba', 270, 450, 190, 150, { fontSize: 22, color: BLUE }), A('fade-up', { start: 'withPrev' })),
         withAnims(shape('downarrow', 470, 420, 110, 210, RED), A('fade-down', { start: 'withPrev' })),
-        text('<b>Empuje</b><br>los gases empujan el cohete hacia arriba', 270, 450, 190, 150, { fontSize: 22, color: BLUE }),
-        text('<b>Gases</b><br>el cohete los empuja hacia abajo', 590, 450, 230, 150, { fontSize: 22, color: RED }),
+        withAnims(text('<b>Gases</b><br>el cohete los empuja hacia abajo', 590, 450, 230, 150, { fontSize: 22, color: RED }), A('fade-down', { start: 'withPrev' })),
         nasa('saturn-v', 900, 150, 260, 520, { caption: '', autoRotate: false, view: 'side', motion: 'swing', bleed: 1.3 })],
         notes: 'Un cohete no se apoya en el aire: empuja los gases y los gases lo empujan a él. Modelo 3D de la NASA con balanceo al llegar.' },
       { title: 'Tiro parabólico', layout: 'titleOnly', extra: [
@@ -275,9 +276,9 @@ export default {
       { title: 'Cómo leer una casilla', layout: 'titleOnly', extra: [
         text('<div style="font-size:40px;text-align:left">6</div><div style="font-size:150px;font-weight:800;line-height:1">C</div><div style="font-size:36px">Carbono</div><div style="font-size:30px;opacity:.7">12,011</div>',
           470, 170, 340, 450, { bg: '#cdeffd', radius: 24, pad: [20, 30, 20, 30], textAlign: 'center', color: INK, fontSize: 30, borderColor: TEAL }),
-        ...[['Número atómico', 'protones del núcleo', 100, 200, 500, 215], ['Símbolo', 'una o dos letras', 100, 360, 560, 360], ['Nombre', '', 880, 470, 770, 500], ['Masa atómica', 'en unidades de masa (u)', 880, 540, 760, 560]]
-          .flatMap(([h, d, x, y, lx, ly], i) => [anim(text(`<b>${h}</b>${d ? `<br><span style="opacity:.75">${d}</span>` : ''}`, x, y, 300, 90, { fontSize: 24, color: INK, textAlign: x < 400 ? 'right' : 'left' }), i + 1, x < 400 ? 'fade-right' : 'fade-left'),
-            anim(line(x < 400 ? x + 310 : x - 10, y + 22, lx, ly, TEAL, 3), i + 1, 'fade-in')])],
+        ...[['Número atómico', 'protones del núcleo', 100, 200, 500, 215], ['Símbolo', 'una o dos letras', 100, 360, 572, 340], ['Nombre', '', 880, 382, 715, 405], ['Masa atómica', 'en unidades de masa (u)', 880, 452, 685, 446]]
+          .flatMap(([h, d, x, y, lx, ly]) => [withAnims(text(`<b>${h}</b>${d ? `<br><span style="opacity:.75">${d}</span>` : ''}`, x, y, 300, 90, { fontSize: 24, color: INK, textAlign: x < 400 ? 'right' : 'left' }), A(x < 400 ? 'fade-right' : 'fade-left')),
+            withAnims(line(x < 400 ? x + 310 : x - 10, y + 22, lx, ly, TEAL, 3), A('fade-in', { start: 'withPrev' }))])],
         notes: 'Cada etiqueta y su línea aparecen juntas con un clic. El carbono es la base de la química de la vida.' },
       { title: 'Tres maneras de unirse', layout: 'titleOnly', extra: [dg('cards', 'Enlace iónico\n  Un átomo cede electrones a otro: sal común, NaCl\nEnlace covalente\n  Los átomos comparten electrones: agua, H₂O\nEnlace metálico\n  Un mar de electrones libres: cobre, Cu', 90, 180, 1100, 440, { colors: 'accent', oneByOne: true })],
         notes: 'Diagrama de tarjetas uno a uno, en un solo color.' },
@@ -296,7 +297,7 @@ export default {
         text('Energía liberada al arder, en kJ por gramo (valores aproximados)', 520, 610, 680, 40, { fontSize: 20, color: '#4b6573' })],
         notes: 'Modelo 3D (brasero) con «Acercar al entrar» y bordes difuminados. Romper enlaces cuesta energía; formar otros más fuertes la libera.' },
       { title: '¿De qué está hecho el aire?', layout: 'twoContent', body: '', body2: '', extra: [
-        chartBlock({ x: 120, y: 170, w: 460, h: 460, chartType: 'doughnut', color: TEAL, data: [{ label: 'Nitrógeno', value: 78 }, { label: 'Oxígeno', value: 21 }, { label: 'Argón y otros', value: 1 }] }),
+        chartBlock({ x: 120, y: 170, w: 460, h: 460, chartType: 'doughnut', color: TEAL, data: [{ label: 'Nitrógeno', value: 78, color: '#3f6497' }, { label: 'Oxígeno', value: 21, color: '#c0392b' }, { label: 'Argón y otros', value: 1, color: '#2b7a3b' }] }),
         ...[['78 %', 'Nitrógeno, N₂', '#3f6497'], ['21 %', 'Oxígeno, O₂', '#c0392b'], ['1 %', 'Argón, CO₂ y otros', '#2b7a3b']].map(([v, l, c], i) =>
           anim(text(`<span style="font-size:60px;font-weight:800;color:${c}">${v}</span>&nbsp;&nbsp;${l}`, 660, 200 + i * 140, 520, 110, { fontSize: 30, color: INK, vAlign: 'middle' }), i + 1, 'fade-left'))],
         notes: 'Gráfico de dona; las cifras de la derecha usan los mismos colores que el gráfico y aparecen una a una.' },
@@ -369,12 +370,12 @@ export default {
         mathBlock({ x: 890, y: 220, w: 300, h: 110, fontSize: 44, color: CORAL, latex: 'P(7) = \\frac{6}{36} = \\frac{1}{6}' }),
         text('De las 36 combinaciones posibles, seis suman 7: es la suma más probable.', 890, 360, 300, 180, { fontSize: 24, color: INK })],
         notes: 'Gráfico de barras con etiquetas de datos: número de combinaciones que dan cada suma.' },
-      { title: 'Facultades: nota, plazas y abandono', layout: 'titleOnly', extra: [rule(150),
+      { title: 'Facultades: nota de corte y abandono', layout: 'titleOnly', extra: [rule(150),
         chartBlock({ x: 90, y: 180, w: 1100, h: 430, chartType: 'bubble', color: TEAL,
           data: [['Ciencias', 7.9], ['Salud', 11.2], ['Ingeniería', 8.6], ['Economía', 7.4], ['Letras', 6.3]].map(([label, value]) => ({ label, value })),
           series: [{ name: 'Abandono (%)', values: [18, 6, 22, 14, 25] }] }),
         text('Altura: nota de corte media · tamaño de la burbuja: abandono en primer curso (%) · datos inventados', 90, 620, 1100, 40, { fontSize: 18, color: GREY })],
-        notes: 'Gráfico de burbujas: tres variables a la vez. Las cifras son inventadas, solo para el ejemplo.' },
+        notes: 'Gráfico de burbujas: dos variables de cada facultad a la vez, la altura y el tamaño. Las cifras son inventadas, solo para el ejemplo.' },
       { layout: 'blank', extra: [pollBlock({ kind: 'quiz', question: 'Una moneda sale cara cinco veces seguidas. ¿Probabilidad de cara en la sexta?', options: ['1/64', '1/2', 'Casi 0', 'Más de 1/2'], correct: [1], time: 30, fontSize: 38, x: 60, y: 50, w: 1160, h: 610 })],
         notes: 'La falacia del jugador: la moneda no tiene memoria. Pregunta tipo concurso con puntos por rapidez.' },
       { layout: 'blank', transition: 'blur', extra: [
@@ -411,16 +412,16 @@ export default {
       { title: '¿Por qué Python?', layout: 'titleOnly', bg: BG, extra: [dg('cards', 'Se lee como inglés\n  Poca sintaxis: el código se entiende\nPilas incluidas\n  Una biblioteca estándar enorme\nCiencia y datos\n  El idioma común de los laboratorios\nGratis y libre\n  Funciona en cualquier ordenador', 90, 190, 1100, 400, { colors: 'colorful', oneByOne: true })],
         notes: 'Diagrama de tarjetas uno a uno.' },
       { title: 'Variables y tipos', layout: 'titleOnly', bg: BG, extra: [
-        codeBlock({ x: 90, y: 170, w: 660, h: 330, fontSize: 24, lang: 'python', lineSteps: '1|2|3|4|6',
-          code: 'nombre = "Ada"\nedad = 20\naltura = 1.68\nes_estudiante = True\n\nprint(f"{nombre} tiene {edad} años")' }),
+        withAnims(codeBlock({ x: 90, y: 170, w: 660, h: 330, fontSize: 24, lang: 'python', lineSteps: '1|2|3|4|6',
+          code: 'nombre = "Ada"\nedad = 20\naltura = 1.68\nes_estudiante = True\n\nprint(f"{nombre} tiene {edad} años")' }), A('fade-in', { start: 'withPrev', duration: 400 })),
         ...term(90, 520, 660, 110, 'salida'),
         withAnims(out('Ada tiene 20 años', 120, 570, 600, { color: GREEN }), A('fade-in')),
         tableBlock({ x: 790, y: 170, w: 400, h: 330, fontSize: 22, header: true, headBg: '#7aa2f7', headFg: '#0b0f19', stroke: '#2a2f45', banded: true, band: '#7aa2f7',
           rows: [['Tipo', 'Ejemplo'], ['<code>str</code>', '"Ada"'], ['<code>int</code>', '20'], ['<code>float</code>', '1.68'], ['<code>bool</code>', 'True']], colW: [1, 1] })],
         notes: 'Código con pasos de resaltado: cada clic ilumina una línea (1|2|3|4|6). El último clic muestra la salida.' },
       { title: 'Listas y bucles', layout: 'titleOnly', bg: BG, transition: 'push', extra: [
-        codeBlock({ x: 90, y: 170, w: 700, h: 470, fontSize: 23, lang: 'python', lineSteps: '1|3-5|7-8',
-          code: 'notas = [7.5, 9, 6, 8.5]\n\nfor nota in notas:\n    if nota >= 7:\n        print(nota, "notable")\n\nmedia = sum(notas) / len(notas)\nprint(f"Media: {media:.2f}")' }),
+        withAnims(codeBlock({ x: 90, y: 170, w: 700, h: 470, fontSize: 23, lang: 'python', lineSteps: '1|3-5|7-8',
+          code: 'notas = [7.5, 9, 6, 8.5]\n\nfor nota in notas:\n    if nota >= 7:\n        print(nota, "notable")\n\nmedia = sum(notas) / len(notas)\nprint(f"Media: {media:.2f}")' }), A('fade-in', { start: 'withPrev', duration: 400 })),
         ...term(830, 170, 360, 300, 'salida'),
         ...['7.5 notable', '9 notable', '8.5 notable', 'Media: 7.75'].map((t, i) => withAnims(out(t, 860, 220 + i * 50, 310, { color: i === 3 ? YEL : GREEN }), A('fade-up', { start: i ? 'afterPrev' : 'click', duration: 300 }))),
         text('El sangrado (4 espacios) marca qué va dentro del bucle.', 830, 500, 360, 120, { fontSize: 22, color: SOFT })],
@@ -459,10 +460,10 @@ export default {
     const layers = [3, 4, 4, 2], LX = [200, 450, 700, 950], node = (l, i) => [LX[l], 410 + (i - (layers[l] - 1) / 2) * 105];
     const links = layers.slice(0, -1).flatMap((n, l) => Array.from({ length: n }, (_, i) => Array.from({ length: layers[l + 1] }, (_, j) => [l, i, j])).flat());
     const net = [
-      ...links.map(([l, i, j]) => withAnims(line(...node(l, i), ...node(l + 1, j), '#9b5de5', 2), A('draw', { start: 'withPrev', delay: l * 700, duration: 600 }))),
+      ...links.map(([l, i, j], k) => withAnims(line(...node(l, i), ...node(l + 1, j), '#9b5de5', 2), A('draw', { start: k ? 'withPrev' : 'click', delay: l * 700, duration: 600 }))),
       ...layers.flatMap((n, l) => Array.from({ length: n }, (_, i) => { const [x, y] = node(l, i);
-        return withAnims(sphere(x, y, 28, ['#00bbf9', '#9b5de5', '#f15bb5', '#fee440'][l], '#1b1030', { stroke: '#ffffff55', strokeWidth: 2 }), A('zoom-in', { start: l + i ? 'withPrev' : 'click', delay: l * 700 })); }))];
-    const sig = withAnims(shape('ellipse', node(0, 1)[0] - 10, node(0, 1)[1] - 10, 20, 20, YEL), A('path', { pathShape: 'custom', points: [[250, -52], [500, 52], [750, -52]], dx: 750, dy: -52, duration: 2000, start: 'click' }));
+        return withAnims(sphere(x, y, 28, ['#00bbf9', '#9b5de5', '#f15bb5', '#fee440'][l], '#1b1030', { stroke: '#ffffff55', strokeWidth: 2 }), A('zoom-in', { start: 'withPrev', delay: l * 700 })); }))];
+    const sig = withAnims(shape('ellipse', node(0, 1)[0] - 10, node(0, 1)[1] - 10, 20, 20, YEL), A('zoom-in', { duration: 300 }), A('path', { pathShape: 'custom', points: [[250, -52], [500, 52], [750, -52]], dx: 750, dy: -52, duration: 2000, start: 'afterPrev' }));
     return numbered(build({ name: 'Inteligencia artificial', palette: 'violet', fonts: 'friendly', title: { size: 50, color: FG },
       decor: p => [shape('rect', 0, 712, 1280, 8, p.accents[0], { fill2: p.accents[3], gradAngle: 0 })] }, [
       { layout: 'blank', bg: BG, transition: 'zoom', extra: [glow(-200, -260, 800, '#9b5de5', BG, 45), glow(760, 260, 700, PINK, BG, 30),
@@ -483,11 +484,12 @@ export default {
       { title: 'Una familia de técnicas', layout: 'titleOnly', bg: BG, extra: [dg('hierarchy', 'Inteligencia artificial\n  Sistemas de reglas\n    Sistemas expertos\n  Aprendizaje automático\n    Supervisado\n    No supervisado\n    Por refuerzo', 90, 180, 1100, 460, { colors: 'accent', oneByOne: true })],
         notes: 'Organigrama uno a uno: el aprendizaje profundo es aprendizaje automático con redes neuronales de muchas capas.' },
       { title: 'Una neurona artificial', layout: 'titleOnly', bg: BG, extra: [
-        ...[0, 1, 2].flatMap(i => [anim(line(170, 260 + i * 130, 520, 390, '#9b5de5', 3), 1, 'fade-in'), anim(sphere(150, 260 + i * 130, 34, CYAN, '#1b1030'), 1, 'zoom-in'),
-          anim(text(`x<sub>${i + 1}</sub>`, 116, 236 + i * 130, 68, 48, { fontSize: 26, textAlign: 'center', color: '#ffffff' }), 1, 'zoom-in'),
-          anim(text(`w<sub>${i + 1}</sub>`, 290, Math.round(260 + i * 130 + (390 - 260 - i * 130) * 130 / 350) - 46, 60, 40, { fontSize: 22, color: SOFT }), 1, 'fade-in')]),
-        anim(sphere(560, 390, 62, PINK, '#1b1030'), 2, 'zoom-in'), anim(text('Σ', 500, 350, 120, 80, { fontSize: 52, textAlign: 'center', color: FG }), 2, 'zoom-in'),
-        anim(shape('rightarrow', 640, 360, 130, 60, YEL), 3, 'fade-right'), anim(text('<b>y</b>', 780, 355, 80, 70, { fontSize: 44, color: YEL }), 3, 'fade-right'),
+        ...[0, 1, 2].flatMap(i => [withAnims(line(170, 260 + i * 130, 520, 390, '#9b5de5', 3), A('fade-in', { start: i ? 'withPrev' : 'click' })),
+          withAnims(sphere(150, 260 + i * 130, 34, CYAN, '#1b1030'), A('zoom-in', { start: 'withPrev' })),
+          withAnims(text(`x<sub>${i + 1}</sub>`, 116, 236 + i * 130, 68, 48, { fontSize: 26, textAlign: 'center', color: '#ffffff' }), A('zoom-in', { start: 'withPrev' })),
+          withAnims(text(`w<sub>${i + 1}</sub>`, 290, Math.round(260 + i * 130 + (390 - 260 - i * 130) * 130 / 350) - 46, 60, 40, { fontSize: 22, color: SOFT }), A('fade-in', { start: 'withPrev' }))]),
+        withAnims(sphere(560, 390, 62, PINK, '#1b1030'), A('zoom-in')), withAnims(text('Σ', 500, 350, 120, 80, { fontSize: 52, textAlign: 'center', color: FG }), A('zoom-in', { start: 'withPrev' })),
+        withAnims(shape('rightarrow', 640, 360, 130, 60, YEL), A('fade-right')), withAnims(text('<b>y</b>', 780, 355, 80, 70, { fontSize: 44, color: YEL }), A('fade-right', { start: 'withPrev' })),
         mathBlock({ x: 860, y: 230, w: 340, h: 110, fontSize: 36, color: FG, latex: 'y = \\sigma\\Big(\\sum_i w_i x_i + b\\Big)' }),
         text('Multiplica cada entrada por su peso, suma y decide con la función de activación σ.', 860, 380, 340, 200, { fontSize: 24, color: SOFT })],
         notes: 'Tres clics: entradas con sus pesos, la suma y la salida. Aprender es ajustar los pesos w.' },
@@ -551,8 +553,8 @@ export default {
         notes: 'Galones uno a uno y la ecuación del NDVI en KaTeX. Explicar por qué el infrarrojo delata el estrés antes que el color.' },
       { title: 'Diseño experimental', layout: 'titleOnly', extra: [
         tableBlock({ x: 100, y: 180, w: 1080, h: 380, fontSize: 24, header: true, headBg: NAVY, headFg: '#ffffff', stroke: '#c9ced6', banded: true, band: '#1f3864',
-          rows: [['Parcela', 'Tratamiento de riego', 'Cepas', 'Vuelos'], ['A', 'Riego completo (100 %)', '120', '14'], ['B', 'Déficit moderado (60 %)', '120', '14'], ['C', 'Déficit severo (30 %)', '120', '14'], ['<b>Total</b>', '', '=SUMA(ARRIBA)', '=SUMA(ARRIBA)']], colW: [2, 5, 2, 2] }),
-        text('Campaña de mayo a septiembre · vuelos semanales a mediodía solar · datos del ejemplo inventados', 100, 580, 1080, 40, { fontSize: 20, color: GREY, fontStyle: 'italic' })],
+          rows: [['Parcela', 'Tratamiento de riego', 'Cepas', 'Sondas de suelo'], ['A', 'Riego completo (100 %)', '120', '4'], ['B', 'Déficit moderado (60 %)', '120', '4'], ['C', 'Déficit severo (30 %)', '120', '4'], ['<b>Total</b>', '', '=SUMA(ARRIBA)', '=SUMA(ARRIBA)']], colW: [2, 5, 2, 2] }),
+        text('Campaña de junio a septiembre · 14 vuelos semanales a mediodía solar · datos del ejemplo inventados', 100, 580, 1080, 40, { fontSize: 20, color: GREY, fontStyle: 'italic' })],
         notes: 'La fila Total usa fórmulas (=SUMA(ARRIBA)): si se cambia el número de cepas, se recalcula.' },
       { title: 'Resultados · evolución del NDVI', layout: 'titleOnly', transition: 'slide', extra: [
         chartBlock({ x: 100, y: 170, w: 760, h: 460, chartType: 'line', color: NAVY, grid: true, xTitle: 'Semana de la campaña', seriesName: '100 %',
@@ -643,7 +645,7 @@ export default {
       { title: 'Lo que está en tu mano', layout: 'titleOnly', extra: [
         dg('target', 'Movilidad\nEnergía en casa\nAlimentación\nConsumo', 90, 170, 620, 470, { colors: 'colorful' }),
         text(ul('Andar, bici o transporte público', 'Apagar, aislar, ajustar el termostato', 'Más verdura, menos desperdicio', 'Reparar antes que comprar'), 750, 210, 440, 400, { fontSize: 26, color: INK })],
-        notes: 'Diagrama de diana: de lo que más pesa (centro) a lo que menos. Pedir un ejemplo de cada uno al grupo.' },
+        notes: 'Diagrama de diana: un anillo por ámbito, de fuera (Movilidad) hacia dentro (Consumo), en el mismo orden que la lista. Pedir un ejemplo de cada uno al grupo.' },
       { layout: 'blank', extra: [pollBlock({ kind: 'multi', question: '¿Qué estarías dispuesto a cambiar este año?', options: ['Ir en bici o andando', 'Comer menos carne', 'Comprar menos ropa', 'Bajar la calefacción', 'Volar menos'], fontSize: 32, x: 60, y: 40, w: 1160, h: 640 })],
         notes: 'Votación de respuesta múltiple: se puede marcar más de una opción.' },
       { layout: 'blank', transition: 'wipe', extra: [...stripes(0, 720),
@@ -691,7 +693,7 @@ export default {
         ...[-0.6, 0, 0.6].map(a => sphere(1060 + 76 * Math.cos(a), 380 + 76 * Math.sin(a), 10, PINK, BG)),
         sphere(300, 380, 60, '#ff9cc4', '#8a1f4f'), sphere(300, 380, 20, '#3b0f24', '#3b0f24'),
         ...[['Dendritas: reciben', 120, 200, CYAN], ['Soma: integra', 330, 450, PINK], ['Axón con mielina: conduce', 470, 290, '#f4d58d'], ['Terminales: transmiten', 960, 480, CYAN]].map(([t, x, y, c], i) =>
-          anim(text(t, x, y, 300, 40, { fontSize: 22, color: c }), i + 1, 'fade-in')),
+          withAnims(text(t, x, y, 300, 40, { fontSize: 22, color: c }), A('fade-in'))),
         withAnims(shape('ellipse', 350, 370, 20, 20, '#ffffff', { fill2: AMBER, gradType: 'radial' }), path(rel(AX), { duration: 1600, start: 'click', ease: 'linear', sound: 'pop' }))],
         notes: 'Neurona dibujada con trazos y formas. Cuatro clics para las partes; el último lanza el impulso nervioso por el axón (trayectoria con sonido).' },
       { title: 'El sistema nervioso', layout: 'titleOnly', bg: BG, transition: 'concave', extra: [dg('hierarchy', 'Sistema nervioso\n  Central\n    Encéfalo\n    Médula espinal\n  Periférico\n    Somático\n    Autónomo', 90, 180, 1100, 460, { colors: 'accent', oneByOne: true })],
@@ -699,9 +701,10 @@ export default {
       { title: 'Andar sin pensar', layout: 'titleOnly', bg: BG, extra: [
         line(60, 592, 1220, 592, '#3a4250', 3),
         text('El <b style="color:#ff6fa8">cerebelo</b> coordina cada paso: corrige el equilibrio decenas de veces por segundo sin que lo notemos.', 440, 170, 760, 130, { fontSize: 28, color: FG }),
-        dg('chevrons', 'Sentir\nCalcular\nCorregir', 440, 310, 760, 110, { colors: 'colorful' }),
+        dg('chevrons', 'Sentir\nCalcular\nCorregir', 440, 300, 760, 90, { colors: 'colorful' }),
         // (last: it walks in front of the text and the diagram, not behind them)
-        withAnims(model('kh-CesiumMan', 60, 290, 300, 300, { clip: '*', view: 'side', bleed: 1.3 }), path([[600, 0]], { duration: 6000, ease: 'linear' }))],
+        withAnims(model('kh-CesiumMan', 60, 368, 220, 240, { caption: '', clip: '*', view: 'side', bleed: 1.3 }), path([[900, 0]], { duration: 8000, ease: 'linear' })),
+        text('Figura 3D: Cesium (CC BY 4.0)', 780, 640, 420, 26, { fontSize: 14, textAlign: 'right', color: SOFT })],
         notes: 'Figura 3D animada que camina en bucle; con un clic recorre la diapositiva (trayectoria recta).' },
       { title: '¿Qué rápido va un impulso?', layout: 'titleOnly', bg: BG, extra: [
         chartBlock({ x: 90, y: 170, w: 680, h: 450, chartType: 'hbar', color: CYAN, dataLabels: true,

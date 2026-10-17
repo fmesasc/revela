@@ -101,7 +101,11 @@ export default {
       node(COLS[1], YB, 130, sphere(COLS[1], YB, 65, '#ffb37a', '#a3201a'), 'Supergigante roja', 'capas como una cebolla', RED),
       node(COLS[2], YB, 120, shape('burst', COLS[2] - 60, YB - 60, 120, 120, '#fff6c8', { fill2: '#ff6a2b', gradType: 'radial' }), 'Supernova', 'brilla como una galaxia', '#ffb15c'),
       node(COLS[3], YB, 44, shape('ellipse', COLS[3] - 22, YB - 22, 44, 44, '#000000', { stroke: '#ff9f43', strokeWidth: 4 }), 'Estrella de neutrones', 'o agujero negro', '#ff9f43')];
-    const chainRow = row => row.map(([el, lab], i) => [withAnims(el, A('zoom-in', { start: i ? 'afterPrev' : 'click', duration: 450, ...(row === rowB && i === 2 && { sound: 'drumroll' }) })),
+    // Each stage comes after the line that leads to it (the line is traced first).
+    const linksA = [ink([[312, 380], [372, 300], [430, 270]], '#3c4f7a', 3), ink([[504, YA], [626, YA]], '#3c4f7a', 3), ink([[756, YA], [854, YA]], '#3c4f7a', 3), ink([[968, YA], [1100, YA]], '#3c4f7a', 3)];
+    const linksB = [ink([[312, 404], [372, 482], [424, YB - 4]], '#3c4f7a', 3), ink([[516, YB], [616, YB]], '#3c4f7a', 3), ink([[764, YB], [844, YB]], '#3c4f7a', 3), ink([[978, YB], [1090, YB]], '#3c4f7a', 3)];
+    const chainRow = (row, links) => row.map(([el, lab], i) => [withAnims(links[i], A('draw', { start: i ? 'afterPrev' : 'click', duration: 300 })),
+      withAnims(el, A('zoom-in', { start: 'afterPrev', duration: 450, ...(row === rowB && i === 2 && { sound: 'drumroll' }) })),
       withAnims(lab, A('fade-in', { start: 'withPrev', duration: 450 }))]).flat();
     // The main sequence's outline: an ellipse along the band, turned to its slope.
     const m1 = [60 + hrX(32000), 130 + hrY(1.5e5)], m2 = [60 + hrX(2900), 130 + hrY(0.002)], mlen = Math.hypot(m2[0] - m1[0], m2[1] - m1[1]);
@@ -143,12 +147,9 @@ export default {
         title('El destino depende de la masa'),
         sphere(120, 392, 46, '#7d6bd8', BG, { opacity: 90 }), text(`<b style="color:#b9a8ff">Nebulosa</b><br><span style="color:${DIM}">nube de gas y polvo</span>`, 40, 450, 160, 70, { fontSize: 17, textAlign: 'center', color: FG }),
         sphere(280, 392, 24, '#ffe2b8', '#c0572a'), text(`<b style="color:#ffc58a">Protoestrella</b><br><span style="color:${DIM}">se enciende la fusión</span>`, 200, 450, 160, 70, { fontSize: 17, textAlign: 'center', color: FG }),
-        ink([[312, 380], [372, 300], [430, 270]], '#3c4f7a', 3), ink([[312, 404], [372, 482], [424, YB - 4]], '#3c4f7a', 3),
-        ink([[504, YA], [626, YA]], '#3c4f7a', 3), ink([[756, YA], [854, YA]], '#3c4f7a', 3), ink([[968, YA], [1100, YA]], '#3c4f7a', 3),
-        ink([[516, YB], [616, YB]], '#3c4f7a', 3), ink([[764, YB], [844, YB]], '#3c4f7a', 3), ink([[978, YB], [1090, YB]], '#3c4f7a', 3),
         kicker('COMO EL SOL', 400, 160, 300, GOLD), kicker('MÁS DE 8 MASAS SOLARES', 400, 652, 500, '#9bb0ff'),
-        ...chainRow(rowA), ...chainRow(rowB)],
-        notes: 'Primer clic: el camino de una estrella como el Sol, una etapa detrás de otra. Segundo clic: el de una estrella masiva, que termina en supernova (con redoble). Los tamaños no están a escala: una supergigante cabría en la órbita de Júpiter.' },
+        ...chainRow(rowA, linksA), ...chainRow(rowB, linksB)],
+        notes: 'Primer clic: el camino de una estrella como el Sol; cada línea se traza y luego aparece la etapa. Segundo clic: el de una estrella masiva, que termina en supernova (con redoble). Los tamaños no están a escala: una supergigante cabría en la órbita de Júpiter.' },
       { layout: 'blank', bg: BG, extra: [
         title('¿Cuánto vive una estrella?'),
         mathBlock({ x: 80, y: 150, w: 560, h: 100, fontSize: 38, color: FG, latex: 't \\approx 10^{10}\\,\\text{años}\\cdot\\left(\\frac{M}{M_\\odot}\\right)^{-2{,}5}' }),
@@ -156,7 +157,7 @@ export default {
           rows: [['Masa (soles)', 'Vida (millones de años)'], ['0,5', '=REDONDEAR(10000/A2^2,5;0)'], ['1', '=REDONDEAR(10000/A3^2,5;0)'], ['2', '=REDONDEAR(10000/A4^2,5;0)'], ['5', '=REDONDEAR(10000/A5^2,5;0)'], ['10', '=REDONDEAR(10000/A6^2,5;0)'], ['20', '=REDONDEAR(10000/A7^2,5;0)']] }),
         chartBlock({ x: 660, y: 150, w: 560, h: 430, chartType: 'doughnut', legend: true,
           data: [{ label: 'M (rojas)', value: 76, color: '#ff9b5e' }, { label: 'K (naranjas)', value: 12, color: '#ffd2a1' }, { label: 'G (como el Sol)', value: 7.6, color: '#fff4c2' },
-            { label: 'F', value: 3, color: '#f8f7ff' }, { label: 'A, B y O', value: 1.4, color: '#9bb0ff' }] }),
+            { label: 'F', value: 3, color: '#f8f7ff' }, { label: 'A, B y O', value: 0.7, color: '#9bb0ff' }] }),
         text('Las pequeñas son mayoría: tres de cada cuatro estrellas de la galaxia son enanas rojas.', 680, 590, 520, 70, { fontSize: 20, color: DIM, textAlign: 'center' })],
         notes: 'La tabla calcula la vida con fórmulas (=10000/A2^2,5): cambia una masa y se recalcula. La relación es aproximada. La dona muestra la proporción de estrellas por clase en la vecindad solar (valores redondeados).' },
       { layout: 'blank', bg: '#03060f', transition: 'zoom', extra: [
@@ -166,7 +167,7 @@ export default {
         text('Una supernova', 80, 170, 520, 90, { fontFamily: H, fontSize: 60, fontWeight: 700, color: FG }),
         withAnims(text('10<sup>44</sup> J', 80, 280, 480, 130, { fontFamily: H, fontSize: 110, wordart: 'fire', lineHeight: 1 }), A('zoom-in', { duration: 600, sound: 'pop' })),
         withAnims(text('En unas semanas libera tanta energía como el Sol en toda su vida y brilla más que su galaxia entera.', 80, 430, 480, 120, { fontSize: 26, color: FG }), A('fade-up', { start: 'afterPrev' })),
-        withAnims(text('Lo que queda: una estrella de neutrones que gira 30 veces por segundo.', 80, 570, 480, 80, { fontSize: 22, color: DIM }), A('fade-up', { start: 'afterPrev' }))],
+        withAnims(text('Lo que queda: una estrella de neutrones que puede girar decenas de veces por segundo.', 80, 570, 480, 80, { fontSize: 22, color: DIM }), A('fade-up', { start: 'afterPrev' }))],
         notes: 'Modelo 3D de la NASA (datos del observatorio Chandra) de los restos de una supernova, con bordes difuminados y girando despacio. La del Cangrejo, en el año 1054, fue visible de día durante semanas.' },
       { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'order', question: 'Ordena la vida de una estrella como el Sol', fontSize: 34, x: 60, y: 40, w: 1160, h: 640,
         options: ['Nube de gas y polvo', 'Protoestrella', 'Secuencia principal', 'Gigante roja', 'Nebulosa planetaria', 'Enana blanca'] })],
@@ -201,7 +202,7 @@ export default {
     return numbered(withFg(build({ name: 'Agujeros negros', palette: 'grayscale', fonts: 'modern', title: { color: FG, size: 44 }, body: { color: FG } }, [
       { layout: 'blank', bg: BG, transition: 'fade', transitionSpeed: 'slow', back: starfield(40, 5, '#ffffff', [0, 0, 1280, 720], 2.5, [15, 55]), extra: [
         ...hole(640, 310, 120),
-        text('nada escapa · ni siquiera la luz · nada escapa', 290, 60, 700, 150, { fontSize: 22, curve: 32, letterSpacing: 6, color: DIM }),
+        text('nada escapa · ni siquiera la luz · nada escapa', 260, 60, 760, 150, { fontSize: 22, curve: 32, letterSpacing: 3, color: DIM }),
         text('AGUJEROS NEGROS', 90, 520, 1100, 80, { fontFamily: H, fontSize: 64, fontWeight: 300, letterSpacing: 22, textAlign: 'center', color: FG }),
         text('Astrofísica relativista · Seminario 6', 90, 610, 1100, 40, { fontSize: 22, textAlign: 'center', color: AMB, letterSpacing: 3 })],
         notes: 'Portada: el agujero negro está hecho con cuatro formas (brillo, disco de acreción inclinado, sombra y anillo de fotones) que viajan con Transformar a las dos diapositivas siguientes. El lema va en texto curvo.' },
@@ -248,9 +249,9 @@ export default {
         head('¿CÓMO SE VE LO INVISIBLE?'),
         ...[['Rayos X', 'El gas del disco se calienta a millones de grados y brilla en rayos X.'], ['Órbitas de estrellas', 'Giran alrededor de «nada» a miles de kilómetros por segundo.'],
           ['Ondas gravitacionales', 'Dos agujeros que se fusionan sacuden el propio espacio.'], ['La sombra', 'Una red de radiotelescopios del tamaño de la Tierra la fotografía.']].map(([h, d], i) => [
-          withAnims(text(`0${i + 1}`, 640, 160 + i * 125, 90, 70, { fontFamily: H, fontSize: 48, fontWeight: 300, color: AMB }), A('fade-in', { start: i ? 'click' : 'click', duration: 400 })),
+          withAnims(text(`0${i + 1}`, 640, 160 + i * 125, 90, 70, { fontFamily: H, fontSize: 48, fontWeight: 300, color: AMB }), A('fade-in', { duration: 400 })),
           withAnims(text(`<b style="font-size:26px">${h}</b><br><span style="color:${DIM}">${d}</span>`, 740, 160 + i * 125, 460, 110, { fontSize: 21, color: FG }), A('fade-left', { start: 'withPrev', duration: 400 })),
-          shape('rect', 640, 270 + i * 125, 560, 1, '#2a2a2a')]).flat()],
+          withAnims(shape('rect', 640, 270 + i * 125, 560, 1, '#2a2a2a'), A('fade-in', { start: 'withPrev', duration: 400 }))]).flat()],
         notes: 'El observatorio de rayos X Chandra (modelo 3D de la NASA) gira despacio. Cada clic muestra una de las cuatro maneras de detectar algo que no emite luz.' },
       { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'quiz', question: 'Si el Sol se convirtiera en un agujero negro de su misma masa, ¿qué le pasaría a la órbita de la Tierra?', options: ['Se la tragaría', 'Nada: seguiría igual', 'Saldría despedida', 'Caería en espiral poco a poco'], correct: [1], time: 25, fontSize: 34, x: 60, y: 40, w: 1160, h: 640 })],
         notes: 'Concurso desde el móvil. La gravedad a 150 millones de km solo depende de la masa, que sería la misma: la Tierra seguiría en su órbita… a oscuras y helada.' },
@@ -291,18 +292,18 @@ export default {
     const poster = (k, x, y, w, h, props = {}) => img(POSTERS[k], x, y, w, h, 'Cartel de viaje retro de un exoplaneta', { fit: 'cover', shadow: { x: 0, y: 10, blur: 24, color: '#00000040' }, ...props });
     const head = (t, y = 50, color = INK) => text(t, 80, y, 1120, 70, { fontFamily: J, fontSize: 46, fontWeight: 700, color, letterSpacing: 1 });
     // The transit: the planet crosses the star; the light curve below dips while it does.
-    const SX = 330, SY = 390, SR = 170, LC = [[680, 330], [820, 330], [860, 332], [880, 420], [1010, 420], [1030, 332], [1070, 330], [1200, 330]];
+    const SX = 330, SY = 390, SR = 170, LC = [[680, 330], [708, 330], [728, 390], [1152, 390], [1172, 330], [1200, 330]];  // (timed with the planet: same share of the way)
     // A spectrum strip for the wobble.
     const RAINBOW = svgURL(600, 60, `<defs><linearGradient id="r" x1="0" x2="1"><stop offset="0" stop-color="#6a3fb5"/><stop offset=".2" stop-color="#2f6fdf"/><stop offset=".4" stop-color="#2fbf71"/><stop offset=".6" stop-color="#f2e24b"/><stop offset=".8" stop-color="#f39a2b"/><stop offset="1" stop-color="#d7263d"/></linearGradient></defs><rect width="600" height="60" rx="8" fill="url(#r)"/>`);
     return numbered(withFg(build({ name: 'Se buscan otros mundos', palette: 'violet', fonts: 'friendly', title: { color: INK, font: J }, body: { color: INK },
       decor: () => [shape('rect', 40, 40, 1200, 640, 'none', { stroke: '#d8c9a8', strokeWidth: 2 })] }, [
       { layout: 'blank', bg: CREAM, transition: 'fade', extra: [
         kicker('AGENCIA DE VIAJES INTERESTELARES', 90, 130, 620, '#b04a1c'),
-        text('Se buscan<br>otros mundos', 86, 160, 640, 230, { fontFamily: J, fontSize: 92, fontWeight: 700, color: INK, lineHeight: 1.02 }),
+        text('Se buscan<br>otros mundos', 86, 170, 640, 222, { fontFamily: J, fontSize: 92, fontWeight: 700, color: INK, lineHeight: 1.02 }),
         text('Cómo se descubren los exoplanetas, qué sabemos de ellos y dónde podría haber vida.', 90, 400, 560, 124, { fontSize: 28, color: SOFT }),
         shape('rect', 90, 540, 120, 8, ORA), shape('rect', 210, 540, 120, 8, TEAL), shape('rect', 330, 540, 120, 8, MAG),
         poster('earth', 800, 90, 360, 520, { rotation: 3 }),
-        text(`<div style="font-size:15px;letter-spacing:4px;opacity:.8">VISITE</div><b>TRAPPIST‑1e</b><div style="font-size:16px">a 40 años luz · tres soles en el cielo… casi</div>`, 812, 506, 336, 96, { fontFamily: J, fontSize: 32, color: '#ffffff', textAlign: 'center', rotation: 3 })],
+        text(`<div style="font-size:15px;letter-spacing:4px;opacity:.8">VISITE</div><b>TRAPPIST‑1e</b><div style="font-size:16px">a 40 años luz · seis mundos vecinos</div>`, 812, 506, 336, 96, { fontFamily: J, fontSize: 32, color: '#ffffff', textAlign: 'center', rotation: 3 })],
         notes: 'Portada con estética de cartel de viaje de los años treinta: colores planos y un cartel dibujado en SVG dentro de la propia plantilla, algo girado. TRAPPIST-1e es un exoplaneta real; el cartel, inventado.' },
       { layout: 'blank', bg: CREAM, transition: 'push', extra: [
         head('De uno a miles en treinta años'),
@@ -314,10 +315,10 @@ export default {
       { layout: 'blank', bg: CREAM, extra: [
         head('El método del tránsito'),
         sphere(SX, SY, SR, '#fff7d1', MUS),
-        withAnims(shape('ellipse', SX - SR - 70, SY - 22, 44, 44, NAVY), path([[SR * 2 + 100, 0]], { duration: 4000 })),
+        withAnims(shape('ellipse', SX - SR - 64, SY - 22, 44, 44, NAVY), path([[423, 0]], { duration: 4000 })),
         shape('rect', 680, 300, 520, 160, '#ffffff', { stroke: '#e2d6bc', strokeWidth: 2, radius: 8 }),
         text('Brillo de la estrella', 690, 262, 300, 34, { fontSize: 18, color: SOFT }), text('tiempo →', 1100, 466, 100, 30, { fontSize: 16, color: SOFT, textAlign: 'right' }),
-        withAnims(ink(LC, ORA, 5), A('draw', { start: 'withPrev', duration: 4000 })),
+        withAnims(ink(LC, ORA, 5), A('draw', { start: 'withPrev', duration: 5000 })),
         mathBlock({ x: 680, y: 510, w: 280, h: 100, fontSize: 40, color: INK, latex: '\\delta = \\left(\\frac{R_p}{R_{*}}\\right)^2' }),
         text('Un planeta como Júpiter tapa el 1 % de una estrella como el Sol; uno como la Tierra, el 0,008 %.', 965, 500, 245, 150, { fontSize: 18, color: INK })],
         notes: 'Clic: el planeta cruza por delante de la estrella (Trayectoria) y a la vez se dibuja la curva de luz (efecto «Dibujar» en un trazo, «con la anterior»). La profundidad de la caída da el tamaño del planeta.' },
@@ -326,7 +327,7 @@ export default {
         N('transiting-exoplanet-survey-satellite-tess-b', 50, 150, 420, 460, { view: 'three', spin: 18, edge: 'fade' }),
         codeBlock({ x: 500, y: 170, w: 700, h: 290, fontSize: 22, lang: 'python', lineSteps: '1-3|4-5|6|7',
           code: 'import numpy as np\n\nflujo = np.loadtxt("curva.csv")  # brillo\nbase = np.median(flujo)\ncaida = base - flujo.min()       # profundidad\nradio = np.sqrt(caida) * 109.2   # en R⊕\nprint(f"Caída {caida:.4f} → {radio:.1f} R⊕")' }),
-        text(`<b style="color:${TEAL}">Salida:</b> Caída 0,0084 → 10,0 R⊕ · un gigante gaseoso`, 500, 480, 700, 40, { fontSize: 22, color: INK, fontFamily: FF.mono }),
+        text(`<b style="color:${TEAL}">Salida:</b> Caída 0.0084 → 10.0 R⊕ · un gigante gaseoso`, 500, 480, 700, 40, { fontSize: 22, color: INK, fontFamily: FF.mono }),
         text('¿Por qué 109,2? Es el radio del Sol medido en radios terrestres: la raíz de la caída da R<sub>p</sub>/R<sub>*</sub>, y basta escalarla.', 500, 540, 700, 70, { fontSize: 20, color: SOFT }),
         text('Satélite cazador de tránsitos: vigila cada zona del cielo durante 27 días.', 80, 596, 380, 56, { fontSize: 18, color: SOFT, textAlign: 'center' })],
         notes: 'El código resalta las líneas por pasos: cargar la curva, medir la caída y convertirla en radio (109,2 radios terrestres caben en el radio del Sol). El satélite 3D de la NASA gira solo. Datos de ejemplo.' },
@@ -340,7 +341,7 @@ export default {
         text('← se acerca: líneas hacia el azul', 640, 320, 280, 60, { fontSize: 18, color: '#2f6fdf' }), text('se aleja: hacia el rojo →', 920, 320, 280, 60, { fontSize: 18, color: '#d7263d', textAlign: 'right' }),
         mathBlock({ x: 640, y: 410, w: 300, h: 100, fontSize: 40, color: INK, latex: 'v_r = c\\,\\frac{\\Delta\\lambda}{\\lambda}' }),
         text('La estrella y el planeta giran alrededor de su centro de masas: la estrella se mueve unos pocos metros por segundo.', 950, 400, 260, 200, { fontSize: 19, color: INK })],
-        notes: 'Clic: el planeta da una vuelta y, a la vez, la estrella se balancea y las líneas del espectro se desplazan (cuatro trayectorias «con la anterior»). Así se descubrió el primer exoplaneta alrededor de una estrella como el Sol, en 1995.' },
+        notes: 'Clic: el planeta da una vuelta y, a la vez, la estrella se balancea y las líneas del espectro se desplazan (cinco trayectorias «con la anterior»). Así se descubrió el primer exoplaneta alrededor de una estrella como el Sol, en 1995.' },
       { layout: 'blank', bg: CREAM, transition: 'fade', extra: [
         head('Tres destinos, tres climas'),
         ...[['hot', 'JÚPITER CALIENTE', 'Un año dura 3 días · 1.200 °C', '#ffffff'], ['earth', 'SUPERTIERRA', 'Dos soles y gravedad ×1,8', '#ffffff'], ['ocean', 'MUNDO OCÉANO', 'Bajo una enana roja · todo agua', INK]].map(([k, t, d, c], i) => [
@@ -432,17 +433,21 @@ export default {
         img(SPEC, 80, 560, 1120, 70, 'El espectro electromagnético: radio, microondas, infrarrojo, visible, ultravioleta, rayos X y gamma'),
         label('← ondas largas', 80, 640, 300), label('ondas cortas →', 900, 640, 300, { textAlign: 'right' }),
         webb(290, 170, 340, 330, { view: 'front', autoRotate: false, arrive: 'turn' }),
+        ink([[460, 500], [460, 556]], LN, 2), label('Webb: infrarrojo', 360, 140, 220, { textAlign: 'center', color: YEL }),
+        // (Each telescope comes with its label and its line to the band.)
         withAnims(N('hubble-space-telescope-a', 620, 190, 220, 300, { view: 'side', spin: 20 }), A('fade-up', { duration: 500 })),
+        withAnims(label('Hubble: visible y UV', 620, 140, 240, { textAlign: 'center', color: YEL }), A('fade-in', { start: 'withPrev', duration: 500 })),
+        withAnims(ink([[730, 500], [720, 556]], LN, 2), A('fade-in', { start: 'withPrev', duration: 500 })),
         withAnims(N('chandra-x-ray-observatory', 860, 210, 300, 280, { view: 'three', spin: 20 }), A('fade-up', { start: 'afterPrev', duration: 500 })),
-        ink([[460, 500], [460, 556]], LN, 2), ink([[730, 500], [720, 556]], LN, 2), ink([[1010, 500], [930, 556]], LN, 2),
-        label('Webb: infrarrojo', 360, 140, 220, { textAlign: 'center', color: YEL }), label('Hubble: visible y UV', 620, 140, 240, { textAlign: 'center', color: YEL }), label('Chandra: rayos X', 900, 140, 240, { textAlign: 'center', color: YEL })],
+        withAnims(label('Chandra: rayos X', 900, 140, 240, { textAlign: 'center', color: YEL }), A('fade-in', { start: 'withPrev', duration: 500 })),
+        withAnims(ink([[1010, 500], [930, 556]], LN, 2), A('fade-in', { start: 'withPrev', duration: 500 }))],
         notes: 'Transformar: el Webb llega desde la portada dando una vuelta. Clic: Hubble y luego Chandra (modelos 3D de la NASA). Los rayos X no atraviesan la atmósfera: hay que observarlos desde el espacio.' },
       { layout: 'blank', bg: BP, transition: 'fade', extra: [
         ...head('El espejo del Webb', '05'),
         ...HEX.map(([q, r], i) => withAnims(shape('hexagon', Math.round(MX + SZ * 1.5 * q - SZ), Math.round(MY + SZ * Math.sqrt(3) * (r + q / 2) - SZ * 0.87), SZ * 2 - 6, Math.round(SZ * 1.74) - 6, GOLD,
           { fill2: '#fff1b8', gradType: 'radial', stroke: '#8a5a00', strokeWidth: 1 }), A('zoom-in', { start: i ? 'afterPrev' : 'click', duration: 160, ...(i === 17 && { sound: 'chime' }) }))),
         shape('ellipse', MX - 14, MY - 14, 28, 28, BP, { stroke: LN, strokeWidth: 2 }),
-        ink([[MX - 5 * SZ / 2 - 25, 648], [MX + 5 * SZ / 2 + 25, 648]], LN, 2), label('6,5 m', MX - 50, 654, 100, { textAlign: 'center', color: LN }),
+        ink([[MX - 4 * SZ, 648], [MX + 4 * SZ, 648]], LN, 2), label('6,5 m', MX - 50, 654, 100, { textAlign: 'center', color: LN }),
         ...[['18', 'segmentos hexagonales de berilio'], ['48 g', 'de oro en una capa finísima'], ['−233 °C', 'para que su propio calor no lo ciegue']].map(([n, l], i) =>
           withAnims(stat(n, l, 760, 150 + i * 165, 440, YEL, LN, 54, { fontFamily: H }), A('fade-left', { start: i ? 'afterPrev' : 'click', duration: 400 })))],
         notes: 'Clic: los 18 segmentos se montan uno detrás de otro (con un tintineo al final). Cada uno es un hexágono con degradado radial dorado. Luego, tres datos con otro clic. El espejo viajó plegado y se desplegó en el espacio.' },
@@ -473,7 +478,7 @@ export default {
         tableBlock({ x: 80, y: 430, w: 520, h: 150, fontSize: 18, fontFamily: FF.mono, stroke: LN, colW: [2, 5], cellPad: [6, 12, 6, 12],
           rows: [['HOJAS', '9 de 9'], ['REVISADO', 'Departamento de Física'], ['ESTADO', 'Aprobado para clase']] }),
         text(NASA_CREDIT, 80, 610, 600, 30, { fontSize: 15, color: DIM })],
-        notes: 'Cierre con el mismo cajetín de la portada. El Webb se acerca al llegar (Modelo 3D ▸ Al llegar: Acercar).' },
+        notes: 'Cierre con el mismo cajetín de la portada. El Webb se acerca al llegar (Modelo 3D ▸ Vista ▸ Al entrar: «Acercar al entrar»).' },
     ]), LN));
   } },
 
@@ -512,7 +517,7 @@ export default {
         notes: 'Portada de atlas antiguo: doble filete en el patrón, letra Cormorant Garamond y la Luna dibujada en SVG con mares, cráteres, rayos y sombra rayada. Aparece sola, despacio.' },
       { layout: 'blank', bg: PAPER, extra: [
         ...plate('II', 'Las fases'),
-        withAnims(text('luz del Sol  →', 80, 200, 300, 34, { fontFamily: C, fontSize: 24, fontStyle: 'italic', color: RUST }), A('fade-in', { duration: 400 })),
+        withAnims(text('vistas desde el hemisferio norte', 80, 200, 500, 34, { fontFamily: C, fontSize: 24, fontStyle: 'italic', color: RUST }), A('fade-in', { duration: 400 })),
         ...PHASES.map(([n, p], i) => [withAnims(img(phaseSVG(p), 92 + i * 140, 250, 116, 116, n), A('fade-in', { start: 'afterPrev', duration: 350 })),
           withAnims(text(n, 82 + i * 140, 376, 136, 60, { fontFamily: C, fontSize: 20, fontStyle: 'italic', textAlign: 'center', color: SEPIA, lineHeight: 1.1 }), A('fade-in', { start: 'withPrev', duration: 350 }))]).flat(),
         shape('rect', 92, 470, 1096, 1, FADED),
@@ -635,10 +640,10 @@ export default {
         ...[['1 m', 'cada 2 semanas', 'una estrella fugaz brillante', 12], ['20 m', 'cada 50 años', 'rompe cristales en una ciudad', 26], ['50 m', 'cada 1.000 años', 'arrasa un bosque entero', 42],
           ['140 m', 'cada 20.000 años', 'destruye una región', 66], ['1 km', 'cada 500.000 años', 'efectos en todo el planeta', 104], ['10 km', 'cada 100 millones de años', 'extinción masiva', 150]].map(([s, f, e, d], i) => {
           const cx = 150 + i * 190;
-          return [withAnims(shape('ellipse', cx - d / 2, 330 - d / 2, d, d, '#6d6257', { fill2: '#2a2520', gradType: 'radial', stroke: i > 3 ? RED : '#9a8d7f', strokeWidth: 2 }), A('grow', { start: i ? 'afterPrev' : 'click', duration: 400 })),
+          return [withAnims(shape('ellipse', cx - d / 2, 330 - d / 2, d, d, '#6d6257', { fill2: '#2a2520', gradType: 'radial', stroke: i > 3 ? RED : '#9a8d7f', strokeWidth: 2 }), A('zoom-in', { start: i ? 'afterPrev' : 'click', duration: 400 })),
             withAnims(text(`<div style="font-family:${H};font-size:44px;color:${i > 3 ? RED : FG}">${s}</div><div style="color:${YEL}">${f}</div><div style="color:${DIM};font-size:16px">${e}</div>`, cx - 90, 430, 180, 160, { fontSize: 18, textAlign: 'center' }), A('fade-in', { start: 'withPrev', duration: 400 }))]; }).flat(),
         readout('Frecuencias medias aproximadas.', 80, 630, 600, DIM, { fontSize: 15 })],
-        notes: 'Un clic: los seis tamaños aparecen en cadena, del más pequeño al más grande. Cuanto mayor es el objeto, más raro: los de 20 m caen unas pocas veces por siglo; los de 10 km, como el de los dinosaurios, cada cien millones de años.' },
+        notes: 'Un clic: los seis tamaños aparecen en cadena, del más pequeño al más grande. Cuanto mayor es el objeto, más raro: los de 20 m caen un par de veces por siglo; los de 10 km, como el de los dinosaurios, cada cien millones de años.' },
       { layout: 'blank', bg: BG, extra: [
         ...head('Plan A: darle un empujón', 'FICHA 05 · IMPACTOR CINÉTICO'),
         sphere(1120, 560, 44, '#9fd3ff', '#1d5f8a'), readout('Tierra', 1080, 612, 80, DIM, { textAlign: 'center', fontSize: 14 }),
@@ -815,7 +820,7 @@ export default {
         withAnims(name('Sirio, la más brillante', 60, 500, 220, { color: RED }), A('fade-in', { start: 'afterPrev' })),
         name('Betelgeuse', 160, 214, 120, { textAlign: 'right' }), name('Rigel', 506, 528, 100), name('Nebulosa', 330, 505, 120, { textAlign: 'center' }),
         text(ul('<b style="color:#ff4a3a">Betelgeuse</b>: supergigante roja, a punto (astronómicamente) de explotar', '<b style="color:#ff4a3a">Las Tres Marías</b>: el cinturón, tres estrellas en fila', '<b style="color:#ff4a3a">La nebulosa</b>: una mancha difusa bajo el cinturón donde nacen estrellas'), 640, 200, 560, 380, { fontSize: 21, color: MID, lineHeight: 1.45 })],
-        notes: 'Un clic traza Orión entera (tres trazos a la vez). Otro clic prolonga el cinturón hacia abajo a la izquierda hasta Sirio. La nebulosa es un brillo radial.' },
+        notes: 'Un clic traza Orión entera: tres trazos, uno detrás de otro. Otro clic prolonga el cinturón hacia abajo a la izquierda hasta Sirio. La nebulosa es un brillo radial.' },
       { layout: 'blank', bg: BG, extra: [
         ...head('¿CUÁNTO BRILLA?', 'La escala de magnitudes: cuanto menor el número, más brillante'),
         ...[['Venus', '−4,6', 64], ['Sirio', '−1,5', 46], ['Vega', '0', 38], ['Polar', '2', 26], ['Límite en ciudad', '3', 18], ['Límite en el campo', '6', 9]].map(([n, m, s], i) => [
@@ -828,7 +833,7 @@ export default {
         ...head('LA LUZ QUE NOS ROBA EL CIELO', 'Estrellas visibles a simple vista según dónde estés'),
         chartBlock({ x: 80, y: 170, w: 760, h: 460, chartType: 'hbar', color: MID, dataLabels: true,
           data: [{ label: 'Alta montaña', value: 4500 }, { label: 'Pueblo pequeño', value: 2000 }, { label: 'Afueras', value: 800 }, { label: 'Ciudad', value: 200 }, { label: 'Centro de gran ciudad', value: 30 }] }),
-        text('<b style="color:#ff4a3a;font-size:30px">Ocho de cada diez</b><br>personas en Europa no pueden ver la Vía Láctea desde su casa.', 880, 200, 320, 200, { fontSize: 21, color: MID }),
+        text('<b style="color:#ff4a3a;font-size:30px">Seis de cada diez</b><br>personas en Europa no pueden ver la Vía Láctea desde su casa.', 880, 200, 320, 200, { fontSize: 21, color: MID }),
         text('Cifras aproximadas. Una farola que ilumina hacia arriba gasta luz… y cielo.', 880, 460, 320, 100, { fontSize: 17, color: DIM, fontStyle: 'italic' })],
         notes: 'Barras horizontales con etiquetas. Valores orientativos: dependen de la Luna, la humedad y la vista de cada uno.' },
       { layout: 'blank', bg: BG, extra: [
@@ -882,11 +887,12 @@ export default {
         ...LAYERS.map(([n, d, r, c1], i) => [
           withAnims(ink([[LX + r * Math.cos(ANG[i] * Math.PI / 180), LY + r * Math.sin(ANG[i] * Math.PI / 180)], [700, 180 + i * 96], [730, 180 + i * 96]], '#ffd9b8', 1.5), A('draw', { start: i ? 'afterPrev' : 'click', duration: 400 })),
           withAnims(text(`<b style="color:${i === 4 ? '#ffcf99' : c1};font-size:26px">${n}</b><br>${d}`, 740, 155 + i * 96, 460, 90, { fontSize: 19, color: FG }), A('fade-left', { start: 'withPrev', duration: 400 }))]).flat()],
-        notes: 'El Sol en capas: cinco círculos con degradado que entran solos al llegar. Cada clic une una capa con su etiqueta (línea trazada). La corona está más caliente que la fotosfera: un misterio que estudian las sondas solares.' },
+        notes: 'El Sol en capas: cinco círculos con degradado que entran solos al llegar. Un clic une, una tras otra, cada capa con su etiqueta (línea trazada). La corona está más caliente que la fotosfera: un misterio que estudian las sondas solares.' },
       { layout: 'blank', bg: '#3a0a04', transition: 'fade', extra: [
         head('La fábrica de luz'),
         mathBlock({ x: 80, y: 160, w: 1120, h: 110, fontSize: 46, color: GOLD, latex: '4\\,{}^{1}\\mathrm{H} \\;\\longrightarrow\\; {}^{4}\\mathrm{He} + 2e^{+} + 2\\nu_e + 26{,}7\\ \\mathrm{MeV}' }),
-        dg('process', 'Protón + protón\n  Nace el deuterio\n+ un protón\n  Se forma helio-3\nHelio-3 + helio-3\n  Helio-4 y dos protones libres', 80, 300, 700, 300, { colors: 'accent', oneByOne: true }),
+        // (With an entrance of its own, its steps come right after it, before the figure.)
+        withAnims(dg('process', 'Protón + protón\n  Nace el deuterio\n+ un protón\n  Se forma helio-3\nHelio-3 + helio-3\n  Helio-4 y dos protones libres', 80, 300, 700, 300, { colors: 'accent', oneByOne: true }), A('fade-in', { duration: 400 })),
         withAnims(text(`<div style="font-family:${AB};font-size:72px;color:${ORA};line-height:1">600</div>millones de toneladas de hidrógeno se convierten en helio cada segundo`, 840, 290, 360, 200, { fontSize: 22, color: FG }), A('zoom-in')),
         withAnims(mathBlock({ x: 840, y: 510, w: 360, h: 90, fontSize: 44, color: FG, latex: 'E = mc^2' }), A('fade-up', { start: 'afterPrev' })),
         withAnims(text('Solo el 0,7 % de esa masa se vuelve energía… y basta.', 840, 600, 360, 60, { fontSize: 18, color: DIM }), A('fade-up', { start: 'withPrev' }))],
@@ -1005,9 +1011,10 @@ export default {
         sphere(640, SY, 16, '#9fd3ff', '#1d5f8a'), readout('Tierra', 605, SY + 22, 80, DIM, { textAlign: 'center' }),
         text('Una estrella de neutrones gira y lanza dos haces de radio por sus polos magnéticos. Cada vez que uno barre la Tierra, el receptor ve un pulso.', 720, 160, 480, 180, { fontSize: 24, color: PH2 }),
         shape('rect', 720, 380, 480, 200, '#06261580', { stroke: '#2c8a5a', strokeWidth: 2 }), ink([[740, 520], [1180, 520]], DIM, 2),
-        ...[0, 1, 2].map(k => withAnims(ink([[790 + k * 150, 520], [800 + k * 150, 420], [810 + k * 150, 520]], PH, 3), A('fade-in', { start: 'withPrev', delay: 300 + k * 1200, duration: 120, sound: 'click' }))),
-        readout('Un pulso por vuelta', 720, 590, 480, DIM, { textAlign: 'center' })],
-        notes: 'Un clic: el haz da tres vueltas (una trayectoria quieta con giro de 1.080°) y cada vez que apunta a la Tierra aparece un pulso en la pantalla pequeña, con un clic de sonido (animaciones «con la anterior» y retardos de 0,3; 1,5 y 2,7 s). En la realidad el giro es en tres dimensiones.' },
+        // (Each beam points at the Earth twice a turn between them: six pulses in three turns, timed to the turn's ease-in-out.)
+        ...[727, 1246, 1625, 1975, 2354, 2873].map((ms, k) => withAnims(ink([[760 + k * 76, 520], [770 + k * 76, 420], [780 + k * 76, 520]], PH, 3), A('fade-in', { start: 'withPrev', delay: ms, duration: 120, sound: 'click' }))),
+        readout('Un pulso cada vez que un haz nos barre', 720, 590, 480, DIM, { textAlign: 'center' })],
+        notes: 'Un clic: el haz da tres vueltas (una trayectoria quieta con giro de 1.080°) y cada vez que uno de los dos haces apunta a la Tierra (seis veces) aparece un pulso en la pantalla pequeña, con un clic de sonido (animaciones «con la anterior» con retardos). En la realidad el giro es en tres dimensiones.' },
       { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'quiz', question: '¿Qué tamaño tiene una estrella de neutrones?', options: ['Como la Tierra', 'Como una ciudad, unos 20 km', 'Como un estadio de fútbol', 'Como el Sol'], correct: [1], time: 20, fontSize: 38, x: 70, y: 60, w: 1140, h: 600 })],
         notes: 'Concurso desde el móvil, con puntos por rapidez, justo antes de ver las medidas: la respuesta (unos 20 km de diámetro, con más masa que el Sol) sale en la diapositiva siguiente.' },
       { layout: 'blank', bg: BG, transition: 'slide', extra: [
@@ -1029,9 +1036,9 @@ export default {
         mathBlock({ x: 80, y: 160, w: 460, h: 120, fontSize: 52, color: PH, latex: '\\tau = \\frac{P}{2\\,\\dot P}' }),
         text('El púlsar frena poco a poco: <b>P</b> es su periodo y <b>Ṗ</b> lo que se alarga cada segundo. Cuanto más lento frena, más viejo es.', 80, 300, 460, 200, { fontSize: 22, color: PH2 }),
         tableBlock({ x: 580, y: 170, w: 620, h: 330, fontSize: 21, header: true, fontFamily: M, stroke: '#2c8a5a', headBg: '#0b3a22', headFg: AMB, banded: true, band: PH, colW: [3.4, 2.8, 3, 4.6],
-          rows: [['Púlsar', 'P (s)', 'Ṗ (×10⁻¹⁵)', 'Edad (años)'], ['Cangrejo', '0,0334', '420,9', '=REDONDEAR(B2/C2*15843000;0)'], ['Vela', '0,0893', '125', '=REDONDEAR(B3/C3*15843000;0)'],
+          rows: [['Púlsar', 'P (s)', 'Ṗ (×10⁻¹⁵)', 'Edad (años)'], ['Cangrejo', '0,0337', '420,9', '=REDONDEAR(B2/C2*15843000;0)'], ['Vela', '0,0893', '125', '=REDONDEAR(B3/C3*15843000;0)'],
             ['B1919+21', '1,3373', '1,35', '=REDONDEAR(B4/C4*15843000;0)'], ['J0437−4715', '0,005757', '0,0000573', '=REDONDEAR(B5/C5*15843000;0)']] }),
-        text('La última columna es una fórmula: P ÷ (2 Ṗ), pasada de segundos a años. Es una edad aproximada: la del Cangrejo da 1.257 años y nació en 1054.', 580, 520, 620, 90, { fontSize: 18, color: DIM })],
+        text('La última columna es una fórmula: P ÷ (2 Ṗ), pasada de segundos a años. Es una edad aproximada: la del Cangrejo da 1.268 años y nació en 1054.', 580, 520, 620, 90, { fontSize: 18, color: DIM })],
         notes: 'La tabla calcula la edad característica con una fórmula (=B2/C2*15843000: el factor junta el 10⁻¹⁵ de Ṗ, el 2 y los segundos de un año). Cambia el periodo o el frenado y verás la nueva edad. Los púlsares de milisegundo, como J0437−4715, son viejísimos.' },
       { layout: 'blank', bg: BG, extra: [
         ...head('ASÍ SUENAN', 'CADA PULSO, UN CLIC: LA RADIO CONVERTIDA EN SONIDO'),

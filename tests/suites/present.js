@@ -109,6 +109,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(['Uno', 'Dos', 'Tres', 'Cuatro'].every(w => ord.includes(w)) && !/Uno\s+Dos\s+Tres\s+Cuatro/.test(ord), 'poner en orden: sus elementos, desordenados');
     const mat = P.pollResultsHTML({ kind: 'match', options: ['Mulhacén = Sierra Nevada', 'Aneto = Pirineos'] }, { counts: [0, 0], voters: 0 }).replace(/<[^>]+>/g, ' ');
     assert(/Mulhacén/.test(mat) && /Pirineos/.test(mat) && !/→/.test(mat), 'unir parejas: las dos columnas, sin la solución');
+    // Few of them: at the box's own size (at .6em they looked lost in it); dark words on a light colour.
+    const big = P.pollResultsHTML({ kind: 'match', options: ['Mulhacén = Sierra Nevada', 'Aneto = Pirineos'] }, { counts: [0, 0], voters: 0 });
+    assert(/font-size:1em/.test(big), 'pocas parejas, a buen tamaño');
+    const many = P.pollResultsHTML({ kind: 'order', options: 'abcdefghij'.split('') }, { counts: Array(10).fill(0), voters: 0 });
+    assert(/font-size:0?\.6em/.test(many), 'muchas, más pequeñas');
     // The editor: "*" marks the right answer; time.
     const b = P.addPoll(); await sleep(20);
     D.querySelector(`#stage .block[data-id="${b.id}"]`); R.store.commit(() => { R.state.ui.selection = b.id; }, { history: false });

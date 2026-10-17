@@ -1528,6 +1528,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/font-weight="700"/.test(up), 'en negrita si lo está');
     const circle = S.curvedTextSVG({ ...base, curve: 100 });
     assert(/ A[\d.]+,[\d.]+ 0 1 1 /.test(circle) && /textLength=/.test(circle), 'en círculo: una vuelta completa, repartido');
+    // Its letter spacing counted: a motto spaced out over an arc was cut at both ends.
+    const motto = { ...base, html: 'nada escapa · ni siquiera la luz · nada escapa', fontSize: 22, w: 760, h: 150, curve: 32 };
+    assert(!/textLength=/.test(S.curvedTextSVG(motto)) && /textLength=/.test(S.curvedTextSVG({ ...motto, letterSpacing: 6 })), 'con letras espaciadas, ajustado al arco');
     // In the editor, from its tab: the arc shows, the text under it is what is edited.
     const b = newText(); await sleep(20);
     R.store.commit(() => { R.state.ui.selection = b.id; R.state.ui.multi = [b.id]; R.state.ui.activeTab = 'ctx'; }, { history: false }); await sleep(20);

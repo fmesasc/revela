@@ -518,6 +518,19 @@ function spreadClicks(s) {
   return { ...s, blocks: s.blocks.map(b => (b.animation || b.anims ? { ...b, animation: fix(b.animation), ...(Array.isArray(b.anims) && { anims: b.anims.map(fix) }) } : b)) };
 }
 
+// A connector with no animation of its own comes in with the later of the objects it joins, if they come in on a
+// click: it was there from the start, its arrows pointing at nothing.
+function followEnds(s) {
+  // (Each one's click and place in the sequence: the connector goes right after the later one, with it.)
+  const ins = new Map(animEntries(s).filter(e => e.i === 0 && !e.a.trigger && isEntrance(e.a.effect)).map(e => [e.b.id, [+e.a.order || 0, e.k]]));
+  if (!ins.size || !s.blocks.some(b => b.type === 'connector' && !b.animation && (ins.has(b.from) || ins.has(b.to)))) return s;
+  return { ...s, blocks: s.blocks.map(b => {
+    if (b.type !== 'connector' || b.animation || !(ins.has(b.from) || ins.has(b.to))) return b;
+    const [order, k] = [ins.get(b.from), ins.get(b.to)].filter(Boolean).sort((x, y) => x[1] - y[1]).at(-1);
+    return { ...b, animation: { effect: 'fade-in', order, seq: k + 1e-4, start: 'withPrev', duration: 400 } };
+  }) };
+}
+
 // A map that flies from stop to stop (io/runtime/geomap.js draws it live): its settings as data, and each stop's
 // picture — the first one seen; the others stand in, without a connection, when the map gets to their stop —, so
 // the pictures (PDF, images, PowerPoint) show it as it starts. Its name says where it goes («Mapa: Madrid → París»).
@@ -675,7 +688,7 @@ const backdropHTML = bd => (bd.layers.length ? `<div class="rv-bd" aria-hidden="
   `<div class="stage rv-bd-k" data-k="${i}" style="background:${l.bg}">${l.html.replace(/ data-id="[^"]*"/g, '')}</div>`).join('')}</div>` : '');
 
 function slideHTML(s0, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck), bd = backdropPlan(deck, fit)) {
-  const s = spreadClicks(s0);
+  const s = spreadClicks(followEnds(s0));
   // Entry/exit can differ (reveal's "x-in y-out"); speed can be set per slide.
   const tin = ownTransition(s) || deck.defaultTransition || 'slide';
   // As in PowerPoint, a transition belongs to the slide that comes in: the one before leaves with it too — a shape
