@@ -119,6 +119,22 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.querySelector('.path-draw'), 'Esc cancela');
   });
 
+  await test('«Dibujar» en una forma estirada: nada antes de su turno y la línea entera al acabar', async () => {
+    reset();
+    R.store.commit(() => { slide().blocks = [{ id: 'st', type: 'shape', shape: 'star', x: 100, y: 250, w: 1080, h: 160, rotation: 0, fill: 'none', stroke: '#e63946', strokeWidth: 8,
+      animation: { effect: 'draw', order: 1, seq: 1, start: 'click', duration: 400, delay: 0 } }]; });
+    const html = R.io.buildHTML(R.state.deck, { inApp: true });
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    f.srcdoc = html;
+    try {
+      for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
+      await sleep(100);
+      const p = f.contentDocument.querySelector('.fragment.draw .rvd'), L = p.getTotalLength(), d = parseFloat(p.style.getPropertyValue('--rvdl'));
+      assert(!p.hasAttribute('pathLength') && d > L * 5, 'su raya, tan larga como la línea en la diapositiva (estirada): ' + d + ' frente a ' + L);
+      eq(f.contentWindow.getComputedStyle(p).strokeDashoffset, d + 'px', 'antes de su turno, oculta del todo');
+    } finally { f.remove(); }
+  });
+
   await test('al presentar, «siguiente» con una animación a medias la termina (no salta al siguiente punto)', async () => {
     reset(); const b = slide().blocks[0]; select(b);
     R.trans.addAnimation('path', { dx: 300, dy: 0 });

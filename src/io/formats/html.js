@@ -182,6 +182,18 @@ if(a.paused){a.removeAttribute('data-off');a.play().catch(function(){});}else{a.
 list.forEach(function(a){a.addEventListener('play',btns);a.addEventListener('pause',btns);});
 Reveal.on('ready',upd);Reveal.on('slidechanged',upd);if(Reveal.isReady())upd();})();`;
 
+// «Draw» (Dibujar) traces an outline with one dash as long as it (pathLength 1). But its line keeps its width when the
+// shape is stretched (vector-effect: non-scaling-stroke), and then the browser measures the dash on the stretched line
+// while the path's own length is the unstretched one: drawn only in part, or bits of it shown before its turn (a
+// freeform arrow made wider than tall). Those: without pathLength, their dash as long as the line really is on the
+// slide (in its pixels, as such a line's dashes are measured) and a quarter more — measured exactly, the tip where a
+// closed outline starts and ends was left out —, in --rvdl.
+const DRAW_JS = `(function(){function ratio(p){try{var m=p.getCTM(),L=p.getTotalLength();if(!m||!L)return 1;var n=Math.max(8,Math.min(300,Math.ceil(L/3))),t=0,a=p.getPointAtLength(0);
+for(var i=1;i<=n;i++){var b=p.getPointAtLength(L*i/n),dx=b.x-a.x,dy=b.y-a.y;t+=Math.hypot(m.a*dx+m.c*dy,m.b*dx+m.d*dy);a=b;}return t>0?t/L:1;}catch(e){return 1;}}
+function all(){var s=Reveal.getCurrentSlide();if(!s)return;s.querySelectorAll('.fragment.draw .rvd').forEach(function(p){if(getComputedStyle(p).vectorEffect!=='non-scaling-stroke')return;
+var L=p.getTotalLength&&p.getTotalLength();if(!L)return;p.removeAttribute('pathLength');p.style.setProperty('--rvdl',(ratio(p)*L*1.25+4).toFixed(1));});}
+Reveal.on('ready',all);Reveal.on('slidechanged',all);Reveal.on('resize',all);if(Reveal.isReady())all();})();`;
+
 // Slides whose first animation starts by itself: on arriving (forwards), their first step plays.
 const START_JS = `(function(){function go(){var s=Reveal.getCurrentSlide(),f=Reveal.getIndices().f;
 if(s&&s.hasAttribute('data-rv-start')&&(f===undefined||f<0))setTimeout(function(){if(Reveal.getCurrentSlide()===s)Reveal.nextFragment();},60);}
@@ -844,7 +856,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal .slides section .fragment.rv-path{opacity:1;visibility:inherit}
  .reveal .slides section .fragment.rv-path.visible{translate:var(--dx) var(--dy)}
  .reveal .slides section .fragment.spin360,.reveal .slides section .fragment.clip3d,.reveal .slides section .fragment.pdfview,.reveal .slides section .fragment.mapfly,.reveal .slides section .fragment.draw,.reveal .slides section .fragment[data-mfx]{opacity:1;visibility:inherit}
- .reveal .fragment.draw .rvd{stroke-dasharray:1;stroke-dashoffset:1;fill-opacity:0}
+ .reveal .fragment.draw .rvd{stroke-dasharray:var(--rvdl,1);stroke-dashoffset:var(--rvdl,1);fill-opacity:0}
  .reveal .fragment.draw.visible .rvd{animation:rvDraw var(--anim-dur,1500ms) ease-in-out var(--anim-del,0ms) forwards}
  @keyframes rvDraw{70%{fill-opacity:0}to{stroke-dashoffset:0;fill-opacity:1}}
  [data-goto],[data-href],[data-popup]{cursor:pointer}
@@ -917,7 +929,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${/ data-pdf[ >]/.test(slides) ? `(${pdfRuntime.toString()})(${JSON.stringify(PDFJS)});` : ''}
  ${/ data-geomap="/.test(slides) ? `(${geoMapRuntime.toString()})(${JSON.stringify(MAPLIBRE)}, ${JSON.stringify(MAPLIBRE_RTL)}, ${jsData({ offline: t('Sin conexión: imagen guardada del mapa') })});` : ''}
  ${bgmHTML ? BGM_JS : ''}
- ${/ data-rv-start[ >]/.test(slides) ? START_JS : ''}
+ ${/ data-rv-start[ >]/.test(slides) ? START_JS : ''}${/class="fragment draw"/.test(slides) ? DRAW_JS : ''}
  ${bd.layers.length || / data-rv-dur="/.test(slides) ? BD_JS : ''}
  ${/ data-(goto|href|popup|tip)="/.test(slides) ? LINK_JS : ''}
  ${/ data-drag[ >]/.test(slides) ? DRAG_JS : ''}
