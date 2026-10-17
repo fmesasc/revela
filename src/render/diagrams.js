@@ -222,11 +222,19 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
     case 'cycle': {
       // Items round an ellipse that fills the box; arcs with heads between them.
       // (Nodes as big as the ring allows: their words were tiny in the smaller ones.)
-      const nw = Math.min(W * 0.36, W * 0.98 / Math.max(2, n / 2 + 0.8)), nh = Math.min(H * 0.34, nw * 0.7), Rx = W / 2 - nw / 2 - 4, Ry = H / 2 - nh / 2 - 4, cx = W / 2, cy = H / 2;
+      let nw = Math.min(W * 0.36, W * 0.98 / Math.max(2, n / 2 + 0.8)), nh = Math.min(H * 0.34, nw * 0.7), Rx = W / 2 - nw / 2 - 4, Ry = H / 2 - nh / 2 - 4;
+      const cx = W / 2, cy = H / 2;
       const pos = i => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + Rx * Math.cos(a), cy + Ry * Math.sin(a), a]; };
       // (Where the arc leaves a node: the angle past the node's edge, found by walking out along the ellipse.)
       const clear = (a0, dir) => { let a = a0; const x0 = cx + Rx * Math.cos(a0), y0 = cy + Ry * Math.sin(a0);
         for (let k = 0; k < 200; k++) { a += dir * 0.01; const x = cx + Rx * Math.cos(a), y = cy + Ry * Math.sin(a); if (Math.abs(x - x0) > nw / 2 + 6 || Math.abs(y - y0) > nh / 2 + 6) break; } return a; };
+      // (Room for every arrow: nodes too big for the ring — five in a squat box — left no arc between neighbours, and
+      // their arrows were not drawn. Smaller, a little at a time, until each gap takes one.)
+      for (let t = 0; t < 12 && n > 1; t++) {
+        let tight = false; for (let i = 0; i < n; i++) { const a0 = pos(i)[2]; if (clear(a0 + 2 * Math.PI / n, -1) - clear(a0, 1) < 0.22) tight = true; }
+        if (!tight) break;
+        nw *= 0.92; nh *= 0.92; Rx = W / 2 - nw / 2 - 4; Ry = H / 2 - nh / 2 - 4;
+      }
       if (n > 1) for (let i = 0; i < n; i++) {
         const [, , a0] = pos(i), a1 = a0 + 2 * Math.PI / n, from = clear(a0, 1), to = clear(a1, -1), pts = [];
         if (to - from > 0.05) {

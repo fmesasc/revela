@@ -163,7 +163,6 @@ export default {
  "Fraternidad": "Fraternity",
  "Soberanía del pueblo": "Popular sovereignty",
  "Fracciones": "Fractions",
- "Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza naranja está coloreada?": "The four “pizzas” bounce in when the slide appears, with a chime. Question: what fraction of the orange pizza is coloured?",
  "Círculo dividido en partes": "Circle divided into parts",
  "MATEMÁTICAS · 5.º DE PRIMARIA": "MATHS · YEAR 6",
  "Partes de un todo, sin miedo": "Parts of a whole, without fear",
@@ -219,7 +218,6 @@ export default {
  "Columna": "Spine",
  "Tórax": "Chest",
  "Cráneo": "Skull",
- "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡52 %!</div>de los huesos están en las manos y los pies.": "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">52%!</div>of our bones are in the hands and feet.",
  "Actividad «Etiquetar una imagen» con nota: cada número del dibujo lleva un desplegable en el móvil.": "Marked “Label an image” activity: each number on the drawing has a drop-down on the phone.",
  "Señala cada órgano en el cuerpo": "Point to each organ on the body",
  "Cerebro": "Brain",
@@ -512,5 +510,7 @@ export default {
  "🏆 Leaderboard": "🏆 Leaderboard",
  "Las estrellas botan con aplausos al llegar. Despedida en inglés: Goodbye, everyone!": "The stars bounce in with applause when the slide appears. Goodbye in English: Goodbye, everyone!",
  "Well done!": "Well done!",
- "¡Buen trabajo! · See you next class": "¡Buen trabajo! · See you next class"
+ "¡Buen trabajo! · See you next class": "¡Buen trabajo! · See you next class",
+ "Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza amarilla está coloreada?": "The four “pizzas” bounce in when the slide appears, with a chime. Question: what fraction of the yellow pizza is coloured?",
+ "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡51 %!</div>de los huesos están en las manos y los pies.": "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">51%!</div>of our bones are in the hands and feet."
 };

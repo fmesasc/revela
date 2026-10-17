@@ -163,7 +163,6 @@ export default {
  "Fraternidad": "Senidetasuna",
  "Soberanía del pueblo": "Herriaren subiranotasuna",
  "Fracciones": "Zatikiak",
- "Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza naranja está coloreada?": "Lau «pizzek» errebote egiten dute iristean, kanpai-hots batekin. Galdera: pizza laranjaren zer zati dago koloreztatuta?",
  "Círculo dividido en partes": "Zatitan banatutako zirkulua",
  "MATEMÁTICAS · 5.º DE PRIMARIA": "MATEMATIKA · LEHEN HEZKUNTZA 5",
  "Partes de un todo, sin miedo": "Osoko baten zatiak, beldurrik gabe",
@@ -219,7 +218,6 @@ export default {
  "Columna": "Bizkarrezurra",
  "Tórax": "Toraxa",
  "Cráneo": "Garezurra",
- "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡52 %!</div>de los huesos están en las manos y los pies.": "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">% 52!</div>hezurren erdia baino gehiago eskuetan eta oinetan daude.",
  "Actividad «Etiquetar una imagen» con nota: cada número del dibujo lleva un desplegable en el móvil.": "«Irudi bat etiketatu» jarduera notarekin: marrazkiko zenbaki bakoitzak zabalgarri bat du mugikorrean.",
  "Señala cada órgano en el cuerpo": "Seinalatu organo bakoitza gorputzean",
  "Cerebro": "Garuna",
@@ -512,5 +510,7 @@ export default {
  "🏆 Leaderboard": "🏆 Leaderboard",
  "Las estrellas botan con aplausos al llegar. Despedida en inglés: Goodbye, everyone!": "Izarrek errebote egiten dute txaloekin iristean. Agurra ingelesez: Goodbye, everyone!",
  "Well done!": "Well done!",
- "¡Buen trabajo! · See you next class": "Lan bikaina! · See you next class"
+ "¡Buen trabajo! · See you next class": "Lan bikaina! · See you next class",
+ "Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza amarilla está coloreada?": "Lau «pizzek» errebote egiten dute iristean, kanpai-hots batekin. Galdera: pizza horiaren zer zati dago koloreztatuta?",
+ "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡51 %!</div>de los huesos están en las manos y los pies.": "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">% 51!</div>hezurren erdia baino gehiago eskuetan eta oinetan daude."
 };

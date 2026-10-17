@@ -2821,6 +2821,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(org2.filter(p => p.type === 'text').map(p => p.text + ':' + p.i).sort().join(), ['Dirección:0', 'Norte:1', 'Sur:1', 'Técnica:2', 'Ventas:1', 'Web:2'].sort().join(), 'organigrama: el jefe y luego una rama por clic');
     const cyc = DG.diagramLayout({ layout: 'cycle', w: 900, h: 460, text: 'Uno\nDos\nTres' }).filter(p => p.type === 'poly');
     assert(!cyc.some(p => p.i === 0), 'ciclo: ninguna flecha con el primero (la que cierra el círculo sale con el último)');
+    const cyc5 = DG.diagramLayout({ layout: 'cycle', w: 800, h: 480, text: 'Evaporación\nCondensación\nPrecipitación\nEscorrentía\nInfiltración' });
+    eq(cyc5.filter(p => p.type === 'poly' && p.closed).length, 5, 'ciclo de cinco en una caja ancha: las cinco flechas (las cajas encogen hasta que caben)');
     const org = DG.diagramLayout({ layout: 'hierarchy', w: 900, h: 460, text: DG.DIAGRAM_SAMPLES.hierarchy }).filter(p => p.type === 'rect');
     eq(org.length, 7, 'siete cajas'); eq(new Set(org.map(r => Math.round(r.y))).size, 3, 'en tres niveles');
     // Inserted: one object with its text, in the app's language.
@@ -3683,6 +3685,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const SV = await frame.contentWindow.eval("import('/src/render/svg.js')");
     const h = SV.chartSVG({ chartType: 'stacked', dataLabels: true, data: [{ label: 'a', value: 5 }], seriesName: 'A', color: '#ffe066', series: [{ name: 'B', values: [3], color: '#203040' }], w: 400, h: 300 });
     assert(/fill="#1e2a3a"[^>]*>5</.test(h) && /fill="#fff"[^>]*>3</.test(h), 'sobre amarillo, oscura; sobre azul noche, blanca');
+    const tm = SV.chartSVG({ chartType: 'treemap', data: [{ label: 'Grande', value: 60, color: '#ffe066' }, { label: 'Otro', value: 30, color: '#203040' }], w: 400, h: 300 });
+    assert(/fill="#ffe066"/.test(tm) && /fill="#203040"/.test(tm) && /fill="#1e2a3a"[^>]*>Grande</.test(tm), 'rectángulos: el color de cada trozo, y su nombre legible sobre él');
   });
 
   await test('exportar otra presentación (no la abierta): sus diagramas con su paleta', async () => {

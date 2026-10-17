@@ -614,12 +614,10 @@ export default {
  "Un histograma con 8 tramos calculados a partir de los 60 valores (Gráfico ▸ Histograma). La forma de campana es la habitual en cualquier club.": "Um histograma com 8 classes calculadas a partir dos 60 valores (Gráfico ▸ Histograma). A forma de sino é a habitual em qualquer clube.",
  "Así se reparten los 60 socios": "Como se distribuem os 60 sócios",
  "Socios": "Sócios",
- "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">1.660</div><div style=\"margin-top:8px\">Elo mediano del club</div>": "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">1.660</div><div style=\"margin-top:8px\">Elo mediano do clube</div>",
  "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">2.310</div><div style=\"margin-top:8px\">nuestro mejor jugador</div>": "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">2.310</div><div style=\"margin-top:8px\">o nosso melhor jogador</div>",
  "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">8</div><div style=\"margin-top:8px\">socios por encima de 2.000</div>": "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">8</div><div style=\"margin-top:8px\">sócios acima de 2.000</div>",
  "Código con pasos de resaltado: el valor esperado, la llamada y el cambio. Debajo, el resultado del ejemplo de Ana.": "Código com passos de realce: o valor esperado, a chamada e a mudança. Por baixo, o resultado do exemplo da Ana.",
  "La actualización, en código": "A atualização, em código",
- "actualizar(1850, 2010, 1)  →  1864,4": "actualizar(1850, 2010, 1)  →  1864,4",
  "<b>¿Y K?</b><br>Los clubes usan K = 40 con los nuevos (para que lleguen rápido a su nivel) y K = 10 con los veteranos muy estables.": "<b>E o K?</b><br>Os clubes usam K = 40 com os novos (para chegarem depressa ao seu nível) e K = 10 com os veteranos muito estáveis.",
  "Concurso: E = 0,09, así que 20 × (1 − 0,09) ≈ +18. Nunca se ganan más de K puntos en una partida.": "Concurso: E = 0,09, por isso 20 × (1 − 0,09) ≈ +18. Nunca se ganham mais de K pontos numa partida.",
  "Ganas a alguien con 400 puntos más (K = 20). ¿Cuánto sube tu Elo?": "Ganhas a alguém com mais 400 pontos (K = 20). Quanto sobe o teu Elo?",
@@ -719,5 +717,7 @@ export default {
  "ms": "ms",
  "SR": "SR",
  "DPS": "DPS",
- "eFG%": "eFG%"
+ "eFG%": "eFG%",
+ "actualizar(1850, 2010, 1)  →  1864,3": "actualizar(1850, 2010, 1)  →  1864,3",
+ "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">1.685</div><div style=\"margin-top:8px\">Elo mediano del club</div>": "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">1.685</div><div style=\"margin-top:8px\">Elo mediano do clube</div>"
 };

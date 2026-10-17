@@ -163,7 +163,6 @@ export default {
  "Fraternidad": "Fraternidade",
  "Soberanía del pueblo": "Soberania do povo",
  "Fracciones": "Frações",
- "Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza naranja está coloreada?": "As quatro «pizas» saltam ao chegar, com uma campainha. Pergunta: que parte da piza laranja está colorida?",
  "Círculo dividido en partes": "Círculo dividido em partes",
  "MATEMÁTICAS · 5.º DE PRIMARIA": "MATEMÁTICA · 5.º ANO",
  "Partes de un todo, sin miedo": "Partes de um todo, sem medo",
@@ -219,7 +218,6 @@ export default {
  "Columna": "Coluna",
  "Tórax": "Tórax",
  "Cráneo": "Crânio",
- "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡52 %!</div>de los huesos están en las manos y los pies.": "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">52 %!</div>dos ossos estão nas mãos e nos pés.",
  "Actividad «Etiquetar una imagen» con nota: cada número del dibujo lleva un desplegable en el móvil.": "Atividade «Legendar uma imagem» com nota: cada número do desenho tem uma lista pendente no telemóvel.",
  "Señala cada órgano en el cuerpo": "Assinala cada órgão no corpo",
  "Cerebro": "Cérebro",
@@ -512,5 +510,7 @@ export default {
  "🏆 Leaderboard": "🏆 Leaderboard",
  "Las estrellas botan con aplausos al llegar. Despedida en inglés: Goodbye, everyone!": "As estrelas saltam com aplausos ao chegar. Despedida em inglês: Goodbye, everyone!",
  "Well done!": "Well done!",
- "¡Buen trabajo! · See you next class": "Bom trabalho! · See you next class"
+ "¡Buen trabajo! · See you next class": "Bom trabalho! · See you next class",
+ "Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza amarilla está coloreada?": "As quatro «pizas» saltam ao chegar, com uma campainha. Pergunta: que parte da piza amarela está colorida?",
+ "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡51 %!</div>de los huesos están en las manos y los pies.": "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">51 %!</div>dos ossos estão nas mãos e nos pés."
 };

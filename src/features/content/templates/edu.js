@@ -82,12 +82,12 @@ export default {
       decor: p => [shape('rect', 0, 708, 1280, 12, p.accents[0], { fill2: p.accents[1], gradAngle: 0 })] }, [
       { layout: 'blank', bg: BG, transition: 'zoom', extra: [
         glow(640, 120, 820, '#e4572e', BG, 55), glow(-200, 380, 600, '#db2b39', BG, 35),
-        img(CONE, 650, 330, 600, 343, 'Silueta de un volcán'),
-        on(shape('burst', 830, 180, 240, 240, '#f3a712', { fill2: '#e4572e', gradType: 'radial' }), 'zoom-in', { start: 'afterPrev', delay: 300, sound: 'whoosh' }),
-        along(shape('cloud', 780, 60, 340, 160, '#6b5b55', { opacity: 85 }), 'fade-up', { delay: 400, duration: 1200 }),
         text('CIENCIAS NATURALES · 1.º ESO', 90, 170, 600, 40, { fontSize: 24, color: orange, letterSpacing: 6 }),
-        { ...text('VOLCANES', 80, 210, 640, 220, { fontFamily: H, fontSize: 190, wordart: 'fire' }), animation: A('zoom-in', { duration: 900, sound: 'drumroll' }) },
-        after(text('La Tierra que hierve por dentro', 90, 440, 560, 60, { fontSize: 36, color: cream }), 'fade-up')],
+        { ...text('VOLCANES', 80, 210, 640, 220, { fontFamily: H, fontSize: 190, wordart: 'fire' }), animation: A('zoom-in', { start: 'afterPrev', duration: 900, sound: 'drumroll' }) },
+        after(text('La Tierra que hierve por dentro', 90, 440, 560, 60, { fontSize: 36, color: cream }), 'fade-up'),
+        img(CONE, 650, 330, 600, 343, 'Silueta de un volcán'),
+        after(shape('burst', 830, 180, 240, 240, '#f3a712', { fill2: '#e4572e', gradType: 'radial' }), 'zoom-in', { delay: 300, sound: 'whoosh' }),
+        along(shape('cloud', 780, 60, 340, 160, '#6b5b55', { opacity: 85 }), 'fade-up', { delay: 400, duration: 1200 })],
         notes: 'Al llegar, el título entra con un redoble y el volcán «entra en erupción» él solo (animaciones encadenadas con sonido). Pregunta inicial: ¿alguien ha visto un volcán de cerca?' },
       { title: '¿Qué es un volcán?', layout: 'titleOnly', bg: BG, extra: [
         img(VOLCANO, 90, 180, 560, 420, 'Corte de un volcán: cámara magmática, chimenea, cráter, cono y colada de lava'),
@@ -107,12 +107,12 @@ export default {
           withAnims(shape('ellipse', 430, 360, 26, 26, '#e4572e'), A('fade-in', { start: 'withPrev', duration: 150, delay: i * 120 }), path(pts, { start: 'withPrev', duration: 1400, delay: i * 120 }))),
         along(shape('cloud', 300, 170, 280, 150, '#6b5b55', { opacity: 85 }), 'fade-up', { duration: 1500 }),
         ...[['1', 'El magma sube por la chimenea'], ['2', 'La presión rompe el tapón del cráter'], ['3', 'Salen lava, bombas volcánicas y cenizas']].map(([n, t], i) =>
-          (i ? after : on)(text(`<div style="display:flex;gap:18px;align-items:center"><span style="font-size:56px;font-weight:800;color:${orange};line-height:1">${n}</span><span>${t}</span></div>`, 830, 230 + i * 120, 380, 100, { fontSize: 26, color: cream, vAlign: 'middle' }), 'fade-left'))],
+          on(text(`<div style="display:flex;gap:18px;align-items:center"><span style="font-size:56px;font-weight:800;color:${orange};line-height:1">${n}</span><span>${t}</span></div>`, 830, 230 + i * 120, 380, 100, { fontSize: 26, color: cream, vAlign: 'middle' }), 'fade-left'))],
         notes: 'Primer clic: el magma sube con un redoble y, al llegar arriba, el cráter estalla con un silbido y salen las bombas volcánicas (todo encadenado). Luego un clic por cada paso del texto.' },
       { title: 'Tres tipos de volcán', layout: 'titleOnly', bg: BG, extra: [
         ...[['En escudo', 'Laderas suaves y lava muy fluida. Erupciones tranquilas.', 360, 80], ['Estratovolcán', 'Capas de lava y ceniza. Altos y explosivos.', 220, 170], ['Cono de cenizas', 'Pequeños, de una sola erupción.', 150, 110]]
           .flatMap(([h, d, w, hh], i) => [
-            on(shape('triangle', 90 + i * 380 + (340 - w) / 2, 380 - hh, w, hh, ['#a8c686', '#e4572e', '#f3a712'][i], { fill2: '#5a3726', gradAngle: 90 }), 'grow', { start: i ? 'afterPrev' : 'click' }),
+            on(shape('triangle', 90 + i * 380 + (340 - w) / 2, 380 - hh, w, hh, ['#a8c686', '#e4572e', '#f3a712'][i], { fill2: '#5a3726', gradAngle: 90 }), 'wipe', { dir: 'bottom', start: i ? 'afterPrev' : 'click' }),
             after(text(`<div style="font-size:34px;font-weight:700;color:${orange}">${h}</div><div>${d}</div>`, 90 + i * 380, 410, 340, 200, { fontSize: 26, color: cream, textAlign: 'center' }), 'fade-up')]),
         shape('rect', 90, 380, 1100, 4, '#ffffff30')],
         notes: 'Los tres aparecen uno detrás de otro con un solo clic. La forma depende de lo viscosa que sea la lava: cuanto más espesa, más empinado y explosivo.' },
@@ -271,7 +271,7 @@ export default {
         text('MATEMÁTICAS · 5.º DE PRIMARIA', 90, 200, 640, 40, { fontSize: 22, letterSpacing: 6, color: CYAN }),
         text('Fracciones', 80, 240, 700, 160, { fontFamily: H, fontSize: 120, wordart: 'neon' }),
         text('Partes de un todo, sin miedo', 90, 410, 640, 60, { fontSize: 36, color: FG })],
-        notes: 'Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza naranja está coloreada?' },
+        notes: 'Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza amarilla está coloreada?' },
       { title: '¿Qué es una fracción?', layout: 'titleOnly', bg: BG, extra: [
         img(pizza(8, 3, PINK), 90, 190, 400, 400, 'Pizza en 8 porciones, 3 coloreadas'),
         m('\\frac{3}{8}', 560, 220, 260, 340, 150),
@@ -352,7 +352,7 @@ export default {
       { title: '¿Dónde están los 206 huesos?', layout: 'titleOnly', bg: BG, extra: [
         chartBlock({ x: 150, y: 170, w: 700, h: 480, chartType: 'hbar', color: '#7aa2f7', dataLabels: true,
           data: [{ label: 'Manos', value: 54 }, { label: 'Pies', value: 52 }, { label: 'Otros', value: 27 }, { label: 'Columna', value: 26 }, { label: 'Tórax', value: 25 }, { label: 'Cráneo', value: 22 }] }),
-        on(card(`<div style="font-family:${H};font-size:72px;color:#e0af68;line-height:1">¡52 %!</div>de los huesos están en las manos y los pies.`, 890, 250, 300, 280, '#ffffff0d', { fontSize: 26, color: FG, textAlign: 'center', vAlign: 'middle' }), 'zoom-in')],
+        on(card(`<div style="font-family:${H};font-size:72px;color:#e0af68;line-height:1">¡51 %!</div>de los huesos están en las manos y los pies.`, 890, 250, 300, 280, '#ffffff0d', { fontSize: 26, color: FG, textAlign: 'center', vAlign: 'middle' }), 'zoom-in')],
         notes: 'Recuento orientativo de un adulto (manos y pies incluyen muñecas y tobillos; tórax: costillas y esternón). Al nacer tenemos unos 300 huesos: muchos se sueldan al crecer.' },
       { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'label', question: 'Señala cada órgano en el cuerpo', image: BODY, fontSize: 44, x: 60, y: 40, w: 1160, h: 640,
         options: ['Cerebro', 'Pulmón', 'Corazón', 'Estómago', 'Rodilla'],
@@ -368,7 +368,7 @@ export default {
       { layout: 'blank', bg: BG, extra: [quiz('¿Cuántos huesos tiene una persona adulta?', ['106', '206', '306', '1.000'], 1)],
         notes: 'Segunda pregunta: enlaza con el gráfico de los huesos.' },
       { layout: 'section', bg: BG, title: 'Cuida tu máquina', subtitle: 'Moverse, dormir bien y comer variado: los tres mejores «mantenimientos»', transition: 'zoom',
-        extra: [glow(390, -220, 500, '#2ac3de', BG, 30), withAnims({ ...icon('heart', 600, 70, 80, '#f7768e'), decorative: false, alt: 'Corazón' }, A('grow', { start: 'afterPrev', duration: 700 }))],
+        extra: [glow(390, -220, 500, '#2ac3de', BG, 30), withAnims({ ...icon('heart', 600, 70, 80, '#f7768e'), decorative: false, alt: 'Corazón' }, A('pulse', { start: 'afterPrev', duration: 700 }))],
         notes: 'Cierre: pedir a cada alumno un hábito que vaya a mejorar esta semana.' },
     ]));
   } },
@@ -390,7 +390,7 @@ export default {
         text('La misma agua, una y otra vez, desde hace millones de años', 90, 510, 620, 100, { fontSize: 30, color: SKY })],
         notes: 'La gota cae sola al llegar. Dato para empezar: el agua que bebemos podría haber pasado por un dinosaurio.' },
       { title: 'Un viaje sin fin', layout: 'titleOnly', bg: BG, extra: [
-        dg('cycle', 'Evaporación\nCondensación\nPrecipitación\nEscorrentía\nInfiltración', 240, 170, 800, 480, { colors: 'colorful', oneByOne: true })],
+        dg('cycle', 'Evaporación\nCondensación\nPrecipitación\nEscorrentía\nInfiltración', 290, 160, 700, 510, { colors: 'colorful', oneByOne: true })],
         notes: 'Diagrama de ciclo uno a uno: cada fase aparece con un clic. Preguntar qué fase creen que viene después antes de mostrarla.' },
       { title: 'Míralo en acción', layout: 'titleOnly', bg: BG, extra: [
         img(LANDSCAPE, 90, 180, 1100, 470, 'Paisaje con mar, montaña y río'),
@@ -486,7 +486,7 @@ export default {
         ...[['La libertad, Sancho, es uno de los más preciosos dones que a los hombres dieron los cielos.', 'II, 58'], ['El que lee mucho y anda mucho, ve mucho y sabe mucho.', 'II, 25'],
           ['Con la iglesia hemos dado, Sancho.', 'II, 9'], ['Cada uno es artífice de su ventura.', 'II, 66']].map(([q, c], i) =>
           withAnims(card(`<div style="font-family:${H};font-style:italic">«${q}»</div><div style="font-size:20px;color:${RED};margin-top:8px">Segunda parte, cap. ${c.split(', ')[1]}</div>`,
-            100 + (i % 2) * 550, 180 + Math.floor(i / 2) * 230, 530, 210, '#ffffff', { fontSize: 26, color: INK, borderColor: '#c9c2b5', radius: 4, vAlign: 'middle' }), A('fade-up', { start: i ? 'click' : 'click' })))],
+            100 + (i % 2) * 550, 180 + Math.floor(i / 2) * 230, 530, 210, '#ffffff', { fontSize: 26, color: INK, borderColor: '#c9c2b5', radius: 4, vAlign: 'middle' }), A('fade-up')))],
         notes: 'Una cita por clic. Ojo: «Con la iglesia hemos topado» es como se suele citar, pero el texto dice «dado».' },
       { layout: 'blank', bg: BG, extra: [pollBlock({ kind: 'gaps', question: 'Completa el comienzo de la novela', fontSize: 44, x: 80, y: 70, w: 1120, h: 580,
         text: 'En un lugar de la [Mancha], de cuyo nombre no quiero [acordarme], no ha mucho tiempo que vivía un [hidalgo] de los de lanza en astillero, adarga antigua, [rocín] flaco y galgo corredor.' })],
@@ -622,18 +622,18 @@ export default {
         text('Hello!', 80, 200, 720, 230, { fontFamily: H, fontSize: 190, wordart: 'retro' }),
         text('English for beginners · Unit 1', 96, 430, 680, 60, { fontSize: 36, color: INK, fontWeight: 700 }),
         text('Inglés · 3.º de primaria', 96, 490, 680, 50, { fontSize: 26, color: '#5b6570' }),
-        model('three-RobotExpressive', 800, 110, 380, 520, { clip: 'Wave' })],
+        model('three-RobotExpressive', 740, 110, 380, 520, { clip: 'Wave' })],
         notes: 'Modo aula activado (Ver ▸ Aula ▸ Modo aula): el alumnado sigue las diapositivas en su móvil y responde allí. El robot saluda: decimos todos «Hello!».' },
       { title: 'Greetings · Saludos', layout: 'titleOnly', bg: BG, extra: [
         ...[['Hello!', 'Hola'], ['Good morning!', 'Buenos días'], ['Goodbye!', 'Adiós'], ['Thank you!', 'Gracias']].map(([en, es], i) =>
-          flip(en, es, 90 + (i % 2) * 560, 180 + Math.floor(i / 2) * 240, 530, 210, C[i], i))],
+          flip(en, es, 90 + (i % 2) * 480, 180 + Math.floor(i / 2) * 240, 460, 210, C[i], i))],
         notes: 'Cada clic gira una tarjeta con un «pop». Repetir en voz alta cada saludo, primero el profesor y luego toda la clase.' },
       { title: 'Animals · Animales', layout: 'titleOnly', bg: BG, extra: [
         model('kh-Fox', 60, 170, 440, 420, { view: 'three', clip: 'Survey', caption: '', bleed: 1 }),
         text('fox · zorro', 60, 600, 440, 50, { fontFamily: H, fontSize: 30, fontWeight: 700, color: C[1], textAlign: 'center' }),
         ...[['🐱 cat', 'gato'], ['🐶 dog', 'perro'], ['🐦 bird', 'pájaro'], ['🐟 fish', 'pez']].map(([en, es], i) =>
-          flip(en, es, 540 + (i % 2) * 330, 180 + Math.floor(i / 2) * 230, 310, 200, C[(i + 2) % 6], i, i ? 'afterPrev' : 'click')),
-        text(`Zorro 3D: ${lib3d('kh-Fox').credit}`, 540, 640, 650, 44, { fontSize: 12, color: '#8a8f96' })],
+          flip(en, es, 530 + (i % 2) * 260, 180 + Math.floor(i / 2) * 230, 240, 200, C[(i + 2) % 6], i, i ? 'afterPrev' : 'click')),
+        text(`Zorro 3D: ${lib3d('kh-Fox').credit}`, 530, 640, 490, 44, { fontSize: 12, color: '#8a8f96' })],
         notes: 'Un clic y las cuatro tarjetas giran seguidas. El zorro 3D se puede girar con el ratón: What is it? It is a fox!' },
       { title: 'Colours · Colores', layout: 'titleOnly', bg: BG, extra: [
         ...[['red', '#d62828'], ['blue', '#1d6fd1'], ['yellow', '#f4c20d'], ['green', '#2a9d3a'], ['orange', '#f77f00'], ['purple', '#7b2cbf']].flatMap(([n, c], i) => [
@@ -643,13 +643,13 @@ export default {
         text('What colour is it? · ¿De qué color es?', 90, 520, 1100, 60, { fontSize: 32, color: INK, textAlign: 'center' })],
         notes: 'Los colores botan uno tras otro con un «pop». Después, señalar objetos de la clase y preguntar: What colour is it?' },
       { title: "Let's go to school!", layout: 'titleOnly', bg: BG, extra: [
-        shape('rect', 60, 610, 1160, 8, '#e3d3a6', { radius: 4 }),
-        text('🏫', 1010, 380, 200, 200, { fontSize: 150, textAlign: 'center' }),
+        shape('rect', 60, 610, 980, 8, '#e3d3a6', { radius: 4 }),
+        text('🏫', 860, 410, 180, 180, { fontSize: 130, textAlign: 'center' }),
         withAnims(model('three-RobotExpressive', 60, 300, 240, 320, { walk: { clip: robot.walk, face: true, look: true } }),
-          path([[300, 0], [700, 0]], { duration: 4000 }),
+          path([[280, 0], [580, 0]], { duration: 4000 }),
           A('clip3d', { clip: 'Wave', once: true, start: 'afterPrev', duration: 2000 })),
-        after(bubble('Good morning, teacher!', 640, 170, 420, 120, C[4]).at(0), 'zoom-in', { sound: 'chime' }),
-        along(bubble('Good morning, teacher!', 640, 170, 420, 120, C[4]).at(1), 'zoom-in')],
+        after(bubble('Good morning, teacher!', 560, 170, 420, 120, C[4]).at(0), 'zoom-in', { sound: 'chime' }),
+        along(bubble('Good morning, teacher!', 560, 170, 420, 120, C[4]).at(1), 'zoom-in')],
         notes: 'Clic: el robot anda hasta el colegio, saluda y aparece el bocadillo (todo encadenado). Practicar el diálogo por parejas.' },
       { layout: 'blank', bg: BG, extra: [quiz('How do you say «gato» in English?', ['Dog', 'Cat', 'Fox', 'Bird'], 1, { time: 15, fontSize: 56 })],
         notes: 'Pregunta 1 de 3 con puntos: más rápido, más puntos (15 s).' },
@@ -660,7 +660,7 @@ export default {
       { title: '🏆 Leaderboard', layout: 'titleOnly', bg: BG, extra: [pollBlock({ kind: 'board', question: '', fontSize: 40, x: 90, y: 170, w: 1100, h: 500 })],
         notes: 'La clasificación suma los puntos de las tres preguntas. Con el modo aula, cada alumno ve su posición en el móvil.' },
       { layout: 'blank', bg: BG, extra: [
-        ...[[110, 90, C[1]], [1010, 110, C[3]], [190, 470, C[2]], [990, 460, C[4]]].map(([x, y, c], i) =>
+        ...[[110, 90, C[1]], [1010, 110, C[3]], [190, 470, C[2]], [870, 500, C[4]]].map(([x, y, c], i) =>
           withAnims(shape('star', x, y, 150, 150, c, { stroke: '#ffffff', strokeWidth: 5 }), A('bounce', { start: i ? 'withPrev' : 'afterPrev', delay: i * 150, ...(i === 0 && { sound: 'applause' }) }))),
         text('Well done!', 240, 220, 800, 190, { fontFamily: H, fontSize: 140, wordart: 'gold', textAlign: 'center' }),
         text('¡Buen trabajo! · See you next class', 290, 420, 700, 60, { fontSize: 34, textAlign: 'center', color: INK })],

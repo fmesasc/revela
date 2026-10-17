@@ -458,10 +458,14 @@ const TREE_COLOURS = ['#3f6497', '#e0873b', '#4caf7d', '#c94f4f', '#8e6cc9', '#3
 function treemapSVG(b) {
   const data = b.data || [], num = v => fmtNum(v);
   const cells = squarify(data.map(d => d.value), 0, 0, 100, 60).map(r => {
-    const d = data[r.i], fill = r.i === 0 && b.color ? b.color : TREE_COLOURS[r.i % TREE_COLOURS.length], fs = Math.min(4, r.w / 6, r.h / 3);
+    // (Each piece's own colour if it has one — as the pie's —, and its words in white or dark as that colour asks; a name
+    // too long for a small piece, shortened with «…» instead of running out of it.)
+    const d = data[r.i], fill = d.color || (r.i === 0 && b.color ? b.color : TREE_COLOURS[r.i % TREE_COLOURS.length]), fs = Math.min(4, r.w / 6, r.h / 3);
+    const m = /^#?([0-9a-f]{6})$/i.exec(fill), lv = m ? parseInt(m[1], 16) : 0, ink = m && (0.299 * (lv >> 16) + 0.587 * (lv >> 8 & 255) + 0.114 * (lv & 255)) / 255 > 0.62 ? '#1e2a3a' : '#fff';
+    const room = Math.max(1, Math.floor((r.w - 2) / (fs * 0.56))), name = String(d.label || ''), shown = name.length > room ? name.slice(0, Math.max(1, room - 1)).trimEnd() + '…' : name;
     return `<rect x="${r.x.toFixed(2)}" y="${r.y.toFixed(2)}" width="${r.w.toFixed(2)}" height="${r.h.toFixed(2)}" fill="${fill}" stroke="#fff" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
-      + (fs >= 1.6 ? `<text x="${(r.x + 1.2).toFixed(2)}" y="${(r.y + fs + 0.8).toFixed(2)}" font-size="${fs.toFixed(2)}" fill="#fff" font-weight="600">${escSvg(d.label || '')}</text>`
-        + (b.dataLabels !== false && r.h > fs * 2.6 ? `<text x="${(r.x + 1.2).toFixed(2)}" y="${(r.y + fs * 2.2 + 0.8).toFixed(2)}" font-size="${(fs * 0.85).toFixed(2)}" fill="#fff" opacity=".85">${escSvg(num(d.value))}</text>` : '') : '');
+      + (fs >= 1.6 ? `<text x="${(r.x + 1.2).toFixed(2)}" y="${(r.y + fs + 0.8).toFixed(2)}" font-size="${fs.toFixed(2)}" fill="${ink}" font-weight="600">${escSvg(shown)}</text>`
+        + (b.dataLabels !== false && r.h > fs * 2.6 ? `<text x="${(r.x + 1.2).toFixed(2)}" y="${(r.y + fs * 2.2 + 0.8).toFixed(2)}" font-size="${(fs * 0.85).toFixed(2)}" fill="${ink}" opacity=".85">${escSvg(num(d.value))}</text>` : '') : '');
   }).join('');
   return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%">${cells}</svg>`;
 }

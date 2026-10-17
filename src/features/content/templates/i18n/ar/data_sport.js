@@ -614,12 +614,10 @@ export default {
  "Un histograma con 8 tramos calculados a partir de los 60 valores (Gráfico ▸ Histograma). La forma de campana es la habitual en cualquier club.": "مدرج تكراري بـ8 فئات محسوبة من القيم الـ60 (مخطط ▸ مدرج تكراري). شكل الجرس معتاد في أي نادٍ.",
  "Así se reparten los 60 socios": "هكذا يتوزع الأعضاء الـ60",
  "Socios": "الأعضاء",
- "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">1.660</div><div style=\"margin-top:8px\">Elo mediano del club</div>": "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">1.660</div><div style=\"margin-top:8px\">وسيط تصنيف النادي</div>",
  "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">2.310</div><div style=\"margin-top:8px\">nuestro mejor jugador</div>": "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">2.310</div><div style=\"margin-top:8px\">أفضل لاعب لدينا</div>",
  "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">8</div><div style=\"margin-top:8px\">socios por encima de 2.000</div>": "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">8</div><div style=\"margin-top:8px\">أعضاء فوق 2.000</div>",
  "Código con pasos de resaltado: el valor esperado, la llamada y el cambio. Debajo, el resultado del ejemplo de Ana.": "شيفرة بخطوات تمييز: القيمة المتوقعة، والاستدعاء، والتغيير. وتحتها نتيجة مثال Ana.",
  "La actualización, en código": "التحديث بالشيفرة",
- "actualizar(1850, 2010, 1)  →  1864,4": "actualizar(1850, 2010, 1)  →  1864,4",
  "<b>¿Y K?</b><br>Los clubes usan K = 40 con los nuevos (para que lleguen rápido a su nivel) y K = 10 con los veteranos muy estables.": "<b>وماذا عن K؟</b><br>تستخدم الأندية K = 40 مع الجدد (ليبلغوا مستواهم سريعًا) وK = 10 مع القدامى المستقرين جدًا.",
  "Concurso: E = 0,09, así que 20 × (1 − 0,09) ≈ +18. Nunca se ganan más de K puntos en una partida.": "مسابقة: E = 0,09، إذن 20 × (1 − 0,09) ≈ +18. لا تُكسب أبدًا أكثر من K نقطة في مباراة واحدة.",
  "Ganas a alguien con 400 puntos más (K = 20). ¿Cuánto sube tu Elo?": "تهزم لاعبًا يفوقك بـ400 نقطة (K = 20). كم يرتفع تصنيفك؟",
@@ -719,5 +717,7 @@ export default {
  "ms": "ms",
  "SR": "SR",
  "DPS": "DPS",
- "eFG%": "eFG%"
+ "eFG%": "eFG%",
+ "actualizar(1850, 2010, 1)  →  1864,3": "actualizar(1850, 2010, 1)  →  1864,3",
+ "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">1.685</div><div style=\"margin-top:8px\">Elo mediano del club</div>": "<div style=\"font-size:44px;font-weight:700;line-height:1.05;color:#c9a25c;font-family:'Merriweather', serif\">1.685</div><div style=\"margin-top:8px\">وسيط تصنيف النادي</div>"
 };

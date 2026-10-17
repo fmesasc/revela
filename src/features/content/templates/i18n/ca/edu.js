@@ -163,7 +163,6 @@ export default {
  "Fraternidad": "Fraternitat",
  "Soberanía del pueblo": "Sobirania del poble",
  "Fracciones": "Fraccions",
- "Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza naranja está coloreada?": "Les quatre «pizzes» reboten en arribar, amb una campaneta. Pregunta: quina part de la pizza taronja està pintada?",
  "Círculo dividido en partes": "Cercle dividit en parts",
  "MATEMÁTICAS · 5.º DE PRIMARIA": "MATEMÀTIQUES · 5è DE PRIMÀRIA",
  "Partes de un todo, sin miedo": "Parts d'un tot, sense por",
@@ -219,7 +218,6 @@ export default {
  "Columna": "Columna",
  "Tórax": "Tòrax",
  "Cráneo": "Crani",
- "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡52 %!</div>de los huesos están en las manos y los pies.": "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">52 %!</div>dels ossos són a les mans i als peus.",
  "Actividad «Etiquetar una imagen» con nota: cada número del dibujo lleva un desplegable en el móvil.": "Activitat «Etiqueta una imatge» amb nota: cada número del dibuix porta un desplegable al mòbil.",
  "Señala cada órgano en el cuerpo": "Assenyala cada òrgan al cos",
  "Cerebro": "Cervell",
@@ -512,5 +510,7 @@ export default {
  "🏆 Leaderboard": "🏆 Leaderboard",
  "Las estrellas botan con aplausos al llegar. Despedida en inglés: Goodbye, everyone!": "Les estrelles boten amb aplaudiments en arribar. Comiat en anglès: Goodbye, everyone!",
  "Well done!": "Well done!",
- "¡Buen trabajo! · See you next class": "Bona feina! · See you next class"
+ "¡Buen trabajo! · See you next class": "Bona feina! · See you next class",
+ "Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza amarilla está coloreada?": "Les quatre «pizzes» reboten en arribar, amb una campaneta. Pregunta: quina part de la pizza groga està pintada?",
+ "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡51 %!</div>de los huesos están en las manos y los pies.": "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">51 %!</div>dels ossos són a les mans i als peus."
 };

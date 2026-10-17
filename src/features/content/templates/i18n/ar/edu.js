@@ -163,7 +163,6 @@ export default {
  "Fraternidad": "الإخاء",
  "Soberanía del pueblo": "سيادة الشعب",
  "Fracciones": "الكسور",
- "Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza naranja está coloreada?": "«البيتزا» الأربع ترتد عند وصولها مع رنين جرس. سؤال: أي جزء من البيتزا البرتقالية ملوّن؟",
  "Círculo dividido en partes": "دائرة مقسّمة إلى أجزاء",
  "MATEMÁTICAS · 5.º DE PRIMARIA": "الرياضيات · الصف الخامس",
  "Partes de un todo, sin miedo": "أجزاء من كل، بلا خوف",
@@ -219,7 +218,6 @@ export default {
  "Columna": "العمود الفقري",
  "Tórax": "القفص الصدري",
  "Cráneo": "الجمجمة",
- "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡52 %!</div>de los huesos están en las manos y los pies.": "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">52 %!</div>من العظام في اليدين والقدمين.",
  "Actividad «Etiquetar una imagen» con nota: cada número del dibujo lleva un desplegable en el móvil.": "نشاط «تسمية صورة» بدرجات: لكل رقم في الرسم قائمة منسدلة على الهاتف.",
  "Señala cada órgano en el cuerpo": "حدّد كل عضو في الجسم",
  "Cerebro": "الدماغ",
@@ -512,5 +510,7 @@ export default {
  "🏆 Leaderboard": "🏆 Leaderboard",
  "Las estrellas botan con aplausos al llegar. Despedida en inglés: Goodbye, everyone!": "ترتد النجوم مع تصفيق عند الوصول. الوداع بالإنجليزية: Goodbye, everyone!",
  "Well done!": "Well done!",
- "¡Buen trabajo! · See you next class": "أحسنت! · See you next class"
+ "¡Buen trabajo! · See you next class": "أحسنت! · See you next class",
+ "Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza amarilla está coloreada?": "«البيتزا» الأربع ترتد عند وصولها مع رنين جرس. سؤال: أي جزء من البيتزا الصفراء ملوّن؟",
+ "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡51 %!</div>de los huesos están en las manos y los pies.": "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">51 %!</div>من العظام في اليدين والقدمين."
 };

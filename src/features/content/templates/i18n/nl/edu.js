@@ -163,7 +163,6 @@ export default {
  "Fraternidad": "Broederschap",
  "Soberanía del pueblo": "Volkssoevereiniteit",
  "Fracciones": "Breuken",
- "Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza naranja está coloreada?": "De vier “pizza’s” stuiteren erin met een belletje. Vraag: welk deel van de oranje pizza is gekleurd?",
  "Círculo dividido en partes": "Cirkel verdeeld in delen",
  "MATEMÁTICAS · 5.º DE PRIMARIA": "WISKUNDE · GROEP 7",
  "Partes de un todo, sin miedo": "Delen van een geheel, zonder angst",
@@ -219,7 +218,6 @@ export default {
  "Columna": "Wervelkolom",
  "Tórax": "Borstkas",
  "Cráneo": "Schedel",
- "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡52 %!</div>de los huesos están en las manos y los pies.": "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡52 %!</div>van de botten zit in de handen en voeten.",
  "Actividad «Etiquetar una imagen» con nota: cada número del dibujo lleva un desplegable en el móvil.": "Beoordeelde activiteit “Een afbeelding labelen”: elk nummer op de tekening heeft op de telefoon een keuzelijst.",
  "Señala cada órgano en el cuerpo": "Wijs elk orgaan aan in het lichaam",
  "Cerebro": "Hersenen",
@@ -512,5 +510,7 @@ export default {
  "🏆 Leaderboard": "🏆 Leaderboard",
  "Las estrellas botan con aplausos al llegar. Despedida en inglés: Goodbye, everyone!": "De sterren stuiteren onder applaus binnen. Afscheid in het Engels: Goodbye, everyone!",
  "Well done!": "Well done!",
- "¡Buen trabajo! · See you next class": "Goed gedaan! · See you next class"
+ "¡Buen trabajo! · See you next class": "Goed gedaan! · See you next class",
+ "Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza amarilla está coloreada?": "De vier “pizza’s” stuiteren erin met een belletje. Vraag: welk deel van de gele pizza is gekleurd?",
+ "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡51 %!</div>de los huesos están en las manos y los pies.": "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡51 %!</div>van de botten zit in de handen en voeten."
 };

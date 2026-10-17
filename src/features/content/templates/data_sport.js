@@ -208,8 +208,8 @@ export default {
         notes: 'Dispersión con escala ajustada (xMin, xMax, yMin, yMax) y el nombre del ganador sobre su punto (etiquetas de datos con d.name; los demás, vacíos). La relación es casi una recta.' },
       { layout: 'titleOnly', title: 'Dónde gastó la energía el ganador', bg: PAPER, transition: 'fade', extra: [
         chartBlock({ x: 70, y: 150, w: 620, h: 490, chartType: 'doughnut',
-          data: [{ label: 'Z1 recuperación', value: 22, color: '#b9cfdf' }, { label: 'Z2 fondo', value: 31, color: '#9cc27a' }, { label: 'Z3 tempo', value: 19, color: '#f0c64a' },
-            { label: 'Z4 umbral', value: 17, color: '#ea8a3a' }, { label: 'Z5 VO₂ máx.', value: 8, color: RED }, { label: 'Z6 anaeróbico', value: 3, color: '#5a1c18' }] }),
+          data: [{ label: 'Z1 recuperación', value: 21, color: '#b9cfdf' }, { label: 'Z2 fondo', value: 33, color: '#9cc27a' }, { label: 'Z3 tempo', value: 19, color: '#f0c64a' },
+            { label: 'Z4 umbral', value: 17, color: '#ea8a3a' }, { label: 'Z5 VO₂ máx.', value: 9, color: RED }, { label: 'Z6 anaeróbico', value: 1, color: '#5a1c18' }] }),
         ...[['4 h 52′', 'en bici: la mitad, rodando tranquilo'], ['28′', 'por encima del umbral, casi todo en Peñaroja'], ['3′', 'a tope: el ataque del km 172']].map(([n, t], i) =>
           chain(text(`<b style="font-family:${H};font-size:36px;color:${[BLUE, '#c46a1e', RED][i]}">${n}</b><br>${t}`, 750, 180 + i * 150, 460, 120, { fontSize: 22, color: INK }), i, 'fade-left'))],
         notes: 'Anillo con un color por zona de potencia, los mismos del perfil: tiempo del ganador en cada zona, en %. Tres lecturas entran seguidas con un clic.' },
@@ -272,7 +272,7 @@ export default {
       { layout: 'titleOnly', title: 'El muro del kilómetro 30', bg: CREAM, transition: 'fade', extra: [
         chartBlock({ x: 60, y: 150, w: 860, h: 500, chartType: 'line', color: TEAL, seriesName: 'Menos de 3 h', grid: true, xTitle: 'Kilómetro', yTitle: 'Ritmo medio (min/km)', yMin: 4, yMax: 7,
           data: D(['5', '10', '15', '20', '25', '30', '35', '40', '42'], [4.05, 4.04, 4.05, 4.06, 4.08, 4.12, 4.2, 4.22, 4.15]),
-          series: [{ name: '3 a 4 h', values: [5.12, 5.1, 5.12, 5.16, 5.22, 5.35, 5.62, 5.75, 5.6], color: OR }, { name: 'Más de 4 h', values: [5.85, 5.88, 5.95, 6.05, 6.2, 6.45, 6.82, 6.95, 6.8], color: NAVY }] }),
+          series: [{ name: '3 a 4 h', values: [5.12, 5.1, 5.12, 5.16, 5.22, 5.35, 5.72, 5.88, 5.74], color: OR }, { name: 'Más de 4 h', values: [5.85, 5.88, 5.95, 6.05, 6.2, 6.45, 6.82, 6.95, 6.8], color: NAVY }] }),
         click(card(`<div style="font-family:${H};font-size:52px;font-weight:800;color:${OR};line-height:1">+38 s</div>por kilómetro pierde a partir del km 30 quien corre entre 3 y 4 horas`, 950, 190, 270, 270, WHITE, { fontSize: 21, color: NAVY, radius: 16, borderColor: OR }), 'zoom-in', { sound: 'pop' }),
         text('Los de menos de 3 h apenas lo notan: llegan con el ritmo entrenado.', 950, 490, 270, 130, { fontSize: 19, color: DIM })],
         notes: 'Líneas de tres grupos con el eje de valores ajustado (de 4 a 7 min/km). Cuanto más alta la línea, más lento. El muro: el glucógeno se agota hacia el km 30.' },
@@ -328,7 +328,7 @@ export default {
       + `<path d="M0 ${5.485 * S}h12M${W} ${5.485 * S}h-12"/></g><path d="M${8 + 11.885 * S} 0V${Hh + 16}" stroke="#2b1c14" stroke-width="6" opacity="${op}"/>`);
     const CX = 109, CY = 160, O = [CX + 8, CY + 8];
     // The 24 first serves to the deuce box: [metres along, metres across, result]
-    const SERVES = [[17.6, 5.8, 'a'], [17.9, 5.7, 'a'], [17.2, 6.0, 'w'], [16.8, 5.9, 'w'], [17.5, 6.3, 'w'], [18.0, 6.1, 'a'], [16.4, 6.2, 'l'], [17.0, 5.7, 'w'], [17.7, 6.5, 'w'], [16.9, 6.4, 'l'], [17.3, 5.6, 'w'],
+    const SERVES = [[17.6, 5.8, 'a'], [17.9, 5.7, 'a'], [17.2, 6.0, 'a'], [16.8, 5.9, 'w'], [17.5, 6.3, 'w'], [18.0, 6.1, 'a'], [16.4, 6.2, 'l'], [17.0, 5.7, 'w'], [17.7, 6.5, 'w'], [16.9, 6.4, 'l'], [17.3, 5.6, 'w'],
       [17.4, 7.4, 'w'], [16.6, 7.6, 'l'], [17.8, 7.2, 'w'], [17.0, 7.9, 'l'],
       [17.7, 9.2, 'a'], [17.9, 9.4, 'w'], [17.1, 9.0, 'w'], [16.5, 8.9, 'l'], [17.5, 8.7, 'w'], [18.1, 9.1, 'w'], [16.9, 9.3, 'w'], [17.3, 8.8, 'l'], [17.6, 9.5, 'w']];
     const SID = SERVES.map(() => uid()), BOX = uid();
@@ -342,7 +342,7 @@ export default {
         text('Anatomía<br>de un saque', 76, 200, 680, 240, { fontFamily: H, fontSize: 96, fontStyle: 'italic', color: LINE, lineHeight: 1.02 }),
         text('Los 412 saques de Lucía Arnedo, de la primera ronda a la final', 80, 460, 560, 80, { fontSize: 26, color: '#fde6d4' }),
         shape('rect', 80, 560, 120, 4, BALL),
-        withAnims(img(ball, 1120, 60, 70, 70, 'Una pelota de tenis'), path([[-160, 250], [-300, 120], [-430, 330], [-520, 260], [-600, 380]], { start: 'afterPrev', duration: 1800, sound: 'pop' }))],
+        withAnims(img(ball, 1120, 60, 70, 70, 'Una pelota de tenis'), path([[-80, 250], [-160, 120], [-230, 330], [-280, 260], [-330, 370]], { start: 'afterPrev', duration: 1800, sound: 'pop' }))],
         notes: 'Portada en tierra batida: las líneas de la pista son un dibujo SVG girado y la pelota entra botando (trayectoria propia, con sonido). Jugadora y torneo, inventados.' },
       { layout: 'blank', bg: CREAM, transition: 'push', extra: [
         text('Cinco partidos, cuatro cifras', 80, 60, 1120, 70, { fontFamily: H, fontSize: 46, color: INK }),
@@ -694,7 +694,7 @@ export default {
         notes: 'Barras al 100 %: reparto de los tiros del equipo por temporadas. La media distancia pasa del 36 % al 13 %; el triple llega casi a la mitad.' },
       { layout: 'titleOnly', title: 'Las líneas se cruzan en 2021', bg: CREAM, transition: 'fade', extra: [
         chartBlock({ x: 60, y: 150, w: 860, h: 500, chartType: 'line', color: ORG, seriesName: 'Triples intentados', grid: true, xTitle: 'Temporada', yTitle: 'Intentos por partido',
-          data: D(SEASONS.map((v, i) => (i % 3 ? '' : v)), [19.4, 21.0, 22.8, 24.1, 26.5, 28.9, 30.2, 31.8, 32.5, 33.6]), series: [{ name: 'Tiros de media distancia', values: [23.5, 22.1, 20.0, 18.2, 15.9, 13.0, 11.8, 10.4, 9.6, 8.9], color: COLD }] }),
+          data: D(SEASONS.map((v, i) => (i % 3 ? '' : v)), [19.4, 21.0, 22.8, 24.1, 26.5, 28.9, 30.2, 31.8, 32.5, 33.6]), series: [{ name: 'Tiros de media distancia', values: [29.0, 28.5, 27.9, 27.1, 26.3, 22.4, 18.6, 14.9, 11.6, 8.9], color: COLD }] }),
         click(card(`<div style="font-family:${H};font-size:52px;font-weight:700;color:${ORT}">×1,7</div>triples por partido en diez años, en toda la liga.`, 950, 210, 270, 230, WHITE, { fontSize: 21, color: INK, radius: 4, borderColor: '#e8d9bf' }), 'zoom-in', { sound: 'pop' })],
         notes: 'Dos líneas que se cruzan: los triples suben y la media distancia baja. Datos de toda la liga, inventados.' },
       { layout: 'titleOnly', title: 'Puntos por tiro, zona a zona', bg: CREAM, transition: 'fade', extra: [
@@ -773,13 +773,13 @@ export default {
         notes: 'Tabla con fórmulas: el Elo nuevo se calcula fila a fila con =REDONDEAR(B2+20*(C2-D2); 0). Cambia un resultado y se actualiza.' },
       { layout: 'titleOnly', title: 'Así se reparten los 60 socios', bg: BG, transition: 'fade', extra: [
         chartBlock({ x: 60, y: 150, w: 860, h: 500, chartType: 'histogram', color: BRASS, seriesName: 'Socios', bins: 8, grid: true, xTitle: 'Elo', yTitle: 'Socios', data: RATINGS.map(v => ({ label: '', value: v })) }),
-        ...[['1.660', 'Elo mediano del club'], ['2.310', 'nuestro mejor jugador'], ['8', 'socios por encima de 2.000']].map(([n, t], i) =>
+        ...[['1.685', 'Elo mediano del club'], ['2.310', 'nuestro mejor jugador'], ['8', 'socios por encima de 2.000']].map(([n, t], i) =>
           chain(fig(n, t, 960, 170 + i * 150, 260, 130, { color: BRASS, fg: IVORY, size: 44, labelSize: 19, font: H }), i, 'fade-left'))],
         notes: 'Un histograma con 8 tramos calculados a partir de los 60 valores (Gráfico ▸ Histograma). La forma de campana es la habitual en cualquier club.' },
       { layout: 'titleOnly', title: 'La actualización, en código', bg: BG, transition: 'fade', extra: [
         codeBlock({ x: 60, y: 160, w: 760, h: 340, fontSize: 21, lang: 'javascript', lineSteps: '1-3|5-6|7-8',
           code: 'function esperado(ra, rb) {\n  return 1 / (1 + 10 ** ((rb - ra) / 400));\n}\n\nfunction actualizar(ra, rb, resultado, k = 20) {\n  const e = esperado(ra, rb);\n  return ra + k * (resultado - e);\n}' }),
-        text('actualizar(1850, 2010, 1)  →  1864,4', 60, 520, 760, 50, { fontSize: 24, color: BRASS, fontFamily: 'monospace' }),
+        text('actualizar(1850, 2010, 1)  →  1864,3', 60, 520, 760, 50, { fontSize: 24, color: BRASS, fontFamily: 'monospace' }),
         card('<b>¿Y K?</b><br>Los clubes usan K = 40 con los nuevos (para que lleguen rápido a su nivel) y K = 10 con los veteranos muy estables.', 860, 170, 360, 330, PANEL, { fontSize: 21, color: IVORY, radius: 6 })],
         notes: 'Código con pasos de resaltado: el valor esperado, la llamada y el cambio. Debajo, el resultado del ejemplo de Ana.' },
       { layout: 'blank', bg: BG, transition: 'fade', extra: [pollBlock({ kind: 'quiz', fontSize: 32, question: 'Ganas a alguien con 400 puntos más (K = 20). ¿Cuánto sube tu Elo?', x: 80, y: 60, w: 1120, h: 600, time: 25,
@@ -810,7 +810,7 @@ export default {
     const BW = 620, BX = 70, BY = 150;
     const LBL = [['Fondo norte', 97, 310, 60], ['Fondo sur', 61, 310, 420], ['Tribuna', 94, 60, 240], ['Preferencia', 88, 560, 240]];
     const M = ['J1', 'J3', 'J5', 'J7', 'J9', 'J11', 'J13', 'J15', 'J17', 'J19', 'J21', 'J23', 'J25', 'J27', 'J29', 'J31', 'J33', 'J35', 'J37'];
-    const ATT = [24100, 19800, 21500, 27900, 16200, 18400, 22800, 11200, 15600, 26300, 20100, 17300, 21900, 14800, 23600, 25200, 19400, 24800, 27600];
+    const ATT = [24100, 21800, 21500, 27900, 16200, 20400, 22800, 11200, 17600, 26300, 20100, 19300, 21900, 14800, 23600, 25200, 21400, 24800, 27600];
     return numbered(build({ name: 'UD Robledal · llenar el estadio', palette: 'violet', fonts: 'modern', title: { color: WHITE, size: 44 }, body: { color: WHITE } }, [
       { layout: 'blank', bg: NIGHT, transition: 'fade', back: [glow(-200, -300, 700, PURP, NIGHT, 45), glow(900, -320, 640, CYAN, NIGHT, 30), ...[[140, 60], [1060, 50]].map(([x, y]) => [shape('rect', x + 43, y + 50, 4, 70, '#3a3158'), shape('rounded', x, y, 90, 54, '#2a2240', { radius: 6 }),
         ...[0, 1, 2, 3, 4, 5, 6, 7].map(k => shape('ellipse', x + 8 + (k % 4) * 20, y + 7 + Math.floor(k / 4) * 22, 15, 15, '#fffbe6', { opacity: 90 }))]).flat()], extra: [

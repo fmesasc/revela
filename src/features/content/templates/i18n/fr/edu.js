@@ -163,7 +163,6 @@ export default {
  "Fraternidad": "Fraternité",
  "Soberanía del pueblo": "Souveraineté du peuple",
  "Fracciones": "Les fractions",
- "Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza naranja está coloreada?": "Les quatre « pizzas » rebondissent en arrivant, avec une clochette. Question : quelle part de la pizza orange est coloriée ?",
  "Círculo dividido en partes": "Cercle divisé en parts",
  "MATEMÁTICAS · 5.º DE PRIMARIA": "MATHÉMATIQUES · CM2",
  "Partes de un todo, sin miedo": "Les parts d'un tout, sans peur",
@@ -219,7 +218,6 @@ export default {
  "Columna": "Colonne",
  "Tórax": "Thorax",
  "Cráneo": "Crâne",
- "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡52 %!</div>de los huesos están en las manos y los pies.": "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">52 % !</div>des os se trouvent dans les mains et les pieds.",
  "Actividad «Etiquetar una imagen» con nota: cada número del dibujo lleva un desplegable en el móvil.": "Activité « Légender une image » notée : chaque numéro du dessin a sa liste déroulante sur le téléphone.",
  "Señala cada órgano en el cuerpo": "Situe chaque organe dans le corps",
  "Cerebro": "Cerveau",
@@ -512,5 +510,7 @@ export default {
  "🏆 Leaderboard": "🏆 Leaderboard",
  "Las estrellas botan con aplausos al llegar. Despedida en inglés: Goodbye, everyone!": "Les étoiles rebondissent sous les applaudissements à l'arrivée. Au revoir en anglais : Goodbye, everyone!",
  "Well done!": "Well done!",
- "¡Buen trabajo! · See you next class": "Bon travail ! · See you next class"
+ "¡Buen trabajo! · See you next class": "Bon travail ! · See you next class",
+ "Las cuatro «pizzas» rebotan al llegar, con una campanilla. Pregunta: ¿qué parte de la pizza amarilla está coloreada?": "Les quatre « pizzas » rebondissent en arrivant, avec une clochette. Question : quelle part de la pizza jaune est coloriée ?",
+ "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">¡51 %!</div>de los huesos están en las manos y los pies.": "<div style=\"font-family:'Space Grotesk', sans-serif;font-size:72px;color:#e0af68;line-height:1\">51 % !</div>des os se trouvent dans les mains et les pieds."
 };
