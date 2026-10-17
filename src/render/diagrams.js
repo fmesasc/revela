@@ -105,7 +105,8 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
   const scale = Math.min(2.5, Math.max(0.5, +b.fontScale || 1)), roomy = Math.min(2.2, Math.max(1, Math.min(W / 900, H / 460)));
   const scheme = b.colors || 'colorful', P = (i, m = n) => paint(scheme, accents, fg, i, m), out = [];
   const rect = (x, y, w, h, i, text, sub, o = {}) => { const c = P(i, o.m); out.push({ type: 'rect', x, y, w, h, r: o.r ?? Math.min(w, h) * 0.12, fill: c.fill, stroke: c.stroke, i: o.item ?? i });
-    if (text != null) out.push(textBox(x, y, w, h, text, sub, c.text, o)); };
+    // (Its words, its picture: the same step as the box — «one by one» showed them before it.)
+    if (text != null) out.push(textBox(x, y, w, h, text, sub, c.text, { ...o, i: o.item ?? i })); };
   const fit = ['circle', 'cover'].includes(b.picFit) ? b.picFit : 'contain';
   const textBox = (x, y, w, h, text, sub, color, o = {}) => {
     // A picture of its words: above them in a tall place, beside them in a wide one; alone, with picOnly. (Not on
@@ -231,7 +232,9 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
         if (to - from > 0.05) {
           for (let k = 0; k <= 20; k++) { const a = from + (to - from) * k / 20; pts.push([cx + Rx * Math.cos(a), cy + Ry * Math.sin(a)]); }
           const [px, py] = pts.at(-2), [qx, qy] = pts.at(-1);
-          line(pts, lineColor, 3, { item: (i + 1) % n }); arrowHead(qx, qy, Math.atan2(qy - py, qx - px), 14, lineColor, (i + 1) % n);
+          // (Each arrow with the item it reaches; the one closing the circle, back to the first, with the last.)
+          const st = Math.min(i + 1, n - 1);
+          line(pts, lineColor, 3, { item: st }); arrowHead(qx, qy, Math.atan2(qy - py, qx - px), 14, lineColor, st);
         }
       }
       items.forEach((it, i) => { const [x, y] = pos(i), c = P(i);
@@ -266,6 +269,10 @@ export function diagramLayout(b, { accents = ['#3f6497', '#e0873b', '#4caf7d', '
         return me;
       };
       const tree = roots.map(r => place(r, 0));
+      // («One by one»: the head first, then a whole branch a click — its boxes and lines together —; with several heads,
+      // each one with its branch. Numbered as placed, the leaves came first and the head last, a box a click.)
+      const mark = (node, st) => { node.i = st; node.kids.forEach(c => mark(c, st)); };
+      if (tree.length === 1) { tree[0].i = 0; tree[0].kids.forEach((c, j) => mark(c, j + 1)); } else tree.forEach((r, j) => mark(r, j));
       const draw = node => {
         node.kids.forEach(c => { const midY = node.y + bh + (c.y - node.y - bh) / 2;
           line([[node.x, node.y + bh], [node.x, midY], [c.x, midY], [c.x, c.y]], lineColor, 2, { item: c.i }); draw(c); });

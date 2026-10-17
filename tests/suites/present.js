@@ -416,6 +416,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const html = R.io.buildHTML();
     assert(/var CLASS=true/.test(html) && /Reveal\.on\('fragmentshown',pushSlide\)/.test(html), 'la presentación manda cada diapositiva (y sus animaciones) aunque no haya votaciones');
     assert(/id='rv-class'|getElementById\('rv-class'\)/.test(html), 'con el código y el QR en una esquina');
+    assert(/cv\.style\.width=cv\.style\.height='120px'/.test(html) && /querySelector\('\.rv-poll'\)\?'hidden'/.test(html), 'el QR de la esquina a 120 px, y no encima de una votación (que ya lleva el suyo)');
     for (const sc of new W.DOMParser().parseFromString(html, 'text/html').querySelectorAll('script:not([src])')) {
       try { new W.Function(sc.textContent); } catch (e) { assert(false, 'el código de la presentación tiene un error: ' + e.message); }
     }

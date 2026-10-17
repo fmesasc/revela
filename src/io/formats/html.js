@@ -196,7 +196,7 @@ Reveal.on('ready',all);Reveal.on('slidechanged',all);Reveal.on('resize',all);if(
 
 // Slides whose first animation starts by itself: on arriving (forwards), their first step plays.
 const START_JS = `(function(){function go(){var s=Reveal.getCurrentSlide(),f=Reveal.getIndices().f;
-if(s&&s.hasAttribute('data-rv-start')&&(f===undefined||f<0))setTimeout(function(){if(Reveal.getCurrentSlide()===s)Reveal.nextFragment();},60);}
+if(s&&s.hasAttribute('data-rv-start')&&(f===undefined||f<0))setTimeout(function(){if(Reveal.getCurrentSlide()===s)(Reveal.__raw_nextFragment||Reveal.nextFragment).call(Reveal);},60);}
 Reveal.on('slidechanged',go);Reveal.on('ready',go);if(Reveal.isReady())go();})();`;
 
 // A PDF's "page and zoom" step: the page, the point of it in the middle (0-1) and how much it is enlarged.

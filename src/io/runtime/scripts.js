@@ -296,8 +296,11 @@ export function pollJS(accents, { classroom = false, labels = null, teams = [], 
  function badge(url){if(!CLASS)return;var b=document.getElementById('rv-class');if(!b){b=document.createElement('div');b.id='rv-class';
    b.style.cssText='position:fixed;right:12px;bottom:12px;z-index:40;background:#fff;color:#223;border-radius:10px;padding:8px 10px;font:600 14px system-ui,sans-serif;text-align:center;box-shadow:0 4px 20px #0005';
    b.innerHTML='<canvas style="display:block;width:120px;height:120px;margin:0 auto 4px"></canvas><div>'+url.replace(/^https?:\\/\\//,'').replace(/\\?.*$/,'')+'</div><div>C\u00f3digo <b style="letter-spacing:2px">'+code+'</b></div>';
-   document.body.appendChild(b);document.addEventListener('keydown',function(e){if((e.key==='a'||e.key==='A')&&!e.ctrlKey&&!e.metaKey)b.hidden=!b.hidden;});}
-  if(window.QRCode)QRCode.toCanvas(b.querySelector('canvas'),url,{width:240,margin:1},function(){});}
+   document.body.appendChild(b);document.addEventListener('keydown',function(e){if((e.key==='a'||e.key==='A')&&!e.ctrlKey&&!e.metaKey)b.hidden=!b.hidden;});
+   // (Not over a slide with a poll: it has its own code and QR, where the corner one fell on top of it.)
+   var own=function(){var s=Reveal.getCurrentSlide();b.style.visibility=s&&s.querySelector('.rv-poll')?'hidden':'';};Reveal.on('slidechanged',own);own();}
+  // (Drawn at 240 px for sharpness, shown at 120: the library sets the canvas's own size, which is set back after it.)
+  if(window.QRCode){var cv=b.querySelector('canvas');QRCode.toCanvas(cv,url,{width:240,margin:1},function(){cv.style.width=cv.style.height='120px';});}}
  // Live captions to the audience; translated ones for whoever asks, when the
  // editor that is presenting offers its AI (asked once), else each device translates.
  var TR=null;try{TR=window.parent!==window&&window.parent.__revelaTranslate;}catch(e){}

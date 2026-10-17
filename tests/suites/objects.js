@@ -2813,6 +2813,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(out.length, 0, 'dentro de su caja: ' + k);
     }
     // Hierarchy: every person, a box; each one under their boss.
+    // «One by one»: each item's words with its box (not before it); an org chart, the head and then a branch a click;
+    // a cycle's closing arrow with the last item.
+    const proc = DG.diagramLayout({ layout: 'process', w: 900, h: 460, text: 'Idea\nPrototipo\nPrueba' });
+    eq(proc.filter(p => p.type === 'text').map(p => p.i).join(), '0,1,2', 'proceso: cada texto con su caja');
+    const org2 = DG.diagramLayout({ layout: 'hierarchy', w: 900, h: 460, text: 'Dirección\n  Ventas\n    Norte\n    Sur\n  Técnica\n    Web' });
+    eq(org2.filter(p => p.type === 'text').map(p => p.text + ':' + p.i).sort().join(), ['Dirección:0', 'Norte:1', 'Sur:1', 'Técnica:2', 'Ventas:1', 'Web:2'].sort().join(), 'organigrama: el jefe y luego una rama por clic');
+    const cyc = DG.diagramLayout({ layout: 'cycle', w: 900, h: 460, text: 'Uno\nDos\nTres' }).filter(p => p.type === 'poly');
+    assert(!cyc.some(p => p.i === 0), 'ciclo: ninguna flecha con el primero (la que cierra el círculo sale con el último)');
     const org = DG.diagramLayout({ layout: 'hierarchy', w: 900, h: 460, text: DG.DIAGRAM_SAMPLES.hierarchy }).filter(p => p.type === 'rect');
     eq(org.length, 7, 'siete cajas'); eq(new Set(org.map(r => Math.round(r.y))).size, 3, 'en tres niveles');
     // Inserted: one object with its text, in the app's language.

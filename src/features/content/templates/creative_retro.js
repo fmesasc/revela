@@ -188,7 +188,7 @@ export default {
         { layout: 'blank', bg: '#3a2d23', transition: 'push', extra: [
           R(80, 50, 1120, 620, CARD, { shadow: { x: 6, y: 8, blur: 16, color: '#00000077' } }), deco(ruled(1120, 620, 46, 96), 80, 50, 1120, 620, 'Rayas de la ficha'),
           tw('EL ARCO DE LA HISTORIA', 120, 70, 900, 50, 34, { fontWeight: 700 }),
-          at(shape('custom', 140, 210, 1000, 380, 'none', { path: 'M0 92C8 91 14 89 20 86C28 82 36 76 44 64C54 48 64 22 72 8C80 30 88 62 100 78', stroke: RED, strokeWidth: 6 }), 'draw', { duration: 2600 }),
+          at(shape('custom', 140, 210, 1000, 380, 'none', { path: 'M0 92C8 91 14 89 20 86C28 82 36 76 44 64C54 48 64 22 72 8C80 30 88 62 100 78', stroke: RED, strokeWidth: 6 }), 'draw', { start: 'afterPrev', duration: 2600 }),
           ...arc.flatMap(([x, y, n, d], i) => { const cx = ax(x), cy = ay(y), above = i === 1 || i === 3, lw = 230;
             const lx = i === 0 ? 110 : i === 4 ? 1180 - lw : i === 2 ? cx + 20 : cx - lw / 2, ly = above ? cy - 92 : i === 2 ? cy + 8 : cy + 18;
             return [at(E(cx - 13, cy - 13, 26, 26, INK), 'zoom-in', { start: 'afterPrev', duration: 250 }),
@@ -431,8 +431,8 @@ export default {
           text('環境音楽', 1150, 40, 80, 300, { fontSize: 50, color: DEEP, vertical: true, fontWeight: 700 }),
           text('EL SONIDO DE LAS TIENDAS · CHARLA DE DISEÑO SONORO', 140, 618, 1000, 50, { fontFamily: IN, fontSize: 26, color: W, textAlign: 'center', letterSpacing: 4, fontWeight: 700 })],
           notes: 'Portada vaporwave: cielo con degradado pastel, luna con degradado, reflejo en el agua hecho con franjas y palmeras dibujadas en SVG. Las copias cian y rosa del título aparecen solas: el efecto «glitch». 環境音楽 significa «música de ambiente».' },
-        { layout: 'blank', bg: DEEP, transition: 'fade', extra: [
-          R(0, 0, 1280, 720, DEEP, { fill2: '#6a3fb5', gradAngle: 90 }),
+        { layout: 'blank', bg: DEEP, autoAnimate: true, transition: 'fade', extra: [
+          R(0, 0, 1280, 720, DEEP, { fill2: '#6a3fb5', gradAngle: 90 }), moonAt(990, 70, 190),
           ...glitch('Nadie la escucha.<br>Todos la oyen.', 80, 60, 1120, 230, 80, W, { lineHeight: 1.1 }),
           ...chain([['3 de cada 4', 'tiendas ponen música de fondo todo el día', CY], ['40 dB', 'el volumen ideal: una conversación en voz baja', PINK], ['+18 %', 'de tiempo en la tienda con música lenta', MINT]].map(([n, d, c], i) =>
             card(`<div style="font-size:46px;font-weight:800;color:${c};line-height:1.1;white-space:nowrap">${n}</div><div style="margin-top:12px">${d}</div>`, 80 + i * 380, 360, 350, 210, '#ffffff14',
@@ -471,7 +471,8 @@ export default {
           notes: 'La programación de un día, por franjas. Tabla con fórmulas: la fila de la media usa =PROMEDIO. Valores de ejemplo.' },
         { layout: 'blank', bg: DEEP, transition: 'zoom', extra: [
           R(0, 0, 1280, 720, '#1d2f6b', { fill2: '#6a3fb5', gradAngle: 90 }),
-          pollBlock({ kind: 'rating', fontSize: 36, x: 80, y: 60, w: 1120, h: 600, question: 'Del 1 al 5: ¿qué nota le pones a la música de tu supermercado?' })],
+          moonAt(1110, 50, 130),
+          pollBlock({ kind: 'rating', fontSize: 36, x: 60, y: 60, w: 1030, h: 600, question: 'Del 1 al 5: ¿qué nota le pones a la música de tu supermercado?' })],
           notes: 'Valoración en directo desde el móvil: el público puntúa del 1 al 5 y se ve la media.' },
         { layout: 'blank', bg: '#f7a8ff', autoAnimate: true, transition: 'fade', extra: [
           sky, moonAt(440, 120, 400), ...sea, ...palms(),
@@ -536,7 +537,7 @@ export default {
             data: [140, 165, 150, 180, 210, 190, 205, 230, 220, 245, 260, 255, 290, 412].map((value, i) => ({ label: String(i + 1), value })) }),
           t('412', 920, 260, 300, 120, 110, YE, { fontWeight: 700 }),
           t('personas en la final: récord de la liga', 920, 390, 300, 110, 26, W),
-          t('Media: 225 por partido', 920, 530, 300, 50, 20, CY)],
+          t('Media: 225 por partido', 920, 530, 300, 50, 20, CY), ...fastext()],
           notes: 'Columnas por jornada: el público crece hasta el récord de la final. Cifras inventadas.' },
         { layout: 'blank', bg: K, transition: 'none', extra: [
           ...header(150),
@@ -635,7 +636,7 @@ export default {
           text('Cien euros la noche: uno por cada año. Cambia las unidades y el total se recalcula.', 140, 590, 1000, 60, { fontFamily: JO, fontSize: 22, color: GOLD2, textAlign: 'center' })],
           notes: 'Tabla con fórmulas: cada importe multiplica precio por unidades y el total usa =SUMA. Precios inventados para el ejemplo.' },
         { layout: 'blank', bg: EM, transition: 'fade', extra: [
-          E(60, 190, 340, 340, GOLD), E(76, 206, 308, 308, EM2),
+          E(60, 190, 340, 340, GOLD), E(76, 206, 308, 308, EM2), withId(deco(fan(), 70, 552, 320, 160, 'Abanico de rayos'), sun),
           withAnims(text('GRAN HOTEL ALCÁZAR · DESDE 1926 · ', 86, 216, 288, 288, { curve: 100, fontFamily: JO, fontSize: 24, color: GOLD2, fontWeight: 700, letterSpacing: 3, textAlign: 'center' }),
             A('spin360', { start: 'afterPrev', duration: 5000 })),
           text('?', 130, 270, 200, 180, { fontFamily: PF, fontSize: 150, color: GOLD, textAlign: 'center', vAlign: 'middle' }),
@@ -721,7 +722,8 @@ export default {
           notes: 'Cuenta atrás de diez segundos (se pulsa para empezar). Luego, un clic: el cohete tiembla y despega con un recorrido hacia arriba y el sonido «whoosh».' },
         { layout: 'blank', bg: CRM, transition: 'slide', extra: [
           boom(ORG, 1080, 20, 150), boom(TEAL, 1110, 600, 120),
-          pollBlock({ kind: 'word', fontSize: 34, x: 80, y: 60, w: 1120, h: 580, question: '¿Qué invento del futuro sigues esperando?', options: [], color: NAVY })],
+          withId(img(saucer, 1070, 290, 180, 141, 'Una casa con forma de platillo volante'), house),
+          pollBlock({ kind: 'word', fontSize: 34, x: 60, y: 60, w: 990, h: 580, question: '¿Qué invento del futuro sigues esperando?', options: [], color: NAVY })],
           notes: 'Nube de palabras en directo desde el móvil: las respuestas más repetidas se ven más grandes.' },
         { layout: 'blank', bg: '#1f7a70', transition: 'fade', autoAnimate: true, extra: [
           E(-200, 380, 760, 520, '#1a6b62'),
@@ -790,7 +792,7 @@ export default {
           notes: 'Diagrama de jerarquía que crece rama a rama: se empieza por la persona que investiga y se sube hacia atrás. Nombres inventados.' },
         { layout: 'blank', bg: PAGE, transition: 'slide', extra: [
           img(map, 40, 40, 820, 520, 'Mapa dibujado de la costa con tres lugares', { shadow: { x: 4, y: 6, blur: 14, color: '#00000066' } }), ...corners(40, 40, 820, 520),
-          at(shape('custom', 160, 200, 600, 270, 'none', { path: 'M0 0C10 40 20 70 28 78C40 86 60 88 80 90C90 92 96 96 100 100', stroke: RED, strokeWidth: 4, dash: 'dash' }), 'draw', { start: 'click', duration: 3000 }),
+          at(shape('custom', 160, 200, 600, 270, 'none', { path: 'M0 0C10 40 20 70 28 78C40 86 60 88 80 90C90 92 96 96 100 100', stroke: RED, strokeWidth: 4 }), 'draw', { start: 'click', duration: 3000 }),
           withAnims(icon('briefcase', 136, 176, 46, INK), path([[60, 120], [171, 211], [300, 236], [450, 250], [601, 271]], { start: 'withPrev', duration: 3000 })),
           text('El viaje de Tomás', 900, 60, 340, 80, { fontFamily: CAV, fontSize: 52, color: CRM }),
           ...chain([['Marzo de 1923', 'Sale de Valdeolmos a pie con una maleta.'], ['Abril de 1923', 'Embarca en Puerto Alba: veintidós días de travesía.'], ['1931', 'Vuelve con ahorros y compra la casa del molino.']].map(([h, d], i) =>
@@ -802,9 +804,9 @@ export default {
           text('Cuatro archivos y una regla de oro: anota siempre de dónde sale cada dato.', 64, 116, 1100, 40, { fontFamily: COR, fontSize: 27, color: SEP }),
           ...sources.flatMap(([ic, h, d], i) => { const x = 60 + (i % 2) * 590, y = 190 + Math.floor(i / 2) * 250;
             return chain([R(x, y, 560, 220, '#fbf6ea', { shadow: { x: 3, y: 5, blur: 10, color: '#00000033' } }), icon(ic, x + 30, y + 36, 56, SEP),
-              text(`<b>${h}</b><div style="font-size:23px;line-height:1.35;color:${SEP};margin-top:8px">${d}</div>`, x + 110, y + 30, 420, 170, { fontFamily: COR, fontSize: 32, color: INK })], 'fade-in', { duration: 350 }, i ? 'afterPrev' : 'click')
-              .map((b, k) => (k ? { ...b, animation: { ...b.animation, start: 'withPrev' } } : b)); }),
-          ...[0, 1, 2, 3].flatMap(i => corners(60 + (i % 2) * 590, 190 + Math.floor(i / 2) * 250, 560, 220, SEP))],
+              text(`<b>${h}</b><div style="font-size:23px;line-height:1.35;color:${SEP};margin-top:8px">${d}</div>`, x + 110, y + 30, 420, 170, { fontFamily: COR, fontSize: 32, color: INK }),
+              ...corners(x, y, 560, 220, SEP)], 'fade-in', { duration: 350 }, i ? 'afterPrev' : 'click')
+              .map((b, k) => (k ? { ...b, animation: { ...b.animation, start: 'withPrev' } } : b)); })],
           notes: 'Cuatro fichas pegadas en el álbum, que entran una tras otra con un clic. Las fechas son las habituales en España, pero cada archivo tiene las suyas.' },
         { layout: 'blank', bg: PAGE, transition: 'slide', extra: [
           text('Lo que encontró el grupo del año pasado', 60, 36, 1160, 70, { fontFamily: COR, fontSize: 50, color: CRM, fontWeight: 700 }),
@@ -823,6 +825,7 @@ export default {
         { layout: 'blank', bg: PAGE, transition: 'fade', extra: [
           R(170, 60, 940, 560, OLD, { rotation: 1.5, shadow: { x: 6, y: 8, blur: 16, color: '#00000088' } }),
           E(880, 420, 160, 140, '#c9ab78', { opacity: 50 }),
+          withId(img(portrait, 40, 480, 200, 150, 'Retrato de familia en sepia, hacia 1920', { fit: 'cover', rotation: -7, shadow: { x: 4, y: 6, blur: 14, color: '#00000088' } }), photo),
           text('Nueva Aurora, 9 de mayo de 1923', 640, 90, 420, 50, { fontFamily: CAV, fontSize: 32, color: SEP, textAlign: 'right', rotation: 1.5 }),
           text('Querida madre: llegamos bien, aunque el barco se movía tanto que el pan no paraba quieto en la mesa. Ya tengo trabajo en el puerto. Guárdeme la higuera del corral, que vuelvo.',
             230, 160, 820, 330, { fontFamily: CAV, fontSize: 40, color: INK, lineHeight: 1.3, rotation: 1.5 }),
@@ -913,6 +916,7 @@ export default {
           deco(svg(1280, 720, Array.from({ length: 24 }, (_, i) => { const a = Math.PI * 2 * i / 24; return `<path d="M640 360L${640 + 1000 * Math.cos(a)} ${360 + 1000 * Math.sin(a)}L${640 + 1000 * Math.cos(a + 0.13)} ${360 + 1000 * Math.sin(a + 0.13)}Z" fill="${RED}" opacity=".18"/>`; }).join('')), 0, 0, 1280, 720, 'Rayos'),
           text('¡CHUPINAZO!', 60, 80, 700, 170, { fontFamily: ANT, fontSize: 110, wordart: 'retro', textAlign: 'center' }),
           text('El viernes 14 a las 21:00 en punto, desde el balcón de la plaza. Ensayamos la cuenta atrás: un minuto.', 90, 290, 640, 160, { fontFamily: PTS, fontSize: 30, color: PAP }),
+          withId(text('FIESTAS', 90, 480, 640, 150, { fontFamily: ANT, fontSize: 130, color: PAP, textAlign: 'center', lineHeight: 1, shadow: { x: 5, y: 4, blur: 0, color: RED + 'd9' } }), word),
           timer(60, 820, 160, 380, { color: MUS, auto: false, style: 'ring' }),
           text('Pulsa el reloj para empezar', 820, 560, 380, 40, { fontFamily: PTS, fontSize: 22, color: '#c8bba0', textAlign: 'center', fontStyle: 'italic' })],
           notes: 'Text Art «Retro» para el chupinazo y una cuenta atrás de un minuto en anillo, con sonido al terminar. Pide al público que cuente en voz alta los últimos diez segundos.' },

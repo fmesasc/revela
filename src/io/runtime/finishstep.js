@@ -21,6 +21,10 @@ export function finishStepRuntime() {
   };
   var wrap = function (name) {
     var go = R[name]; if (typeof go !== 'function') return;
+    // (The original, for the presentation's own steps — a slide whose first animation starts by itself, html.js
+    // START_JS —: those arrived while Morph or the slide's transition were still moving things, and «finishing» them
+    // took their step: the animation waited for a click.)
+    R['__raw_' + name] = go;
     R[name] = function () {
       var list = running();
       if (list.length) {
