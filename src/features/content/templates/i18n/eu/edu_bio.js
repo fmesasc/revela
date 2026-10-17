@@ -523,7 +523,6 @@ export default {
  "Respira hondo": "Hartu arnasa sakon",
  "Inspira mientras el círculo crece; suelta el aire mientras se encoge.": "Hartu arnasa zirkulua hazten den bitartean; bota airea txikitzen den bitartean.",
  "De la flor al fruto": "Loretik fruitura",
- "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar; lo del polen es un «accidente» muy útil).": "Erleak ibilbide bat egiten du hegan eta lehen lorean pausatzen da. Galdera: zergatik bisitatzen dituzte erleek loreak? (Nektarra bilatzen dute; polenarena oso «istripu» baliagarria da.)",
  "CIENCIAS NATURALES · 2.º DE PRIMARIA Y 1.º DE ESO": "NATUR ZIENTZIAK · LEHEN HEZKUNTZA 2 ETA DBH 1",
  "De la flor<br>al fruto": "Loretik<br>fruitura",
  "Cómo una abeja, un poco de polen y unas semanas convierten una flor en una manzana": "Nola bihurtzen duten erle batek, polen pixka batek eta aste batzuek lore bat sagar",
@@ -613,7 +612,6 @@ export default {
  "Familias": "Familiak",
  "Cada punto es una familia: los padres y una de sus crías.": "Puntu bakoitza familia bat da: gurasoak eta haien kumeetako bat.",
  "Padres de pico grueso tienen crías de pico grueso. Si no se heredara, la sequía no cambiaría nada en la generación siguiente.": "Moko lodiko gurasoek moko lodiko kumeak dituzte. Heredatuko ez balitz, lehorteak ez luke ezer aldatuko hurrengo belaunaldian.",
- "El ciclo aparece paso a paso. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "Zikloa urratsez urrats agertzen da. Lau baldintza hauekin, populazioa belaunaldiz belaunaldi aldatzen da, inork planifikatu gabe.",
  "La selección natural, en cuatro pasos": "Hautespen naturala, lau urratsetan",
  "Variación\nHerencia\nLucha\nSelección": "Aldakortasuna\nHerentzia\nBorroka\nHautespena",
  "<b style=\"color:#f2cc8f\">Variación:</b> no hay dos pinzones iguales: unos nacen con el pico más grueso que otros.": "<b style=\"color:#f2cc8f\">Aldakortasuna:</b> ez dago bi txonta berdinik: batzuk besteak baino moko lodiagoarekin jaiotzen dira.",
@@ -640,5 +638,7 @@ export default {
  "La evolución no es un plan:<br>es un filtro.": "Eboluzioa ez da plan bat:<br>iragazki bat da.",
  "Cada generación pasa por él… y lo que pasa, se hereda.": "Belaunaldi bakoitza hortik igarotzen da… eta igarotzen dena heredatu egiten da.",
  "clorofila": "klorofila",
- "luz": "argia"
+ "luz": "argia",
+ "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar y polen para comer; llevar polen de una flor a otra es un «accidente» muy útil).": "Erleak ibilbide bat egiten du hegan eta lehen lorean pausatzen da. Galdera: zergatik bisitatzen dituzte erleek loreak? (Nektarra eta polena bilatzen dituzte jateko; polena lore batetik bestera eramatea oso «istripu» baliagarria da.)",
+ "El ciclo está a la vista desde el principio; cada clic explica uno de sus pasos. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "Zikloa hasieratik ikusten da; klik bakoitzak bere urratsetako bat azaltzen du. Lau baldintza hauekin, populazioa belaunaldiz belaunaldi aldatzen da, inork planifikatu gabe."
 };

@@ -523,7 +523,6 @@ export default {
  "Respira hondo": "Breathe deeply",
  "Inspira mientras el círculo crece; suelta el aire mientras se encoge.": "Breathe in as the circle grows; breathe out as it shrinks.",
  "De la flor al fruto": "From flower to fruit",
- "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar; lo del polen es un «accidente» muy útil).": "The bee flies along a path and lands on the first flower. Question: why do bees visit flowers? (They're after nectar; the pollen is a very useful \"accident\").",
  "CIENCIAS NATURALES · 2.º DE PRIMARIA Y 1.º DE ESO": "NATURAL SCIENCE · YEARS 3 AND 7",
  "De la flor<br>al fruto": "From flower<br>to fruit",
  "Cómo una abeja, un poco de polen y unas semanas convierten una flor en una manzana": "How a bee, a little pollen and a few weeks turn a flower into an apple",
@@ -613,7 +612,6 @@ export default {
  "Familias": "Families",
  "Cada punto es una familia: los padres y una de sus crías.": "Each point is a family: the parents and one of their chicks.",
  "Padres de pico grueso tienen crías de pico grueso. Si no se heredara, la sequía no cambiaría nada en la generación siguiente.": "Thick-beaked parents have thick-beaked chicks. If it weren't inherited, the drought wouldn't change anything in the next generation.",
- "El ciclo aparece paso a paso. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "The cycle appears step by step. With these four conditions, the population changes generation after generation without anyone planning it.",
  "La selección natural, en cuatro pasos": "Natural selection in four steps",
  "Variación\nHerencia\nLucha\nSelección": "Variation\nInheritance\nStruggle\nSelection",
  "<b style=\"color:#f2cc8f\">Variación:</b> no hay dos pinzones iguales: unos nacen con el pico más grueso que otros.": "<b style=\"color:#f2cc8f\">Variation:</b> no two finches are alike: some are born with thicker beaks than others.",
@@ -640,5 +638,7 @@ export default {
  "La evolución no es un plan:<br>es un filtro.": "Evolution isn't a plan:<br>it's a filter.",
  "Cada generación pasa por él… y lo que pasa, se hereda.": "Each generation goes through it… and what passes, is inherited.",
  "clorofila": "chlorophyll",
- "luz": "light"
+ "luz": "light",
+ "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar y polen para comer; llevar polen de una flor a otra es un «accidente» muy útil).": "The bee flies along a path and lands on the first flower. Question: why do bees visit flowers? (They're looking for nectar and pollen to eat; carrying pollen from one flower to another is a very useful \"accident\").",
+ "El ciclo está a la vista desde el principio; cada clic explica uno de sus pasos. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "The whole cycle is visible from the start; each click explains one of its steps. With these four conditions, the population changes generation after generation without anyone planning it."
 };

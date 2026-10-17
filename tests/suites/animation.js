@@ -120,6 +120,15 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.querySelector('.path-draw'), 'Esc cancela');
   });
 
+  await test('un recorrido con sus puntos y sin forma dicha se mueve igual (como uno dibujado)', async () => {
+    reset();
+    R.store.commit(() => { slide().blocks = [{ id: 'bee', type: 'shape', shape: 'ellipse', x: 100, y: 100, w: 60, h: 60, rotation: 0, fill: '#f5b700',
+      animation: { effect: 'path', order: 1, seq: 1, start: 'click', duration: 1500, delay: 0, points: [[0, 0], [150, -80], [300, 0]] } }]; });
+    eq(String(R.trans.motionPoints(slide().blocks[0].animation).at(-1)), '300,0', 'llega al último punto');
+    const html = R.io.buildHTML();
+    assert(/class="fragment rv-pathc"/.test(html) && /--dx:300px;--dy:0px/.test(html), 'en la presentación, por su camino hasta el final');
+  });
+
   await test('rebotar, girar o voltear al entrar: acaban en la opacidad propia del objeto, no opacos del todo', async () => {
     reset();
     R.store.commit(() => { slide().blocks = [{ id: 'op', type: 'shape', shape: 'star', x: 100, y: 100, w: 200, h: 200, rotation: 0, fill: '#f5b700', opacity: 0.25,

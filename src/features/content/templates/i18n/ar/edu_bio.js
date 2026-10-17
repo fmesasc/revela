@@ -523,7 +523,6 @@ export default {
  "Respira hondo": "تنفّس بعمق",
  "Inspira mientras el círculo crece; suelta el aire mientras se encoge.": "خذ شهيقًا بينما تكبر الدائرة؛ وأخرج الهواء بينما تصغر.",
  "De la flor al fruto": "من الزهرة إلى الثمرة",
- "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar; lo del polen es un «accidente» muy útil).": "تطير النحلة في مسار وتحطّ على الزهرة الأولى. سؤال: لماذا تزور النحلات الأزهار؟ (تبحث عن الرحيق؛ وحبوب اللقاح «حادث» مفيد جدًا.)",
  "CIENCIAS NATURALES · 2.º DE PRIMARIA Y 1.º DE ESO": "العلوم الطبيعية · الصفان الثاني والسابع",
  "De la flor<br>al fruto": "من الزهرة<br>إلى الثمرة",
  "Cómo una abeja, un poco de polen y unas semanas convierten una flor en una manzana": "كيف تحوّل نحلة وقليل من حبوب اللقاح وبضعة أسابيع زهرةً إلى تفاحة",
@@ -613,7 +612,6 @@ export default {
  "Familias": "العائلات",
  "Cada punto es una familia: los padres y una de sus crías.": "كل نقطة عائلة: الأبوان وأحد فراخهما.",
  "Padres de pico grueso tienen crías de pico grueso. Si no se heredara, la sequía no cambiaría nada en la generación siguiente.": "الآباء ذوو المنقار الغليظ ينجبون فراخًا بمنقار غليظ. لو لم يُورَث، لما غيّر الجفاف شيئًا في الجيل التالي.",
- "El ciclo aparece paso a paso. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "تظهر الدورة خطوة خطوة. بهذه الشروط الأربعة تتغيّر الجماعة جيلًا بعد جيل دون أن يخطط لذلك أحد.",
  "La selección natural, en cuatro pasos": "الانتقاء الطبيعي في أربع خطوات",
  "Variación\nHerencia\nLucha\nSelección": "التباين\nالوراثة\nالصراع\nالانتقاء",
  "<b style=\"color:#f2cc8f\">Variación:</b> no hay dos pinzones iguales: unos nacen con el pico más grueso que otros.": "<b style=\"color:#f2cc8f\">التباين:</b> لا يوجد عصفوران متطابقان: بعضها يولد بمنقار أغلظ من غيره.",
@@ -640,5 +638,7 @@ export default {
  "La evolución no es un plan:<br>es un filtro.": "التطور ليس خطة:<br>إنه مِصفاة.",
  "Cada generación pasa por él… y lo que pasa, se hereda.": "كل جيل يمرّ عبرها… وما يمرّ يُورَث.",
  "clorofila": "الكلوروفيل",
- "luz": "الضوء"
+ "luz": "الضوء",
+ "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar y polen para comer; llevar polen de una flor a otra es un «accidente» muy útil).": "تطير النحلة في مسار وتحطّ على الزهرة الأولى. سؤال: لماذا تزور النحلات الأزهار؟ (تبحث عن الرحيق وحبوب اللقاح لتتغذّى بها؛ ونقل حبوب اللقاح من زهرة إلى أخرى «حادث» مفيد جدًا.)",
+ "El ciclo está a la vista desde el principio; cada clic explica uno de sus pasos. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "الدورة ظاهرة منذ البداية، وكل نقرة تشرح خطوة من خطواتها. بهذه الشروط الأربعة تتغيّر الجماعة جيلًا بعد جيل دون أن يخطط لذلك أحد."
 };

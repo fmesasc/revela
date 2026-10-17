@@ -52,7 +52,7 @@ import { READING_CSS, readingJS } from '../runtime/reading.js';
 import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
 import { fxVars, fxPresentationCSS, fxParagraphCSS, isFx, FX } from '../../features/animation/fxcatalog.js';
 const FX_REV = e => !!FX[e]?.reverse;
-import { animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CSS, EMPHASIS_FX, SIZE_FX, animScale, isEntrance, MEDIA_FX, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
+import { customPath, pathEnd, animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CSS, EMPHASIS_FX, SIZE_FX, animScale, isEntrance, MEDIA_FX, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars, layoutOf } from '../../features/document/master.js';
 import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, magOrigin, underArea, viewOf, MAG_SKIP } from '../../features/document/magnify.js';
 import { watermarkPage } from '../../features/document/watermark.js';
@@ -75,7 +75,7 @@ const box = b => `position:absolute;left:${b.x}px;top:${b.y}px;width:${b.w}px;`
 const cssKey = key => String(key).replace(/[^\w-]/g, '_');
 const animVars = (b, a = b.animation, key = b.id) => (a ? `transition-duration:${a.duration ?? 500}ms;transition-delay:${a.delay ?? 0}ms;`
     + `--anim-dur:${a.duration ?? 500}ms;--anim-del:${a.delay ?? 0}ms;` + (SIZE_FX.includes(a.effect) ? `--anim-scale:${animScale(a)};` : '')
-    + (a.effect === 'path' ? `--dx:${a.dx || 0}px;--dy:${a.dy || 0}px;--pk:rvP${cssKey(key)};` : '') + fxVars(a) : '');
+    + (a.effect === 'path' ? `--dx:${pathEnd(a)[0]}px;--dy:${pathEnd(a)[1]}px;--pk:rvP${cssKey(key)};` : '') + fxVars(a) : '');
 
 // Custom entrance effects that reveal.js doesn't provide (used only if present).
 const CUSTOM_KF = {
@@ -215,7 +215,7 @@ function animAttrs(b, slide, a = b.animation, key = b.id) {
   if (trigger && slide?.blocks.some(x => x.id === trigger))       // played on click of another object
     return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}${isFx(effect) ? ' ' + effect : ''}"${FX_REV(effect) ? ' data-rev' : ''} data-trig="${trigger}" data-kf="${effect === 'path' ? 'rvP' + cssKey(key) : effect === 'pdfview' || effect === 'mapfly' || MEDIA_FX.includes(effect) ? 'none' : EFFECT_KF[effect] || 'rvIn'}"`
       + ` data-dur="${duration ?? 500}" data-del="${delay ?? 0}"` + clip;
-  const cls = effect === 'path' ? ((a.pathShape && a.pathShape !== 'line') || (pathTurns(a) && b.type !== 'model') ? 'rv-pathc' : 'rv-path') : effect;
+  const cls = effect === 'path' ? ((a.pathShape && a.pathShape !== 'line') || customPath(a) || (pathTurns(a) && b.type !== 'model') ? 'rv-pathc' : 'rv-path') : effect;
   // (An emphasis on some paragraphs only: its rule finds them by this key — fxParagraphCSS.)
   const fxp = isFx(effect) && Array.isArray(a.paras) && a.paras.length ? ` data-fxp="${cssKey(key)}"` : '';
   return src + ` class="fragment ${cls}" data-fragment-index="${order}"` + fxp + clip;

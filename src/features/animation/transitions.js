@@ -148,8 +148,13 @@ ${FX_KF_CSS}`;
 // at (dx, dy). 'line' is straight; 'arc' bulges to one side; 'wave' snakes;
 // 'loop' makes a full turn half way; 'custom' is drawn by hand (a.points, the
 // user's points: the curve goes smoothly through them).
+// A path drawn point by point: so marked (pathShape 'custom'), or with its points and no shape said — a template's
+// bee, ship or blood drop stood still for want of the mark.
+export const customPath = a => !!a && a.points?.length > 1 && (a.pathShape === 'custom' || !a.pathShape);
+// Where a path ends (from where it starts): its last point if drawn, else dx, dy.
+export const pathEnd = a => (customPath(a) && a.dx == null && a.dy == null ? a.points.at(-1).map(v => +v || 0) : [a.dx || 0, a.dy || 0]);
 export function motionPoints(a, n = 24) {
-  if (a.pathShape === 'custom' && a.points?.length > 1) return samplePath(a.points, Math.min(160, Math.max(n, a.points.length * 8)));
+  if (customPath(a)) return samplePath(a.points, Math.min(160, Math.max(n, a.points.length * 8)));
   const dx = a.dx || 0, dy = a.dy || 0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;   // normal
   const pts = [];
   for (let i = 0; i <= n; i++) {
@@ -216,7 +221,7 @@ export function setMotionPath(id, points, duration = null, i = 0) {
 // Where the object is after its animations before the i-th: the sum of the paths (from its place).
 export function offsetBefore(b, i) {
   let x = 0, y = 0;
-  animsOf(b).slice(0, i).forEach(a => { if (a.effect === 'path') { x += a.dx || 0; y += a.dy || 0; } });
+  animsOf(b).slice(0, i).forEach(a => { if (a.effect === 'path') { const [ex, ey] = pathEnd(a); x += ex; y += ey; } });
   return [x, y];
 }
 // A motion path from PowerPoint or LibreOffice ("M 0 0 L x y L … E", relative

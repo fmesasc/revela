@@ -4,7 +4,7 @@
 // curved paths have one point, their end.
 
 import { commit, selectedBlock, currentSlide } from '../../core/store.js';
-import { setMotionPath, simplifyStroke, animsOf, offsetBefore } from '../../features/animation/transitions.js';
+import { setMotionPath, simplifyStroke, animsOf, offsetBefore, customPath } from '../../features/animation/transitions.js';
 import { stage, readOnly } from './canvas.js';
 import { factor } from './interact.js';
 import { alertDialog } from '../dialogs/dialog.js';
@@ -60,7 +60,7 @@ export function startPathDraw({ append = false, index = 0 } = {}) {
 
 // The points of one of the selected object's paths (its i-th animation), to drag.
 export function drawPathHandles(b, n = 0) {
-  const a = animsOf(b)[n], o = offsetBefore(b, n), cx = centre(b)[0] + o[0], cy = centre(b)[1] + o[1], custom = a.pathShape === 'custom' && a.points?.length > 1;
+  const a = animsOf(b)[n], o = offsetBefore(b, n), cx = centre(b)[0] + o[0], cy = centre(b)[1] + o[1], custom = customPath(a);
   const pts = custom ? a.points : [[0, 0], [a.dx || 0, a.dy || 0]];
   const add = (cls, [x, y], title, onDrag, onDbl) => {
     const h = document.createElement('div'); h.className = 'mp-h ' + cls; h.title = title;

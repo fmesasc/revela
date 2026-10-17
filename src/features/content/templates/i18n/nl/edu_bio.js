@@ -523,7 +523,6 @@ export default {
  "Respira hondo": "Adem diep in",
  "Inspira mientras el círculo crece; suelta el aire mientras se encoge.": "Adem in terwijl de cirkel groeit; adem uit terwijl hij krimpt.",
  "De la flor al fruto": "Van bloem tot vrucht",
- "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar; lo del polen es un «accidente» muy útil).": "De bij vliegt een route en landt op de eerste bloem. Vraag: waarom bezoeken bijen bloemen? (Ze zoeken nectar; het stuifmeel is een heel nuttig 'ongelukje'.)",
  "CIENCIAS NATURALES · 2.º DE PRIMARIA Y 1.º DE ESO": "NATUURWETENSCHAPPEN · GROEP 4 EN KLAS 1",
  "De la flor<br>al fruto": "Van bloem<br>tot vrucht",
  "Cómo una abeja, un poco de polen y unas semanas convierten una flor en una manzana": "Hoe een bij, wat stuifmeel en een paar weken van een bloem een appel maken",
@@ -613,7 +612,6 @@ export default {
  "Familias": "Families",
  "Cada punto es una familia: los padres y una de sus crías.": "Elk punt is een familie: de ouders en een van hun jongen.",
  "Padres de pico grueso tienen crías de pico grueso. Si no se heredara, la sequía no cambiaría nada en la generación siguiente.": "Ouders met een dikke snavel krijgen jongen met een dikke snavel. Was hij niet erfelijk, dan veranderde de droogte niets aan de volgende generatie.",
- "El ciclo aparece paso a paso. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "De cyclus verschijnt stap voor stap. Met deze vier voorwaarden verandert de populatie generatie na generatie, zonder dat iemand het plant.",
  "La selección natural, en cuatro pasos": "Natuurlijke selectie in vier stappen",
  "Variación\nHerencia\nLucha\nSelección": "Variatie\nErfelijkheid\nStrijd\nSelectie",
  "<b style=\"color:#f2cc8f\">Variación:</b> no hay dos pinzones iguales: unos nacen con el pico más grueso que otros.": "<b style=\"color:#f2cc8f\">Variatie:</b> geen twee vinken zijn gelijk: sommige hebben een dikkere snavel dan andere.",
@@ -640,5 +638,7 @@ export default {
  "La evolución no es un plan:<br>es un filtro.": "Evolutie is geen plan:<br>het is een filter.",
  "Cada generación pasa por él… y lo que pasa, se hereda.": "Elke generatie gaat erdoorheen… en wat erdoor komt, wordt geërfd.",
  "clorofila": "chlorofyl",
- "luz": "licht"
+ "luz": "licht",
+ "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar y polen para comer; llevar polen de una flor a otra es un «accidente» muy útil).": "De bij vliegt een route en landt op de eerste bloem. Vraag: waarom bezoeken bijen bloemen? (Ze zoeken nectar en stuifmeel als voedsel; stuifmeel van de ene bloem naar de andere brengen is een heel nuttig 'ongelukje'.)",
+ "El ciclo está a la vista desde el principio; cada clic explica uno de sus pasos. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "De cyclus is vanaf het begin zichtbaar; elke klik legt een van de stappen uit. Met deze vier voorwaarden verandert de populatie generatie na generatie, zonder dat iemand het plant."
 };

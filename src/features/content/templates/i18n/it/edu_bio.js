@@ -523,7 +523,6 @@ export default {
  "Respira hondo": "Respira a fondo",
  "Inspira mientras el círculo crece; suelta el aire mientras se encoge.": "Inspira mentre il cerchio cresce; espira mentre si restringe.",
  "De la flor al fruto": "Dal fiore al frutto",
- "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar; lo del polen es un «accidente» muy útil).": "L'ape vola lungo un percorso e si posa sul primo fiore. Domanda: perché le api visitano i fiori? (Cercano nettare; il polline è un «incidente» molto utile.)",
  "CIENCIAS NATURALES · 2.º DE PRIMARIA Y 1.º DE ESO": "SCIENZE · 2ª ELEMENTARE E 2ª MEDIA",
  "De la flor<br>al fruto": "Dal fiore<br>al frutto",
  "Cómo una abeja, un poco de polen y unas semanas convierten una flor en una manzana": "Come un'ape, un po' di polline e qualche settimana trasformano un fiore in una mela",
@@ -613,7 +612,6 @@ export default {
  "Familias": "Famiglie",
  "Cada punto es una familia: los padres y una de sus crías.": "Ogni punto è una famiglia: i genitori e uno dei loro piccoli.",
  "Padres de pico grueso tienen crías de pico grueso. Si no se heredara, la sequía no cambiaría nada en la generación siguiente.": "Genitori a becco grosso hanno piccoli a becco grosso. Se non si ereditasse, la siccità non cambierebbe nulla nella generazione successiva.",
- "El ciclo aparece paso a paso. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "Il ciclo compare passo passo. Con queste quattro condizioni, la popolazione cambia di generazione in generazione senza che nessuno lo pianifichi.",
  "La selección natural, en cuatro pasos": "La selezione naturale in quattro passi",
  "Variación\nHerencia\nLucha\nSelección": "Variazione\nEreditarietà\nLotta\nSelezione",
  "<b style=\"color:#f2cc8f\">Variación:</b> no hay dos pinzones iguales: unos nacen con el pico más grueso que otros.": "<b style=\"color:#f2cc8f\">Variazione:</b> non esistono due fringuelli uguali: alcuni nascono con il becco più grosso di altri.",
@@ -640,5 +638,7 @@ export default {
  "La evolución no es un plan:<br>es un filtro.": "L'evoluzione non è un piano:<br>è un filtro.",
  "Cada generación pasa por él… y lo que pasa, se hereda.": "Ogni generazione ci passa… e ciò che passa si eredita.",
  "clorofila": "clorofilla",
- "luz": "luce"
+ "luz": "luce",
+ "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar y polen para comer; llevar polen de una flor a otra es un «accidente» muy útil).": "L'ape vola lungo un percorso e si posa sul primo fiore. Domanda: perché le api visitano i fiori? (Cercano nettare e polline per nutrirsi; portare il polline da un fiore all'altro è un «incidente» molto utile.)",
+ "El ciclo está a la vista desde el principio; cada clic explica uno de sus pasos. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "Il ciclo è visibile fin dall'inizio; ogni clic ne spiega uno dei passi. Con queste quattro condizioni, la popolazione cambia di generazione in generazione senza che nessuno lo pianifichi."
 };

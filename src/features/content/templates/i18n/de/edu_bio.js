@@ -523,7 +523,6 @@ export default {
  "Respira hondo": "Atme tief durch",
  "Inspira mientras el círculo crece; suelta el aire mientras se encoge.": "Atme ein, während der Kreis wächst; atme aus, während er schrumpft.",
  "De la flor al fruto": "Von der Blüte zur Frucht",
- "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar; lo del polen es un «accidente» muy útil).": "Die Biene fliegt eine Route und landet auf der ersten Blüte. Frage: Warum besuchen Bienen Blüten? (Sie suchen Nektar; der Pollen ist ein sehr nützlicher „Unfall“.)",
  "CIENCIAS NATURALES · 2.º DE PRIMARIA Y 1.º DE ESO": "NATURWISSENSCHAFTEN · 2. UND 7. KLASSE",
  "De la flor<br>al fruto": "Von der Blüte<br>zur Frucht",
  "Cómo una abeja, un poco de polen y unas semanas convierten una flor en una manzana": "Wie eine Biene, etwas Pollen und ein paar Wochen aus einer Blüte einen Apfel machen",
@@ -613,7 +612,6 @@ export default {
  "Familias": "Familien",
  "Cada punto es una familia: los padres y una de sus crías.": "Jeder Punkt ist eine Familie: die Eltern und eines ihrer Jungen.",
  "Padres de pico grueso tienen crías de pico grueso. Si no se heredara, la sequía no cambiaría nada en la generación siguiente.": "Eltern mit dickem Schnabel haben Junge mit dickem Schnabel. Würde er nicht vererbt, änderte die Dürre nichts an der nächsten Generation.",
- "El ciclo aparece paso a paso. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "Der Kreislauf erscheint Schritt für Schritt. Mit diesen vier Bedingungen ändert sich die Population von Generation zu Generation, ohne dass es jemand plant.",
  "La selección natural, en cuatro pasos": "Natürliche Selektion in vier Schritten",
  "Variación\nHerencia\nLucha\nSelección": "Variation\nVererbung\nKampf\nSelektion",
  "<b style=\"color:#f2cc8f\">Variación:</b> no hay dos pinzones iguales: unos nacen con el pico más grueso que otros.": "<b style=\"color:#f2cc8f\">Variation:</b> Keine zwei Finken sind gleich: Manche haben einen dickeren Schnabel als andere.",
@@ -640,5 +638,7 @@ export default {
  "La evolución no es un plan:<br>es un filtro.": "Evolution ist kein Plan:<br>Sie ist ein Filter.",
  "Cada generación pasa por él… y lo que pasa, se hereda.": "Jede Generation geht hindurch … und was durchkommt, wird vererbt.",
  "clorofila": "Chlorophyll",
- "luz": "Licht"
+ "luz": "Licht",
+ "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar y polen para comer; llevar polen de una flor a otra es un «accidente» muy útil).": "Die Biene fliegt eine Route und landet auf der ersten Blüte. Frage: Warum besuchen Bienen Blüten? (Sie suchen Nektar und Pollen als Nahrung; Pollen von einer Blüte zur nächsten zu tragen, ist ein sehr nützlicher „Unfall“.)",
+ "El ciclo está a la vista desde el principio; cada clic explica uno de sus pasos. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "Der Kreislauf ist von Anfang an sichtbar; jeder Klick erklärt einen seiner Schritte. Mit diesen vier Bedingungen ändert sich die Population von Generation zu Generation, ohne dass es jemand plant."
 };

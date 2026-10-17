@@ -523,7 +523,6 @@ export default {
  "Respira hondo": "Respira fundo",
  "Inspira mientras el círculo crece; suelta el aire mientras se encoge.": "Inspira enquanto o círculo cresce; expira enquanto encolhe.",
  "De la flor al fruto": "Da flor ao fruto",
- "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar; lo del polen es un «accidente» muy útil).": "A abelha voa por um percurso e pousa na primeira flor. Pergunta: porque é que as abelhas visitam as flores? (Procuram néctar; o pólen é um «acidente» muito útil.)",
  "CIENCIAS NATURALES · 2.º DE PRIMARIA Y 1.º DE ESO": "CIÊNCIAS NATURAIS · 2.º E 7.º ANO",
  "De la flor<br>al fruto": "Da flor<br>ao fruto",
  "Cómo una abeja, un poco de polen y unas semanas convierten una flor en una manzana": "Como uma abelha, um pouco de pólen e umas semanas transformam uma flor numa maçã",
@@ -613,7 +612,6 @@ export default {
  "Familias": "Famílias",
  "Cada punto es una familia: los padres y una de sus crías.": "Cada ponto é uma família: os pais e uma das suas crias.",
  "Padres de pico grueso tienen crías de pico grueso. Si no se heredara, la sequía no cambiaría nada en la generación siguiente.": "Pais de bico grosso têm crias de bico grosso. Se não se herdasse, a seca não mudaria nada na geração seguinte.",
- "El ciclo aparece paso a paso. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "O ciclo aparece passo a passo. Com estas quatro condições, a população muda geração após geração sem que ninguém o planeie.",
  "La selección natural, en cuatro pasos": "A seleção natural em quatro passos",
  "Variación\nHerencia\nLucha\nSelección": "Variação\nHereditariedade\nLuta\nSeleção",
  "<b style=\"color:#f2cc8f\">Variación:</b> no hay dos pinzones iguales: unos nacen con el pico más grueso que otros.": "<b style=\"color:#f2cc8f\">Variação:</b> não há dois tentilhões iguais: uns nascem com o bico mais grosso do que outros.",
@@ -640,5 +638,7 @@ export default {
  "La evolución no es un plan:<br>es un filtro.": "A evolução não é um plano:<br>é um filtro.",
  "Cada generación pasa por él… y lo que pasa, se hereda.": "Cada geração passa por ele… e o que passa herda-se.",
  "clorofila": "clorofila",
- "luz": "luz"
+ "luz": "luz",
+ "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar y polen para comer; llevar polen de una flor a otra es un «accidente» muy útil).": "A abelha voa por um percurso e pousa na primeira flor. Pergunta: porque é que as abelhas visitam as flores? (Procuram néctar e pólen para se alimentarem; levar pólen de uma flor para outra é um «acidente» muito útil.)",
+ "El ciclo está a la vista desde el principio; cada clic explica uno de sus pasos. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "O ciclo está visível desde o início; cada clique explica um dos seus passos. Com estas quatro condições, a população muda geração após geração sem que ninguém o planeie."
 };

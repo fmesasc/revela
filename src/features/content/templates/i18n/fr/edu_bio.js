@@ -523,7 +523,6 @@ export default {
  "Respira hondo": "Respire profondément",
  "Inspira mientras el círculo crece; suelta el aire mientras se encoge.": "Inspire pendant que le cercle grandit ; expire pendant qu'il rétrécit.",
  "De la flor al fruto": "De la fleur au fruit",
- "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar; lo del polen es un «accidente» muy útil).": "L'abeille vole sur un trajet et se pose sur la première fleur. Question : pourquoi les abeilles visitent-elles les fleurs ? (Elles cherchent du nectar ; le pollen est un « accident » très utile.)",
  "CIENCIAS NATURALES · 2.º DE PRIMARIA Y 1.º DE ESO": "SCIENCES · CE1 ET 5e",
  "De la flor<br>al fruto": "De la fleur<br>au fruit",
  "Cómo una abeja, un poco de polen y unas semanas convierten una flor en una manzana": "Comment une abeille, un peu de pollen et quelques semaines changent une fleur en pomme",
@@ -613,7 +612,6 @@ export default {
  "Familias": "Familles",
  "Cada punto es una familia: los padres y una de sus crías.": "Chaque point est une famille : les parents et un de leurs petits.",
  "Padres de pico grueso tienen crías de pico grueso. Si no se heredara, la sequía no cambiaría nada en la generación siguiente.": "Des parents à bec épais ont des petits à bec épais. S'il ne s'héritait pas, la sécheresse ne changerait rien à la génération suivante.",
- "El ciclo aparece paso a paso. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "Le cycle apparaît étape par étape. Avec ces quatre conditions, la population change de génération en génération sans que personne ne le planifie.",
  "La selección natural, en cuatro pasos": "La sélection naturelle en quatre étapes",
  "Variación\nHerencia\nLucha\nSelección": "Variation\nHérédité\nLutte\nSélection",
  "<b style=\"color:#f2cc8f\">Variación:</b> no hay dos pinzones iguales: unos nacen con el pico más grueso que otros.": "<b style=\"color:#f2cc8f\">Variation :</b> il n'y a pas deux pinsons identiques : certains naissent avec un bec plus épais que d'autres.",
@@ -640,5 +638,7 @@ export default {
  "La evolución no es un plan:<br>es un filtro.": "L'évolution n'est pas un plan :<br>c'est un filtre.",
  "Cada generación pasa por él… y lo que pasa, se hereda.": "Chaque génération y passe… et ce qui passe s'hérite.",
  "clorofila": "chlorophylle",
- "luz": "lumière"
+ "luz": "lumière",
+ "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar y polen para comer; llevar polen de una flor a otra es un «accidente» muy útil).": "L'abeille vole sur un trajet et se pose sur la première fleur. Question : pourquoi les abeilles visitent-elles les fleurs ? (Elles cherchent du nectar et du pollen pour se nourrir ; transporter le pollen d'une fleur à l'autre est un « accident » très utile.)",
+ "El ciclo está a la vista desde el principio; cada clic explica uno de sus pasos. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "Le cycle est visible dès le début ; chaque clic explique l'une de ses étapes. Avec ces quatre conditions, la population change de génération en génération sans que personne ne le planifie."
 };

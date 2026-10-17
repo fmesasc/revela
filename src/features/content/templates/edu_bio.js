@@ -14,9 +14,11 @@ const img = (src, x, y, w, h, alt, props = {}) => ({ ...base(x, y, w, h), type: 
 // The same object on two slides (Transform): a fixed id.
 const keep = (b, id) => ({ ...b, id });
 // One animation: on a click, after the previous one, or with it.
-const on = (b, effect, props = {}) => withAnims(b, A(effect, props));
-const after = (b, effect, props = {}) => withAnims(b, A(effect, { start: 'afterPrev', ...props }));
-const along = (b, effect, props = {}) => withAnims(b, A(effect, { start: 'withPrev', ...props }));
+// (A 'path' with points becomes the kit's custom path: without pathShape 'custom' the object would not move.)
+const A1 = (effect, { points, ...props } = {}) => effect === 'path' && points ? path(points, props) : A(effect, points ? { points, ...props } : props);
+const on = (b, effect, props = {}) => withAnims(b, A1(effect, props));
+const after = (b, effect, props = {}) => withAnims(b, A1(effect, { start: 'afterPrev', ...props }));
+const along = (b, effect, props = {}) => withAnims(b, A1(effect, { start: 'withPrev', ...props }));
 // Straight strokes through points of the slide (a shape of our own, so «Dibujar» traces it); closed: back to the start.
 const lines = (pts, color, width = 4, closed = false, props = {}) => {
   const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]), x = Math.min(...xs), y = Math.min(...ys), w = Math.max(2, Math.max(...xs) - x), h = Math.max(2, Math.max(...ys) - y);
@@ -83,7 +85,8 @@ export default {
         on(arrowTo(830, 360, 930, 290, '#ffffff', 14), 'fade-left'),
         along(pill('<b>O₂</b> al aire', 940, 240, 270, '#ffffff'), 'fade-left'),
         along(icon('sparkles', 966, 266, 44, '#ffffff'), 'fade-left'),
-        ...[0, 1, 2].map(i => after(shape('ellipse', 800 + i * 20, 330 - i * 6, 18, 18, '#ffffff', { opacity: 70 }), 'path', { points: [[0, 0], [40, -60], [90, -110]], duration: 900 })),
+        ...[0, 1, 2].map(i => withAnims(shape('ellipse', 800 + i * 20, 330 - i * 6, 18, 18, '#ffffff', { opacity: 70 }),
+          A('fade-in', { start: i ? 'withPrev' : 'afterPrev', duration: 150, delay: i * 150 }), path([[40, -60], [90, -110]], { start: 'withPrev', duration: 900, delay: i * 150 }))),
         on(arrowTo(830, 470, 930, 520, SUN, 14), 'fade-left'),
         along(pill('<b>Glucosa</b>: alimento', 940, 470, 270, SUN), 'fade-left'),
         along(icon('flame', 966, 496, 44, SUN), 'fade-left')],
@@ -251,10 +254,10 @@ export default {
         img(STRANDS, HX - 150, HY, 300, HH, 'Doble hélice de ADN'), ...rungs],
         notes: 'Al llegar, la doble hélice se monta peldaño a peldaño: cada peldaño es una pareja de bases. El título es Text Art de neón.' },
       { title: 'Del cuerpo a la letra', layout: 'titleOnly', bg: BG, back: lab(), extra: [
-        dg('chevrons', 'Cuerpo\nCélula\nNúcleo\nCromosoma\nGen\nBase', 60, 180, 1160, 160, { oneByOne: true, colors: 'colorful', fontScale: 1.4 }),
+        dg('chevrons', 'Cuerpo\nCélula\nNúcleo\nCromosoma\nGen\nBase', 60, 180, 1160, 160, { oneByOne: true, colors: 'colorful', fontScale: 1.15 }),
         ...[['≈ 2 m', 'de ADN dentro de cada célula, plegado en un núcleo de 6 µm', CY], ['46', 'cromosomas en cada célula humana: 23 de la madre y 23 del padre', MG], ['3.200 M', 'de parejas de bases: la receta completa de una persona', '#9dff6a']]
-          .map(([n, t, c], i) => on(card(`<div style="font-family:${H};font-size:60px;font-weight:700;color:${c};line-height:1.1">${n}</div><div style="font-size:23px;color:${FG}">${t}</div>`,
-            60 + i * 395, 390, 370, 250, PANEL, { stroke: c, strokeWidth: 2, pad: [22, 24, 20, 24] }), 'fade-up'))],
+          .map(([n, t, c], i) => card(`<div style="font-family:${H};font-size:60px;font-weight:700;color:${c};line-height:1.1">${n}</div><div style="font-size:23px;color:${FG}">${t}</div>`,
+            60 + i * 395, 390, 370, 250, PANEL, { stroke: c, strokeWidth: 2, pad: [22, 24, 20, 24] }))],
         notes: 'El diagrama aparece paso a paso, de lo grande a lo pequeño. Si se estirara todo el ADN de un cuerpo humano, iría y volvería al Sol varias veces.' },
       { title: 'Cuatro letras, dos parejas', layout: 'titleOnly', bg: BG, back: lab(), extra: [
         ...[...'TACGGT'].flatMap((b, i) => { const y = 180 + i * 78;
@@ -417,7 +420,7 @@ export default {
         ...[['ra', 'Aurícula derecha', BL], ['rv', 'Ventrículo derecho', BL], ['la', 'Aurícula izquierda', RED], ['lv', 'Ventrículo izquierdo', RED]].flatMap(([k, n, c]) => { const [x, y] = ch[k];
           return [shape('rounded', x - 100, y - 70, 200, 140, c === BL ? '#dfe7fb' : '#fde0e4', { stroke: c, strokeWidth: 4, radius: 26 }), text(n, x - 95, y - 30, 190, 60, { fontSize: 22, color: INK, textAlign: 'center', fontWeight: 700, lineHeight: 1.15 })]; }),
         shape('rect', 538, 170, 4, 340, DIM), text('tu derecha está a la izquierda del dibujo', 330, 525, 420, 30, { fontSize: 17, color: DIM, textAlign: 'center' }),
-        on(shape('ellipse', 410, 150, 40, 40, '#5b2a86', { stroke: '#ffffff', strokeWidth: 3 }), 'path', { points: [[0, 0], [0, 80], [0, 250], [-150, 250], [-150, -90], [0, -90], [220, -90], [220, 80], [220, 250], [380, 250], [380, -60]], duration: 6500, sound: 'whoosh' }),
+        on(shape('ellipse', 410, 150, 40, 40, '#5b2a86', { stroke: '#ffffff', strokeWidth: 3 }), 'path', { points: [[0, 0], [0, 80], [0, 250], [-150, 250], [-150, -40], [0, -40], [220, -40], [220, 80], [220, 250], [360, 250], [360, 40]], duration: 6500, sound: 'whoosh' }),
         text('Pulsa: una gota de sangre hace el recorrido completo.', 820, 190, 400, 80, { fontSize: 24, color: DIM }),
         ...['Llega del cuerpo a la aurícula derecha', 'El ventrículo derecho la manda a los pulmones', 'Vuelve oxigenada a la aurícula izquierda', 'El ventrículo izquierdo la lanza por la aorta'].map((t, i) =>
           on(text(`<b style="color:${i < 2 ? BL : RED}">${i + 1}</b>  ${t}`, 820, 280 + i * 90, 400, 80, { fontSize: 23, color: INK }), 'fade-left'))],
@@ -499,9 +502,9 @@ export default {
               along(hand(r, x + 20, y + 100, 220, 80, 32, c), 'fade-down')]; })],
         notes: 'Fichas de museo, un clic cada una. Productores: fabrican su alimento con la luz. Consumidores: comen a otros seres vivos. Descomponedores: reciclan los restos y devuelven los minerales al suelo.' },
       { title: 'Una cadena trófica', layout: 'titleOnly', bg: BG, back: kraft(), extra: [
-        dg('chevrons', 'Bellota\nRatón de campo\nCulebra\nÁguila culebrera', 70, 210, 1140, 170, { oneByOne: true, colors: 'colorful', fontScale: 1.3 }),
+        dg('chevrons', 'Bellota\nRatón de campo\nCulebra\nÁguila culebrera', 70, 210, 1140, 170, { oneByOne: true, colors: 'colorful', fontScale: 1.05 }),
         hand('las flechas indican hacia dónde va la energía →', 90, 410, 900, 50, 36, TER),
-        on(card('Cada eslabón es un <b>nivel trófico</b>. Las cadenas reales rara vez tienen más de cuatro o cinco: la energía no da para más.', 90, 490, 760, 150, CARD, { color: INK, fontSize: 26, stroke: '#c9b88f', strokeWidth: 2 }), 'fade-up'),
+        card('Cada eslabón es un <b>nivel trófico</b>. Las cadenas reales rara vez tienen más de cuatro o cinco: la energía no da para más.', 90, 490, 760, 150, CARD, { color: INK, fontSize: 26, stroke: '#c9b88f', strokeWidth: 2 }),
         tape(760, 470, 120, 8)],
         notes: 'La cadena aparece eslabón a eslabón. El águila culebrera se alimenta casi solo de serpientes: un buen ejemplo de especialista.' },
       { title: 'La red trófica', layout: 'titleOnly', bg: BG, back: kraft(), extra: [
@@ -512,7 +515,7 @@ export default {
         on(card('Si un animal come de varias cadenas, las cadenas se cruzan y forman una <b>red</b>. Cuantas más conexiones, más estable es el ecosistema.', 920, 330, 300, 300, CARD, { color: INK, fontSize: 23, stroke: '#c9b88f', strokeWidth: 2 }), 'fade-left')],
         notes: 'Las flechas verdes salen de los productores; las terracota, de los consumidores. Preguntar: si desaparecen los conejos, ¿qué comerá el zorro? Tiene alternativas: por eso las redes aguantan mejor que las cadenas.' },
       { title: 'Solo pasa el 10 %', layout: 'titleOnly', bg: BG, back: kraft(), extra: [
-        dg('pyramid', 'Águila\nZorro\nConejo\nHierba', 70, 180, 560, 460, { colors: 'colorful', fontScale: 1.3 }),
+        dg('pyramid', 'Águila\nZorro\nConejo\nHierba', 70, 180, 560, 460, { colors: 'colorful', fontScale: 0.85 }),
         tableBlock({ x: 680, y: 190, w: 530, h: 300, fontSize: 24, header: true, headBg: GR, headFg: '#ffffff', banded: true, band: OCH, stroke: '#c9b88f', colW: [5, 3],
           rows: [['Nivel', 'Energía (kcal)'], ['Productores', '10.000'], ['Consumidores 1.º', '=B2*0,1'], ['Consumidores 2.º', '=B3*0,1'], ['Consumidores 3.º', '=B4*0,1']] }),
         on(hand('El resto se gasta en moverse, respirar y mantener el calor del cuerpo.', 680, 520, 530, 110, 34, TER), 'fade-up')],
@@ -600,10 +603,11 @@ export default {
         shape('rect', 638, 190, 4, 440, '#3a2d5c'),
         text('NOS AYUDAN', 70, 185, 540, 50, { fontFamily: H, fontSize: 30, fontWeight: 800, color: TE, letterSpacing: 3 }),
         text('NOS FASTIDIAN', 680, 185, 540, 50, { fontFamily: H, fontSize: 30, fontWeight: 800, color: PK, letterSpacing: 3 }),
-        ...[['Convierten la leche en yogur y queso', 'cake'], ['Hacen subir la masa del pan (levaduras)', 'pizza'], ['Ayudan a digerir en el intestino', 'smile'], ['Convierten los restos en abono', 'recycle']].flatMap(([t, ic], i) => [
-          on(icon(ic, 70, 260 + i * 95, 44, TE), 'fade-right'), along(text(t, 130, 258 + i * 95, 480, 60, { fontSize: 25, color: FG }), 'fade-right')]),
-        ...[['Caries en los dientes', 'frown'], ['Intoxicaciones por comida mal guardada', 'triangle-alert'], ['Infecciones como la otitis', 'thermometer'], ['Estropean los alimentos', 'ban']].flatMap(([t, ic], i) => [
-          on(icon(ic, 680, 260 + i * 95, 44, PK), 'fade-left'), along(text(t, 740, 258 + i * 95, 480, 60, { fontSize: 25, color: FG }), 'fade-left')])],
+        // One click on each side in turn: help, harm, help, harm…
+        ...[[['Convierten la leche en yogur y queso', 'cake'], ['Caries en los dientes', 'frown']], [['Hacen subir la masa del pan (levaduras)', 'pizza'], ['Intoxicaciones por comida mal guardada', 'triangle-alert']],
+          [['Ayudan a digerir en el intestino', 'smile'], ['Infecciones como la otitis', 'thermometer']], [['Convierten los restos en abono', 'recycle'], ['Estropean los alimentos', 'ban']]].flatMap(([[t, ic], [t2, ic2]], i) => [
+          on(icon(ic, 70, 260 + i * 95, 44, TE), 'fade-right'), along(text(t, 130, 258 + i * 95, 480, 60, { fontSize: 25, color: FG }), 'fade-right'),
+          on(icon(ic2, 680, 260 + i * 95, 44, PK), 'fade-left'), along(text(t2, 740, 258 + i * 95, 480, 60, { fontSize: 25, color: FG }), 'fade-left')])],
         notes: 'Alternar un clic a cada lado. La mayoría de los microbios son inofensivos o útiles; solo una pequeña parte causa enfermedades.' },
       { title: 'Experimento: la levadura infla un globo', layout: 'titleOnly', bg: BG, extra: [
         chartBlock({ x: 60, y: 170, w: 800, h: 480, chartType: 'line', color: TE, grid: true, xTitle: 'minutos', yTitle: 'contorno del globo (cm)', seriesName: 'Agua tibia (35 °C)', yMin: 0,
@@ -724,8 +728,8 @@ export default {
         hand('De la flor<br>al fruto', 84, 150, 660, 280, 92, INK, { lineHeight: 1.35 }),
         text('Cómo una abeja, un poco de polen y unas semanas convierten una flor en una manzana', 90, 440, 620, 100, { fontSize: 28, color: DIM }),
         ...[[880, 420, PK], [1020, 470, '#b48cff'], [1150, 410, YE]].flatMap(([x, y, c]) => [shape('rect', x + 27, y + 60, 8, 200, DLF), shape('star6', x, y, 62, 62, c), shape('ellipse', x + 21, y + 21, 20, 20, YE)]),
-        after(img(BEE, 760, 190, 130, 98, 'Abeja'), 'path', { points: [[0, 0], [90, -40], [180, 40], [260, 0], [300, 190]], duration: 3600, sound: 'whoosh' })],
-        notes: 'La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar; lo del polen es un «accidente» muy útil).' },
+        after(img(BEE, 760, 190, 130, 98, 'Abeja'), 'path', { points: [[0, 0], [120, -40], [260, 20], [220, 140], [86, 191]], duration: 3600, sound: 'whoosh' })],
+        notes: 'La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar y polen para comer; llevar polen de una flor a otra es un «accidente» muy útil).' },
       { title: 'Las partes de la flor', layout: 'titleOnly', bg: BG, back: meadow(), extra: [
         img(FLOWER, 340, 160, 500, 500, 'Flor cortada por la mitad'),
         ...[['Pétalo', 'atrae a los insectos', 60, 250, 460, 390, '#d63d86'], ['Antera', 'fabrica el polen', 60, 380, 495, 290, '#b08a3a'], ['Sépalo', 'protege el capullo', 60, 520, 525, 535, DLF],
@@ -832,7 +836,7 @@ export default {
         dg('cycle', 'Variación\nHerencia\nLucha\nSelección', 70, 175, 560, 480, { colors: 'colorful', fontScale: 1.5 }),
         ...[['Variación', 'no hay dos pinzones iguales: unos nacen con el pico más grueso que otros.'], ['Herencia', 'las crías se parecen a sus padres.'], ['Lucha', 'nacen más pinzones de los que la isla puede alimentar.'], ['Selección', 'sobreviven y crían más los mejor adaptados al ambiente de ese momento.']]
           .map(([n, d], i) => on(text(`<b style="color:${YE}">${n}:</b> ${d}`, 680, 190 + i * 115, 540, 105, { fontSize: 25, color: CR }), 'fade-left'))],
-        notes: 'El ciclo aparece paso a paso. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.' },
+        notes: 'El ciclo está a la vista desde el principio; cada clic explica uno de sus pasos. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.' },
       { title: 'Generación de 1976', layout: 'titleOnly', bg: BG, back: sea(), extra: [
         keep(shape('ellipse', 200, 220, 320, 320, '#5b4636'), head), keep(shape('ellipse', 400, 300, 40, 40, '#ffffff', { stroke: '#111111', strokeWidth: 10 }), eye),
         keep(shape('triangle', 480, 345, 120, 70, '#e7c48a', { rotation: 90, stroke: '#8a6d3b', strokeWidth: 3 }), beak),

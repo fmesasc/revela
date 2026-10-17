@@ -438,12 +438,21 @@ def site_checks(send, recv):
             check(ev(f"fetch('{page}').then(r=>r.ok)"), 'página ' + page)
         # The live presentation on the home page: loaded after the page, a real exported one.
         # A poll answered later, by its link: the poll from the cloud, the answer back to it.
-        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/app/vote.html?doc=abcdefghijklmnop1234&poll=pollx1')); time.sleep(1.5)
+        # (Waited for, not a fixed pause: with the computer busy — other Chrome windows — it sometimes took longer.)
+        def until(expr, secs=10):
+            t0 = time.time()
+            while time.time() - t0 < secs:
+                if ev(expr): return True
+                time.sleep(0.2)
+            return False
+        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/app/vote.html?doc=abcdefghijklmnop1234&poll=pollx1')); until("document.getElementById('q')&&document.getElementById('q').textContent.length>0&&!document.getElementById('poll').hidden")
         check(ev("document.getElementById('q').textContent") == '¿Cuántos kilos?' and ev("!document.getElementById('poll').hidden"), 'responder más tarde: la votación por su enlace')
-        ev("(()=>{const n=document.querySelector('#answers input[type=number]');n.value='7';n.dispatchEvent(new Event('input'));document.getElementById('send').click();return 1})()"); time.sleep(0.8)
+        ev("(()=>{const n=document.querySelector('#answers input[type=number]');n.value='7';n.dispatchEvent(new Event('input'));document.getElementById('send').click();return 1})()"); until("!document.getElementById('done').hidden")
+        t0 = time.time()
+        while not seen.get('later') and time.time() - t0 < 5: time.sleep(0.2)
         later = seen.get('later') or [{}]
         check(later[-1].get('answer') == 7 and len(str(later[-1].get('voter', ''))) >= 8 and ev("!document.getElementById('done').hidden"), 'responder más tarde: se envía y se confirma: ' + str(later))
-        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/app/vote.html?doc=abcdefghijklmnop1234&poll=otra1')); time.sleep(1.2)
+        recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/app/vote.html?doc=abcdefghijklmnop1234&poll=otra1')); until("document.body.innerText.indexOf('ya no est')>=0")
         check('ya no está abierta' in (ev("document.body.innerText") or ''), 'responder más tarde: una cerrada lo dice')
         # A tracked link: the email first (with whom it goes to), then the presentation, and what's looked at counted with the link.
         recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/app/view.html?doc=abcdefghijklmnop1234&r=seguimiento1234')); time.sleep(1.5)

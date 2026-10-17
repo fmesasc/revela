@@ -523,7 +523,6 @@ export default {
  "Respira hondo": "Respira fondo",
  "Inspira mientras el círculo crece; suelta el aire mientras se encoge.": "Inspira mentre el cercle creix; deixa anar l'aire mentre s'encongeix.",
  "De la flor al fruto": "De la flor al fruit",
- "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar; lo del polen es un «accidente» muy útil).": "L'abella vola per un recorregut i es posa a la primera flor. Pregunta: per què les abelles visiten les flors? (Busquen nèctar; el pol·len és un «accident» molt útil.)",
  "CIENCIAS NATURALES · 2.º DE PRIMARIA Y 1.º DE ESO": "CIÈNCIES NATURALS · 2n DE PRIMÀRIA I 1r D'ESO",
  "De la flor<br>al fruto": "De la flor<br>al fruit",
  "Cómo una abeja, un poco de polen y unas semanas convierten una flor en una manzana": "Com una abella, una mica de pol·len i unes setmanes converteixen una flor en una poma",
@@ -613,7 +612,6 @@ export default {
  "Familias": "Famílies",
  "Cada punto es una familia: los padres y una de sus crías.": "Cada punt és una família: els pares i una de les seves cries.",
  "Padres de pico grueso tienen crías de pico grueso. Si no se heredara, la sequía no cambiaría nada en la generación siguiente.": "Pares de bec gruixut tenen cries de bec gruixut. Si no s'heretés, la sequera no canviaria res a la generació següent.",
- "El ciclo aparece paso a paso. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "El cicle apareix pas a pas. Amb aquestes quatre condicions, la població canvia generació rere generació sense que ningú ho planegi.",
  "La selección natural, en cuatro pasos": "La selecció natural, en quatre passos",
  "Variación\nHerencia\nLucha\nSelección": "Variació\nHerència\nLluita\nSelecció",
  "<b style=\"color:#f2cc8f\">Variación:</b> no hay dos pinzones iguales: unos nacen con el pico más grueso que otros.": "<b style=\"color:#f2cc8f\">Variació:</b> no hi ha dos pinsans iguals: uns neixen amb el bec més gruixut que d'altres.",
@@ -640,5 +638,7 @@ export default {
  "La evolución no es un plan:<br>es un filtro.": "L'evolució no és un pla:<br>és un filtre.",
  "Cada generación pasa por él… y lo que pasa, se hereda.": "Cada generació hi passa… i el que passa, s'hereta.",
  "clorofila": "clorofil·la",
- "luz": "llum"
+ "luz": "llum",
+ "La abeja vuela por un recorrido y se posa en la primera flor. Pregunta: ¿por qué visitan las flores las abejas? (Buscan néctar y polen para comer; llevar polen de una flor a otra es un «accidente» muy útil).": "L'abella vola per un recorregut i es posa a la primera flor. Pregunta: per què les abelles visiten les flors? (Busquen nèctar i pol·len per menjar; portar pol·len d'una flor a una altra és un «accident» molt útil.)",
+ "El ciclo está a la vista desde el principio; cada clic explica uno de sus pasos. Con estas cuatro condiciones, la población cambia generación tras generación sin que nadie lo planee.": "El cicle és visible des del principi; cada clic n'explica un dels passos. Amb aquestes quatre condicions, la població canvia generació rere generació sense que ningú ho planegi."
 };
