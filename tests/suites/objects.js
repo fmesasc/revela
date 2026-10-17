@@ -2874,6 +2874,15 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('.popover [data-diagram-pick="venn"]').click(); await sleep(20); eq(last().layout, 'venn', 'se inserta desde la galería');
   });
 
+  await test('diagramas: letras legibles sobre cada color (oscuras sobre un cian claro); en jerarquía, con letra grande, no se montan', async () => {
+    const W = frame.contentWindow, DG = await W.eval("import('/src/render/diagrams.js')");
+    const ink = DG.diagramLayout({ layout: 'process', text: 'a\nb', w: 900, h: 400 }, { accents: ['#3f6497', '#3bb3c3'] }).filter(p => p.type === 'text').map(p => p.color);
+    eq(ink.join(), '#ffffff,#1e2a3a', 'blanco sobre azul, oscuro sobre cian');
+    const t = DG.diagramLayout({ layout: 'hierarchy', fontScale: 1.5, text: 'Dirección general\n  Proyectos\n    Diseño de producto\n    Desarrollo de software\n  Ventas\n    Ventas internacionales\n    Soporte al cliente', w: 900, h: 460 }, {}).filter(p => p.type === 'text');
+    const over = t.some((p, i) => t.some((q, j) => j > i && p.x < q.x + q.w - 0.5 && q.x < p.x + p.w - 0.5 && p.y < q.y + q.h - 0.5 && q.y < p.y + p.h - 0.5));
+    assert(!over, 'los textos de cajas vecinas no se pisan');
+  });
+
   await test('diagramas con imágenes: un logo o una foto con su texto, encajada, en círculo o sola; soltada en su caja; en PowerPoint', async () => {
     reset(); const W = frame.contentWindow, DG = await W.eval("import('/src/render/diagrams.js')");
     const png = (() => { const c = D.createElement('canvas'); c.width = 80; c.height = 40; const x = c.getContext('2d'); x.fillStyle = '#c33'; x.fillRect(0, 0, 80, 40); return c.toDataURL('image/png'); })();

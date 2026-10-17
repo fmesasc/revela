@@ -54,7 +54,9 @@ export function model3dRuntime() {
   function rest(mv) { var idle = mv.hasAttribute('autoplay') ? (mv.getAttribute('animation-name') || '*') : null; mv.__step = false; if (idle) playClip(mv, idle); else mv.pause(); }
   // The camera's distance: further away when the view has room around the model (data-bleed).
   function R(mv, pct) { var k = parseFloat(mv.getAttribute('data-bleed')) || 1; return pct ? Math.round(pct * k) + '%' : (k === 1 ? 'auto' : Math.round(105 * k) + '%'); }
-  function turn(mv, yaw) { var o = (mv.getAttribute('camera-orbit') || '0deg 75deg auto').split(' '); mv.cameraOrbit = (parseFloat(o[0]) - yaw).toFixed(1) + 'deg ' + (o[1] || '75deg') + ' ' + R(mv); }
+  // Facing its way: the camera where the model's front shows that way — whatever the view it was given (from the side,
+  // its way was added to that view, and walking right it looked at us) —; null: back to its own view.
+  function turn(mv, yaw) { var o = (mv.getAttribute('camera-orbit') || '0deg 75deg auto').split(' '); mv.cameraOrbit = (yaw == null ? parseFloat(o[0]) || 0 : -yaw).toFixed(1) + 'deg ' + (o[1] || '75deg') + ' ' + R(mv); }
   function offset(el) { var v = getComputedStyle(el).translate; if (!v || v === 'none') return [0, 0]; var p = v.split(' '); return [parseFloat(p[0]) || 0, parseFloat(p[1]) || 0]; }
   function move(mv, dur, el) {
     var clip = mv.getAttribute('data-move-clip'); if (!clip) return;
@@ -74,7 +76,7 @@ export function model3dRuntime() {
   }
   function arrive(mv) {
     walks.delete(mv);
-    if (mv.hasAttribute('data-look')) turn(mv, 0);
+    if (mv.hasAttribute('data-look')) turn(mv, null);
     if (mv.__step) return;                                // (a step "after the previous" already plays its own: a wave on arrival)
     var end = mv.getAttribute('data-end-clip');
     if (!end) { rest(mv); return; }

@@ -61,12 +61,14 @@ export function readableOn(fg, back) {
   const bc = backColour(back); if (!bc || ratio(fg, bc) >= 3) return fg;
   return lumOf(bc) > 0.18 ? '#1e2a3a' : '#ffffff';
 }
+// Words on a colour: white, unless it hardly reads there (under 2.5 : 1 — light cyan, light green) or the colour is light.
+const inkOn = f => (light(f) || ratio(f, '#ffffff') < 2.5 ? '#1e2a3a' : '#ffffff');
 function paint(scheme, accents, fg, i, n) {
   const a = accents.length ? accents : ['#3f6497'], base = a[0];
-  if (scheme === 'accent') { const f = mix(base, '#000000', 0.25 * (n > 1 ? i / (n - 1) : 0)); return { fill: f, stroke: 'none', text: light(f) ? '#1e2a3a' : '#ffffff' }; }
+  if (scheme === 'accent') { const f = mix(base, '#000000', 0.25 * (n > 1 ? i / (n - 1) : 0)); return { fill: f, stroke: 'none', text: inkOn(f) }; }
   if (scheme === 'light') { const c = a[i % a.length]; return { fill: mix(c, '#ffffff', 0.8), stroke: c, text: '#1e2a3a' }; }
   if (scheme === 'outline') { const c = a[i % a.length]; return { fill: 'none', stroke: c, text: fg }; }
-  const f = a[i % a.length]; return { fill: f, stroke: 'none', text: light(f) ? '#1e2a3a' : '#ffffff' };
+  const f = a[i % a.length]; return { fill: f, stroke: 'none', text: inkOn(f) };
 }
 // Letters that fit: by the box and its longest word.
 // Title and explanation together (the explanation 0.72 as big): the largest size where both fit.
