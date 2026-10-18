@@ -95,3 +95,14 @@ export async function collectGarbage(decks, used = new Set()) {
   if (gone.length) { await del(gone); gone.forEach(id => { stored?.delete(id); }); }
   return gone.length;
 }
+
+// How much the stored files take: their number and bytes (File ▸ Espacio — features/document/storage.js).
+export async function mediaUsage() {
+  const d = await db(); let bytes = 0, count = 0;
+  await new Promise((res, rej) => {
+    const r = d.transaction(STORE, 'readonly').objectStore(STORE).openCursor();
+    r.onsuccess = () => { const c = r.result; if (!c) return res(); count++; bytes += c.value?.size || 0; c.continue(); };
+    r.onerror = () => rej(r.error);
+  });
+  return { bytes, count };
+}

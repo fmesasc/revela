@@ -31,7 +31,7 @@ const SEP = '-';
 // these (DESK) —, a submenu [label, [items]], or SEP. Labels in Spanish: translated with t() when built.
 export const MENU = [
   ['Archivo', [['Nuevo', 'new'], ['Abrir…', 'open'], ['Mis presentaciones en la nube', 'cloud-docs'], SEP,
-    ['Guardar', 'save'], ['Descargar el proyecto (.revela.json)', 'download-project'], ['Historial de versiones', 'versions'], SEP,
+    ['Guardar', 'save'], ['Descargar el proyecto (.revela.json)', 'download-project'], ['Historial de versiones', 'versions'], ['Espacio ocupado', 'storage'], SEP,
     ['Importar', [['PowerPoint u OpenDocument…', 'import-pptx'], ['Reutilizar diapositivas…', 'reuse-slides'], ['Markdown…', 'import-md'], ['Importar preguntas', 'import-questions']]],
     ['Exportar', [['PDF', 'export-pdf'], ['PowerPoint', 'export-pptx'], ['ODP', 'export-odp'], ['HTML', 'export'], ['Insertar en Moodle o en una web', 'export-embed'], ['Imágenes', 'export-png'], ['Vídeo', 'export-video'],
       ['SCORM', 'export-scorm'], SEP, ['Exportar preguntas', 'export-questions'], ['Fichas y práctica', 'export-study']]],

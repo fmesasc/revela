@@ -52,6 +52,7 @@ import { openSpellPanel } from '../panels/spelling.js';
 import { openSpellLangs } from '../shell/spellcheck.js';
 import { openPlugins, openMacros } from '../dialogs/plugins.js';
 import { openVersions } from '../dialogs/versions.js';
+import { openStorage } from '../dialogs/storage.js';
 import { openClassResults, shareToClassroom } from '../dialogs/classroom.js';
 import { openCloudDocs, openCloudShare } from '../dialogs/cloud.js';
 import { toggleCall } from '../panels/call.js';
@@ -127,6 +128,7 @@ export const ACTIONS = {
   'gallery': () => openGallery(),
   'home': () => openHome(),
   'versions': () => openVersions(),
+  'storage': () => openStorage(),
   'review-panel': () => toggleReview(),
   'cloud-docs': () => openCloudDocs(),
   'cloud-share': () => openCloudShare(),

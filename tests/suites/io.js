@@ -326,6 +326,37 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.store.commit(() => {});                                  // vuelve a guardar el estado actual
   });
 
+  await test('espacio en el navegador: cuánto ocupa cada cosa, liberar versiones y cachés, aviso al llenarse, guardar de forma permanente', async () => {
+    reset(); const W = frame.contentWindow, V = R.versions, ST = await W.eval("import('/src/features/document/storage.js')");
+    for (const x of await V.listVersions()) await V.deleteVersion(x.id);
+    // Six automatic versions, one named, one copy of the presentation before another was opened.
+    for (let k = 0; k < 6; k++) { slide().blocks[0].html = 'Auto ' + k; R.store.commit(() => {}); await V.saveVersion('', true); }
+    await V.saveVersion('Mía', false); await V.saveVersion('', true, 'before');
+    const rep = await ST.storageReport();
+    assert(rep.versions.count === 8 && rep.versions.autos >= 3 && rep.versions.named === 2 && rep.deck > 0, 'el desglose: ' + JSON.stringify(rep.versions));
+    assert(rep.media && typeof rep.media.bytes === 'number', 'los archivos grandes, medidos');
+    const gone = await ST.freeVersions(3), left = await V.listVersions();
+    eq(left.filter(v => v.auto && v.kind !== 'before').length, 3, 'quedan las 3 automáticas más recientes (borradas ' + gone + ')');
+    assert(left.some(v => v.name === 'Mía') && left.some(v => v.kind === 'before'), 'ni la que tiene nombre ni la copia de seguridad');
+    for (const x of left) await V.deleteVersion(x.id);
+    // Caches: emptied.
+    if (W.caches) { const c = await W.caches.open('revela-prueba'); await c.put('/x', new W.Response('hola')); await ST.clearCaches(); assert(!(await W.caches.keys()).includes('revela-prueba'), 'cachés vacías'); }
+    // Past four fifths: one note; and asking the browser to keep the data.
+    const st = W.navigator.storage, est = st.estimate, per = st.persist, was = st.persisted;
+    try {
+      st.estimate = async () => ({ usage: 85, quota: 100 }); st.persist = async () => true; st.persisted = async () => false;
+      ST.resetWarning(); let notes = 0; const iv = ST.watchStorage(() => notes++, { every: 30, first: 10 }); await sleep(150); W.clearInterval(iv);
+      eq(notes, 1, 'un aviso al pasar del 80 %, una sola vez');
+      eq(await ST.askPersist(), true, 'se pide guardar de forma permanente');
+      // The panel, from Archivo.
+      D.querySelector('[data-action="storage"]').click(); await sleep(300);
+      const box = D.getElementById('storage-modal'); assert(box, 'el recuadro');
+      assert(/85 %/.test(box.textContent) && box.querySelector('[role="meter"][aria-valuenow="85"]'), 'cuánto está lleno: ' + box.textContent.slice(0, 120));
+      assert(box.querySelector('.st-persist') && box.querySelector('.st-cache'), 'botones para liberar y conservar');
+      box.querySelector('.modal-close').click();
+    } finally { st.estimate = est; st.persist = per; st.persisted = was; ST.resetWarning(); }
+  });
+
   await test('fotos y vídeos guardados aparte en el navegador: una vez cada uno, en la presentación y en las versiones', async () => {
     reset(); const W = frame.contentWindow, MS = await W.eval("import('/src/core/mediastore.js')"), I = await W.eval("import('/src/core/idb.js')"), M = R.model;
     // A real picture (bytes that are an image), the same one in two places, and a small one that stays inside.
