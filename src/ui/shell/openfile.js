@@ -19,6 +19,7 @@ import * as slides from '../../features/document/slides.js';
 import * as protect from '../../features/collab/protect.js';
 import { stlToGLB } from '../../features/content/stl.js';
 import { importPPTX } from '../../io/formats/pptx-import.js';
+import { isPackage, readPackage } from '../../io/formats/package.js';
 import { importODP } from '../../io/formats/odp.js';
 import { markdownToSlides } from '../../io/formats/markdown.js';
 import { buildThmx } from '../../io/formats/ooxml-theme.js';
@@ -52,6 +53,12 @@ export async function openProject(txt) {
   }
   if (!obj || !Array.isArray(obj.slides)) { alertDialog(t('Proyecto no válido.')); return false; }
   replaceDeck(obj); return true;
+}
+// A Revela file: a package (.revela: its files inside, as they are — io/formats/package.js) or a .revela.json.
+export async function openProjectFile(f) {
+  if (!(await isPackage(f))) return openProject(await whileOpening(f.text(), f.name));
+  try { replaceDeck(await whileOpening(say => readPackage(f, { onProgress: (a, b) => say?.(b ? Math.round(a * 100 / b) + ' %' : '') }), f.name)); return true; }
+  catch (e) { reportError(e, 'handled'); alertDialog(t('No se pudo abrir el paquete: ') + (e?.message || e)); return false; }
 }
 // Keynote's own format (.key) is Apple's, undocumented (compressed protobuf):
 // it can't be read here. Keynote itself exports it to PowerPoint.
@@ -121,7 +128,7 @@ export function insertMarkdown(md) {
 function kindOf(f) {
   const n = f.name.toLowerCase(), ty = f.type;
   if (/\.(pptx|pptm|potx|odp|otp|key|thmx)$/.test(n)) return 'presentation';
-  if (/\.json$/.test(n)) return 'project';
+  if (/\.(json|revela)$/.test(n)) return 'project';
   if (/\.(md|markdown)$/.test(n)) return 'markdown';
   if (/\.(glb|gltf)$/.test(n)) return 'model';
   if (/\.stl$/.test(n)) return 'stl';
@@ -199,7 +206,7 @@ export async function dropFiles(files, at = null) {
     if (isKeynote(doc)) { keynoteHelp(); return 0; }
     if (isThemeFile(doc)) return (await useThemeOf(doc)) ? 1 : 0;   // (a theme changes the open one: nothing to lose)
     if (!(await mayReplace())) return 0;
-    return (kindOf(doc) === 'project' ? await openProject(await whileOpening(doc.text(), doc.name)) : await openPresentation(doc)) ? 1 : 0;
+    return (kindOf(doc) === 'project' ? await openProjectFile(doc) : await openPresentation(doc)) ? 1 : 0;
   }
   let n = 0;
   for (const f of list.filter(x => kindOf(x) === 'markdown')) if (insertMarkdown(await f.text())) n++;
@@ -220,7 +227,7 @@ export async function openPdfDeck(file) {
 
 // File ▸ Open, for anything that is a presentation: Revela's own, PowerPoint, LibreOffice, a PDF (asks before
 // replacing the open one, as dropping it does).
-export const OPEN_ACCEPT = '.pptx,.pptm,.potx,.odp,.otp,.key,.json,.pdf,application/json,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.oasis.opendocument.presentation';
+export const OPEN_ACCEPT = '.pptx,.pptm,.potx,.odp,.otp,.key,.json,.revela,.pdf,application/json,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.oasis.opendocument.presentation';
 export function openAnyPresentation() { readFile(OPEN_ACCEPT, f => (kindOf(f) === 'pdf' ? openPdfDeck(f) : dropFiles([f])), 'file'); }
 
 // Files dragged from the computer onto the editor.

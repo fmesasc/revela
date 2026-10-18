@@ -106,3 +106,19 @@ export async function mediaUsage() {
   });
   return { bytes, count };
 }
+
+// A stored file, as a Blob (kept on disk by the browser): a package's files (io/formats/package.js) are put together
+// from these, never read whole.
+export const mediaBlob = id => get(id);
+// A file stored under its id (a package being opened: its id checked against its bytes first — package.js).
+export async function storeMedia(id, blob) {
+  stored ||= new Set(await keys().catch(() => []));
+  if (stored.has(id)) return;
+  await put(id, blob); stored.add(id); recent.set(id, Date.now());
+}
+// A file's id, as dehydrate gives it: the first 16 bytes of its SHA-256, in hex.
+export async function mediaId(bytes) {
+  const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  return [...hash.slice(0, 16)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+export const MEDIA_REF = REF;

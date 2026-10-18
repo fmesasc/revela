@@ -7,6 +7,8 @@
 // - Opening: a presentation opened with Revela («Open with», a double click on a .pptx or .odp, or dropped on
 //   its icon) is given to the page by opened_files / read_opened. On macOS it arrives as an event
 //   (RunEvent::Opened); elsewhere as the program's arguments.
+// - Big files (a package of gigabytes, .revela): written a piece at a time (save_begin / save_chunk / save_end)
+//   and read a piece at a time (opened_size / read_range / release_opened) — never whole in memory, nor twice.
 // - Choosing files: pick_files shows the system's «Open» dialog (the web view's own, on Linux, filters only by
 //   MIME type and hid PowerPoint files). Only what is opened with Revela or chosen there can be read
 //   (read_opened), once: nothing else of the disk.
@@ -18,6 +20,8 @@
 // The menu bar is built by the page too (its labels are translated there), with Tauri's menu API.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::collections::HashMap;
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -27,7 +31,7 @@ use tauri_plugin_updater::UpdaterExt;
 
 const RELEASES: &str = "https://github.com/fmesasc/revela/releases/latest";
 // What Revela opens (the rest of the arguments are ignored): presentations, its projects, PDFs («Open with»).
-const OPENS: [&str; 9] = ["pptx", "pptm", "potx", "ppsx", "odp", "otp", "key", "json", "pdf"];
+const OPENS: [&str; 10] = ["pptx", "pptm", "potx", "ppsx", "odp", "otp", "key", "json", "revela", "pdf"];
 
 // The files given to Revela to open, waiting for the page (pending), and those the page may read: given to open,
 // or chosen in the «Open» dialog (readable; each read once).
@@ -61,12 +65,8 @@ fn unescape(s: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-// The bytes of a download, saved where the person chooses. → the path, or None if cancelled.
-#[tauri::command]
-async fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<Option<String>, String> {
-    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else { return Err("expected bytes".into()) };
-    let name = request.headers().get("x-name").and_then(|v| v.to_str().ok()).map(unescape).unwrap_or_default();
-    // (Only a file name: no folders from the page.)
+// The system's «Save as» for a suggested name (only a file name: no folders from the page). → the path, or None.
+fn ask_where(app: &AppHandle, name: &str) -> Result<Option<PathBuf>, String> {
     let name = name.rsplit(['/', '\\']).next().unwrap_or("").trim().to_string();
     let name = if name.is_empty() { "Revela".to_string() } else { name };
     let mut dialog = app.dialog().file().set_file_name(&name);
@@ -74,8 +74,60 @@ async fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<O
         dialog = dialog.add_filter(ext.to_uppercase(), &[ext.as_str()]);
     }
     let Some(path) = dialog.blocking_save_file() else { return Ok(None) };
-    let path = path.into_path().map_err(|e| e.to_string())?;
+    path.into_path().map(Some).map_err(|e| e.to_string())
+}
+
+// The bytes of a download, saved where the person chooses. → the path, or None if cancelled.
+#[tauri::command]
+async fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<Option<String>, String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else { return Err("expected bytes".into()) };
+    let name = request.headers().get("x-name").and_then(|v| v.to_str().ok()).map(unescape).unwrap_or_default();
+    let Some(path) = ask_where(&app, &name)? else { return Ok(None) };
     std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+    Ok(Some(path.to_string_lossy().into_owned()))
+}
+
+// A big download written a piece at a time: where (save_begin → a number, or None if cancelled), its pieces in order
+// (save_chunk, the number in the «x-token» header), and the end (save_end: kept → the path; not kept — it failed
+// half way — the half-written file removed).
+#[derive(Default)]
+struct Saves {
+    open: Mutex<HashMap<u64, (std::fs::File, PathBuf)>>,
+    next: Mutex<u64>,
+}
+
+#[tauri::command]
+async fn save_begin(app: AppHandle, name: String, saves: State<'_, Saves>) -> Result<Option<u64>, String> {
+    let Some(path) = ask_where(&app, &unescape(&name))? else { return Ok(None) };
+    let file = std::fs::File::create(&path).map_err(|e| e.to_string())?;
+    let id = {
+        let mut n = saves.next.lock().unwrap();
+        *n += 1;
+        *n
+    };
+    saves.open.lock().unwrap().insert(id, (file, path));
+    Ok(Some(id))
+}
+
+#[tauri::command]
+fn save_chunk(request: tauri::ipc::Request<'_>, saves: State<'_, Saves>) -> Result<(), String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else { return Err("expected bytes".into()) };
+    let id: u64 = request.headers().get("x-token").and_then(|v| v.to_str().ok()).and_then(|v| v.parse().ok()).ok_or("no token")?;
+    let mut open = saves.open.lock().unwrap();
+    let (file, _) = open.get_mut(&id).ok_or("not saving")?;
+    file.write_all(bytes).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_end(token: u64, keep: bool, saves: State<'_, Saves>) -> Result<Option<String>, String> {
+    let Some((mut file, path)) = saves.open.lock().unwrap().remove(&token) else { return Err("not saving".into()) };
+    if !keep {
+        drop(file);
+        let _ = std::fs::remove_file(&path);
+        return Ok(None);
+    }
+    file.flush().map_err(|e| e.to_string())?;
+    let _ = file.sync_all();
     Ok(Some(path.to_string_lossy().into_owned()))
 }
 
@@ -114,6 +166,32 @@ fn read_opened(path: String, files: State<'_, Files>) -> Result<tauri::ipc::Resp
     let Some(at) = list.iter().position(|p| p.to_string_lossy() == path) else { return Err("not opened".into()) };
     let p = list.remove(at);
     std::fs::read(&p).map(tauri::ipc::Response::new).map_err(|e| e.to_string())
+}
+
+// A big opened file, read a piece at a time: its size, a piece of it (up to 64 MB), and, once read, no longer readable.
+fn readable_path(files: &State<'_, Files>, path: &str) -> Result<PathBuf, String> {
+    files.readable.lock().unwrap().iter().find(|p| p.to_string_lossy() == path).cloned().ok_or_else(|| "not opened".to_string())
+}
+
+#[tauri::command]
+fn opened_size(path: String, files: State<'_, Files>) -> Result<u64, String> {
+    let p = readable_path(&files, &path)?;
+    std::fs::metadata(&p).map(|m| m.len()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn read_range(path: String, start: u64, len: u64, files: State<'_, Files>) -> Result<tauri::ipc::Response, String> {
+    let p = readable_path(&files, &path)?;
+    let mut f = std::fs::File::open(&p).map_err(|e| e.to_string())?;
+    f.seek(SeekFrom::Start(start)).map_err(|e| e.to_string())?;
+    let mut buf = Vec::with_capacity(len.min(64 << 20) as usize);
+    f.take(len.min(64 << 20)).read_to_end(&mut buf).map_err(|e| e.to_string())?;
+    Ok(tauri::ipc::Response::new(buf))
+}
+
+#[tauri::command]
+fn release_opened(path: String, files: State<'_, Files>) {
+    files.readable.lock().unwrap().retain(|p| p.to_string_lossy() != path);
 }
 
 // The menu bar shown or hidden (Windows and Linux: hidden until Alt, as in Firefox or Edge; desktop.js decides).
@@ -162,7 +240,8 @@ fn main() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
         .manage(Files::default())
-        .invoke_handler(tauri::generate_handler![save_file, opened_files, pick_files, read_opened, menu_bar, update_available, install_update])
+        .manage(Saves::default())
+        .invoke_handler(tauri::generate_handler![save_file, save_begin, save_chunk, save_end, opened_files, pick_files, read_opened, opened_size, read_range, release_opened, menu_bar, update_available, install_update])
         .setup(|app| {
             // Windows and Linux: what to open comes as arguments («Open with», a double click).
             let given: Vec<PathBuf> = std::env::args_os().skip(1).map(PathBuf::from).filter(opens).collect();

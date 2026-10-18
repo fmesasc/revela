@@ -92,6 +92,15 @@
       },
       {
         "ext": [
+          "revela"
+        ],
+        "name": "Revela",
+        "description": "Presentación de Revela",
+        "role": "Editor",
+        "mimeType": "application/vnd.revela+zip"
+      },
+      {
+        "ext": [
           "otp"
         ],
         "name": "OpenDocument Presentation Template",

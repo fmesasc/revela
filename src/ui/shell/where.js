@@ -5,7 +5,7 @@ import { t } from '../../i18n/index.js';
 import { popupMenu } from './menu.js';
 import { toast } from './toast.js';
 import { hasAccounts } from '../../io/cloud/account.js';
-import { saveProject } from '../../io/formats/project.js';
+import { downloadProject } from './downloadproject.js';
 import * as gd from '../../io/cloud/gdrive.js';
 import * as cd from '../../io/cloud/clouddocs.js';
 import { onedriveReady } from '../../io/cloud/onedrive.js';
@@ -34,6 +34,6 @@ export function openSaveWhere(anchor) {
       if (k === 'drive') (await import('../dialogs/gdrive.js')).driveSaveAsUI();
       else if (k === 'cloud') (await import('../dialogs/cloud.js')).openCloudShare();
       else if (k === 'onedrive') (await import('../dialogs/onedrive.js')).openOneDrive({ mode: 'save' });
-      else { saveProject(); toast(t('Proyecto descargado (.revela.json). Para seguir con él otro día: Archivo ▸ Abrir.')); }
+      else downloadProject();
     } });
 }

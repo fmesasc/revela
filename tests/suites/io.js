@@ -357,6 +357,49 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { st.estimate = est; st.persist = per; st.persisted = was; ST.resetWarning(); }
   });
 
+  await test('paquete .revela: la presentación grande y sus archivos tal cual, en un zip; se abre igual; un archivo cambiado no se cuela', async () => {
+    reset(); const W = frame.contentWindow, PK = await W.eval("import('/src/io/formats/package.js')"), Z = await W.eval("import('/src/io/formats/zipstore.js')");
+    const bytes = n => { const a = new Uint8Array(n); for (let i = 0; i < n; i++) a[i] = (i * 7 + n) % 251; return a; };
+    const url = (a, type) => 'data:' + type + ';base64,' + W.btoa(String.fromCharCode(...a));
+    const big1 = url(bytes(90000), 'image/png'), big2 = url(bytes(120000), 'model/gltf-binary');
+    R.store.commit(() => { slide().blocks.push({ id: 'p1', type: 'image', src: big1, x: 0, y: 0, w: 10, h: 10 }, { id: 'p2', type: 'image', src: big1, x: 20, y: 0, w: 10, h: 10 }, { id: 'm1', type: 'model', src: big2, x: 40, y: 0, w: 10, h: 10 }); });
+    const pkg = await PK.packageBlob(R.state.deck);
+    eq(pkg.type, 'application/vnd.revela+zip');
+    const idx = await Z.unzipIndex(pkg), names = [...idx.keys()];
+    eq(names[0], 'mimetype', 'primero, qué es'); eq(await idx.get('mimetype').text(), 'application/vnd.revela+zip');
+    eq(names.filter(n => n.startsWith('files/')).length, 2, 'cada archivo una vez (la foto repetida, una)');
+    assert(names.some(n => /^files\/[0-9a-f]{32}\.glb$/.test(n)), 'el modelo, como .glb');
+    const doc = JSON.parse(await idx.get('presentation.json').text());
+    assert(doc.format === 'revela-package' && JSON.stringify(doc.deck).length < 20000, 'la presentación, ligera: sus archivos aparte');
+    eq((await idx.get(names.find(n => n.endsWith('.glb'))).read()).size, 120000, 'el modelo, tal cual (no como texto)');
+    // Opened back: the same deck.
+    const back = await PK.readPackage(new W.File([pkg], 'Mía.revela'));
+    const src = id => back.slides[0].blocks.find(b => b.id === id).src;
+    assert(src('p1') === big1 && src('p2') === big1 && src('m1') === big2, 'abierto, igual que era');
+    assert(await PK.isPackage(new W.File([pkg], 'sin-extension')), 'se reconoce por dentro, también sin su extensión');
+    // A file swapped for another (its id no longer its SHA-256): left out, not kept in this browser.
+    const files = [...idx].map(([name, e]) => ({ name, e }));
+    const parts = [];
+    for (const { name, e } of files) parts.push({ name, blob: name.endsWith('.glb') ? new W.Blob([bytes(120000).map(x => x ^ 1)]) : await e.read() });
+    const evil = await Z.zipBlobs(parts), bad = await PK.readPackage(new W.File([evil], 'x.revela'));
+    eq(bad.slides[0].blocks.find(b => b.id === 'm1').src, big2, 'el cambiado no sustituye al de verdad que ya tenía este navegador');
+    eq(bad.slides[0].blocks.find(b => b.id === 'p1').src, big1, 'los demás, bien');
+    // One this browser doesn't have, and false: left empty.
+    const fake = 'ab'.repeat(16), fdoc = { format: 'revela-package', version: 1, files: { [fake]: { path: 'files/' + fake + '.png', type: 'image/png', size: 4 } },
+      deck: { ...JSON.parse(JSON.stringify(R.state.deck)), slides: [{ id: 'f', blocks: [{ id: 'q', type: 'image', src: 'rvmedia:' + fake, x: 0, y: 0, w: 1, h: 1 }] }] } };
+    const fz = await Z.zipBlobs([{ name: 'mimetype', blob: new W.Blob(['application/vnd.revela+zip']) }, { name: 'presentation.json', blob: new W.Blob([JSON.stringify(fdoc)]) }, { name: 'files/' + fake + '.png', blob: new W.Blob([new Uint8Array([1, 2, 3, 4])]) }]);
+    eq((await PK.readPackage(new W.File([fz], 'f.revela'))).slides[0].blocks[0].src, '', 'uno falso que no está: vacío, no se guarda');
+    // Archivo ▸ Descargar: a package when big (here, from 0 bytes); Archivo ▸ Abrir takes it.
+    const PR = await W.eval("import('/src/io/formats/project.js')"), A = W.HTMLAnchorElement.prototype, click = A.click; let got = null;
+    A.click = function () { got = { name: this.download, href: this.href }; };
+    try { eq(await PR.saveProject({ min: 0 }), 'package'); } finally { A.click = click; }
+    assert(/\.revela$/.test(got.name), 'se descarga como .revela: ' + got.name);
+    const file = new W.File([await (await W.fetch(got.href)).blob()], got.name);
+    R.store.commit(() => { slide().blocks = slide().blocks.filter(b => !['p1', 'p2', 'm1'].includes(b.id)); });
+    const OF = await W.eval("import('/src/ui/shell/openfile.js')"); assert(await OF.openProjectFile(file), 'se abre');
+    eq(R.state.deck.slides[0].blocks.find(b => b.id === 'm1')?.src, big2, 'con sus archivos');
+  });
+
   await test('fotos y vídeos guardados aparte en el navegador: una vez cada uno, en la presentación y en las versiones', async () => {
     reset(); const W = frame.contentWindow, MS = await W.eval("import('/src/core/mediastore.js')"), I = await W.eval("import('/src/core/idb.js')"), M = R.model;
     // A real picture (bytes that are an image), the same one in two places, and a small one that stays inside.

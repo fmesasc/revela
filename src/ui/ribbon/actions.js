@@ -22,7 +22,7 @@ import * as templates from '../../features/document/templates.js';
 import { exportHTML } from '../../io/formats/html.js';
 import { openScormExport } from '../dialogs/scorm.js';
 import { openClassPace } from '../dialogs/classpace.js';
-import { saveProject } from '../../io/formats/project.js';
+import { downloadProject } from '../shell/downloadproject.js';
 import { exportPDF } from '../../io/export/print.js';
 import { present, openCallPresent } from '../shell/present.js';
 import { sorterOn, setSorter } from '../shell/sorter.js';
@@ -124,7 +124,7 @@ export const ACTIONS = {
     if (savedHere() && at) return openSaveWhere(at);
     ACTIONS['download-project']();
   },
-  'download-project': () => { saveProject(); toast(t('Proyecto descargado (.revela.json). Para seguir con él otro día: Archivo ▸ Abrir.')); },
+  'download-project': () => downloadProject(),
   'gallery': () => openGallery(),
   'home': () => openHome(),
   'versions': () => openVersions(),

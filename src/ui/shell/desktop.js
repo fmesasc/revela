@@ -139,10 +139,43 @@ function saveDownloads() {
   HTMLAnchorElement.prototype.click = function () {
     if (!this.hasAttribute('download') || !/^(blob|data):/.test(this.href)) return click.call(this);
     const name = this.getAttribute('download') || 'Revela';
-    fetch(this.href).then(r => r.arrayBuffer()).then(b => invoke('save_file', new Uint8Array(b), { headers: { 'x-name': encodeURIComponent(name) } }))
+    // (A big one — a package of gigabytes —: written a piece at a time; whole, it was in memory twice.)
+    fetch(this.href).then(r => r.blob()).then(b => (b.size > BIG ? saveBig(b, name)
+      : b.arrayBuffer().then(buf => invoke('save_file', new Uint8Array(buf), { headers: { 'x-name': encodeURIComponent(name) } }))))
       .then(path => { if (path) toast(t('Guardado en {path}').replace('{path}', path)); })
       .catch(e => toast(t('No se pudo guardar el archivo:') + ' ' + (e?.message || e), { error: true }));
   };
+}
+const BIG = 64 << 20, PIECE = 16 << 20;
+async function saveBig(blob, name) {
+  const token = await invoke('save_begin', { name: encodeURIComponent(name) }); if (token == null) return null;
+  try {
+    for (let at = 0; at < blob.size; at += PIECE) await invoke('save_chunk', new Uint8Array(await blob.slice(at, at + PIECE).arrayBuffer()), { headers: { 'x-token': String(token) } });
+    return await invoke('save_end', { token, keep: true });
+  } catch (e) { await invoke('save_end', { token, keep: false }).catch(() => {}); throw e; }
+}
+// A package opened (.revela): read a piece at a time when needed (main.rs read_range) — what io/formats/zipstore.js
+// reads it through —, never whole in memory: a File-like object with its size, slices and text.
+export class DesktopFile {
+  constructor(path, size) { this.path = path; this.size = size; this.name = path.split(/[\\/]/).pop(); this.type = TYPES[this.name.split('.').pop().toLowerCase()] || ''; }
+  slice(a = 0, b = this.size, type = '') { return new DesktopPiece(this.path, Math.max(0, a), Math.min(b, this.size), type); }
+  text() { return this.slice().text(); }
+}
+class DesktopPiece {
+  constructor(path, a, b, type) { this.path = path; this.a = a; this.b = Math.max(a, b); this.size = this.b - this.a; this.type = type; }
+  slice(a = 0, b = this.size, type = this.type) { return new DesktopPiece(this.path, this.a + a, this.a + Math.min(b, this.size), type); }
+  async blob() {
+    const parts = [];
+    for (let at = this.a; at < this.b; at += PIECE) parts.push(await invoke('read_range', { path: this.path, start: at, len: Math.min(PIECE, this.b - at) }));
+    return new Blob(parts, { type: this.type });
+  }
+  async arrayBuffer() { return (await this.blob()).arrayBuffer(); }
+  async text() { return (await this.blob()).text(); }
+}
+// A path opened: a package as a DesktopFile (then let go: release_opened), anything else read whole, as before.
+async function opened(path) {
+  if (!/\.revela$/i.test(path)) return { file: fileAt(path, await invoke('read_opened', { path })), done: () => {} };
+  return { file: new DesktopFile(path, await invoke('opened_size', { path })), done: () => invoke('release_opened', { path }).catch(() => {}) };
 }
 // Choosing files: every «choose a file» of the app (an <input type="file">, clicked or through its label) opens the
 // system's «Open» dialog (main.rs pick_files) with the input's types; what is chosen goes into the input, which
@@ -155,7 +188,7 @@ const KINDS = { 'image/*': ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'avif', 
 const TYPES = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', avif: 'image/avif', bmp: 'image/bmp',
   mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', m4v: 'video/mp4', ogv: 'video/ogg', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg',
   m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', opus: 'audio/ogg', pdf: 'application/pdf', json: 'application/json', md: 'text/markdown', csv: 'text/csv',
-  txt: 'text/plain', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', odp: 'application/vnd.oasis.opendocument.presentation',
+  txt: 'text/plain', revela: 'application/vnd.revela+zip', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', odp: 'application/vnd.oasis.opendocument.presentation',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', glb: 'model/gltf-binary', gltf: 'model/gltf+json' };
 // accept → the dialog's filters: [[name, [extensions]]], the accepted ones first, then any file.
 export function filtersOf(accept) {
@@ -171,6 +204,9 @@ async function pickInto(inp) {
   try { paths = await invoke('pick_files', { filters: filtersOf(inp.accept), multiple: inp.multiple }); }
   catch (e) { toast(t('No se pudo abrir el archivo:') + ' ' + (e?.message || e), { error: true }); return; }
   if (!paths.length) { inp.dispatchEvent(new Event('cancel')); return; }
+  // (A package: opened from here, read a piece at a time — an input can only hold whole files.)
+  const pkg = paths.find(p => /\.revela$/i.test(p));
+  if (pkg) { const o = await opened(pkg); try { await dropFiles([o.file]); } finally { o.done(); } return; }
   const dt = new DataTransfer();
   for (const path of paths) dt.items.add(fileAt(path, await invoke('read_opened', { path })));
   inp.files = dt.files;
@@ -196,8 +232,8 @@ async function openGiven() {
   try { paths = await invoke('opened_files'); } catch { return; }
   for (const path of paths) {
     try {
-      const f = fileAt(path, await invoke('read_opened', { path }));
-      await (/\.pdf$/i.test(f.name) ? openPdfDeck(f) : dropFiles([f]));
+      const o = await opened(path), f = o.file;
+      try { await (/\.pdf$/i.test(f.name) ? openPdfDeck(f) : dropFiles([f])); } finally { o.done(); }
     } catch (e) { toast(t('No se pudo abrir el archivo:') + ' ' + (e?.message || e), { error: true }); }
   }
 }
