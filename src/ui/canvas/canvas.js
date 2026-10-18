@@ -240,7 +240,7 @@ function drawCaptions() {
 // The sections bar (render/sectionbar.js), as it will show when presenting: drawn over the slide, not editable, so
 // what goes under it can be seen and moved out of its way.
 function drawSectionBar(slide) {
-  const html = state.ui.editMaster ? '' : sectionBarHTML(state.deck, slide, { fg: readableOn(deckFg(), slide.background || currentPalette().bg), link: false, label: t('Secciones') });
+  const html = state.ui.editMaster ? '' : sectionBarHTML(state.deck, slide, { fg: readableOn(deckFg(), slide.background || currentPalette().bg), accent: currentPalette().accents[0], font: deckBodyFont(), link: false, label: t('Secciones') });
   let el = stage.querySelector('.secbar-ovl');
   if (!html) { el?.remove(); return; }
   if (!el) { el = document.createElement('div'); el.className = 'secbar-ovl'; el.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:4'; }

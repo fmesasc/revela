@@ -749,7 +749,7 @@ function slideHTML(s0, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck)
   const inner = bk != null ? `<div class="rv-bgl" style="position:absolute;inset:0">${bgLayer(s)}${parts.slice(0, nBack).join('\n')}</div>${parts.slice(nBack).join('\n')}`
     : bgLayer(s) + parts.join('\n');
   // (The sections bar, as Beamer's: where the talk is — render/sectionbar.js.)
-  const bar = sectionBarHTML(deck, s0, { fg: readableOn(deckFg(deck), s.background || currentPalette(deck).bg), label: t('Secciones') });
+  const bar = sectionBarHTML(deck, s0, { fg: readableOn(deckFg(deck), s.background || currentPalette(deck).bg), accent: currentPalette(deck).accents[0], font: deckBodyFont(deck), label: t('Secciones') });
   const notes = (s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '')
     // Voice-over: plays when the slide is shown (reveal.js's data-autoplay).
     + (s.narration?.src && /^data:audio\/|^https:\/\/|^blob:/.test(s.narration.src) ? `<audio class="rv-narration" data-autoplay src="${esc(s.narration.src)}" preload="auto"></audio>` : '');

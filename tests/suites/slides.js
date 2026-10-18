@@ -363,7 +363,17 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const h2 = R.io.buildHTML().split(/<section\b/).slice(1).map(x => (x.match(/<nav class="rv-secbar"[\s\S]*?<\/nav>/) || [''])[0]);
     eq(h2.map(b => (b ? 1 : 0)).join(''), '01011', 'quitada en una diapositiva (y, con «Solo la sección actual», nada fuera de ellas)');
     assert(/bottom:0/.test(h2[3]) && /Método/.test(h2[3]) && !/Introducción/.test(h2[3]), 'abajo, solo la sección actual');
-    R.store.commit(() => { d.sectionBar.show = false; });
+    // Its looks (as Beamer's themes), marks, size, font and colours.
+    const bar = o => { R.store.commit(() => Object.assign(d.sectionBar, { style: 'dots', position: 'top', look: 'band', marks: 'dots', ...o })); return R.io.buildHTML().split(/<section\b/).slice(1)[4].match(/<nav class="rv-secbar"[\s\S]*?<\/nav>/)[0]; };
+    const acc = (await frame.contentWindow.eval("import('/src/features/design/palettes.js')")).currentPalette().accents[0];
+    assert(new RegExp(`background:${acc}`, 'i').test(bar({ look: 'color' })), 'franja del color del tema');
+    assert(new RegExp(`background:${acc};color:#[0-9a-f]{6};border-radius`, 'i').test(bar({ look: 'tabs' })), 'la sección actual, en su pestaña');
+    assert(/background:transparent/.test(bar({ look: 'minimal' })) && !/border-bottom/.test(bar({ look: 'minimal' })), 'mínima: sin fondo ni raya');
+    assert(/>2\/2</.test(bar({ marks: 'count' })), 'número: 2/2 en Método');
+    assert(/width:100\.0%[\s\S]*width:100\.0%/.test(bar({ marks: 'progress' })), 'barra de progreso: la sección pasada, llena; la actual, hasta aquí');
+    assert(/font-size:20px/.test(bar({ size: 130 })) && /font-family:system-ui/.test(bar({ font: 'system' })), 'tamaño y letra');
+    assert(/background:#112233/.test(bar({ bg: '#112233', fg: '#ffeeaa' })) && /color:#ffeeaa/.test(bar({ bg: '#112233', fg: '#ffeeaa' })), 'colores propios');
+    R.store.commit(() => { d.sectionBar = { show: false, position: 'top', style: 'dots', skipTitle: true }; });
   });
 
   await test('números de diapositiva configurables en el export', async () => {
