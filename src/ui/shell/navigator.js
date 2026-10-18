@@ -11,7 +11,9 @@ import { sorterOn, setSorter } from './sorter.js';
 import { addSlideRef } from '../../features/document/blocks.js';
 import { factor } from '../canvas/interact.js';
 import { t } from '../../i18n/index.js';
-import { deckFg, deckBodyFont } from '../../features/design/palettes.js';
+import { deckFg, deckBodyFont, currentPalette } from '../../features/design/palettes.js';
+import { readableOn } from '../../render/diagrams.js';
+import { sectionBarHTML } from '../../render/sectionbar.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, allMasters, masterStyles } from '../../features/document/master.js';
 import { renderMasterPanel, fitMasterThumbs } from './masterview.js';
 
@@ -119,7 +121,9 @@ export function renderPanel(change) {
   // (The masters' text styles completed and linked to the theme before their fingerprint is taken: drawing the
   // thumbnails did it otherwise, changing the fingerprint after it, and every thumbnail was built twice.)
   if (doc) for (const m of allMasters(d)) if (m.styles) masterStyles(d, m);
-  const common = doc ? (lastCommon = sigOf([d.size, d.master, d.layouts, d.canvas, deckFg(), deckBodyFont()])) : lastCommon;
+  // (With the sections bar on, every slide's shows the sections and where it is among them: any change there redraws them.)
+  const common = doc ? (lastCommon = sigOf([d.size, d.master, d.layouts, d.canvas, deckFg(), deckBodyFont(),
+    d.sectionBar?.show ? [d.sectionBar, d.sections, d.slides.map(s => [s.sectionId, s.hidden, s.noSectionBar, s.layoutId])] : 0])) : lastCommon;
   const nodes = [], seen = new Set(), sel = new Set(state.ui.slideSel?.length > 1 ? state.ui.slideSel : []);
   panel.classList.toggle('multi', sel.size > 1);
   document.body.classList.toggle('slide-pick', !!state.ui.slidePick);
@@ -211,6 +215,7 @@ function thumb(slide, full = true) {
   inner.className = 'thumb-inner';
   inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(var(--tk,${188 / w}));color:${deckFg()};font-family:${deckBodyFont() || 'inherit'}`;
   if (full) for (const b of [...masterBlocksFor(slide), ...slide.blocks.map(x => styled(x, slide))]) if (!isEmptyPlaceholder(b)) inner.appendChild(blockPreview(b, slide, { small: true }));
+  if (full) { const bar = sectionBarHTML(state.deck, slide, { fg: readableOn(deckFg(), slide.background || currentPalette().bg), link: false }); if (bar) inner.insertAdjacentHTML('beforeend', bar); }
   canvas.appendChild(inner);
 
   // (Shown while several are selected or being picked: a tap adds or removes it.)

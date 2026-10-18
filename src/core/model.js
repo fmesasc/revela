@@ -234,6 +234,7 @@ function migrate(deck) {
   deck.size ??= { w: 1280, h: 720 };
   deck.slideNumber ??= { show: false, position: 'br', format: 'c' };
   deck.footer ??= { show: false, text: '', date: false };
+  deck.sectionBar ??= { show: false, position: 'top', style: 'dots', skipTitle: true };
   deck.logo ??= { src: '', position: 'br', size: 120 };
   deck.loop ??= false;
   deck.guides ??= { v: [], h: [] };

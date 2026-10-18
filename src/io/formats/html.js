@@ -3,7 +3,8 @@
 // the print and image exports.
 
 import { registerCodeLangs } from '../../render/codelangs.js';
-import { diagramHTML, diagramLayout } from '../../render/diagrams.js';
+import { diagramHTML, diagramLayout, readableOn } from '../../render/diagrams.js';
+import { sectionBarHTML } from '../../render/sectionbar.js';
 import { pdfRuntime } from '../runtime/pdf.js';
 import { finishStepRuntime } from '../runtime/finishstep.js';
 import { tabRuntime } from '../runtime/tabs.js';
@@ -747,6 +748,8 @@ function slideHTML(s0, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck)
   });
   const inner = bk != null ? `<div class="rv-bgl" style="position:absolute;inset:0">${bgLayer(s)}${parts.slice(0, nBack).join('\n')}</div>${parts.slice(nBack).join('\n')}`
     : bgLayer(s) + parts.join('\n');
+  // (The sections bar, as Beamer's: where the talk is — render/sectionbar.js.)
+  const bar = sectionBarHTML(deck, s0, { fg: readableOn(deckFg(deck), s.background || currentPalette(deck).bg), label: t('Secciones') });
   const notes = (s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '')
     // Voice-over: plays when the slide is shown (reveal.js's data-autoplay).
     + (s.narration?.src && /^data:audio\/|^https:\/\/|^blob:/.test(s.narration.src) ? `<audio class="rv-narration" data-autoplay src="${esc(s.narration.src)}" preload="auto"></audio>` : '');
@@ -756,7 +759,7 @@ function slideHTML(s0, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck)
   // (A first animation "with/after previous" plays on its own when the slide comes in, as in PowerPoint.)
   const first = animEntries(s).find(e => !e.a.trigger), start = first && ['withPrev', 'afterPrev'].includes(first.a.start) ? ' data-rv-start' : '';
   return `<section${trans}${speed}${exact}${auto}${bg}${aa}${start}${bk != null ? ` data-bgk="${bk}"` : ''} data-rv-id="${esc(s.id)}">`
-    + `<div class="stage${s.bgIframe && s.bgInteractive ? ' pass' : ''}" style="background:${stageBackground(s)}">${inner}</div>${notes}</section>`;
+    + `<div class="stage${s.bgIframe && s.bgInteractive ? ' pass' : ''}" style="background:${stageBackground(s)}">${inner}${bar}</div>${notes}</section>`;
 }
 
 // Where the slide number sits, as CSS for reveal's .slide-number element.

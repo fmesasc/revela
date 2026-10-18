@@ -238,6 +238,9 @@ function forThumb(i) {
     null,
     ['Crear sección aquí', () => addSectionAt(i)],
     slide.sectionId ? ['Quitar de la sección', () => setSlideSection(slide.id, null)] : null,
+    // (The sections bar — Insertar ▸ Encabezado y pie —: off on a slide where it is in the way.)
+    state.deck.sectionBar?.show ? [slide.noSectionBar ? 'Mostrar la barra de secciones aquí' : 'Ocultar la barra de secciones aquí',
+      () => commit(() => { if (slide.noSectionBar) delete slide.noSectionBar; else slide.noSectionBar = true; })] : null,
     ...workItems([slide]),
   ];
 }

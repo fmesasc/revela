@@ -335,6 +335,37 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(R.state.deck.slides[1].sectionId, R.state.deck.sections[0].id, 'diapositiva asignada');
   });
 
+  await test('barra de secciones (como Beamer): dónde estás, en el lienzo, las miniaturas y la presentación; se quita por diapositiva', async () => {
+    reset(); for (let k = 0; k < 4; k++) R.slides.addSlide();
+    R.slides.addSectionAt(1, 'Introducción'); R.slides.addSectionAt(3, 'Método'); await sleep(20);
+    const d = R.state.deck, sl = d.slides;
+    eq(sl.map(s => d.sections.find(x => x.id === s.sectionId)?.name || '-').join(), '-,Introducción,Introducción,Método,Método', 'dos secciones de dos');
+    assert(!/rv-secbar/.test(R.io.buildHTML()), 'apagada por defecto');
+    // From Insertar ▸ Encabezado y pie.
+    D.querySelector('[data-action="insert-hf"]')?.click() ?? R.ribbon?.run?.('insert-hf'); await sleep(30);
+    const box = D.getElementById('hf-modal'); assert(box, 'el recuadro');
+    box.querySelector('.hf-sb').click(); await sleep(20); eq(d.sectionBar.show, true, 'se enciende desde el recuadro');
+    box.querySelector('.modal-close').click();
+    const html = R.io.buildHTML(), secs = html.split(/<section\b/).slice(1);
+    const bars = secs.map(x => (x.match(/<nav class="rv-secbar"[\s\S]*?<\/nav>/) || [''])[0]);
+    eq(bars.map(b => (b ? 1 : 0)).join(''), '11111', 'en todas (salvo las portadas)');
+    assert(!/font-weight:700/.test(bars[0]), 'antes de la primera sección, ninguna marcada');
+    assert(/font-weight:700;">Método</.test(bars[4]) && !/font-weight:700;">Introducción</.test(bars[4]), 'la sección en curso, marcada');
+    eq((bars[4].match(/background:currentColor/g) || []).length, 1, 'un punto lleno: esta diapositiva');
+    eq((bars[4].match(/border-radius:50%/g) || []).length, 4, 'un punto por diapositiva de cada sección');
+    assert(/href="#\/[0-9\/]+"[^>]*>Introducción</.test(bars[4]), 'el nombre lleva a su sección');
+    // On the canvas and in the thumbnails too.
+    R.slides.goToSlide?.(3) ?? (R.state.ui.slideIndex = 3); R.render(); await sleep(60);
+    assert(D.querySelector('#stage .secbar-ovl nav.rv-secbar'), 'en el lienzo, para ver qué tapa');
+    assert(D.querySelectorAll('.thumb nav.rv-secbar').length >= 4, 'en las miniaturas');
+    // Off on one slide; only the current section; at the bottom.
+    R.store.commit(() => { sl[2].noSectionBar = true; d.sectionBar.style = 'current'; d.sectionBar.position = 'bottom'; });
+    const h2 = R.io.buildHTML().split(/<section\b/).slice(1).map(x => (x.match(/<nav class="rv-secbar"[\s\S]*?<\/nav>/) || [''])[0]);
+    eq(h2.map(b => (b ? 1 : 0)).join(''), '01011', 'quitada en una diapositiva (y, con «Solo la sección actual», nada fuera de ellas)');
+    assert(/bottom:0/.test(h2[3]) && /Método/.test(h2[3]) && !/Introducción/.test(h2[3]), 'abajo, solo la sección actual');
+    R.store.commit(() => { d.sectionBar.show = false; });
+  });
+
   await test('números de diapositiva configurables en el export', async () => {
     reset(); R.state.deck.slideNumber = { show: true, position: 'tl', format: 'c/t' };
     const html = R.io.buildHTML();

@@ -3,7 +3,8 @@
 // guides, resize from the corners, edit text on double‑click.
 
 import { blobURL, withBlobs, pruneBlobs } from '../../io/formats/blobmedia.js';
-import { diagramHTML, diagramSig } from '../../render/diagrams.js';
+import { diagramHTML, diagramSig, readableOn } from '../../render/diagrams.js';
+import { sectionBarHTML } from '../../render/sectionbar.js';
 import { diagramOpts } from '../../features/document/blocks.js';
 import { openDiagramText } from '../dialogs/diagram.js';
 import { openFile } from '../../features/content/files.js';
@@ -107,6 +108,7 @@ export function renderCanvas() {
   drawMotionPath();
   drawMasterLayer();
   drawBgMedia(slide);
+  drawSectionBar(slide);
   sideHandles();
   fitPictureBox();
   syncCameras(stage);
@@ -235,6 +237,17 @@ function drawCaptions() {
 }
 
 // The deck logo, shown on every slide (branding / master).
+// The sections bar (render/sectionbar.js), as it will show when presenting: drawn over the slide, not editable, so
+// what goes under it can be seen and moved out of its way.
+function drawSectionBar(slide) {
+  const html = state.ui.editMaster ? '' : sectionBarHTML(state.deck, slide, { fg: readableOn(deckFg(), slide.background || currentPalette().bg), link: false, label: t('Secciones') });
+  let el = stage.querySelector('.secbar-ovl');
+  if (!html) { el?.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.className = 'secbar-ovl'; el.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:4'; }
+  if (stage.lastChild !== el) stage.appendChild(el);
+  if (el.dataset.h !== html) { el.dataset.h = html; el.innerHTML = html; }
+}
+
 function drawLogo() {
   const logo = state.deck.logo;
   let el = stage.querySelector('.deck-logo-ovl');
