@@ -8,7 +8,7 @@
 
 import { state } from '../../core/store.js';
 import { approxSize } from '../../core/model.js';
-import { verEach, verDel } from '../../core/idb.js';
+import { verEach, verDel, kvGet } from '../../core/idb.js';
 import { mediaUsage } from '../../core/mediastore.js';
 
 const S = () => globalThis.navigator?.storage;
@@ -33,7 +33,10 @@ export async function storageReport() {
   const media = await mediaUsage().catch(() => ({ bytes: 0, count: 0 }));
   let caches = est.caches;
   if (caches == null && globalThis.caches?.keys) caches = await cacheBytes().catch(() => null);
-  return { ...est, deck: approxSize(state.deck), versions, media, caches };
+  // (The presentation as it is kept — its big files apart, counted in media —, not as it is in memory: there, with its
+  // pictures as text and once per use, a deck of 36 MB on disk said 83.)
+  const kept = await kvGet('deck').catch(() => null);
+  return { ...est, deck: approxSize(kept || state.deck), versions, media, caches };
 }
 
 // (Browsers without usageDetails: the cached answers added up — their bodies read once; a few hundred files.)

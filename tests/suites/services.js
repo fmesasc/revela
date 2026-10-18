@@ -156,6 +156,56 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(W.HTMLAnchorElement.prototype.click, click, 'y se puede deshacer (las pruebas)');
   });
 
+  await test('escritorio: un archivo grande se guarda por partes y un paquete .revela se abre leyendo trozos (Tauri simulado, con su disco)', async () => {
+    reset(); const W = frame.contentWindow, DK = await W.eval("import('/src/ui/shell/desktop.js')"), PK = await W.eval("import('/src/io/formats/package.js')");
+    const disk = new Map(), calls = [], writing = new Map(); let opened = [], picked = [];
+    const tauri = {
+      core: { invoke: async (cmd, args, opts) => { calls.push({ cmd, args: ArrayBuffer.isView(args) ? { bytes: args.length } : args });
+        if (cmd === 'opened_files') return opened.splice(0);
+        if (cmd === 'pick_files') return picked.splice(0);
+        if (cmd === 'update_available') return null;
+        if (cmd === 'read_opened') throw new Error('whole read');
+        if (cmd === 'save_file') throw new Error('whole save');
+        if (cmd === 'save_begin') { writing.set(7, { name: decodeURIComponent(args.name), parts: [] }); return 7; }
+        if (cmd === 'save_chunk') { writing.get(+opts.headers['x-token']).parts.push(new W.Blob([args])); return null; }
+        if (cmd === 'save_end') { const w = writing.get(args.token); writing.delete(args.token); const path = '/home/ana/' + w.name; disk.set(path, new W.Blob(w.parts)); return path; }
+        if (cmd === 'opened_size') return disk.get(args.path).size;
+        if (cmd === 'read_range') return disk.get(args.path).slice(args.start, args.start + args.len).arrayBuffer();
+        if (cmd === 'release_opened') return null; } },
+      menu: { Menu: { new: async o => ({ ...o, setAsAppMenu: async () => {} }) }, Submenu: { new: async o => o }, MenuItem: { new: async o => o }, PredefinedMenuItem: { new: async o => o }, CheckMenuItem: { new: async o => o } },
+      app: { getVersion: async () => '9.9.9', defaultWindowIcon: async () => null }, event: { listen: async () => () => {} }, opener: { openUrl: async () => {} },
+    };
+    try {
+      assert(await DK.initDesktop({ tauri, updates: false }), 'arranca');
+      // A download of 70 MB: in pieces of 16 MB at most, never whole.
+      const big = new Uint8Array(70e6); big[0] = 7; big[big.length - 1] = 9;
+      const a = D.createElement('a'); a.href = W.URL.createObjectURL(new W.Blob([big])); a.download = 'Grande.revela'; a.click();
+      for (let i = 0; i < 200 && !disk.has('/home/ana/Grande.revela'); i++) await sleep(50);
+      const pieces = calls.filter(c => c.cmd === 'save_chunk').map(c => c.args.bytes);
+      assert(pieces.length === 5 && Math.max(...pieces) <= 16 << 20 && pieces.reduce((x, y) => x + y, 0) === 70e6, 'por partes: ' + pieces.join(','));
+      const saved = new Uint8Array(await disk.get('/home/ana/Grande.revela').arrayBuffer());
+      assert(saved.length === 70e6 && saved[0] === 7 && saved.at(-1) === 9, 'el archivo, entero y en orden');
+      assert(!calls.some(c => c.cmd === 'save_file'), 'sin pasarlo entero');
+      // A package opened with Revela (a double click): read a piece at a time, and let go after.
+      let bin = ''; for (let i = 0; i < 200000; i++) bin += String.fromCharCode((i * 13) % 251);
+      const big1 = 'data:model/gltf-binary;base64,' + W.btoa(bin);
+      R.store.commit(() => { R.state.deck.name = 'Del paquete'; slide().blocks.push({ id: 'mz', type: 'model', src: big1, x: 0, y: 0, w: 10, h: 10 }); });
+      disk.set('/home/ana/Clase.revela', await PK.packageBlob(R.state.deck)); reset(); calls.length = 0;
+      opened.push('/home/ana/Clase.revela'); await DK.openGivenForTests();
+      for (let i = 0; i < 80 && R.state.deck.name !== 'Del paquete'; i++) await sleep(25);
+      eq(R.state.deck.name, 'Del paquete', 'abierto');
+      eq(R.state.deck.slides[0].blocks.find(b => b.id === 'mz')?.src, big1, 'con su modelo');
+      assert(calls.some(c => c.cmd === 'read_range') && !calls.some(c => c.cmd === 'read_opened'), 'a trozos, nunca entero');
+      assert(calls.some(c => c.cmd === 'release_opened' && c.args.path === '/home/ana/Clase.revela'), 'y luego deja de poder leerlo');
+      // From Archivo ▸ Abrir (the system's dialog): the same.
+      reset(); calls.length = 0; picked.push('/home/ana/Clase.revela');
+      const OF = await W.eval("import('/src/ui/shell/openfile.js')"); OF.openAnyPresentation();
+      for (let i = 0; i < 80 && R.state.deck.name !== 'Del paquete'; i++) await sleep(25);
+      eq(R.state.deck.name, 'Del paquete', 'también desde Abrir');
+      assert(calls.some(c => c.cmd === 'read_range') && !calls.some(c => c.cmd === 'read_opened'), 'también a trozos');
+    } finally { DK.stopDesktop(); }
+  });
+
   await test('IA con OpenRouter: inicio de sesión PKCE y funciones (respuestas simuladas)', async () => {
     reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, calls = [];
     eq(await AI.pkceChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'), 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', 'reto PKCE (vector del RFC 7636)');

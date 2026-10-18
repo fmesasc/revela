@@ -51,7 +51,7 @@ export function slideNumberHTML(deck, slide, { fg = '#ffffff', accent = '#3f6497
       : look === 'bar' ? `border-${pos[1] === 'r' ? 'right' : 'left'}:${Math.max(2, px(3))}px solid ${hex(sn.bg) || acc};padding:0 ${px(10)}px;`
         : '';
   const opacity = look === 'soft' ? 0.45 : look === 'plain' ? 0.8 : 1;
-  return `<div class="rv-slidenum" aria-label="${esc(txt)}" style="position:absolute;${y};${x};z-index:6;pointer-events:none;${shape}`
+  return `<div class="rv-slidenum" data-pos="${pos}" aria-label="${esc(txt)}" style="position:absolute;${y};${x};z-index:6;pointer-events:none;${shape}`
     + `color:${ink};opacity:${opacity};font-family:${fam.replace(/"/g, "'")};font-size:${px(look === 'soft' ? 15 : 18)}px;line-height:1.2;font-weight:${filled ? 700 : 500};`
     + `font-variant-numeric:tabular-nums;white-space:nowrap">${esc(txt)}</div>`;
 }

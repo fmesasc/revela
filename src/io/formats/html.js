@@ -494,6 +494,9 @@ function blockHTMLRaw(b, slide) {
   return '';
 }
 
+// A slide number at the bottom right, clear of reveal.js's arrows there when presenting (they are drawn over the slide).
+const numberClear = deck => { const o = { ...REVEAL_DEFAULTS, ...rv(deck) };
+  return deck.slideNumber?.show && o.controls && (o.controlsLayout || 'bottom-right') === 'bottom-right' ? '.reveal .rv-slidenum[data-pos="br"]{margin-right:76px}' : ''; };
 // The words of a slide number («3 de 12», «Diapositiva 3») in the app's language.
 export const numberWords = () => ({ cof: t('{n} de {t}'), word: t('Diapositiva {n}') });
 // A video's or GIF's clicks: each segment after the first automatic one.
@@ -917,6 +920,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal .slides section .fragment.highlight-green.visible,.reveal .slides section .fragment.highlight-current-green.current-fragment{color:#17ff2e!important}
  .reveal .slides section .fragment.highlight-blue.visible,.reveal .slides section .fragment.highlight-current-blue.current-fragment{color:#1b91ff!important}
  .reveal .slides section .fragment.strike.visible *{text-decoration:line-through}
+ ${numberClear(deck)}
  .reveal .slides section .fragment.rv-path{opacity:1;visibility:inherit}
  .reveal .slides section .fragment.rv-path.visible{translate:var(--dx) var(--dy)}
  .reveal .slides section .fragment.spin360,.reveal .slides section .fragment.clip3d,.reveal .slides section .fragment.pdfview,.reveal .slides section .fragment.mapfly,.reveal .slides section .fragment.draw,.reveal .slides section .fragment[data-mfx]{opacity:1;visibility:inherit}

@@ -10,6 +10,7 @@ import { packageBlob, PACKAGE_MIN } from './package.js';
 // The file: its repeated pictures, videos and sounds once (core/deckfile.js); indented when small (readable); without
 // indenting and written in pieces when big — a presentation with hundreds of MB of media as one text ran the tab out
 // of memory (core/jsonblob.js).
+export const fileSize = deck => approxSize(packDeck(deck));
 export function projectBlob(deck) {
   const packed = packDeck(deck);
   return approxSize(packed) > 5e6 ? jsonBlob(packed) : new Blob([JSON.stringify(packed, null, 2)], { type: 'application/json' });
@@ -19,7 +20,9 @@ export function projectBlob(deck) {
 // files as they are, put together from the copies the browser keeps on disk. → 'json' or 'package'.
 export async function saveProject({ onProgress, min = PACKAGE_MIN } = {}) {
   const name = slug(state.deck.name);
-  if (approxSize(state.deck) <= min) { download(projectBlob(state.deck), name + '.revela.json'); return 'json'; }
+  // (Measured as the file would be — its repeated pictures once —, not as the deck is in memory: a deck of 83 MB with its
+  // logos on every slide is an 18 MB .revela.json, which every version of Revela opens.)
+  if (fileSize(state.deck) <= min) { download(projectBlob(state.deck), name + '.revela.json'); return 'json'; }
   download(await packageBlob(state.deck, { onProgress }), name + '.revela');
   return 'package';
 }

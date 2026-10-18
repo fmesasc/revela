@@ -35,6 +35,7 @@ export function sectionBarOn(deck, slide) {
   return barSections(deck).length > 0;
 }
 
+const MAX_DOTS = 12;
 const sizeOf = sb => Math.min(2, Math.max(0.6, (+sb?.size || 100) / 100));
 // Its height on a slide of this width (the slide's content should leave it room).
 export const sectionBarHeight = deck => {
@@ -59,37 +60,47 @@ export function sectionBarHTML(deck, slide, { fg = '#ffffff', accent = '#3f6497'
   const curIx = secs.indexOf(cur);
   const go = (s, inner, css, title = '') => (link
     ? `<a href="#/${at(s)}"${title ? ` title="${esc(title)}"` : ''} style="color:inherit;text-decoration:none;${css}">${inner}</a>`
-    : `<span style="${css}">${inner}</span>`);
+    : `<span${title ? ` title="${esc(title)}"` : ''} style="${css}">${inner}</span>`);
   const d = Math.max(4, px(7));
   const markOf = (x, on) => {
     const i = x.slides.findIndex(s => s.id === slide.id);
+    // (Dots for a long section — a hundred slides — took half the bar: past MAX_DOTS, its progress instead.)
+    if (marks === 'dots' && x.slides.length > (compact ? 4 : MAX_DOTS)) return markAs('progress', x, on, i);
+    return markAs(marks, x, on, i);
+  };
+  const markAs = (marks, x, on, i) => {
     if (marks === 'count') return on ? `<span style="font-size:.8em;opacity:.85;white-space:nowrap">${i + 1}/${x.slides.length}</span>` : `<span style="font-size:.8em;opacity:.7">${x.slides.length}</span>`;
     if (marks === 'progress') {
       // (Past sections full, coming ones empty, this one as far as this slide.)
       const ix = secs.indexOf(x), part = on ? (i + 1) / x.slides.length : curIx >= 0 && ix < curIx ? 1 : 0;
-      return `<span style="display:block;width:${px(64)}px;height:${Math.max(2, px(4))}px;border-radius:${px(2)}px;background:color-mix(in srgb,currentColor 25%,transparent);overflow:hidden">`
+      return `<span style="display:block;width:${px(compact && !on ? 28 : 64)}px;height:${Math.max(2, px(4))}px;border-radius:${px(2)}px;background:color-mix(in srgb,currentColor 25%,transparent);overflow:hidden">`
         + `<span style="display:block;height:100%;width:${(part * 100).toFixed(1)}%;background:currentColor"></span></span>`;
     }
     return `<span style="display:flex;gap:${px(4)}px;flex-wrap:nowrap">${x.slides.map((s, j) =>
       go(s, '', `display:block;width:${d}px;height:${d}px;border-radius:50%;box-sizing:border-box;border:${Math.max(1, 1.3 * k).toFixed(1)}px solid currentColor;${s.id === slide.id ? 'background:currentColor;' : ''}`,
         `${x.sec.name} · ${j + 1}`)).join('')}</span>`;
   };
+  // Too many to name them all (18 sections on a slide): the current one by its name, the others by their number —
+  // their names cut to «E…» said nothing —, the whole name on hovering.
+  const items0 = style === 'current' ? (cur ? [cur] : []) : secs;
+  const room = W - px(56), fsz = px(15), want = items0.reduce((n, x) => n + x.sec.name.length * fsz * 0.55 + (style === 'names' ? 0 : Math.min(MAX_DOTS, x.slides.length) * px(11)), 0) + (items0.length - 1) * px(30);
+  const compact = want > room && items0.length > 1;
   const one = x => {
     const on = x === cur, tab = look === 'tabs' && on;
     // The current one: bold, at full strength — on its tab, or in the accent colour when the bar has no band.
-    const css = `display:flex;flex-direction:${marks === 'count' ? 'row' : 'column'};${marks === 'count' ? 'align-items:baseline;gap:.45em' : `justify-content:center;gap:${px(4)}px`};min-width:0;`
+    const css = `${on || compact ? 'flex:0 0 auto;' : 'flex:0 1 auto;'}display:flex;flex-direction:${marks === 'count' ? 'row' : 'column'};${marks === 'count' ? 'align-items:baseline;gap:.45em' : `justify-content:center;gap:${px(4)}px`};min-width:0;`
       + (tab ? `align-self:stretch;padding:0 ${px(14)}px;background:${acc};color:${onTab};border-radius:${top ? `0 0 ${px(8)}px ${px(8)}px` : `${px(8)}px ${px(8)}px 0 0`};${marks === 'count' ? 'align-items:center;' : ''}` : '')
       + (on ? (look === 'minimal' && !hex(sb.fg) ? `color:${acc};` : '') : `opacity:${look === 'color' ? 0.62 : 0.5};`);
     return `<span style="${css}">`
-      + go(x.slides[0], esc(x.sec.name), `white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${on ? 'font-weight:700;' : ''}`)
+      + go(x.slides[0], compact && !on ? String(secs.indexOf(x) + 1) : esc(x.sec.name), `white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${on ? 'font-weight:700;' : ''}`, compact && !on ? x.sec.name : '')
       + (style !== 'names' ? markOf(x, on) : '') + '</span>';
   };
-  const items = style === 'current' ? (cur ? [cur] : []) : secs;
+  const items = items0;
   if (!items.length) return '';
   const h = sectionBarHeight(deck), line = look === 'tabs' ? acc : `color-mix(in srgb,${ink} 18%,transparent)`;
   const fam = sb.font === 'system' || !font ? "system-ui,-apple-system,'Segoe UI',sans-serif" : font;
   return `<nav class="rv-secbar" data-id="rv-secbar" aria-label="${esc(label)}" style="position:absolute;left:0;${top ? 'top:0' : 'bottom:0'};width:${W}px;height:${h}px;`
-    + `box-sizing:border-box;padding:0 ${px(28)}px;display:flex;align-items:center;gap:${px(look === 'tabs' ? 18 : 30)}px;overflow:hidden;`
+    + `box-sizing:border-box;padding:0 ${px(28)}px;display:flex;align-items:center;gap:${px(compact ? 14 : look === 'tabs' ? 18 : 30)}px;overflow:hidden;`
     + `font-weight:500;font-size:${px(15)}px;line-height:1.15;font-family:${fam.replace(/"/g, "'")};color:${ink};background:${bg};`
     + (look === 'minimal' ? '' : `${top ? 'border-bottom' : 'border-top'}:${look === 'tabs' ? Math.max(2, px(2)) : 1}px solid ${line};`) + 'z-index:5">'
     + items.map(one).join('') + '</nav>';

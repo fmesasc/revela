@@ -373,6 +373,15 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/width:100\.0%[\s\S]*width:100\.0%/.test(bar({ marks: 'progress' })), 'barra de progreso: la sección pasada, llena; la actual, hasta aquí');
     assert(/font-size:20px/.test(bar({ size: 130 })) && /font-family:system-ui/.test(bar({ font: 'system' })), 'tamaño y letra');
     assert(/background:#112233/.test(bar({ bg: '#112233', fg: '#ffeeaa' })) && /color:#ffeeaa/.test(bar({ bg: '#112233', fg: '#ffeeaa' })), 'colores propios');
+    // Many sections (a talk of 18, one of them 150 slides long): the current one by name, the rest by number (the
+    // name on hovering), a long one as its progress; all of them fit.
+    const SB = await frame.contentWindow.eval("import('/src/render/sectionbar.js')");
+    const big = { size: { w: 1280, h: 720 }, sectionBar: { show: true, style: 'dots', look: 'band', marks: 'dots' }, sections: [], slides: [] };
+    for (let k = 0; k < 18; k++) { big.sections.push({ id: 's' + k, name: 'Una sección con nombre largo ' + k }); for (let j = 0; j < (k === 8 ? 150 : 3); j++) big.slides.push({ id: `x${k}-${j}`, sectionId: 's' + k }); }
+    const many = SB.sectionBarHTML(big, big.slides.find(x => x.id === 'x8-5'), { link: false });
+    assert(/>Una sección con nombre largo 8</.test(many) && />1</.test(many) && />18</.test(many) && !/>Una sección con nombre largo 1</.test(many), 'la actual por su nombre, las demás por su número');
+    assert(/title="Una sección con nombre largo 17"/.test(many), 'con el nombre al pasar por encima');
+    assert((many.match(/border-radius:50%/g) || []).length < 80, 'la larga, sin 150 puntos');
     R.store.commit(() => { d.sectionBar = { show: false, position: 'top', style: 'dots', skipTitle: true }; });
   });
 
