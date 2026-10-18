@@ -1,6 +1,24 @@
 // Text and formatting: fonts, paragraphs, lists, styles, WordArt, links, find & replace, languages.
 
 export default async function ({ R, D, frame, test, sleep, assert, eq, reset, slide, last, select, richOf, newText }) {
+  await test('varias cajas seleccionadas: aumentar la letra, negrita, fuente, alineación… a todas (cada una desde su tamaño)', async () => {
+    reset(); const mk = (html, size, y) => { R.blocks.addText(); const b = last(); b.html = html; b.fontSize = size; b.y = y; return b; };
+    const a = mk('Uno', 20, 100), b = mk('Dos', 28, 220), c = mk('Tres', 40, 340);
+    R.store.setMulti([a.id, b.id, c.id]); R.render(); await sleep(30);
+    D.querySelector('[data-fontdelta="4"]').click(); await sleep(20);
+    eq([a, b, c].map(x => x.fontSize).join(), '24,32,44', 'cada una, 4 más que la suya');
+    R.format.exec('bold'); await sleep(20);
+    assert([a, b, c].every(x => /<b>|font-weight:\s*(bold|700)/.test(x.html)), 'negrita en las tres: ' + [a, b, c].map(x => x.html).join(' | '));
+    R.format.fontFamily('Georgia, serif'); R.format.align('center'); R.format.lineSpacing(1.6); await sleep(20);
+    assert([a, b, c].every(x => x.fontFamily === 'Georgia, serif' && x.textAlign === 'center' && x.lineHeight === 1.6), 'fuente, alineación e interlineado, a todas');
+    R.format.list('insertUnorderedList'); await sleep(20);
+    assert([a, b, c].every(x => /<ul>/.test(x.html)), 'viñetas en las tres');
+    // One alone: as always, only that one.
+    R.store.setMulti([b.id]); R.state.ui.selection = b.id; R.render(); await sleep(20);
+    D.querySelector('[data-fontdelta="4"]').click(); await sleep(20);
+    eq([a, b, c].map(x => x.fontSize).join(), '24,36,44', 'con una, solo esa');
+  });
+
   await test('fuentes propias: se suben, van dentro de la presentación y se usan como las demás', async () => {
     reset(); const W = frame.contentWindow, F = await W.eval("import('/src/features/design/fonts.js')");
     const data = F.fontDataURL('data:application/octet-stream;base64,AAEAAAALAIAAAwAwT1MvMg==', 'MiMarca-Bold.ttf');

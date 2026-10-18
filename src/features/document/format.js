@@ -34,8 +34,8 @@ export function applyTextStyle(name) {
   commit(() => { for (const b of bs) { Object.assign(b, st); b.textStyle = name; } });
 }
 export function setColumns(n) {
-  const c = ctx(); if (!c) return;
-  commit(() => { c.b.columns = Math.max(1, Math.min(4, parseInt(n, 10) || 1)); });
+  const cs = ctxs(); if (!cs.length) return;
+  commit(() => { for (const c of cs) c.b.columns = Math.max(1, Math.min(4, parseInt(n, 10) || 1)); });
 }
 // Format painter for any object (PowerPoint's copies a shape's fill and line, a
 // picture's corrections and border, a connector's line…): what each kind has
@@ -78,6 +78,17 @@ function ctx() {
   return el ? { b, el } : null;
 }
 
+// Several objects selected: the formatting of the ribbon goes to all of them — every text box and shape with text (as
+// PowerPoint: with three boxes selected, «bigger letters» made only the first one bigger). One: as ctx() (the one
+// being edited, its selected words for what acts on words).
+function ctxs() {
+  const bs = selectedBlocks().filter(b => b.type === 'text' || hasShapeText(b));
+  if (bs.length < 2) { const c = ctx(); return c ? [c] : []; }
+  return bs.map(b => ({ b, el: document.querySelector(`.block[data-id="${b.id}"] .rich`) })).filter(c => c.el);
+}
+// And the equations among them (their size and alignment are theirs as a whole).
+const mathsSel = () => selectedBlocks().filter(b => b.type === 'math');
+
 // An equation has no text selection inside: the ribbon's formatting applies to
 // the whole equation (see mathTeX / mathCSS in render/svg.js).
 function mathSel() { const b = selectedBlock(); return b && b.type === 'math' ? b : null; }
@@ -113,6 +124,20 @@ function selectAllIfCollapsed(el) {
 
 // ---- Character formatting (needs a selection) -----------------------------
 export function exec(cmd, value = null) {
+  // (Several boxes: each one whole — bold, a colour… — as if all its text were selected.)
+  const cs = ctxs();
+  if (cs.length > 1) {
+    const out = cs.map(c => {
+      const was = c.el.getAttribute('contenteditable'); c.el.contentEditable = 'true';
+      const sel = window.getSelection(), r = document.createRange(); r.selectNodeContents(c.el); sel.removeAllRanges(); sel.addRange(r);
+      document.execCommand(cmd, false, value);
+      const html = c.el.innerHTML; if (was == null) c.el.removeAttribute('contenteditable'); else c.el.setAttribute('contenteditable', was);
+      return [c.b, html];
+    });
+    window.getSelection().removeAllRanges();
+    commit(() => { for (const [b, html] of out) b.html = html; });
+    return;
+  }
   if (mathFormat(cmd, value)) return;
   const c = ctx(); if (!c) return;
   enterEdit(c.el);
@@ -178,12 +203,14 @@ export function link() {
   });
 }
 export function toggleDir() {
-  const c = ctx(); if (!c) return;
-  commit(() => { c.b.dir = c.b.dir === 'rtl' ? 'ltr' : 'rtl'; });
+  const cs = ctxs(); if (!cs.length) return;
+  const to = cs[0].b.dir === 'rtl' ? 'ltr' : 'rtl';
+  commit(() => { for (const c of cs) c.b.dir = to; });
 }
 export function toggleVertical() {
-  const c = ctx(); if (!c) return;
-  commit(() => { c.b.vertical = !c.b.vertical; });
+  const cs = ctxs(); if (!cs.length) return;
+  const to = !cs[0].b.vertical;
+  commit(() => { for (const c of cs) c.b.vertical = to; });
 }
 export function changeCase(mode) {
   const c = ctx(); if (!c) return;
@@ -200,6 +227,7 @@ export function changeCase(mode) {
 
 // Lists apply to the whole box when nothing is selected.
 export function list(cmd) {
+  if (ctxs().length > 1) return exec(cmd);           // (several boxes: each one whole)
   const c = ctx(); if (!c) return;
   enterEdit(c.el);
   selectAllIfCollapsed(c.el);
@@ -209,57 +237,61 @@ export function list(cmd) {
 
 // ---- Box-level formatting (works with the box selected) -------------------
 export function align(value) {
-  const m = mathSel(); if (m) return commit(() => { m.textAlign = value === 'justify' ? 'center' : value; });
-  const c = ctx(); if (!c) return;
-  commit(() => { c.b.textAlign = value; });
+  const cs = ctxs(), ms = mathsSel(); if (!cs.length && !ms.length) return;
+  commit(() => { for (const m of ms) m.textAlign = value === 'justify' ? 'center' : value; for (const c of cs) c.b.textAlign = value; });
 }
 export function fontFamily(value) {
-  const c = ctx(); if (!c) return;
+  const cs = ctxs(); if (!cs.length) return;
   ensureFont(value);
-  commit(() => { c.b.fontFamily = value; });
+  commit(() => { for (const c of cs) c.b.fontFamily = value; });
 }
 export function setFontSize(px) {
-  const m = mathSel(); if (m) return commit(() => { m.fontSize = Math.max(8, px); });
-  const c = ctx(); if (!c) return;
-  commit(() => { c.b.fontSize = Math.max(8, px); });
+  const cs = ctxs(), ms = mathsSel(); if (!cs.length && !ms.length) return;
+  commit(() => { for (const m of ms) m.fontSize = Math.max(8, px); for (const c of cs) c.b.fontSize = Math.max(8, px); });
 }
 // The box's line spacing, for all its paragraphs (as PowerPoint with the box selected): their own — every paragraph
 // imported from PowerPoint, or pasted, carries one (<p style="line-height:…">) — goes, or it would hide the box's.
 const noLineHeight = root => root.querySelectorAll('[style*="line-height"]').forEach(e => { e.style.removeProperty('line-height'); if (!e.getAttribute('style')) e.removeAttribute('style'); });
 export function lineSpacing(value) {
-  const c = ctx(); if (!c) return;
-  const editing = c.el.getAttribute('contenteditable') === 'true';
-  let html = c.b.html || '';
-  if (editing) { noLineHeight(c.el); html = c.el.innerHTML; }
-  else if (html.includes('line-height')) { const d = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html'); noLineHeight(d.body); html = d.body.innerHTML; }
-  commit(() => { c.b.lineHeight = parseFloat(value) || 1.2; c.b.html = html; });
+  const cs = ctxs(); if (!cs.length) return;
+  const out = cs.map(c => {
+    const editing = c.el.getAttribute('contenteditable') === 'true';
+    let html = c.b.html || '';
+    if (editing) { noLineHeight(c.el); html = c.el.innerHTML; }
+    else if (html.includes('line-height')) { const d = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html'); noLineHeight(d.body); html = d.body.innerHTML; }
+    return [c.b, html];
+  });
+  commit(() => { for (const [b, html] of out) { b.lineHeight = parseFloat(value) || 1.2; b.html = html; } });
 }
 export function letterSpacing(px) {
-  const c = ctx(); if (!c) return;
-  commit(() => { c.b.letterSpacing = parseFloat(px) || 0; });
+  const cs = ctxs(); if (!cs.length) return;
+  commit(() => { for (const c of cs) c.b.letterSpacing = parseFloat(px) || 0; });
 }
 export function indent(px) {
-  const c = ctx(); if (!c) return;
-  commit(() => { c.b.indent = Math.max(0, parseFloat(px) || 0); });
+  const cs = ctxs(); if (!cs.length) return;
+  commit(() => { for (const c of cs) c.b.indent = Math.max(0, parseFloat(px) || 0); });
 }
 export function adjustIndent(delta) {
-  const c = ctx(); if (!c) return;
-  commit(() => { c.b.indent = Math.max(0, (c.b.indent || 0) + delta); });
+  const cs = ctxs(); if (!cs.length) return;
+  commit(() => { for (const c of cs) c.b.indent = Math.max(0, (c.b.indent || 0) + delta); });
 }
 export function setVAlign(v) {
-  const c = ctx(); if (!c) return;
-  commit(() => { c.b.vAlign = v; });
+  const cs = ctxs(); if (!cs.length) return;
+  commit(() => { for (const c of cs) c.b.vAlign = v; });
 }
 export function setBullet(value) {
-  const c = ctx(); if (!c) return;
-  commit(() => { c.b.bullet = value; });
+  const cs = ctxs(); if (!cs.length) return;
+  commit(() => { for (const c of cs) c.b.bullet = value; });
 }
 export function setNumStyle(value) {
-  const c = ctx(); if (!c) return;
-  commit(() => { c.b.numStyle = value; });
+  const cs = ctxs(); if (!cs.length) return;
+  commit(() => { for (const c of cs) c.b.numStyle = value; });
 }
 export function fontSize(delta) {
-  const m = mathSel(); if (m) return commit(() => { m.fontSize = Math.max(8, (m.fontSize || MATH_SIZE) + delta); });
-  const c = ctx(); if (!c) return;
-  commit(() => { c.b.fontSize = Math.max(8, (c.b.type === 'shape' ? c.b.fontSize || 28 : styled(c.b, currentSlide()).fontSize || 40) + delta); });
+  // (Each one from its own size: three boxes of 20, 28 and 40 become 24, 32 and 44.)
+  const cs = ctxs(), ms = mathsSel(); if (!cs.length && !ms.length) return;
+  commit(() => {
+    for (const m of ms) m.fontSize = Math.max(8, (m.fontSize || MATH_SIZE) + delta);
+    for (const c of cs) c.b.fontSize = Math.max(8, (c.b.type === 'shape' ? c.b.fontSize || 28 : styled(c.b, currentSlide()).fontSize || 40) + delta);
+  });
 }
