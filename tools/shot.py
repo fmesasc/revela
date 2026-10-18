@@ -8,6 +8,7 @@ starts from a new deck, runs the JS, waits a moment and saves the screenshot
 (of the whole page, or of the selector's box with some margin).
 """
 import base64, http.server, json, os, shutil, socketserver, subprocess, sys, threading, time
+from chromeprof import profile      # (its own browser profile, removed at the end)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -32,7 +33,7 @@ def main():
     def child():
         os.dup2(r_in, 3); os.dup2(w_out, 4)
     proc = subprocess.Popen([chrome, '--headless=new', '--no-sandbox', '--disable-gpu', '--remote-debugging-pipe',
-                             '--user-data-dir=' + os.path.join(os.environ.get('TMPDIR', '/tmp'), f'revela-shot-{os.getpid()}')],
+                             '--user-data-dir=' + profile('revela-shot')],
                             preexec_fn=child, pass_fds=(3, 4), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     os.close(r_in); os.close(w_out)
     buf, n = b'', [0]

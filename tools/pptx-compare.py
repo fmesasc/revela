@@ -10,7 +10,7 @@ audience sees) instead of the editor's canvas.
 Needs LibreOffice (soffice), pdftoppm and Pillow. The file is only read
 locally: it is served to the headless browser from this machine.
 """
-import base64, http.server, json, os, shutil, socketserver, subprocess, sys, threading, time
+import atexit, base64, http.server, json, os, shutil, socketserver, subprocess, sys, threading, time
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -53,8 +53,9 @@ def main():
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     chrome = next(shutil.which(c) for c in ('google-chrome', 'chromium', 'chromium-browser') if shutil.which(c))
     r_in, w_in = os.pipe(); r_out, w_out = os.pipe()
+    prof = os.path.join(out, '.chrome'); atexit.register(shutil.rmtree, prof, True)   # (its browser profile: gone at the end)
     proc = subprocess.Popen([chrome, '--headless=new', '--no-sandbox', '--remote-debugging-pipe', '--hide-scrollbars',
-                             f'--user-data-dir={out}/.chrome'], preexec_fn=lambda: (os.dup2(r_in, 3), os.dup2(w_out, 4)),
+                             f'--user-data-dir={prof}'], preexec_fn=lambda: (os.dup2(r_in, 3), os.dup2(w_out, 4)),
                             pass_fds=(3, 4), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     n, buf = [0], [b'']
 

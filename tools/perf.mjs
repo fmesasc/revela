@@ -5,7 +5,7 @@
 //   node tools/perf.mjs [--rates 1,4,6] [--example launch] [--json out.json]
 // Prints one line per rate. (Needs Chrome; run it alone: it is heavy.)
 import { spawn } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, extname } from 'node:path';
@@ -21,7 +21,9 @@ const srv = http.createServer(async (req, res) => {
 const port = srv.address().port, sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function run(rate) {
-  const chrome = spawn(process.env.CHROME || 'google-chrome', ['--headless=new', '--no-sandbox', '--disable-gpu', '--remote-debugging-port=0', '--window-size=1366,768', '--user-data-dir=' + mkdtempSync('/tmp/perf-'), 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  // (Its browser profile: gone when it ends.)
+  const prof = mkdtempSync('/tmp/perf-'); process.on('exit', () => { try { rmSync(prof, { recursive: true, force: true }); } catch {} });
+  const chrome = spawn(process.env.CHROME || 'google-chrome', ['--headless=new', '--no-sandbox', '--disable-gpu', '--remote-debugging-port=0', '--window-size=1366,768', '--user-data-dir=' + prof, 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
   const wsUrl = await new Promise(r => chrome.stderr.on('data', d => { const m = String(d).match(/ws:\/\/[^\s]+/); if (m) r(m[0]); }));
   const ws = new WebSocket(wsUrl); await new Promise(r => { ws.onopen = r; });
   let id = 0; const pend = new Map(), events = [];

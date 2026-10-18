@@ -6,10 +6,11 @@ real headless Chrome, since some sites answer differently to curl.
 
 Prints "funciona" or "BLOQUEADA" for each, and the browser's reason.
 """
-import tempfile, json, os, subprocess, sys, time, shutil, http.server, socketserver, threading
+import atexit, tempfile, json, os, subprocess, sys, time, shutil, http.server, socketserver, threading
 URLS = sys.argv[1:]
 html = '<!doctype html><body>' + ''.join(f'<iframe src="{u}" width="400" height="300"></iframe>' for u in URLS)
-d = tempfile.mkdtemp(prefix='revela-embed-'); open(os.path.join(d, 'frames.html'), 'w').write(html)
+d = tempfile.mkdtemp(prefix='revela-embed-'); atexit.register(shutil.rmtree, d, True)   # (its page and browser profile: gone at the end)
+open(os.path.join(d, 'frames.html'), 'w').write(html)
 class Q(http.server.SimpleHTTPRequestHandler):
     def __init__(s, *a, **k): super().__init__(*a, directory=d, **k)
     def log_message(s, *a): pass

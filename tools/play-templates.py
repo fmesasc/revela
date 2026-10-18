@@ -25,7 +25,8 @@ threading.Thread(target=srv.serve_forever, daemon=True).start(); port = srv.serv
 chrome = next(shutil.which(c) for c in ('google-chrome', 'chromium') if shutil.which(c))
 flags = ['--use-angle=gl-egl', '--ignore-gpu-blocklist'] if GPU else ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']
 # (Its own browser profile, removed at the end: left behind, each run's — models and pages cached — filled the disk.)
-PROFILE = f'/tmp/claude-1000/revela-play-{os.getpid()}'
+from chromeprof import profile
+PROFILE = profile('revela-play')
 ri, wi = os.pipe(); ro, wo = os.pipe()
 proc = subprocess.Popen([chrome, '--headless=new', '--no-sandbox', *flags, '--autoplay-policy=no-user-gesture-required', '--remote-debugging-pipe',
                          f'--user-data-dir={PROFILE}'],
@@ -144,4 +145,4 @@ def sheet(key, shots):
     s.save(os.path.join(OUT, key + '.jpg'), quality=80)
 
 try: main()
-finally: proc.kill(); srv.shutdown(); proc.wait(timeout=10); shutil.rmtree(PROFILE, ignore_errors=True)
+finally: proc.kill(); srv.shutdown(); proc.wait(timeout=10)
