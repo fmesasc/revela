@@ -376,11 +376,29 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.store.commit(() => { d.sectionBar = { show: false, position: 'top', style: 'dots', skipTitle: true }; });
   });
 
-  await test('números de diapositiva configurables en el export', async () => {
-    reset(); R.state.deck.slideNumber = { show: true, position: 'tl', format: 'c/t' };
-    const html = R.io.buildHTML();
-    assert(/slideNumber:["']c\/t["']/.test(html), 'formato del número');
-    assert(/\.slide-number\{[^}]*top:8px/.test(html), 'posición del número');
+  await test('números de diapositiva: en cada diapositiva, con formato, estilo, tamaño, letra y colores; se quitan por diapositiva', async () => {
+    reset(); for (let k = 0; k < 3; k++) R.slides.addSlide();
+    const d = R.state.deck, sl = d.slides, nums = () => R.io.buildHTML().split(/<section\b/).slice(1).map(x => (x.match(/<div class="rv-slidenum"[^>]*>([^<]*)<\/div>/) || [, ''])[1]);
+    R.store.commit(() => { d.slideNumber = { show: true, position: 'tl', format: 'c/t' }; });
+    eq(nums().join(), '1 / 4,2 / 4,3 / 4,4 / 4', 'formato «1 / N», en cada diapositiva');
+    assert(/slideNumber:false/.test(R.io.buildHTML()), 'el de reveal.js, apagado (lo dibuja la diapositiva)');
+    assert(/class="rv-slidenum"[^>]*top:22px;left:22px/.test(R.io.buildHTML()), 'arriba a la izquierda');
+    // An appendix not counted, one hidden from the number, other formats.
+    R.store.commit(() => { sl[3].uncounted = true; sl[1].noNumber = true; d.slideNumber.format = 'cof'; });
+    eq(nums().join('|'), '1 de 3||3 de 3|', 'sin número la que se quita y el anexo, que no cuenta');
+    R.store.commit(() => { delete sl[1].noNumber; delete sl[3].uncounted; d.slideNumber.format = '0c'; });
+    eq(nums().join(), '01,02,03,04', 'con cero delante');
+    R.store.commit(() => { d.slideNumber.format = 'word'; }); eq(nums()[2], 'Diapositiva 3');
+    // Its looks, size, font and colours.
+    const tag = o => { R.store.commit(() => Object.assign(d.slideNumber, { format: 'c', position: 'br' }, o)); return R.io.buildHTML().match(/<div class="rv-slidenum"[^>]*>/)[0]; };
+    assert(/border-radius:999px/.test(tag({ look: 'pill' })) && /opacity:0\.45/.test(tag({ look: 'soft' })) && /border-right:\d+px solid/.test(tag({ look: 'bar' })), 'píldora, discreto y con raya');
+    assert(/font-size:36px/.test(tag({ look: 'plain', size: 200 })) && /font-family:system-ui/.test(tag({ font: 'system' })), 'tamaño y letra');
+    assert(/color:#123456/.test(tag({ look: 'circle', fg: '#123456', bg: '#abcdef' })) && /background:#abcdef/.test(tag({})), 'colores propios');
+    // Clear of the sections bar at its side; on the canvas too.
+    R.slides.addSectionAt(0, 'Intro'); R.store.commit(() => { d.sectionBar = { show: true, position: 'bottom', style: 'names' }; d.slideNumber = { show: true, position: 'br' }; });
+    assert(/bottom:54px/.test(R.io.buildHTML().match(/<div class="rv-slidenum"[^>]*>/)[0]), 'por encima de la barra de secciones');
+    R.render(); await sleep(40); assert(D.querySelector('#stage .rv-slidenum'), 'en el lienzo');
+    R.store.commit(() => { d.sectionBar.show = false; d.slideNumber = { show: false, position: 'br', format: 'c' }; });
   });
 
   await test('logo de marca en el lienzo y el export', async () => {

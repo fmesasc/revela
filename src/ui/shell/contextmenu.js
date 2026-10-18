@@ -241,6 +241,8 @@ function forThumb(i) {
     // (The sections bar — Insertar ▸ Encabezado y pie —: off on a slide where it is in the way.)
     state.deck.sectionBar?.show ? [slide.noSectionBar ? 'Mostrar la barra de secciones aquí' : 'Ocultar la barra de secciones aquí',
       () => commit(() => { if (slide.noSectionBar) delete slide.noSectionBar; else slide.noSectionBar = true; })] : null,
+    state.deck.slideNumber?.show ? [slide.noNumber ? 'Mostrar el número aquí' : 'Ocultar el número aquí',
+      () => commit(() => { if (slide.noNumber) delete slide.noNumber; else slide.noNumber = true; })] : null,
     ...workItems([slide]),
   ];
 }

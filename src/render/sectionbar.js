@@ -94,3 +94,9 @@ export function sectionBarHTML(deck, slide, { fg = '#ffffff', accent = '#3f6497'
     + (look === 'minimal' ? '' : `${top ? 'border-bottom' : 'border-top'}:${look === 'tabs' ? Math.max(2, px(2)) : 1}px solid ${line};`) + 'z-index:5">'
     + items.map(one).join('') + '</nav>';
 }
+
+// The room it takes at the top or the bottom of this slide (the slide number keeps clear of it).
+export function barRoom(deck, slide) {
+  if (!sectionBarOn(deck, slide)) return {};
+  const h = sectionBarHeight(deck); return deck.sectionBar.position === 'bottom' ? { barBottom: h } : { barTop: h };
+}

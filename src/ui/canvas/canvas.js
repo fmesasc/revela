@@ -4,7 +4,8 @@
 
 import { blobURL, withBlobs, pruneBlobs } from '../../io/formats/blobmedia.js';
 import { diagramHTML, diagramSig, readableOn } from '../../render/diagrams.js';
-import { sectionBarHTML } from '../../render/sectionbar.js';
+import { sectionBarHTML, barRoom } from '../../render/sectionbar.js';
+import { slideNumberHTML } from '../../render/slidenumber.js';
 import { diagramOpts } from '../../features/document/blocks.js';
 import { openDiagramText } from '../dialogs/diagram.js';
 import { openFile } from '../../features/content/files.js';
@@ -237,10 +238,13 @@ function drawCaptions() {
 }
 
 // The deck logo, shown on every slide (branding / master).
-// The sections bar (render/sectionbar.js), as it will show when presenting: drawn over the slide, not editable, so
+// The sections bar (render/sectionbar.js) and the slide number, as they will show when presenting: drawn over the slide, not editable, so
 // what goes under it can be seen and moved out of its way.
 function drawSectionBar(slide) {
-  const html = state.ui.editMaster ? '' : sectionBarHTML(state.deck, slide, { fg: readableOn(deckFg(), slide.background || currentPalette().bg), accent: currentPalette().accents[0], font: deckBodyFont(), link: false, label: t('Secciones') });
+  const fg = readableOn(deckFg(), slide.background || currentPalette().bg), accent = currentPalette().accents[0];
+  // (And the slide number — render/slidenumber.js —, also drawn in the slide.)
+  const html = state.ui.editMaster ? '' : sectionBarHTML(state.deck, slide, { fg, accent, font: deckBodyFont(), link: false, label: t('Secciones') })
+    + slideNumberHTML(state.deck, slide, { fg, accent, font: deckBodyFont(), words: { cof: t('{n} de {t}'), word: t('Diapositiva {n}') }, ...barRoom(state.deck, slide) });
   let el = stage.querySelector('.secbar-ovl');
   if (!html) { el?.remove(); return; }
   if (!el) { el = document.createElement('div'); el.className = 'secbar-ovl'; el.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:4'; }

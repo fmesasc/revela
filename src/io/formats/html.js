@@ -4,7 +4,8 @@
 
 import { registerCodeLangs } from '../../render/codelangs.js';
 import { diagramHTML, diagramLayout, readableOn } from '../../render/diagrams.js';
-import { sectionBarHTML } from '../../render/sectionbar.js';
+import { sectionBarHTML, barRoom } from '../../render/sectionbar.js';
+import { slideNumberHTML } from '../../render/slidenumber.js';
 import { pdfRuntime } from '../runtime/pdf.js';
 import { finishStepRuntime } from '../runtime/finishstep.js';
 import { tabRuntime } from '../runtime/tabs.js';
@@ -493,6 +494,8 @@ function blockHTMLRaw(b, slide) {
   return '';
 }
 
+// The words of a slide number («3 de 12», «Diapositiva 3») in the app's language.
+export const numberWords = () => ({ cof: t('{n} de {t}'), word: t('Diapositiva {n}') });
 // A video's or GIF's clicks: each segment after the first automatic one.
 function mediaSegs(b, slide) {
   const cfg = mediaConfig(b);
@@ -749,7 +752,10 @@ function slideHTML(s0, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck)
   const inner = bk != null ? `<div class="rv-bgl" style="position:absolute;inset:0">${bgLayer(s)}${parts.slice(0, nBack).join('\n')}</div>${parts.slice(nBack).join('\n')}`
     : bgLayer(s) + parts.join('\n');
   // (The sections bar, as Beamer's: where the talk is — render/sectionbar.js.)
-  const bar = sectionBarHTML(deck, s0, { fg: readableOn(deckFg(deck), s.background || currentPalette(deck).bg), accent: currentPalette(deck).accents[0], font: deckBodyFont(deck), label: t('Secciones') });
+  const fgHere = readableOn(deckFg(deck), s.background || currentPalette(deck).bg), accent = currentPalette(deck).accents[0];
+  const bar = sectionBarHTML(deck, s0, { fg: fgHere, accent, font: deckBodyFont(deck), label: t('Secciones') })
+    // (And its number, in the slide too — render/slidenumber.js —, clear of the bar.)
+    + slideNumberHTML(deck, s0, { fg: fgHere, accent, font: deckBodyFont(deck), words: numberWords(), ...barRoom(deck, s0) });
   const notes = (s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '')
     // Voice-over: plays when the slide is shown (reveal.js's data-autoplay).
     + (s.narration?.src && /^data:audio\/|^https:\/\/|^blob:/.test(s.narration.src) ? `<audio class="rv-narration" data-autoplay src="${esc(s.narration.src)}" preload="auto"></audio>` : '');
@@ -761,14 +767,6 @@ function slideHTML(s0, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck)
   return `<section${trans}${speed}${exact}${auto}${bg}${aa}${start}${bk != null ? ` data-bgk="${bk}"` : ''} data-rv-id="${esc(s.id)}">`
     + `<div class="stage${s.bgIframe && s.bgInteractive ? ' pass' : ''}" style="background:${stageBackground(s)}">${inner}${bar}</div>${notes}</section>`;
 }
-
-// Where the slide number sits, as CSS for reveal's .slide-number element.
-const SLIDENUM_POS = {
-  br: 'right:8px;bottom:8px;top:auto;left:auto',
-  bl: 'left:8px;bottom:8px;top:auto;right:auto',
-  tr: 'right:8px;top:8px;bottom:auto;left:auto',
-  tl: 'left:8px;top:8px;bottom:auto;right:auto',
-};
 
 // inApp: presenting inside the editor from a blob: URL, where the address bar
 // can't be rewritten — keep hash navigation (links) but don't write history.
@@ -844,8 +842,6 @@ function buildHTMLRaw(deck, { inApp = false, selfPaced = false, noCopy = false, 
   const slides = groups.map(g => (g.length > 1 ? `<section>\n${g.map(s => slideHTML(s, deck, figMap, plan, fit, bd)).join('\n')}\n</section>` : slideHTML(g[0], deck, figMap, plan, fit, bd))).join('\n')
     // Links typed as a slide number (#/N, N = position in the deck) → reveal's h/v.
     .replace(/href="#\/(\d+)"/g, (m, n) => `href="#/${flat[+n] || n}"`);
-  const sn = deck.slideNumber || { show: false };
-  const snPos = SLIDENUM_POS[sn.position] || SLIDENUM_POS.br;
   const hasCode = deck.slides.some(s => s.blocks.some(b => b.type === 'code'));
   const hasMath = deck.slides.some(s => s.blocks.some(b => b.type === 'math')) || / class="math" data-latex=/.test(slides);   // (also one in the master)
   const hasInlineMath = deck.slides.some(s => s.blocks.some(b => b.type === 'text' && /\$[^$]/.test(b.html || '')));
@@ -900,7 +896,6 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  .reveal .stage ol{list-style-type:var(--num,decimal)}
  .reveal .stage :not(pre)>code{font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;font-size:.9em;background:color-mix(in srgb,currentColor 11%,transparent);color:inherit;padding:.04em .28em;border-radius:.25em;text-transform:none}
  .reveal section{height:100%}
- .reveal .slide-number{${snPos}}
  ${tableCSS('.reveal ')}
  .reveal .stage.pass{pointer-events:none} .reveal .stage.pass>*{pointer-events:auto}
  .reveal .math .katex-display{margin:0}
@@ -971,7 +966,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
 <script>
  ${hasCode ? `try{(${registerCodeLangs.toString()})(RevealHighlight().hljs);}catch(e){}` : ''}
  Reveal.initialize({ width:${w}, height:${h}, margin:0, minScale:0.05, maxScale:20, hash:${inApp ? 'false' : 'true'}, respondToHashChanges:true, loop:${deck.loop ? 'true' : 'false'},
-   slideNumber:${sn.show ? jsData(sn.format || 'c') : 'false'},
+   slideNumber:false,
    transition:${jsData(deck.defaultTransition)}, transitionSpeed:${jsData(deck.transitionSpeed)},
    ${revealOptions(deck, inApp)}${canvas ? " center:false, viewDistance:1000, mobileViewDistance:1000, backgroundTransition:'none'," : ''}
    plugins:[ RevealNotes${hasCode ? ', RevealHighlight' : ''}${rv(deck).zoom !== false ? ', RevealZoom' : ''}${rv(deck).search !== false ? ', RevealSearch' : ''} ] });
