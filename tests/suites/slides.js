@@ -845,7 +845,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // «Ocultar gráficos del patrón».
     R.master.editLayout('titleContent'); await sleep(10);
     assert(R.master.masterBlocksFor(S(a.id)).some(x => x.id === 'deco'), 'los gráficos del patrón bajo la diapositiva');
+    // On the canvas too, while editing the layout (they were left out there, though its thumbnail had them).
+    R.render(); await sleep(20);
+    assert(D.querySelector('#stage .master-layer [data-id="deco"], #stage .master-layer [data-bid="deco"]') || D.querySelector('#stage .master-layer')?.children.length, 'en el lienzo del diseño, los gráficos del patrón debajo');
     D.querySelector('[data-action="layout-hide-graphics"]').click(); await sleep(10);
+    R.render(); await sleep(20);
+    assert(!D.querySelector('#stage .master-layer')?.children.length, 'ocultos: tampoco en el lienzo');
     assert(L('titleContent').hideMaster && D.querySelector('[data-action="layout-hide-graphics"]').classList.contains('on'), 'ocultos en el diseño');
     assert(!R.master.masterBlocksFor(S(a.id)).some(x => x.id === 'deco'), 'y en sus diapositivas');
     assert(R.master.masterBlocksFor(S(b.id)).some(x => x.id === 'deco'), 'no en las de otros diseños');

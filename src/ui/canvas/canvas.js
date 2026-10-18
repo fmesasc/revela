@@ -159,9 +159,11 @@ function drawBgMedia(slide) {
   else { el.style.background = withBlobs(slide.background); el.style.opacity = slide.bgOpacity / 100; }
 }
 
-// Master objects, drawn (not editable) under the slide's own objects.
+// Master objects, drawn (not editable) under the slide's own objects — and, in the master view, under a layout's (the
+// master's logos and bands, as its slides show them: left out, a layout seemed to have lost them; the master itself:
+// none, its own objects are the editable ones).
 function drawMasterLayer() {
-  const blocks = state.ui.editMaster ? [] : masterBlocksFor(currentSlide());
+  const blocks = masterBlocksFor(currentSlide());
   const sig = shortSig(blocks);
   let layer = stage.querySelector('.master-layer');
   if (!blocks.length) { layer?.remove(); return; }
