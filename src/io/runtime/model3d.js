@@ -213,13 +213,26 @@ export function model3dRuntime() {
   // what should be there), inside it (so Morph's movement carries it), until it has drawn itself.
   function bridge(mv, old) {
     var src = old.shadowRoot && old.shadowRoot.querySelector('canvas'); if (!src || !src.width || !src.height) return;
-    var c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
-    try { c.getContext('2d').drawImage(src, 0, 0); } catch (e) { return; }
+    // (Only its own corner of that canvas: model-viewer's is as big as the largest model on the page — 480 × 300 for a
+    // 180 × 225 one — and draws each in its top left; the whole of it, shrunk into the box, showed a small second figure.)
+    var k = src.width / (parseFloat(src.style.width) || src.width);
+    var sw = Math.min(src.width, Math.round((old.offsetWidth || src.width) * k)), sh = Math.min(src.height, Math.round((old.offsetHeight || src.height) * k));
+    if (!sw || !sh) return;
+    var c = document.createElement('canvas'); c.width = sw; c.height = sh;
+    try { c.getContext('2d').drawImage(src, 0, 0, sw, sh, 0, 0, sw, sh); } catch (e) { return; }
     c.setAttribute('aria-hidden', 'true'); c.className = 'rv-bridge';
     c.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:5';
     mv.appendChild(c);
+    // (Until it has drawn itself where it shows: loaded is not enough — a model draws only once it is in view, and a
+    // slide coming in from the side showed its box empty, then the figure, for a few frames.)
     var gone = function () { var n = 0; (function tick() { if (++n < 4) requestAnimationFrame(tick); else c.remove(); })(); };
-    if (mv.loaded) gone(); else { mv.addEventListener('load', gone, { once: true }); setTimeout(function () { c.remove(); }, 8000); }
+    var drawn = function () { if (mv.modelIsVisible) gone(); else mv.addEventListener('model-visibility', function seen(e) { if (e.detail && e.detail.visible) { mv.removeEventListener('model-visibility', seen); gone(); } }); };
+    if (mv.loaded) drawn(); else mv.addEventListener('load', drawn, { once: true });
+    setTimeout(function () { c.remove(); }, 8000);
+  }
+  function alike(a, b) {
+    return ['camera-orbit', 'animation-name', 'data-bleed', 'auto-rotate'].every(function (k) { return a.getAttribute(k) === b.getAttribute(k); })
+      && a.style.width === b.style.width && a.style.height === b.style.height;
   }
   function handoff(prev, cur) {
     var handed = new Map();
@@ -228,8 +241,10 @@ export function model3dRuntime() {
       var how = mv.getAttribute('data-arrive') || 'keep'; if (how === 'reset') return;
       var old = partner(mv, prev); if (!old || !old.loaded) return;
       // (Without Morph, only the same object — its data-id, a duplicated slide —: another model of the same file kept
-      // that one's angle and lost its own view — a character sheet's four views, all alike.)
-      if (!morphs(prev, cur) && !(mv.getAttribute('data-id') && old.getAttribute('data-id') === mv.getAttribute('data-id'))) return;
+      // that one's angle and lost its own view — a character sheet's four views, all alike. But the same model shown
+      // the same way — same file, size, view and clip, the slide after — has the other one's picture until it draws:
+      // it came in empty, then popped in, a different figure for a moment.)
+      if (!morphs(prev, cur) && !(mv.getAttribute('data-id') && old.getAttribute('data-id') === mv.getAttribute('data-id'))) { if (alike(mv, old)) bridge(mv, old); return; }
       handed.set(mv, Math.max(travel(prev, cur), how === 'turn' ? 2400 + 150 : how === 'keep' ? 0 : 1400 + 150));   // (its own movement starts once the arrival is over)
       bridge(mv, old);
       var o = orbitOf(old), spin = typeof old.turntableRotation === 'number' ? old.turntableRotation : 0;
