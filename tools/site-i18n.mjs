@@ -174,7 +174,9 @@ export function translatePage(html, lang, dict, page) {
 export function sitemap(pages, extra, date) {
   const alt = p => SITE_LANGS.map(l => `<xhtml:link rel="alternate" hreflang="${l}" href="${pageUrl(p, l)}"/>`).join('')
     + `<xhtml:link rel="alternate" hreflang="x-default" href="${pageUrl(p, 'es')}"/>`;
-  const rows = pages.flatMap(([p, prio]) => SITE_LANGS.map(l => `  <url><loc>${pageUrl(p, l)}</loc><lastmod>${date}</lastmod><priority>${prio}</priority>${alt(p)}</url>`));
+  // (A page may bring its picture in each language — a template's cover —: <image:image>, so Google Images finds it and ties it to the page.)
+  const pic = (imageOf, l) => (typeof imageOf === 'function' ? `<image:image><image:loc>${imageOf(l)}</image:loc></image:image>` : '');
+  const rows = pages.flatMap(([p, prio, imageOf]) => SITE_LANGS.map(l => `  <url><loc>${pageUrl(p, l)}</loc><lastmod>${date}</lastmod><priority>${prio}</priority>${alt(p)}${pic(imageOf, l)}</url>`));
   for (const p of extra) rows.push(`  <url><loc>${SITE}/${p}</loc><lastmod>${date}</lastmod><priority>0.2</priority></url>`);
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${rows.join('\n')}\n</urlset>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${rows.join('\n')}\n</urlset>\n`;
 }
