@@ -16,7 +16,7 @@ import { download, slug } from '../../io/files.js';
 import { projectBlob } from '../../io/formats/project.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
-import { errorText, signedIn, openCloudShare } from './cloud.js';
+import { errorText, signedIn, openCloudShare, fitsCloudOrOffer } from './cloud.js';
 
 const VIEW = 'revela.cloud.view', SORT = 'revela.cloud.sort';
 const pref = (k, d, ok) => { try { const v = localStorage.getItem(k); return ok.includes(v) ? v : d; } catch { return d; } };
@@ -407,6 +407,7 @@ async function newFolder() {
 // The presentation in the editor, into the cloud (into this folder).
 async function saveHere() {
   const folder = S.section === 'mine' && !S.q ? S.folder : null;
+  if (!(await fitsCloudOrOffer())) return;
   try { await cd.saveToCloud({ folder }); nowInCloud(); closePage(); openCloudShare(); } catch (e) { alertDialog(errorText(e)); }
 }
 // A blank one in the cloud (in this folder), open in the editor.

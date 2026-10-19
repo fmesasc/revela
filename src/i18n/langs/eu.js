@@ -4948,4 +4948,9 @@ export default {
   "Secciones por venir": "Etortzeko atalak",
   "Numerar las secciones (1. Introducción)": "Atalak zenbakitu (1. Sarrera)",
   "Con una línea del avance de toda la presentación": "Aurkezpen osoaren aurrerapen-lerro batekin",
+  "Esta presentación ocupa unos {n} MB y la nube de Revela guarda hasta {max} MB (las fotos, los vídeos y los modelos 3D van dentro). Guárdala en tu Google Drive, que no tiene ese límite, o descárgala como archivo.": "Aurkezpen honek {n} MB inguru hartzen ditu, eta Revelaren hodeiak {max} MB arte gordetzen ditu (argazkiak, bideoak eta 3D ereduak barruan doaz). Gorde zure Google Driven, muga hori ez duelako, edo deskargatu fitxategi gisa.",
+  "Guardada en tu nube de Revela. Para compartirla: Archivo ▸ Personas.": "Zure Revela hodeian gordeta. Partekatzeko: Fitxategia ▸ Pertsonak.",
+  "Google Drive (tu cuenta de Google)": "Google Drive (zure Google kontua)",
+  "Recomendado: se guarda sola, sin límite de tamaño, y la abres desde cualquier dispositivo.": "Gomendatua: bere kabuz gordetzen da, tamaina-mugarik gabe, eta edozein gailutatik irekitzen duzu.",
+  "En tu cuenta de Revela (hasta {max} MB): desde ahí la compartes con personas concretas y ves sus estadísticas.": "Zure Revela kontuan ({max} MB arte): handik pertsona jakinekin partekatzen duzu eta haren estatistikak ikusten dituzu.",
 };

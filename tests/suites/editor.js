@@ -1098,6 +1098,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!box.contains(own), 'un clic lo quita (quedan: ' + [...box.children].map(x => x.textContent.trim().slice(0, 40)).slice(0, 3).join(' | ') + ')');
   });
 
+  await test('nube de Revela: una presentación que no cabe (más de 30 MB) lo dice antes de subirla, con cuánto ocupa, y ofrece Google Drive', async () => {
+    reset(); const W = frame.contentWindow, CL = await W.eval("import('/src/ui/dialogs/cloud.js')"), CD = await W.eval("import('/src/io/cloud/clouddocs.js')");
+    assert(CD.cloudFits(), 'una normal cabe');
+    R.store.commit(() => { slide().blocks.push({ id: 'big3d', type: 'model', x: 0, y: 0, w: 100, h: 100, src: 'data:model/gltf-binary;base64,' + 'A'.repeat(32e6) }); });
+    assert(!CD.cloudFits(), 'una de 32 MB, no');
+    const p = CL.fitsCloudOrOffer(); await sleep(30);
+    const msg = [...D.querySelectorAll('.modal .dlg-msg')].pop()?.textContent || '';
+    assert(/31 MB/.test(msg) && /30 MB/.test(msg) && /Google Drive/.test(msg), 'cuánto ocupa, el límite y dónde sí cabe: ' + msg);
+    [...D.querySelectorAll('.modal .dlg-cancel')].pop().click(); eq(await p, false, 'y no se sube');
+    assert(/30 MB/.test(CL.errorText({ status: 413 })), 'el error del servidor dice lo mismo');
+    R.store.commit(() => { slide().blocks = slide().blocks.filter(b => b.id !== 'big3d'); });
+  });
+
   await test('si el navegador no puede guardar, la barra lo dice y un clic descarga una copia', async () => {
     reset(); const S = W.Storage.prototype, P = W.IDBObjectStore.prototype, set = S.setItem, put = P.put;
     const ss = D.getElementById('save-state');

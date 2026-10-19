@@ -33,7 +33,26 @@ const storageFullText = d => t('Tu espacio en la nube está lleno ({used} de {qu
 export const errorText = e => (e.status === 402 && e.data?.error === 'read only' ? readOnlyText(e.data.limit) : e.status === 402 && e.data?.error === 'doc limit' ? t('Has llegado al máximo de presentaciones en la nube de tu plan ({n}). Borra alguna o pásate a Pro.').replace('{n}', e.data.limit)
   : e.status === 402 && e.data?.error === 'storage full' ? storageFullText(e.data)
   : e.status === 402 ? t('Esto es del plan Pro.') : e.status === 401 ? t('Inicia sesión primero.') : e.status === 403 ? t('No tienes permiso para esto.')
-  : e.status === 413 ? t('La presentación es demasiado grande para la nube.') : `${t('Algo ha fallado:')} ${e.message}`);
+  : e.status === 413 ? tooBigText() : `${t('Algo ha fallado:')} ${e.message}`);
+
+// Too big for Revela's cloud: how big, the limit, and where it does fit. (Francisco, 2026-10-19: the message said only
+// «too big for the cloud», and as he signs in with Google he took it for his Drive.)
+const tooBigText = () => t('Esta presentación ocupa unos {n} MB y la nube de Revela guarda hasta {max} MB (las fotos, los vídeos y los modelos 3D van dentro). Guárdala en tu Google Drive, que no tiene ese límite, o descárgala como archivo.')
+  .replace('{n}', cd.deckMB()).replace('{max}', cd.CLOUD_MAX_MB);
+// Before sending it: if it doesn't fit, said now — with a way to keep it in Drive — instead of after uploading it.
+export async function fitsCloudOrOffer() {
+  if (cd.cloudFits()) return true;
+  if (await confirmDialog(tooBigText(), { ok: t('Guardar en Google Drive'), cancel: t('Ahora no') })) (await import('./gdrive.js')).driveSaveAsUI();
+  return false;
+}
+// «Guardar ▸ Nube de Revela»: saved there, at once (sharing it is another step: Compartir).
+export async function saveInCloud() {
+  if (!(await signedIn()) || !(await fitsCloudOrOffer())) return false;
+  try { await cd.saveToCloud(); nowInCloud(); }
+  catch (e) { alertDialog(errorText(e)); return false; }
+  (await import('../shell/toast.js')).toast(t('Guardada en tu nube de Revela. Para compartirla: Archivo ▸ Personas.'));
+  return true;
+}
 
 function modal(id, title, width = 520) {
   document.getElementById(id)?.remove();
@@ -66,6 +85,7 @@ export async function openCloudShare() {
       <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do cl-save">${t('Guardar en la nube')}</button></div>`;
     body.querySelector('.cl-save').addEventListener('click', async e => {
       const btn = e.currentTarget, was = btn.innerHTML;
+      if (!(await fitsCloudOrOffer())) { close(); return; }
       btn.disabled = true; btn.innerHTML = `<span class="btn-spin" aria-hidden="true"></span> ${t('Guardando…')}`; btn.setAttribute('aria-busy', 'true');
       try { await cd.saveToCloud(); nowInCloud(); close(); openCloudShare(); } catch (err) { btn.disabled = false; btn.innerHTML = was; btn.removeAttribute('aria-busy'); alertDialog(errorText(err)); }
     });

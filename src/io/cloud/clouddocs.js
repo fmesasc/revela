@@ -19,6 +19,7 @@ import { OFFICIAL_SITE, EDITION } from '../../core/config.js';
 import { state, subscribe, snapshot, applyRemote, adoptDeck, replaceDeck, setPersist, mutate, onBeforeReplace } from '../../core/store.js';
 import { diff, applyOps } from '../../features/live/collabsync.js';
 import { cleanValue } from '../../features/document/sanitize.js';
+import { approxSize } from '../../core/model.js';
 
 // How requests reach the server: the account's API (the tests put a stand-in here).
 let transport = api;
@@ -157,6 +158,11 @@ export async function openDoc(id, { io = send, pollMs = 5000, debounceMs = 1200 
   return cloudDoc();
 }
 // Put the current presentation in the cloud (in one of my folders, if given) and keep it in step from now on.
+// The largest presentation Revela's cloud keeps (server: MAX_MB, 30 MB — its pictures, videos and 3D models inside):
+// known here, so a bigger one is told before it is sent, with where it does fit (Drive, a file).
+export const CLOUD_MAX_MB = 30;
+export const cloudFits = (deck = state.deck) => approxSize(deck) * 1.02 + 65536 <= CLOUD_MAX_MB * 1024 * 1024;
+export const deckMB = (deck = state.deck) => Math.max(1, Math.round(approxSize(deck) / 1048576));
 export async function saveToCloud({ io = send, pollMs = 5000, debounceMs = 1200, folder = null } = {}) {
   const deck = snapshot(state.deck), r = await io('docs', { deck, ...(folder && { folder }) });
   closeDoc();

@@ -4948,4 +4948,9 @@ export default {
   "Secciones por venir": "Seccións por vir",
   "Numerar las secciones (1. Introducción)": "Numerar as seccións (1. Introdución)",
   "Con una línea del avance de toda la presentación": "Cunha liña do avance de toda a presentación",
+  "Esta presentación ocupa unos {n} MB y la nube de Revela guarda hasta {max} MB (las fotos, los vídeos y los modelos 3D van dentro). Guárdala en tu Google Drive, que no tiene ese límite, o descárgala como archivo.": "Esta presentación ocupa uns {n} MB e a nube de Revela garda ata {max} MB (as fotos, os vídeos e os modelos 3D van dentro). Gárdaa no teu Google Drive, que non ten ese límite, ou descárgaa como ficheiro.",
+  "Guardada en tu nube de Revela. Para compartirla: Archivo ▸ Personas.": "Gardada na túa nube de Revela. Para compartila: Ficheiro ▸ Persoas.",
+  "Google Drive (tu cuenta de Google)": "Google Drive (a túa conta de Google)",
+  "Recomendado: se guarda sola, sin límite de tamaño, y la abres desde cualquier dispositivo.": "Recomendado: gárdase soa, sen límite de tamaño, e ábrela desde calquera dispositivo.",
+  "En tu cuenta de Revela (hasta {max} MB): desde ahí la compartes con personas concretas y ves sus estadísticas.": "Na túa conta de Revela (ata {max} MB): desde aí compártela con persoas concretas e ves as súas estatísticas.",
 };

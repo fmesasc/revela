@@ -4948,4 +4948,9 @@ export default {
   "Secciones por venir": "Komende secties",
   "Numerar las secciones (1. Introducción)": "Secties nummeren (1. Inleiding)",
   "Con una línea del avance de toda la presentación": "Met een lijn voor de voortgang van de hele presentatie",
+  "Esta presentación ocupa unos {n} MB y la nube de Revela guarda hasta {max} MB (las fotos, los vídeos y los modelos 3D van dentro). Guárdala en tu Google Drive, que no tiene ese límite, o descárgala como archivo.": "Deze presentatie is ongeveer {n} MB en de Revela-cloud bewaart tot {max} MB (foto's, video's en 3D-modellen zitten erin). Bewaar haar in je Google Drive, die die limiet niet heeft, of download haar als bestand.",
+  "Guardada en tu nube de Revela. Para compartirla: Archivo ▸ Personas.": "Opgeslagen in je Revela-cloud. Om te delen: Bestand ▸ Personen.",
+  "Google Drive (tu cuenta de Google)": "Google Drive (je Google-account)",
+  "Recomendado: se guarda sola, sin límite de tamaño, y la abres desde cualquier dispositivo.": "Aanbevolen: wordt vanzelf bewaard, zonder groottelimiet, en je opent haar op elk apparaat.",
+  "En tu cuenta de Revela (hasta {max} MB): desde ahí la compartes con personas concretas y ves sus estadísticas.": "In je Revela-account (tot {max} MB): van daaruit deel je haar met bepaalde personen en zie je de statistieken.",
 };
