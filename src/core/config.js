@@ -12,16 +12,21 @@ export const EDITION = (e => (e === 'cloud' || e === 'desktop' ? e : 'open'))(gl
 export const DONATE_URL = 'https://paypal.me/fmesasc';
 // The app's version (package.json's): the published one (vX.Y.Z, promote.yml raises it), shown in «Informar de un
 // problema» and sent with it, and the server's (/api/version).
-export const APP_VERSION = '0.4.48';
+export const APP_VERSION = '0.4.47';
 
 // Revela's Google Cloud project (Drive, Picker, "Sign in with Google").
 //
 // These are PUBLIC identifiers, not secrets: every web app that uses Google
 // sign-in ships them in its page, and they are visible in the Google login
 // window anyway. What protects them is set in Google Cloud: they only work from
-// this site's origins (https://fmesasc.github.io and localhost), the API key is
-// limited to the Drive and Picker APIs, and the drive.file scope only reaches
-// files created or opened with Revela, with each user's consent.
+// Revela's own addresses, the API key is limited to the Drive and Picker APIs,
+// and the drive.file scope only reaches files created or opened with Revela, with
+// each user's consent. The API key's website restrictions must list every address
+// the app runs at — https://revelaslides.com/*, https://test.revelaslides.com/*,
+// https://fmesasc.github.io/* and http://localhost:*/* —: one missing, and the
+// folder picker says «The API developer key is invalid» there (2026-10-19: it
+// allowed only fmesasc.github.io; signing in and saving still worked, as they use
+// the sign-in, not the key).
 // The OAuth client secret is not used (and must never be put here).
 //
 // Someone running their own copy of Revela can use their own project: Archivo ▸

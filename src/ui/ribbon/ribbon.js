@@ -198,12 +198,13 @@ export function initRibbon() {
   });
 
   // Formatting controls must not steal focus (and thus the selection) from the
-  // editable text, so they preventDefault on mousedown.
+  // editable text, so they preventDefault on mousedown. (A+ / A− too: without it, a
+  // few words selected and «smaller letters» made the whole box smaller — 2026-10-19.)
   document.querySelectorAll('[data-fmt]').forEach(btn => {
     btn.addEventListener('mousedown', e => e.preventDefault());
     btn.addEventListener('click', () => format.exec(btn.dataset.fmt));
   });
-  document.querySelectorAll('[data-case],[data-para],[data-list],[data-dir],[data-vertical],[data-valign],[data-indentdelta]')
+  document.querySelectorAll('[data-case],[data-para],[data-list],[data-dir],[data-vertical],[data-valign],[data-indentdelta],[data-fontdelta]')
     .forEach(btn => btn.addEventListener('mousedown', e => e.preventDefault()));
   bindInput('[data-color]', v => format.color(v), true);
   bindInput('[data-highlight]', v => format.highlight(v), true);

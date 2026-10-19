@@ -76,7 +76,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     sel(4, 7); await sleep(20); R.format.setFontSize(60); await sleep(20);
     assert(/Uno <span style="font-size:\s*60px;?">dos<\/span> tres/.test(b.html), 'solo «dos», a 60: ' + b.html); eq(b.fontSize, 30, 'el cuadro, igual');
     // A+: those words, from their own size.
-    R.format.fontSize(4); await sleep(20); assert(/font-size:\s*64px;?">dos</.test(b.html), 'A+ desde su tamaño: ' + b.html);
+    R.format.fontSize(4); await sleep(20); assert(/font-size:\s*64px;?">dos</.test(b.html) && b.fontSize === 30, 'A+ desde su tamaño, solo esas palabras: ' + b.html);
+    R.format.fontSize(4); R.format.fontSize(-4); await sleep(20); assert(/font-size:\s*64px;?">dos</.test(b.html) && b.fontSize === 30, 'y otra vez, y otra: siguen siendo esas palabras: ' + b.html + ' caja ' + b.fontSize);
+    // The ribbon's A+ / A− keep the words selected (they don't take the focus) and change only them.
+    for (const btn of D.querySelectorAll('#ribbon [data-fontdelta]')) { const ev = new MouseEvent('mousedown', { bubbles: true, cancelable: true }); btn.dispatchEvent(ev); assert(ev.defaultPrevented, 'A+/A− no se llevan el foco ni la selección'); }
+    sel(4, 7); await sleep(20); D.querySelector('#ribbon [data-fontdelta="-4"]').click(); await sleep(20);
+    assert(/font-size:\s*60px;?">dos</.test(b.html) && b.fontSize === 30, 'A− de la cinta: solo esas palabras (64 → 60): ' + b.html + ' caja ' + b.fontSize);
     // The ribbon's field takes the focus: the words selected before still get it.
     sel(0, 3); await sleep(20); const field = D.createElement('input'); D.getElementById('ribbon').appendChild(field); field.focus(); await sleep(20);
     R.format.setFontSize(20); await sleep(20); field.remove(); await sleep(50);

@@ -265,29 +265,38 @@ const PX = { px: 1, pt: 4 / 3, em: 0, rem: 0, '%': 0 };
 // tener diferentes tamaños si selecciono dentro el texto?»). The size field of the ribbon takes the focus — the words
 // are no longer selected when it changes —, so the last words selected in a box being edited are kept (as offsets in
 // its text) until something else is clicked.
-let keptSel = null;
+let keptSel = null, touched = 0;
 if (typeof document !== 'undefined') {
+  // (Forgotten only when the person moves: a click or a key in the text. Redrawing the box after a change also
+  // collapses the selection — that is not the person choosing other words.)
+  for (const ev of ['pointerdown', 'keydown']) document.addEventListener(ev, e => { if (e.target.closest?.('.rich')) touched = Date.now(); }, true);
   document.addEventListener('selectionchange', () => {
     const s = getSelection(); if (!s.rangeCount) return;
     const n = s.getRangeAt(0).startContainer, el = (n.nodeType === 1 ? n : n.parentElement)?.closest?.('.rich[contenteditable="true"]');
     if (!el) return;                                   // (the focus in a field of the ribbon: what was selected stays)
     const at = caretOf(el);
-    keptSel = !s.isCollapsed && at && at.end > at.start ? { id: el.closest('.block')?.dataset.id, ...at } : null;
+    if (!s.isCollapsed && at && at.end > at.start) keptSel = { id: el.closest('.block')?.dataset.id, ...at, t: Date.now() };
+    else if (keptSel && touched >= keptSel.t) keptSel = null;
   });
   document.addEventListener('pointerdown', e => { if (!e.target.closest?.('#ribbon, .rich')) keptSel = null; }, true);
 }
 // Whether this box has words selected (now, or kept from before the ribbon took the focus — then selected again).
 function wordsSelected(c) {
   const s = getSelection();
-  if (c.el.isContentEditable && s.rangeCount && !s.isCollapsed && c.el.contains(s.getRangeAt(0).commonAncestorContainer)) return true;
+  if (c.el.isConnected && c.el.isContentEditable && s.rangeCount && !s.isCollapsed && c.el.contains(s.getRangeAt(0).commonAncestorContainer)) return true;
   if (!keptSel || keptSel.id !== c.b.id) return false;
   enterEdit(c.el); setTextCaret(c.el, keptSel);
   return !getSelection().isCollapsed;
 }
 // The size where the selection starts: its own (a span's), else the box's.
 function sizeAtSelection(c) {
-  const s = getSelection(); let n = s.rangeCount ? s.getRangeAt(0).startContainer : null;
-  if (n && n.nodeType !== 1) n = n.parentElement;
+  const s = getSelection(); if (!s.rangeCount) return styled(c.b, currentSlide()).fontSize || 40;
+  // (The first letter selected: a selection that starts at the very end of the text before — «Uno |dos» — has its
+  // start in that text, and the size read there was the box's, not that of the words selected.)
+  const r = s.getRangeAt(0), root = r.commonAncestorContainer.nodeType === 1 ? r.commonAncestorContainer : r.commonAncestorContainer.parentNode;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let first = null, t;
+  while ((t = w.nextNode())) { if (!r.intersectsNode(t)) continue; if (t === r.startContainer && r.startOffset >= t.length) continue; if (t.data.trim()) { first = t; break; } }
+  let n = first ? first.parentElement : r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement;
   for (; n && n !== c.el; n = n.parentElement) { const m = /^([\d.]+)(px|pt)$/.exec(n.style?.fontSize || ''); if (m) return Math.round(+m[1] * PX[m[2]]); }
   return styled(c.b, currentSlide()).fontSize || 40;
 }
@@ -303,6 +312,9 @@ function sizeSelection(c, px) {
     f.replaceWith(sp); return sp;
   });
   if (spans.length) { const r = document.createRange(); r.setStartBefore(spans[0]); r.setEndAfter(spans[spans.length - 1]); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  // (Kept now, as offsets: saving it redraws the box, and the selection went with the old one — a second A− then
+  // made the whole box smaller.)
+  const at = caretOf(c.el); if (at && at.end > at.start) keptSel = { id: c.b.id, ...at, t: Date.now() };
   commit(() => { c.b.html = c.el.innerHTML; }, { history: false });
 }
 export function setFontSize(px) {
