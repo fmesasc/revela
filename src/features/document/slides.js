@@ -1,7 +1,7 @@
 // Slide and section operations.
 
 import { state, commit, currentSlide, clampSlide, selectedSlideIndices, targetSlides, setSlideSel } from '../../core/store.js';
-import { blankSlide, uid } from '../../core/model.js';
+import { blankSlide, uid, shareCopy } from '../../core/model.js';
 import { ensureLayouts, newSlideBlocks, layoutBackground } from './master.js';
 
 export function addSlide(layoutId = null) {
@@ -25,7 +25,7 @@ export function addSlide(layoutId = null) {
 // Deep copy of a slide with fresh ids; connectors, groups and the objects a code
 // lock shows are remapped so they point at the copies, not at the blocks of the
 // original slide. (copy: how — features/document/bulk.js shares the strings.)
-export function cloneSlide(src, copyOf = structuredClone) {
+export function cloneSlide(src, copyOf = shareCopy) {
   const copy = copyOf(src);
   copy.id = uid(); copy.blocks = copy.blocks || [];
   const ids = new Map(), groups = new Map();
@@ -136,7 +136,7 @@ export const hasSlideClip = () => !!slideClip?.slides.length;
 export function copySlides(indices = selectedSlideIndices()) {
   if (state.ui.noCopy) return 0;                         // (shared without copies)
   const list = indices.map(i => state.deck.slides[i]).filter(Boolean);
-  if (list.length) slideClip = { size: { ...state.deck.size }, slides: structuredClone(list) };
+  if (list.length) slideClip = { size: { ...state.deck.size }, slides: shareCopy(list) };
   return list.length;
 }
 export function cutSlides() { const idx = selectedSlideIndices(); if (copySlides(idx)) deleteSlides(idx); }
@@ -220,7 +220,7 @@ export function setMorphBy(by, index = null) {
 export function duplicateForAnimate() {
   commit(() => {
     const cur = currentSlide(); cur.autoAnimate = true;
-    const copy = structuredClone(cur); copy.id = uid(); copy.autoAnimate = true; // block ids kept → they match
+    const copy = shareCopy(cur); copy.id = uid(); copy.autoAnimate = true; // block ids kept → they match
     state.deck.slides.splice(state.ui.slideIndex + 1, 0, copy);
     state.ui.slideIndex++; state.ui.selection = null;
   });

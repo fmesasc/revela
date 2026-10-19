@@ -2207,6 +2207,26 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.body.click();
   });
 
+  await test('copiar objetos con imágenes y vídeos grandes: no se duplican en memoria y a las otras pestañas van como referencia (sin tumbar la pestaña)', async () => {
+    // (2026-10-20: copying the objects of a slide with an 83 MB video and a 116 MB GIF brought the tab down.)
+    reset(); const W = frame.contentWindow, C = R.clipboard;
+    let raw = ''; for (let i = 0; i < 3e5; i++) raw += String.fromCharCode(i % 251);
+    const big = 'data:image/png;base64,' + W.btoa(raw).repeat(12);
+    R.store.commit(() => { slide().blocks.push({ id: 'bigA', type: 'image', x: 10, y: 10, w: 100, h: 100, src: big }, { id: 'bigB', type: 'image', x: 200, y: 10, w: 100, h: 100, src: big }); });
+    R.store.setMulti(['bigA', 'bigB']); R.render(); await sleep(10);
+    eq(C.copySelected(), 2, 'copiados');
+    eq(C.clipboardData().blocks[0].src.length, big.length, 'en esta pestaña, enteros');
+    let kept = ''; for (let k = 0; k < 100 && !/rvmedia:/.test(kept); k++) { await sleep(30); kept = W.localStorage.getItem('revela.clipboard.v1') || ''; }
+    assert(/rvmedia:/.test(kept) && kept.length < 5000, 'para las otras pestañas, una referencia y no el archivo: ' + kept.length + ' caracteres');
+    // Pasted in another tab (what it reads is that): the picture comes back whole.
+    const n = slide().blocks.length; C.paste(C.fromSystemText('revela-objects:' + kept));
+    for (let k = 0; k < 100 && slide().blocks.length === n; k++) await sleep(30);
+    eq(slide().blocks.length, n + 2, 'pegados en la otra pestaña'); eq(slide().blocks.at(-1).src, big, 'con la imagen entera');
+    // Duplicating a slide with them: the copy shares them (no second copy of each).
+    R.slides.duplicateSlide?.(R.state.ui.slideIndex); await sleep(20);
+    eq(R.state.deck.slides[R.state.ui.slideIndex].blocks.find(b => b.src === big)?.src.length, big.length, 'duplicar la diapositiva, también');
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

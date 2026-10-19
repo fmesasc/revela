@@ -4,6 +4,7 @@
 
 import { state, commit } from '../../core/store.js';
 import { esc } from '../../core/text.js';
+import { shareCopy } from '../../core/model.js';
 import { cloneSlide } from './slides.js';
 
 export const MAX_ROWS = 500, MAX_SLIDES = 1000;           // (each copy carries its pictures: past that, too heavy to keep)
@@ -26,7 +27,7 @@ export function autoMap(phs, header) {
 }
 
 // A copy that shares the strings (a big picture is not copied once per row) — plain data, as the deck is.
-const shared = v => (Array.isArray(v) ? v.map(shared) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, shared(x)])) : v);
+const shared = shareCopy;   // (core/model.js: the texts — pictures — shared, not copied)
 // The slides for one row: each placeholder with a column becomes its value (in HTML, escaped, line breaks kept);
 // one without a column stays as it is, to be seen.
 export function fillSlides(slides, row, map) {

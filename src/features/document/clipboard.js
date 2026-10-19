@@ -7,7 +7,23 @@
 
 import { cleanValue } from './sanitize.js';
 import { state, commit, currentSlide, selectedBlocks, setMulti } from '../../core/store.js';
-import { uid } from '../../core/model.js';
+import { uid, approxSize, shareCopy as share } from '../../core/model.js';
+import { dehydrate, hydrate, hasRefs } from '../../core/mediastore.js';
+
+// (The objects copied share their texts — pictures, videos — with the slide's: core/model.js shareCopy.)
+// Small copies go to the other tabs and the system clipboard as they are; bigger ones with their files as references
+// to this browser's media store (core/mediastore.js: each file is already there, kept once), read back on pasting.
+const SMALL = 2e6;
+let written = 0;
+async function publish(data) {
+  const me = ++written;
+  let out = data;
+  if (approxSize(data.blocks) > SMALL) { try { out = { ...data, blocks: await dehydrate(data.blocks) }; } catch { return; } }
+  if (me !== written) return;                                 // (a newer copy meanwhile)
+  const text = JSON.stringify(out);
+  try { localStorage.setItem(KEY, text); } catch {}
+  try { navigator.clipboard?.writeText?.(MARK + text).catch(() => {}); } catch {}
+}
 
 const KEY = 'revela.clipboard.v1', MARK = 'revela-objects:';
 let mem = null;
@@ -18,9 +34,8 @@ export function copySelected() {
   const ids = new Set(bs.map(b => b.id));
   // Include connectors whose two ends are copied.
   const conns = currentSlide().blocks.filter(b => b.type === 'connector' && ids.has(b.from) && ids.has(b.to) && !ids.has(b.id));
-  mem = { from: currentSlide().id, blocks: structuredClone([...bs, ...conns]) };
-  try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch {}
-  try { navigator.clipboard?.writeText?.(MARK + JSON.stringify(mem)).catch(() => {}); } catch {}
+  mem = { from: currentSlide().id, blocks: share([...bs, ...conns]) };
+  publish(mem);
   commit(() => {}, { history: false });                 // refresh the UI (Paste becomes available)
   return bs.length;
 }
@@ -53,9 +68,14 @@ export function fromSystemText(text) {
 
 export function paste(data = clipboardData()) {
   if (!data?.blocks?.length) return 0;
+  // (Copied in another tab with its files as references: read back first.)
+  if (hasRefs(data.blocks)) { const n = data.blocks.length; hydrate(data.blocks).then(blocks => pasteNow({ ...data, blocks }, data)); return n; }
+  return pasteNow(data, data);
+}
+function pasteNow(data, orig) {
   cleanValue(data.blocks);                                    // (it may come from any site, through the system clipboard)
   const s = currentSlide(), idMap = new Map(), groups = new Map();
-  const copies = structuredClone(data.blocks);
+  const copies = share(data.blocks);
   copies.forEach(b => { const n = uid(); idMap.set(b.id, n); b.id = n; });
   // Same slide: offset so the copy doesn't hide the original (again on each paste).
   const same = data.from === s.id, off = same ? 24 * (1 + (data.pasted || 0)) : 0;
@@ -66,6 +86,6 @@ export function paste(data = clipboardData()) {
     if (b.type === 'poll') b.pollId = uid();                  // a pasted poll starts with no votes
   }
   commit(() => { s.blocks.push(...copies); setMulti(copies.filter(b => b.type !== 'connector').map(b => b.id)); });
-  if (same) { data.pasted = (data.pasted || 0) + 1; if (data === mem) try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch {} }
+  if (same) { orig.pasted = (orig.pasted || 0) + 1; if (orig === mem) publish(mem); }
   return copies.length;
 }

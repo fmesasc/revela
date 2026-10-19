@@ -144,6 +144,10 @@ export function loadDeck() {
 // copy wins.
 const LS_MAX = 4_500_000;                 // characters; beyond this localStorage would refuse it
 const SAVE_AFTER = 1000;                  // ms after the first unwritten change (decks over 20 MB: 3 s, as before)
+// A deep copy that shares its texts instead of copying them: a picture's or a video's data: URL can be hundreds of MB,
+// and structuredClone doubled it (copying, or duplicating, a slide with an 83 MB video and a 116 MB GIF brought the tab
+// down, 2026-10-20). Texts can't be changed in place, so sharing them is safe; objects and arrays are new.
+export const shareCopy = v => (Array.isArray(v) ? v.map(shareCopy) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, shareCopy(x)])) : v);
 // Rough size (characters of all strings) without serialising the whole deck.
 export function approxSize(v) {
   if (typeof v === 'string') return v.length;
@@ -180,6 +184,8 @@ const writeIdb = (deck, local) => (idbQueue = idbQueue.then(async () => {
 // version an older Revela kept whole (its files inside, maybe hundreds of MB) rewritten with references, one by one.
 export async function tidyStored(light) {
   const used = usedRefs(light, new Set()), whole = [];
+  // (What is copied, for another tab or a later paste — features/document/clipboard.js —: its files kept too.)
+  try { usedRefs(JSON.parse(localStorage.getItem('revela.clipboard.v1') || 'null'), used); } catch {}
   await verEach(v => { usedRefs(v.deck, used); if (v.deck && !hasRefs(v.deck) && approxSize(v.deck) > 2e6) whole.push(v.id); }).catch(() => {});
   for (const id of whole) { const v = await verGet(id); if (v?.deck && !hasRefs(v.deck)) await verPut({ ...v, deck: await dehydrate(v.deck) }); }
   await collectGarbage(null, used);              // (the files just stored for those versions are recent: kept)
