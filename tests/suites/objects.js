@@ -22,6 +22,15 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/stopped/.test(loop) && Date.now() - t0 < 7000, 'un bucle sin fin se corta: ' + loop);
     eq(D.querySelectorAll('iframe[sandbox="allow-scripts"]').length, 0, 'y no queda nada');
     assert(/no mesh/.test(await err('const x = 1;')), 'sin mallas: lo dice');
+    // The code wrapped in a function — what the AI kept sending (12 rounds of «Function statements require a function
+    // name», 2026-10-19) —, named, as an arrow or in a fence: it builds all the same.
+    const box = "root.add(h.mesh(new THREE.BoxGeometry(1, 1, 1), h.mat('#cc3333'), 'Caja'));";
+    for (const c of [`async function(THREE, root, h) {\n  function createPerson() { return 1; }\n  createPerson(); ${box}\n}`,
+      `async function build(THREE, root, h) { ${box} }`, `(THREE, root, h) => { ${box} }`, '```javascript\n' + box + '\n```',
+      `function part() { return h.mesh(new THREE.BoxGeometry(1, 1, 1), h.mat()); }\nroot.add(part());`]) {
+      const e = await err(c); eq(e, '', 'se construye: ' + c.slice(0, 40));
+    }
+    assert(/BODY of the function/.test(await err('function ( {')), 'un error de sintaxis explica qué se espera');
   });
 
   await test('votación y gráfico: cancelar una votación nueva la quita; doble clic abre sus datos', async () => {

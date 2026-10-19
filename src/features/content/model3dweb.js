@@ -36,12 +36,22 @@ onmessage = async e => {
   try {
     await setup();
     const root = new THREE.Group(); root.name = 'Model';
-    const run = new (async () => {}).constructor('THREE', 'root', 'h', '"use strict";\\n' + code + '\\n;');
+    // (The code is the body of a function. Models often send it wrapped — «async function(THREE, root, h) { … }», an
+    // arrow, or in a \`\`\` fence —, and «Function statements require a function name» sent the AI to rename its own
+    // helpers, round after round: the wrapper is taken off here, and a function left over is called.)
+    const AF = (async () => {}).constructor, src = String(code).replace(/^\\s*\`\`\`[a-z]*\\s*\\n?/i, '').replace(/\\n?\`\`\`\\s*$/, '');
+    // Its body as written; or, when it is one function (wrapped, named or an arrow), that function, called.
+    const asBody = () => new AF('THREE', 'root', 'h', '"use strict";\\n' + src + '\\n;');
+    const asFn = () => { const fn = new AF('THREE', 'root', 'h', '"use strict";\\nreturn (' + src + '\\n);'); return async (...a) => { const f = await fn(...a); return typeof f === 'function' ? f(...a) : f; }; };
+    const tries = /^\\s*(async\\s+)?(function\\b|\\([^)]*\\)\\s*=>|\\w+\\s*=>)/.test(src) ? [asFn, asBody] : [asBody, asFn];
+    let run, first;
+    for (const make of tries) { try { run = make(); break; } catch (err) { first ||= err; } }
+    if (!run) throw new Error((first && first.message || 'Syntax error') + ' — remember: "code" is the BODY of the function (plain statements that add meshes to root), not a function around them.');
     const out = await run(THREE, root, helpers);
     if (out && out.isObject3D && out !== root) root.add(out);
     let tris = 0, meshes = 0;
     root.traverse(o => { if (o.isMesh) { meshes++; const g = o.geometry; tris += (g.index ? g.index.count : g.attributes.position.count) / 3; if (!o.material) o.material = helpers.mat(); } });
-    if (!meshes) throw new Error('The model has no mesh: add your meshes to root.');
+    if (!meshes) throw new Error('The model has no mesh: add your meshes to root (with root.add). If you wrote a function that builds it, call it too.');
     if (tris > 300000) throw new Error('Too many triangles: ' + Math.round(tris) + ' (keep it under 150 000).');
     // On the floor and centred (Y is up in glTF): its lowest point at y = 0.
     root.updateMatrixWorld(true);
