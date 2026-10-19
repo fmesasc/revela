@@ -282,7 +282,7 @@ export const TOOLS = [
 
 ${SPEC_DOC}
 
-Designs: ${DESIGN_DOC}.
+Designs: ${DESIGN_DOC}. Choose a light one (white or light background, the first ones) unless the user asks for a dark look: slides are projected in lit rooms. Without "design": minimal (white). Keep few words per slide so the text stays big.
 Pictures: "image_url" (an https address) or "image_search" (a few words, best in English: a real photo is found). Markdown instead of slides: reveal.js style, "---" between slides, the first heading is the title, "Note:" starts the speaker notes.`,
     inputSchema: { type: 'object', properties: { name: { type: 'string', description: 'The presentation\'s title.' }, design: { type: 'string', enum: DESIGNS }, slides: { type: 'array', items: SLIDE_SCHEMA, maxItems: MAX_SLIDES }, markdown: { type: 'string' } }, required: ['name'] } },
   { name: 'add_slides', action: 'addSlides', title: 'Add slides', description: 'Adds slides (the same specs as create_presentation, or Markdown) to a presentation, at the end or at a position; they take its design.',

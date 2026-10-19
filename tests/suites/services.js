@@ -1632,6 +1632,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       await AU.createDeck({ topic: 'Mis apuntes', attachments: [pic] });
       const cd = calls[0].messages[1].content;
       assert(Array.isArray(cd) && cd.some(x => x.type === 'image_url') && /base the deck on what they show/.test(cd[0].text), 'crear una presentación a partir de fotos');
+      // A dark design only when asked for: the AI picked the dark blue «ocean» for nearly every lesson.
+      calls.length = 0; W.fetch = agentMock(W, [{ title: 'Células', design: 'ocean', slides: [{ kind: 'title', title: 'La célula' }] }], calls);
+      eq((await AU.createDeck({ topic: 'La célula, 1.º ESO' })).design, 'nature', 'oscuro sin pedirlo → su versión clara');
+      assert(/only if asked for a dark look/.test(calls[0].messages[0].content) && calls[0].messages[0].content.indexOf('minimal') < calls[0].messages[0].content.indexOf('ocean'), 'los claros primero, los oscuros avisados');
+      calls.length = 0; W.fetch = agentMock(W, [{ title: 'Células', design: 'ocean', slides: [{ kind: 'title', title: 'La célula' }] }], calls);
+      eq((await AU.createDeck({ topic: 'La célula', tone: 'elegante, fondo oscuro' })).design, 'ocean', 'pedido oscuro → se respeta');
       // The panel: dropped on it, shown as chips, sent and cleared.
       calls.length = 0; W.fetch = agentMock(W, [{ message: 'Visto', ops: [], done: true }], calls);
       D.querySelector('[data-action="ai-assistant"]').click(); await sleep(20);

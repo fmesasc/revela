@@ -233,11 +233,21 @@ export function rebuildSlide(s, spec, deck = state.deck, opts = {}) {
 }
 
 // ---- Whole decks -----------------------------------------------------------------
-// The designs (features/design/gallery.js) the AI may choose for a new deck: key → what it suits.
-export const DECK_DESIGNS = { corporate: 'business, reports, clean and neutral', academic: 'research, papers, conferences, sober and editorial',
-  minimal: 'any topic, very clean, lots of white', tech: 'technology, software, data, dark', education: 'school lessons, friendly',
-  pitch: 'startups, products, bold', warm: 'humanities, stories, culture', ocean: 'science, health, calm blue', night: 'keynotes, dark and elegant',
-  mono: 'magazine style, editorial, strong typography' };
+// The designs (features/design/gallery.js) the AI may choose for a new deck: key → what it suits. Light ones first, and
+// the dark ones say so: given «science, calm blue», the AI picked the dark blue Océano for nearly every lesson, and a
+// projected dark slide reads worse in a lit classroom. DARK_DESIGNS: only when the person asks for a dark look.
+export const DECK_DESIGNS = { minimal: 'any topic, very clean, white background, big clear text', education: 'school lessons, friendly, light green background',
+  corporate: 'business, reports, clean and neutral, white background', academic: 'research, papers, conferences, sober and editorial, cream background',
+  notebook: 'classes and workshops, a lined notebook page, cream background', nature: 'science, nature, health, light background with soft circles',
+  sketch: 'creative, hand-drawn frame, white background', bold: 'strong statements, black and white with a side band',
+  mono: 'magazine style, editorial, strong typography, white background',
+  ocean: 'DARK blue background (only if asked for a dark look)', tech: 'DARK background, technology, software, data (only if asked for a dark look)',
+  night: 'DARK, keynotes (only if asked for a dark look)', pitch: 'DARK violet, startups, products, bold (only if asked for a dark look)',
+  warm: 'DARK brown, humanities, stories (only if asked for a dark look)' };
+export const DARK_DESIGNS = { ocean: 'nature', tech: 'corporate', night: 'mono', pitch: 'bold', warm: 'academic' };   // (→ its light counterpart)
+const ASKS_DARK = /\b(dark|oscur\w*|negr\w*|noche|night|black|fosc\w*|nit|sombre|dunkel|scur\w*)\b/i;
+// A dark design only if the brief asks for one; otherwise its light counterpart.
+export const lightUnlessAsked = (d, opts) => DARK_DESIGNS[d] && !ASKS_DARK.test([opts.topic, opts.tone, opts.audience, opts.palette].filter(Boolean).join(' ')) ? DARK_DESIGNS[d] : d;
 // opts: { topic, source (document text), count, audience, tone, language, images, palette,
 //   attachments (pictures: attach.js — a PDF's figures among them, marked figure: true) }
 // → specs (with .title and .design: one of DECK_DESIGNS, for a new deck).
@@ -421,7 +431,7 @@ Write everything in ${opts.language || lang()}.` },
   varyLists(specs);
   sentenceCase(specs, opts.language || lang());
   tidyBelow(specs);
-  specs.title = str(res.title); specs.design = DECK_DESIGNS[res.design] ? res.design : null; specs.quality = q;
+  specs.title = str(res.title); specs.design = DECK_DESIGNS[res.design] ? lightUnlessAsked(res.design, opts) : null; specs.quality = q;
   return specs;
 }
 // Whether a slide has something to show besides its title.

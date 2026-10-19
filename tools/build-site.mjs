@@ -97,9 +97,39 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = 
   mkdirSync(join(out, 'icons'), { recursive: true });
   cpSync(join(ROOT, 'icons', 'icon.svg'), join(out, 'icons', 'icon.svg'));
   cpSync(join(ROOT, 'assets', 'fonts'), join(out, 'assets', 'fonts'), { recursive: true });
+  llmsFull(out);
   stampAssets(out);
   if (STAGE) markStage(out);                              // (last: every page is marked)
   return out;
+}
+
+// /llms-full.txt (llmstxt.org): the site's own /llms.txt (written by hand, in site/) followed by the English pages as
+// plain Markdown and the API reference — what an AI assistant needs to answer «how do I… in Revela?» or to make a
+// presentation through the API, in one file. Made from the built pages, so it never falls behind them.
+const LLMS_PAGES = ['index', 'pricing', 'guides', 'schools', 'business', 'support', 'security', 'ambassadors'];   // (developers: the API reference below says it all, in English)
+export function htmlToMarkdown(html) {
+  let m = /<main[^>]*>([\s\S]*?)<\/main>/i.exec(html)?.[1] ?? '';
+  m = m.replace(/<(script|style|svg|template|noscript)\b[\s\S]*?<\/\1>/gi, '').replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, (_, c) => '\n```\n' + c.replace(/<[^>]+>/g, '') + '\n```\n')
+    .replace(/<h([1-4])[^>]*>([\s\S]*?)<\/h\1>/gi, (_, n, t) => `\n\n${'#'.repeat(+n + 1)} ${t.replace(/<[^>]+>/g, '').trim()}\n\n`)
+    .replace(/<li[^>]*>/gi, '\n- ').replace(/<\/(p|div|section|article|ul|ol|table|tr|figure|details|summary)>/gi, '\n\n').replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<(td|th)[^>]*>/gi, ' | ').replace(/<[^>]+>/g, '');
+  const ent = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", nbsp: ' ', apos: "'" };
+  m = m.replace(/&(#\d+|#x[0-9a-f]+|[a-z0-9]+);/gi, (x, e) => ent[e.toLowerCase()] ?? (e[0] === '#' ? String.fromCodePoint(e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : +e.slice(1)) : x));
+  return m.split('\n').map(l => l.replace(/[ \t]+/g, ' ').trim()).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+function llmsFull(out) {
+  const head = existsSync(join(out, 'llms.txt')) ? readFileSync(join(out, 'llms.txt'), 'utf8').trim() : '# Revela';
+  const parts = [head, '', '---', '', 'Below: the full text of the website\'s main pages (in English), then the API reference.'];
+  for (const p of LLMS_PAGES) {
+    const f = [join(out, 'en', p + '.html'), join(out, p + '.html')].find(existsSync); if (!f) continue;   // (English if the page has it)
+    const md = htmlToMarkdown(readFileSync(f, 'utf8')); if (!md) continue;
+    const url = 'https://revelaslides.com/' + (f.includes(join(out, 'en')) ? 'en/' : '') + (p === 'index' ? '' : p);
+    parts.push('', '---', '', `# Page: ${url}`, '', md);
+  }
+  const api = join(ROOT, 'docs', 'API.md');
+  if (existsSync(api)) parts.push('', '---', '', '# API reference (https://github.com/fmesasc/revela/blob/main/docs/API.md)', '', readFileSync(api, 'utf8').trim().replace(/^# .*\n/, ''));
+  writeFileSync(join(out, 'llms-full.txt'), parts.join('\n') + '\n');
 }
 
 // The site's style and script, by their contents: a copy at /assets/v/site-<hash>.css (and .js) used by every page and

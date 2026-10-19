@@ -86,8 +86,12 @@ deeper look — a worked example, a diagram — that the presenter opens only if
 | `code` | `title`, `code: { language, code }`, `caption`, `bullets` |
 | `math` | `title`, `latex`, `caption`, `bullets` |
 
-`GET /api/v1/kinds` returns the full description the AI apps get. Designs: `corporate`, `academic`, `minimal`,
-`tech`, `education`, `pitch`, `warm`, `ocean`, `night`, `mono`.
+`GET /api/v1/kinds` returns the full description the AI apps get.
+
+Designs. Light (white or light background — choose one of these unless the person asks for a dark look; slides are
+projected in lit rooms): `minimal` (the default), `education`, `corporate`, `academic`, `notebook`, `nature`,
+`sketch`, `bold`, `mono`. Dark: `ocean`, `tech`, `night`, `pitch`, `warm`. Few words per slide keep the text big:
+the layout shrinks text to fit, it never overflows.
 
 ### Markdown
 
