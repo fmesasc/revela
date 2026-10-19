@@ -35,8 +35,9 @@ export function numberText(fmt, n, total, { cof = '{n} de {t}', word = 'Diaposit
 }
 
 // The number as HTML, placed in the slide. fg: the slide's text colour; accent: the theme's; font: the presentation's
-// letters; words: { cof, word } (numberText); barTop / barBottom: the height of the sections bar there, kept clear.
-export function slideNumberHTML(deck, slide, { fg = '#ffffff', accent = '#3f6497', font = '', words, barTop = 0, barBottom = 0 } = {}) {
+// letters; words: { cof, word } (numberText); barTop / barBottom / barLeft / barRight: the room the
+// sections bar takes there (a side index: its width), kept clear.
+export function slideNumberHTML(deck, slide, { fg = '#ffffff', accent = '#3f6497', font = '', words, barTop = 0, barBottom = 0, barLeft = 0, barRight = 0 } = {}) {
   const at = slideNumberOf(deck, slide); if (!at) return '';
   const sn = deck.slideNumber, W = deck.size?.w || 1280, H = deck.size?.h || 720, k = (W / 1280) * Math.min(2.5, Math.max(0.6, (+sn.size || 100) / 100));
   const px = v => Math.max(1, Math.round(v * k)), look = sn.look || 'plain', pos = sn.position || 'br';
@@ -44,7 +45,7 @@ export function slideNumberHTML(deck, slide, { fg = '#ffffff', accent = '#3f6497
   const acc = hex(sn.bg) || hex(accent) || '#3f6497', filled = look === 'pill' || look === 'circle';
   const ink = hex(sn.fg) || (filled ? inkOn(acc) : fg);
   const m = Math.round(22 * (W / 1280)), y = pos[0] === 't' ? `top:${m + barTop}px` : `bottom:${m + barBottom}px`;
-  const x = pos[1] === 'c' ? `left:0;right:0;margin:0 auto;width:max-content` : pos[1] === 'l' ? `left:${m}px` : `right:${m}px`;
+  const x = pos[1] === 'c' ? `left:0;right:0;margin:0 auto;width:max-content` : pos[1] === 'l' ? `left:${m + barLeft}px` : `right:${m + barRight}px`;
   const fam = sn.font === 'system' || !font ? "system-ui,-apple-system,'Segoe UI',sans-serif" : font;
   const shape = look === 'pill' ? `background:${acc};padding:${px(3)}px ${px(12)}px;border-radius:999px;`
     : look === 'circle' ? `background:${acc};min-width:${px(34)}px;height:${px(34)}px;padding:0 ${px(6)}px;box-sizing:border-box;border-radius:999px;display:flex;align-items:center;justify-content:center;`

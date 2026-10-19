@@ -124,7 +124,7 @@ export function renderPanel(change) {
   if (doc) for (const m of allMasters(d)) if (m.styles) masterStyles(d, m);
   // (With the sections bar on, every slide's shows the sections and where it is among them: any change there redraws them.)
   const common = doc ? (lastCommon = sigOf([d.size, d.master, d.layouts, d.canvas, deckFg(), deckBodyFont(),
-    d.sectionBar?.show ? [d.sectionBar, d.sections, d.slides.map(s => [s.sectionId, s.hidden, s.noSectionBar, s.layoutId])] : 0,
+    d.sectionBar?.show ? [d.sectionBar, d.sections, d.name, d.footer?.text, d.slides.map(s => [s.sectionId, s.hidden, s.noSectionBar, s.layoutId])] : 0,
     // (Its number too: which one it is depends on the slides before it.)
     d.slideNumber?.show ? [d.slideNumber, d.slides.map(s => [s.hidden, s.uncounted, s.noNumber, s.layoutId])] : 0])) : lastCommon;
   const nodes = [], seen = new Set(), sel = new Set(state.ui.slideSel?.length > 1 ? state.ui.slideSel : []);

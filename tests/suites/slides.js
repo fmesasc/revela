@@ -385,6 +385,57 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.store.commit(() => { d.sectionBar = { show: false, position: 'top', style: 'dots', skipTitle: true }; });
   });
 
+  await test('barra de secciones: modos (migas de pan, pie informativo, índice lateral, línea de progreso), estilos rápidos, nombres cortos y más opciones', async () => {
+    reset(); for (let k = 0; k < 5; k++) R.slides.addSlide('titleContent');
+    const d = R.state.deck, sl = d.slides;
+    sl.forEach((x, i) => { const tb = x.blocks.find(b => b.ph === 'title'); if (tb) tb.html = 'Diapositiva ' + (i + 1); });
+    R.slides.addSectionAt(1, 'Introducción'); R.slides.addSectionAt(3, 'Resultados'); R.slides.addSectionAt(5, 'Conclusiones');
+    R.store.commit(() => { d.name = 'Informe'; d.footer.text = 'IES Ejemplo'; });
+    const SB = await frame.contentWindow.eval("import('/src/render/sectionbar.js')");
+    const at = (o, i = 3) => { R.store.commit(() => { d.sectionBar = { show: true, ...o }; }); return SB.sectionBarHTML(d, sl[i], { link: false }); };
+    const words = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    // Breadcrumb: Presentación › Sección › the slide's title.
+    eq(words(at({ mode: 'breadcrumb' })), 'Informe › Resultados › Diapositiva 4', 'migas de pan');
+    // Infolines (Madrid): a text, the name, the section and n / N.
+    eq(words(at({ mode: 'infolines', look: 'color' })), 'IES Ejemplo Informe Resultados 4 / 6', 'pie informativo');
+    assert(/bottom:0/.test(at({ mode: 'infolines', position: 'bottom' })), 'abajo');
+    // A side index: on the left, the number keeps clear of it.
+    const side = at({ mode: 'sidebar', position: 'left' });
+    assert(/left:0;top:0;width:256px;height:720px/.test(side) && /Informe/.test(side) && /Conclusiones/.test(side), 'índice lateral, del 20 %');
+    eq(JSON.stringify(SB.barRoom(d, sl[3])), '{"barLeft":256}', 'su sitio, a un lado');
+    R.store.commit(() => { d.slideNumber = { show: true, position: 'bl' }; });
+    assert(/left:278px/.test(R.io.buildHTML().split(/<section\b/).slice(1)[3].match(/<div class="rv-slidenum"[^>]*>/)[0]), 'el número, fuera del índice');
+    R.store.commit(() => { d.slideNumber = { show: false, position: 'br' }; });
+    // Only a line: how far the talk is (4 of 6).
+    assert(/width:66\.7%/.test(at({ mode: 'progress' })) && SB.sectionBarHeight(d) === 6, 'línea de progreso');
+    // The new options: numbered, ✓ on those given, those to come hidden, a separator, centred, capitals, short names.
+    R.store.commit(() => { d.sections[0].short = 'Intro'; });
+    const h = at({ numbered: true, done: 'check', next: 'hide', sep: '•', align: 'center', case: 'upper', style: 'names' });
+    eq(words(h), '✓ 1. Intro • 2. Resultados', 'numeradas, ✓, separador, sin las que vienen, nombre corto');
+    assert(/justify-content:center/.test(h) && /text-transform:uppercase/.test(h), 'centradas y en mayúsculas');
+    assert(/clip-path:polygon/.test(at({ look: 'chevrons' })) && /border-radius:999px/.test(at({ look: 'pills' })), 'flechas y píldoras');
+    assert(/box-shadow:inset/.test(at({ look: 'underline' })) && /border-radius:12px;box-shadow/.test(at({ look: 'float' })), 'subrayada y flotante');
+    assert(/width:66\.7%/.test(at({ deckProgress: true })), 'con la línea del avance de toda la presentación');
+    // From the dialog: a ready-made look, shown on a slide; the sections' short names.
+    R.store.commit(() => { d.sectionBar = { show: false, position: 'top', style: 'dots', skipTitle: true }; delete d.sections[0].short; });
+    R.state.ui.slideIndex = 3; R.render();
+    D.querySelector('[data-action="insert-hf"]').click(); await sleep(80);
+    const box = D.getElementById('hf-modal');
+    eq(box.querySelectorAll('.hf-preset').length, SB.SECTION_BAR_PRESETS.length, 'los estilos rápidos');
+    assert(box.querySelector('.hf-preview[data-for="bar"] .hf-pic'), 'la vista previa');
+    box.querySelector('.hf-preset[data-preset="steps"]').click(); await sleep(30);
+    eq([d.sectionBar.show, d.sectionBar.look, d.sectionBar.numbered].join(), 'true,chevrons,true', 'un estilo rápido la enciende y la pone así');
+    assert(box.querySelector('.hf-preset[data-preset="steps"]').classList.contains('on') && box.querySelector('.hf-sb-look').value === 'chevrons', 'marcado, y los campos lo dicen');
+    assert(box.querySelector('.hf-preview[data-for="bar"] nav.rv-secbar'), 'y se ve en la vista previa');
+    const mode = box.querySelector('.hf-sb-mode'); mode.value = 'sidebar'; mode.dispatchEvent(new Event('change')); await sleep(20);
+    eq([d.sectionBar.mode, d.sectionBar.position].join(), 'sidebar,left', 'índice lateral: a un lado');
+    assert(box.querySelector('.hf-sb-width').closest('[data-when]').style.display !== 'none' && box.querySelector('.hf-sb-left').closest('[data-when]').style.display === 'none', 'solo sus opciones');
+    const short = box.querySelector(`.hf-sec-short[data-sec="${d.sections[1].id}"]`); short.value = 'Result.'; short.dispatchEvent(new Event('change')); await sleep(10);
+    eq(d.sections[1].short, 'Result.', 'el nombre corto de una sección');
+    box.querySelector('.modal-close').click();
+    R.store.commit(() => { d.sectionBar = { show: false, position: 'top', style: 'dots', skipTitle: true }; });
+  });
+
   await test('números de diapositiva: en cada diapositiva, con formato, estilo, tamaño, letra y colores; se quitan por diapositiva', async () => {
     reset(); for (let k = 0; k < 3; k++) R.slides.addSlide();
     const d = R.state.deck, sl = d.slides, nums = () => R.io.buildHTML().split(/<section\b/).slice(1).map(x => (x.match(/<div class="rv-slidenum"[^>]*>([^<]*)<\/div>/) || [, ''])[1]);
