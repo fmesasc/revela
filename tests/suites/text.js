@@ -69,6 +69,23 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/MEDSIM<br><span>Modular|MEDSIM<br>Modular/.test(b.html), 'el texto, igual');
   });
 
+  await test('tamaño de unas palabras seleccionadas dentro del cuadro: solo a ellas (también desde el campo de la cinta, que se lleva el foco)', async () => {
+    reset(); const b = newText(); R.store.commit(() => { b.html = 'Uno dos tres'; b.fontSize = 30; }); R.render(); await sleep(20);
+    const el = richOf(b); el.contentEditable = 'true'; el.focus();
+    const sel = (a, z) => { R.format.setTextCaret(el, { start: a, end: z }); };
+    sel(4, 7); await sleep(20); R.format.setFontSize(60); await sleep(20);
+    assert(/Uno <span style="font-size:\s*60px;?">dos<\/span> tres/.test(b.html), 'solo «dos», a 60: ' + b.html); eq(b.fontSize, 30, 'el cuadro, igual');
+    // A+: those words, from their own size.
+    R.format.fontSize(4); await sleep(20); assert(/font-size:\s*64px;?">dos</.test(b.html), 'A+ desde su tamaño: ' + b.html);
+    // The ribbon's field takes the focus: the words selected before still get it.
+    sel(0, 3); await sleep(20); const field = D.createElement('input'); D.getElementById('ribbon').appendChild(field); field.focus(); await sleep(20);
+    R.format.setFontSize(20); await sleep(20); field.remove(); await sleep(50);
+    assert(/<span style="font-size:\s*20px;?">Uno<\/span>/.test(b.html), 'con el foco en la cinta, a las palabras de antes: ' + b.html);
+    // Nothing selected (the box clicked elsewhere): the whole box.
+    el.blur(); getSelection().removeAllRanges(); await sleep(30); D.getElementById('stage').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); R.store.setSelection(b.id); await sleep(30);
+    R.format.setFontSize(40); await sleep(20); assert(!/font-size/.test(b.html) && b.fontSize === 40, 'sin selección: todo el cuadro: ' + b.html);
+  });
+
   await test('interlineado personalizable', async () => {
     reset(); const b = newText(); R.format.lineSpacing('1.35'); await sleep(10);
     eq(b.lineHeight, 1.35, 'lineHeight'); eq(richOf(b).style.lineHeight, '1.35', 'lineHeight DOM');

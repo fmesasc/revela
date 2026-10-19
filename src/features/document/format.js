@@ -261,8 +261,53 @@ const innerSizes = (c, fn) => {
   return root.innerHTML;
 };
 const PX = { px: 1, pt: 4 / 3, em: 0, rem: 0, '%': 0 };
+// Some words selected inside the box: the size goes to them alone, as in PowerPoint (Francisco, 2026-10-19: «¿no puedo
+// tener diferentes tamaños si selecciono dentro el texto?»). The size field of the ribbon takes the focus — the words
+// are no longer selected when it changes —, so the last words selected in a box being edited are kept (as offsets in
+// its text) until something else is clicked.
+let keptSel = null;
+if (typeof document !== 'undefined') {
+  document.addEventListener('selectionchange', () => {
+    const s = getSelection(); if (!s.rangeCount) return;
+    const n = s.getRangeAt(0).startContainer, el = (n.nodeType === 1 ? n : n.parentElement)?.closest?.('.rich[contenteditable="true"]');
+    if (!el) return;                                   // (the focus in a field of the ribbon: what was selected stays)
+    const at = caretOf(el);
+    keptSel = !s.isCollapsed && at && at.end > at.start ? { id: el.closest('.block')?.dataset.id, ...at } : null;
+  });
+  document.addEventListener('pointerdown', e => { if (!e.target.closest?.('#ribbon, .rich')) keptSel = null; }, true);
+}
+// Whether this box has words selected (now, or kept from before the ribbon took the focus — then selected again).
+function wordsSelected(c) {
+  const s = getSelection();
+  if (c.el.isContentEditable && s.rangeCount && !s.isCollapsed && c.el.contains(s.getRangeAt(0).commonAncestorContainer)) return true;
+  if (!keptSel || keptSel.id !== c.b.id) return false;
+  enterEdit(c.el); setTextCaret(c.el, keptSel);
+  return !getSelection().isCollapsed;
+}
+// The size where the selection starts: its own (a span's), else the box's.
+function sizeAtSelection(c) {
+  const s = getSelection(); let n = s.rangeCount ? s.getRangeAt(0).startContainer : null;
+  if (n && n.nodeType !== 1) n = n.parentElement;
+  for (; n && n !== c.el; n = n.parentElement) { const m = /^([\d.]+)(px|pt)$/.exec(n.style?.fontSize || ''); if (m) return Math.round(+m[1] * PX[m[2]]); }
+  return styled(c.b, currentSlide()).fontSize || 40;
+}
+// The selected words at this size (and those inside them that had another, too); still selected afterwards.
+function sizeSelection(c, px) {
+  document.execCommand('styleWithCSS', false, false);
+  document.execCommand('fontSize', false, '7');
+  const spans = [...c.el.querySelectorAll('font[size="7"]')].map(f => {
+    const sp = document.createElement('span'); sp.style.fontSize = `${px}px`;
+    while (f.firstChild) sp.appendChild(f.firstChild);
+    sp.querySelectorAll('[style*="font-size"]').forEach(e => { e.style.removeProperty('font-size'); if (!e.getAttribute('style')) e.removeAttribute('style'); });
+    sp.querySelectorAll('font[size]').forEach(e => e.removeAttribute('size'));
+    f.replaceWith(sp); return sp;
+  });
+  if (spans.length) { const r = document.createRange(); r.setStartBefore(spans[0]); r.setEndAfter(spans[spans.length - 1]); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  commit(() => { c.b.html = c.el.innerHTML; }, { history: false });
+}
 export function setFontSize(px) {
   const cs = ctxs(), ms = mathsSel(); if (!cs.length && !ms.length) return;
+  if (cs.length === 1 && !ms.length && wordsSelected(cs[0])) { sizeSelection(cs[0], Math.max(8, Math.round(px))); return; }
   const out = cs.map(c => [c.b, innerSizes(c, () => '')]);
   commit(() => { for (const m of ms) m.fontSize = Math.max(8, px); for (const [b, html] of out) { b.fontSize = Math.max(8, px); if (html !== undefined) b.html = html; } });
 }
@@ -307,6 +352,7 @@ export function setNumStyle(value) {
 export function fontSize(delta) {
   // (Each one from its own size: three boxes of 20, 28 and 40 become 24, 32 and 44 — and the sizes inside each, too.)
   const cs = ctxs(), ms = mathsSel(); if (!cs.length && !ms.length) return;
+  if (cs.length === 1 && !ms.length && wordsSelected(cs[0])) { sizeSelection(cs[0], Math.max(8, sizeAtSelection(cs[0]) + delta)); return; }
   const step = v => { const m = /^([\d.]+)(px|pt|em|rem|%)$/.exec(v || ''); if (!m) return ''; const k = PX[m[2]];
     return k ? `${Math.max(8, Math.round(+m[1] * k + delta))}px` : `${m[1]}${m[2]}`; };   // (relative ones follow the box's)
   const out = cs.map(c => [c.b, innerSizes(c, step)]);
