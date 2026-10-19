@@ -3516,9 +3516,37 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // Not set up on the server: it says so and opens nothing.
     await M.openModelAi({ api: async () => ({ ok: false }) });
     assert(!D.getElementById('m3a-modal'), 'sin servicio no se abre'); D.querySelector('.modal-backdrop .fr-do, .modal-backdrop button')?.click(); D.querySelectorAll('.modal-backdrop').forEach(x => x.remove());
-    // The open edition: the button is hidden (accounts-only).
+    // Built in the browser now: the button is there in every edition (with one's own OpenRouter key too).
     const btn = D.querySelector('[data-action="model-ai"]');
-    assert(btn && W.getComputedStyle(btn).display === 'none', 'en la edición abierta el botón está oculto');
+    assert(btn && W.getComputedStyle(btn).display !== 'none', 'el botón está también en la edición abierta');
+  });
+
+  await test('Crear modelo 3D con IA en el navegador: la IA escribe el código, el navegador lo construye y le enseña las fotos, se corrige y se inserta (IA simulada)', async () => {
+    reset(); const W = frame.contentWindow, AG = await W.eval("import('/src/features/ai/model3dagent.js')"), M = await W.eval("import('/src/ui/dialogs/model3dai.js')");
+    const asked = [];
+    const answers = [
+      { done: false, note: 'Primera versión: una caja.', code: 'root.add(h.mesh(new THREE.BoxGeometry(0.4, 0.3, 0.2), h.mat(\'#c03030\'), \'Caja\'));' },
+      { done: false, note: 'Con un error, para ver que lo corrige.', code: 'root.add(nope());' },
+      { done: true, note: 'Ahora con tapa.', code: 'root.add(h.mesh(new THREE.BoxGeometry(0.4, 0.3, 0.2), h.mat(\'#c03030\'), \'Caja\')); const t = h.mesh(new h.RoundedBoxGeometry(0.42, 0.05, 0.22, 2, 0.01), h.mat(\'#222222\'), \'Tapa\'); t.position.y = 0.17; root.add(t);' },
+    ];
+    const chatFn = async (messages, o) => { asked.push({ messages, o }); return JSON.stringify(answers[asked.length - 1] || { done: true, note: '', code: '' }); };
+    const api = AG.webModelApi({ chatFn, connected: () => true });
+    await M.openModelAi({ api, interval: 50 });
+    const q = s => D.querySelector('#m3a-modal ' + s);
+    assert(/se construye en tu navegador/.test(q('.m3a-ask').textContent), 'dice que se construye en el navegador');
+    q('.m3a-prompt').value = 'una caja roja con tapa'; q('.m3a-go').click();
+    for (let i = 0; i < 400 && !(q('.m3a-insert') && !q('.m3a-insert').disabled && !q('.m3a-end').hidden); i++) await sleep(50);
+    eq(asked.length, 3, 'tres rondas');
+    assert(asked.every(a => a.o.feature === '3d' && a.o.prefer === AG.MODEL_3D && a.o.json), 'con su modelo y cobrado como 3D');
+    const photos = asked[1].messages.flatMap(m => (Array.isArray(m.content) ? m.content : [])).filter(p => p.type === 'image_url');
+    eq(photos.length, 3, 'la segunda ronda ve las tres fotos del modelo');
+    assert(asked[2].messages.some(m => /That code failed/.test(JSON.stringify(m.content))), 'y la tercera, el error de la segunda');
+    const items = [...D.querySelectorAll('#m3a-modal .m3a-rounds li')];
+    eq(items.map(li => li.className).join(), 'ok,ko,ok', 'las rondas, con sus fotos y el fallo');
+    assert(/El código falló/.test(items[1].textContent), 'el fallo, explicado');
+    const n = slide().blocks.length; q('.m3a-insert').click(); await sleep(50);
+    eq(slide().blocks.length, n + 1, 'se inserta'); eq(last().type, 'model');
+    assert(/^data:model\/gltf-binary;base64,Z2xURg/.test(last().src), 'con su GLB');
   });
 
   await test('ejemplos para empresa: reunión general, QBR, caso de éxito, webinar y kickoff de ventas, con gráficos, diagramas, votaciones y Transformar, en los once idiomas', async () => {

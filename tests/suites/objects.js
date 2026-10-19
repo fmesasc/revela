@@ -1,6 +1,29 @@
 // Objects: shapes, icons, charts, diagrams, tables, images, equations, code, media, grouping, clipboard.
 
 export default async function ({ R, D, frame, test, sleep, assert, eq, reset, slide, last, select, richOf, newText }) {
+  await test('3D creado en el navegador: el código de la IA, aislado (sin red, sin el editor, cortado si no acaba), da un GLB y sus tres vistas', async () => {
+    const W = frame.contentWindow, M = await W.eval("import('/src/features/content/model3dweb.js')");
+    const code = `const body = h.mesh(new THREE.CylinderGeometry(0.04, 0.035, 0.09, 32), h.mat('#2f5fbf', { rough: 0.3 }), 'Taza');
+      body.position.y = 1; root.add(body);
+      const handle = h.mesh(new THREE.TorusGeometry(0.025, 0.006, 12, 24, Math.PI), h.mat('#2f5fbf'), 'Asa'); handle.position.set(0.045, 1, 0); handle.rotation.z = -Math.PI / 2; root.add(handle);`;
+    const r = await M.buildModel(code);
+    const head = new TextDecoder().decode(new Uint8Array(r.glb, 0, 4));
+    eq(head, 'glTF', 'un GLB'); eq(r.views.length, 3, 'tres vistas');
+    assert(r.views.every(v => /^data:image\/jpeg;base64,/.test(v) && v.length > 3000), 'fotos de verdad');
+    assert(Math.abs(r.size[1] - 0.09) < 0.002 && r.tris > 50, 'a su tamaño (9 cm de alto): ' + JSON.stringify(r.size));
+    assert(/^data:model\/gltf-binary;base64,Z2xURg/.test(M.glbURL(r.glb)), 'como data: URL');
+    // Isolated: no network, no editor, no cookies; an endless loop is cut off and the editor goes on.
+    const err = async (c, timeout = 15000) => { try { await M.buildModel(c, { timeout }); return ''; } catch (e) { return e.message; } };
+    const net = await err("await fetch('https://example.com'); root.add(h.mesh(new THREE.BoxGeometry(1,1,1), h.mat()));");
+    assert(/fetch|Failed|violates|NetworkError/i.test(net), 'sin red: ' + net);
+    const ed = await err('parent.document.body.innerHTML = ""; root.add(h.mesh(new THREE.BoxGeometry(1,1,1), h.mat()));');
+    assert(/document|not defined|parent/i.test(ed), 'sin el editor: ' + ed);
+    const t0 = Date.now(), loop = await err('while (true) {}', 4000);
+    assert(/stopped/.test(loop) && Date.now() - t0 < 7000, 'un bucle sin fin se corta: ' + loop);
+    eq(D.querySelectorAll('iframe[sandbox="allow-scripts"]').length, 0, 'y no queda nada');
+    assert(/no mesh/.test(await err('const x = 1;')), 'sin mallas: lo dice');
+  });
+
   await test('votación y gráfico: cancelar una votación nueva la quita; doble clic abre sus datos', async () => {
     reset(); const n = slide().blocks.length;
     D.querySelector('[data-action="insert-poll"]').click(); await sleep(20);

@@ -8,6 +8,8 @@ const NPM = 'https://cdn.jsdelivr.net/npm/';
 export const REVEAL = NPM + 'reveal.js@5.1.0';
 export const KATEX = NPM + 'katex@0.16.11/dist';
 export const MODEL_VIEWER = NPM + '@google/model-viewer@3.5.0/dist/model-viewer.min.js';
+// Three.js as ES modules (jsDelivr's +esm: the add-ons import this same copy): «Crear 3D con IA» builds the model in the browser.
+export const THREE_BASE = NPM + 'three@0.170.0/';
 export const HTML2CANVAS = NPM + 'html2canvas@1.4.1/dist/html2canvas.min.js';
 export const JSZIP = NPM + 'jszip@3.10.1/dist/jszip.min.js';
 // PptxGenJS without its bundled JSZip (load JSZIP first: it takes window.JSZip). The bundle's, 3.5, waits for a timer

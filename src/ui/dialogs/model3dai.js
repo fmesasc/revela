@@ -1,27 +1,27 @@
 // «Crear modelo 3D con IA» (Insertar ▸ Crear 3D con IA): describe a model, optionally with reference
-// photos; Revela's server has an AI write a Blender script, run it, look at the render and correct
-// itself (server/cloudflare/model3d.js). Each round shows here with its preview and the agent's note;
-// at the end, the model turning, to insert it, ask for changes (another round) or discard it.
-// Only with a Revela account (cloud and desktop editions): the credits pay for it.
+// photos; an AI writes the code of the model, the browser builds and photographs it, and the AI looks at
+// the photos and corrects itself (features/ai/model3dagent.js; the same requests as Revela's Blender
+// server, server/cloudflare/model3d.js, which is off). Each round shows here with its preview and the
+// agent's note; at the end, the model turning, to insert it, ask for changes (another round) or discard it.
+// The AI is paid as any other: the account's credits, or the person's own OpenRouter key.
 
-import { api as accountApi, account, hasAccounts, onAccount } from '../../io/cloud/account.js';
 import { insertGeneratedModel } from '../../features/content/resources.js';
 import { loadModelViewer } from '../../core/vendor.js';
 import { esc } from '../../core/text.js';
 import { openAccount } from './account.js';
+import { ready } from './ai.js';
+import { webModelApi } from '../../features/ai/model3dagent.js';
 import { alertDialog } from './dialog.js';
 import { t, currentLang } from '../../i18n/index.js';
 
-const EXAMPLES = ['una taza de café de cerámica azul', 'el logotipo REVELA en letras metálicas', 'una maqueta de un edificio de oficinas de 5 plantas'];
+const EXAMPLES = ['una taza de café de cerámica azul', 'una lámpara de escritorio articulada', 'una maqueta de un edificio de oficinas de 5 plantas'];
 const ERRORS = { 'no credits': 'Te has quedado sin créditos.', 'ai failed': 'La IA no ha respondido.', 'ai paused': 'La IA está en pausa ahora mismo. Inténtalo más tarde.',
-  'blender unavailable': 'El servicio de Blender no está disponible ahora mismo.', internal: 'Algo ha fallado en el servidor.' };
+  internal: 'Algo ha fallado.' };
+const local = webModelApi();                            // (in the browser; its jobs kept while the page is open)
 let current = null;                                       // the job still open (to come back to it after closing the window)
 
-// The option is hidden in the open edition (accounts-only) and when the server hasn't got it set up.
-export function initModelAi() {
-  if (!hasAccounts()) return;
-  onAccount(me => document.querySelectorAll('[data-action="model-ai"]').forEach(b => { b.hidden = !!me && me.model3d === false; }));
-}
+// (Built in the browser: available wherever the AI is — with an account or one's own key —, nothing to hide.)
+export function initModelAi() {}
 
 // A photo → a JPEG data URL of at most 1024 px (the server takes up to 600 000 characters).
 async function photo(file) {
@@ -33,12 +33,9 @@ async function photo(file) {
 }
 
 // opts.api / opts.interval: for the tests (a simulated server, quicker polling).
-export async function openModelAi({ api = accountApi, interval = 2500 } = {}) {
-  const testing = api !== accountApi;
-  if (!testing) {
-    if (!hasAccounts()) return;
-    if (!account()) { openAccount(); return; }
-  }
+export async function openModelAi({ api = local, interval = 2500 } = {}) {
+  const testing = api !== local;
+  if (!testing && !(await ready())) return;            // (the AI connected — account or own key — and its notice seen)
   let info;
   try { info = await api('3d'); } catch { info = { ok: false }; }
   if (!info.ok) { alertDialog(t('Crear modelos 3D con IA aún no está disponible.')); return; }
@@ -51,8 +48,9 @@ export async function openModelAi({ api = accountApi, interval = 2500 } = {}) {
       <label class="fr-l">${t('¿Qué modelo quieres?')}<textarea class="m3a-prompt" rows="3" maxlength="2000" placeholder="${esc(t('p. ej.: una taza de café de cerámica azul'))}"></textarea></label>
       <div class="m3a-examples">${EXAMPLES.map(x => `<button type="button" class="mini2 m3a-ex">${esc(t(x))}</button>`).join('')}</div>
       <label class="fr-l">${t('Fotos de referencia (opcional, hasta 3)')}<input type="file" class="m3a-photos" accept="image/jpeg,image/png" multiple></label>
-      <p class="host-help">${t('La descripción y las fotos se envían al servicio de IA (OpenRouter y el proveedor del modelo). El guion de Blender se ejecuta en un servidor de Revela y el trabajo se borra a las 24 horas.')}</p>
-      <p class="host-help m3a-est">${t('Hasta {n} créditos (se cobra lo que cuesta de verdad, normalmente bastante menos).').replace('{n}', info.estimate?.max ?? '?')}</p>
+      <p class="host-help">${info.local ? t('La descripción, las fotos de referencia y las fotos del modelo se envían al servicio de IA (OpenRouter y el proveedor del modelo). El modelo se construye en tu navegador.')
+        : t('La descripción y las fotos se envían al servicio de IA (OpenRouter y el proveedor del modelo). El guion de Blender se ejecuta en un servidor de Revela y el trabajo se borra a las 24 horas.')}</p>
+      <p class="host-help m3a-est">${info.local ? t('Cada ronda cuesta lo que cobra la IA por ella, normalmente muy poco.') : t('Hasta {n} créditos (se cobra lo que cuesta de verdad, normalmente bastante menos).').replace('{n}', info.estimate?.max ?? '?')}</p>
       <div class="fr-actions"><button type="button" class="fr-do m3a-go">✨ ${t('Crear')}</button></div>
     </div>
     <div class="m3a-work" hidden>
@@ -81,12 +79,12 @@ export async function openModelAi({ api = accountApi, interval = 2500 } = {}) {
   // What the server says: the rounds, and the model when it's ready.
   const paint = async s => {
     q('.m3a-rounds').innerHTML = s.rounds.map(r => `<li class="${r.ok ? 'ok' : 'ko'}">${r.preview ? `<img src="${esc(r.preview)}" alt="">` : '<i class="ms">error</i>'}
-      <div><b>${t('Ronda')} ${r.n}</b>${r.note ? ` · ${esc(r.note)}` : ''}${r.ok ? '' : `<br><small>${esc(t(r.error === 'invalid answer' ? 'La IA no respondió bien; lo intenta otra vez.' : 'El guion falló en Blender; lo corrige en la siguiente ronda.'))}</small>`}</div></li>`).join('');
+      <div><b>${t('Ronda')} ${r.n}</b>${r.note ? ` · ${esc(r.note)}` : ''}${r.ok ? '' : `<br><small>${esc(t(r.error === 'invalid answer' ? 'La IA no respondió bien; lo intenta otra vez.' : info.local ? 'El código falló; lo corrige en la siguiente ronda.' : 'El guion falló en Blender; lo corrige en la siguiente ronda.'))}</small>`}</div></li>`).join('');
     const running = s.status === 'running';
     q('.m3a-status').innerHTML = running ? `<i class="ms m3a-spin">progress_activity</i> ${t('Ronda {n}: la IA está modelando y revisando el resultado…').replace('{n}', s.rounds.length + 1)}`
       : s.status === 'done' ? t('Listo. Gíralo con el ratón para verlo por todos lados.')
       : s.status === 'failed' ? t('No ha conseguido un modelo válido. Pide cambios para intentarlo otra vez.')
-      : t(ERRORS[s.error] || 'Algo ha fallado en el servidor.');
+      : t(ERRORS[s.error] || 'Algo ha fallado.');
     q('.m3a-end').hidden = q('.m3a-endb').hidden = running;
     q('.m3a-insert').disabled = !s.glb; q('.m3a-more').disabled = s.total >= s.max;
     if (!running && s.glb && !glb) {

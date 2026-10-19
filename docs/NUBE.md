@@ -290,6 +290,12 @@ guardadas a la antigua se siguen leyendo y pasan a trozos con la siguiente respu
 
 ## Modelos 3D con IA
 
+> **Desde el 2026-10-19 se construyen en el navegador** (`src/features/ai/model3dagent.js` y
+> `src/features/content/model3dweb.js`): la IA escribe código de Three.js en vez de un guion de Blender, el navegador lo
+> ejecuta aislado (un Worker dentro de un iframe sandbox sin red), saca tres fotos para que la IA se corrija y exporta el
+> GLB. Solo cuesta la IA (créditos de la cuenta o la clave propia de OpenRouter, `feature: '3d'`) y funciona en todas las
+> ediciones. Lo de abajo — Blender en Cloudflare Containers — sigue en el código, apagado (necesita Workers Paid).
+
 «Insertar ▸ Crear 3D con IA» (solo en las ediciones con cuenta): la persona describe un objeto
 («una taza de café de cerámica azul»), puede adjuntar hasta 3 fotos de referencia, y un agente
 escribe un guion de Blender, lo ejecuta, mira la vista previa y se corrige, como hace Claude Code con
