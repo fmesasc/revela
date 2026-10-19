@@ -3191,6 +3191,22 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(b.source.x, s0.x + 10, 'con la imagen, la zona va con ella');
   });
 
+  await test('imagen seleccionada que no puede tomar su forma (caja diminuta): se ajusta una vez, sin bucle', async () => {
+    // (2026-10-18: «Maximum call stack size exceeded» — a 3×2 box for a 17:10 picture rounds to 3×2 again, and each
+    // commit rendered and fitted it again.)
+    reset(); const c = D.createElement('canvas'); c.width = 17; c.height = 10;
+    R.blocks.addImage(c.toDataURL('image/png')); const b = last();
+    R.store.commit(() => Object.assign(b, { x: 100, y: 100, w: 3, h: 2, fit: 'contain' }));
+    let err = null; const onErr = e => { err = e.message || String(e.reason); };
+    D.defaultView.addEventListener('error', onErr); D.defaultView.addEventListener('unhandledrejection', onErr);
+    try { select(b); R.render(); await sleep(150); R.render(); await sleep(50); }
+    finally { D.defaultView.removeEventListener('error', onErr); D.defaultView.removeEventListener('unhandledrejection', onErr); }
+    eq(err, null, 'sin desbordar la pila'); eq([b.w, b.h].join(), '3,2', 'la caja, como estaba');
+    // (And a normal one still takes the picture's shape.)
+    R.store.commit(() => Object.assign(b, { w: 340, h: 340 })); R.render(); await sleep(50);
+    eq([b.w, b.h].join(), '340,200', 'una caja grande sí toma la forma de la imagen');
+  });
+
   await test('lupa: qué parte de la imagen es (contener, rellenar, recorte, volteo; fuera: ninguna)', async () => {
     const M = await magMod(), r4 = o => o && Object.values(o).map(v => +v.toFixed(4)).join(',');
     eq(r4(M.imageCrop({ x: 0, y: 0, w: 640, h: 360, fit: 'contain' }, { x: 160, y: 90, w: 80, h: 45 }, 1280, 720)), '0.25,0.25,0.625,0.625', 'contener, misma proporción');

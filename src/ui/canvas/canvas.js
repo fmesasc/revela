@@ -141,8 +141,16 @@ function fitPictureBox() {
   if (!img.complete || !img.naturalWidth) { img.addEventListener('load', () => { if (selectedBlock() === b) fitPictureBox(); }, { once: true }); return; }
   const r = img.naturalWidth / img.naturalHeight; if (!(r > 0) || !(b.w > 0 && b.h > 0) || Math.abs(b.w / b.h - r) / r < 0.01) return;
   const w = Math.round(Math.min(b.w, b.h * r)), h = Math.round(w / r);
-  commit(() => { Object.assign(b, { x: Math.round(b.x + (b.w - w) / 2), y: Math.round(b.y + (b.h - h) / 2), w, h }); }, { history: false });
+  // (Once per box: the commit renders again, and this runs again. If the box can't take the picture's shape — a tiny
+  // one, where rounding never gets within 1 %, or a block the change doesn't stick to, as while editing the master —
+  // it called itself until the stack overflowed: «Maximum call stack size exceeded», master-edit, 2026-10-18.)
+  const key = `${b.id}:${b.x},${b.y},${b.w},${b.h}:${r}`;
+  if (fitting || fitted === key || (w === b.w && h === b.h) || w < 1 || h < 1) return;
+  fitted = key; fitting = true;
+  try { commit(() => { Object.assign(b, { x: Math.round(b.x + (b.w - w) / 2), y: Math.round(b.y + (b.h - h) / 2), w, h }); }, { history: false }); }
+  finally { fitting = false; }
 }
+let fitting = false, fitted = '';
 
 // Video / web page / translucent image behind the slide (Design ▸ Format background).
 function drawBgMedia(slide) {
