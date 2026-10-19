@@ -245,9 +245,26 @@ export function fontFamily(value) {
   ensureFont(value);
   commit(() => { for (const c of cs) c.b.fontFamily = value; });
 }
+// The size of the whole box (as PowerPoint with the box selected): the sizes inside it — a PowerPoint title comes as
+// «MEDSIM<br><span style="font-size:36px">…</span>» — go too, or they hide the box's: its size went down to 8 and the
+// title stayed at 36 (Francisco, 2026-10-19). A step up or down (A+ / A−) moves them by as much, so a title of two
+// sizes keeps them apart.
+const innerSizes = (c, fn) => {
+  const editing = c.el?.getAttribute('contenteditable') === 'true';
+  const root = editing ? c.el : (c.b.html || '').includes('font-size') ? new DOMParser().parseFromString(`<body>${c.b.html}</body>`, 'text/html').body : null;
+  if (!root) return c.b.html;
+  root.querySelectorAll('[style*="font-size"]').forEach(e => {
+    const v = fn(e.style.fontSize);
+    if (v) e.style.fontSize = v; else { e.style.removeProperty('font-size'); if (!e.getAttribute('style')) e.removeAttribute('style'); }
+  });
+  root.querySelectorAll('font[size]').forEach(e => e.removeAttribute('size'));
+  return root.innerHTML;
+};
+const PX = { px: 1, pt: 4 / 3, em: 0, rem: 0, '%': 0 };
 export function setFontSize(px) {
   const cs = ctxs(), ms = mathsSel(); if (!cs.length && !ms.length) return;
-  commit(() => { for (const m of ms) m.fontSize = Math.max(8, px); for (const c of cs) c.b.fontSize = Math.max(8, px); });
+  const out = cs.map(c => [c.b, innerSizes(c, () => '')]);
+  commit(() => { for (const m of ms) m.fontSize = Math.max(8, px); for (const [b, html] of out) { b.fontSize = Math.max(8, px); if (html !== undefined) b.html = html; } });
 }
 // The box's line spacing, for all its paragraphs (as PowerPoint with the box selected): their own — every paragraph
 // imported from PowerPoint, or pasted, carries one (<p style="line-height:…">) — goes, or it would hide the box's.
@@ -288,10 +305,13 @@ export function setNumStyle(value) {
   commit(() => { for (const c of cs) c.b.numStyle = value; });
 }
 export function fontSize(delta) {
-  // (Each one from its own size: three boxes of 20, 28 and 40 become 24, 32 and 44.)
+  // (Each one from its own size: three boxes of 20, 28 and 40 become 24, 32 and 44 — and the sizes inside each, too.)
   const cs = ctxs(), ms = mathsSel(); if (!cs.length && !ms.length) return;
+  const step = v => { const m = /^([\d.]+)(px|pt|em|rem|%)$/.exec(v || ''); if (!m) return ''; const k = PX[m[2]];
+    return k ? `${Math.max(8, Math.round(+m[1] * k + delta))}px` : `${m[1]}${m[2]}`; };   // (relative ones follow the box's)
+  const out = cs.map(c => [c.b, innerSizes(c, step)]);
   commit(() => {
     for (const m of ms) m.fontSize = Math.max(8, (m.fontSize || MATH_SIZE) + delta);
-    for (const c of cs) c.b.fontSize = Math.max(8, (c.b.type === 'shape' ? c.b.fontSize || 28 : styled(c.b, currentSlide()).fontSize || 40) + delta);
+    for (const [b, html] of out) { b.fontSize = Math.max(8, (b.type === 'shape' ? b.fontSize || 28 : styled(b, currentSlide()).fontSize || 40) + delta); if (html !== undefined) b.html = html; }
   });
 }

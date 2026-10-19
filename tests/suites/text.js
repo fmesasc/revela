@@ -53,6 +53,22 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(b.fontSize, 37, 'fontSize'); eq(richOf(b).style.fontSize, '37px', 'fontSize DOM');
   });
 
+  await test('tamaño de un título con el de cada trozo (de PowerPoint): manda el que se pone, y A+/A− los mueve juntos', async () => {
+    // (MEDSIM, 2026-10-19: «MEDSIM<br><span style="font-size:36px">…» — the box down to 8 and the title still at 36.)
+    reset(); R.slides.addSlide('titleContent'); await sleep(10);
+    const b = R.state.deck.slides[R.state.ui.slideIndex].blocks.find(x => x.ph === 'title');
+    R.store.commit(() => { b.html = 'MEDSIM<br><span style="font-size:36px">Modular Emergency Department Simulator</span>'; b.fontSize = 44; });
+    R.store.setSelection(b.id); R.render(); await sleep(20);
+    const px = () => Math.round(parseFloat(getComputedStyle(richOf(b).querySelector('span') || richOf(b)).fontSize));
+    eq(px(), 36, 'antes: el del trozo');
+    R.format.fontSize(4); await sleep(20);
+    assert(/font-size:\s*40px/.test(b.html) && b.fontSize === 48, 'A+: el cuadro y el trozo, cada uno 4 más: ' + b.html);
+    R.format.setFontSize(60); await sleep(20);
+    assert(!/font-size/.test(b.html), 'un tamaño para el cuadro: los de dentro se quitan: ' + b.html);
+    eq(b.fontSize, 60); eq(px(), 60, 'y se ve a ese tamaño');
+    assert(/MEDSIM<br><span>Modular|MEDSIM<br>Modular/.test(b.html), 'el texto, igual');
+  });
+
   await test('interlineado personalizable', async () => {
     reset(); const b = newText(); R.format.lineSpacing('1.35'); await sleep(10);
     eq(b.lineHeight, 1.35, 'lineHeight'); eq(richOf(b).style.lineHeight, '1.35', 'lineHeight DOM');
