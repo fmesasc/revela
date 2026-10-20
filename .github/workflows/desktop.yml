@@ -143,6 +143,20 @@ jobs:
           gpg --batch --yes --clearsign -o InRelease Release && gpg --batch --yes -abs -o Release.gpg Release
           cp ../src/desktop/apt/revela.asc .
           mv Packages Packages.gz Release InRelease Release.gpg revela.asc ../out/
+      # Fixed names too, for links that never go stale: …/releases/latest/download/Revela-Windows.exe is always the latest
+      # version's (revelaslides.com/download links them). After the update manifest and the APT index, which look for the
+      # versioned files and would find these too.
+      - name: Fixed names
+        shell: bash
+        run: |
+          set -euo pipefail
+          pick() { find out -type f -name "$1" ! -name '*.sig' | head -n 1; }
+          cp "$(pick '*_x64-setup.exe')" out/Revela-Windows.exe
+          cp "$(pick '*.msi')" out/Revela-Windows.msi
+          cp "$(pick '*.dmg')" out/Revela-macOS.dmg
+          cp "$(pick '*.AppImage')" out/Revela-Linux.AppImage
+          cp "$(pick '*.deb')" out/Revela-Linux.deb
+          cp "$(pick '*.rpm')" out/Revela-Linux.rpm
       - name: Publish
         shell: bash
         run: |
@@ -153,6 +167,10 @@ jobs:
           cat >> notes.md <<'MD'
 
           ### Instalar
+          Todo explicado, en 11 idiomas: https://revelaslides.com/download — o con un solo comando:
+          - **Windows** (PowerShell): `irm https://revelaslides.com/install.ps1 | iex`
+          - **macOS y Linux** (terminal): `curl -fsSL https://revelaslides.com/install.sh | sh`
+
           - **Windows:** `.msi` o `…-setup.exe` (Windows puede avisar de que no está firmado: «Más información ▸ Ejecutar de todos modos»).
           - **macOS:** `.dmg` (la primera vez: clic derecho ▸ Abrir).
           - **Debian y Ubuntu, con apt** (se actualiza con el sistema, con `sudo apt upgrade`). Una sola vez:

@@ -106,7 +106,7 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = 
 // /llms-full.txt (llmstxt.org): the site's own /llms.txt (written by hand, in site/) followed by the English pages as
 // plain Markdown and the API reference — what an AI assistant needs to answer «how do I… in Revela?» or to make a
 // presentation through the API, in one file. Made from the built pages, so it never falls behind them.
-const LLMS_PAGES = ['index', 'pricing', 'guides', 'schools', 'business', 'support', 'security', 'ambassadors'];   // (developers: the API reference below says it all, in English)
+const LLMS_PAGES = ['index', 'download', 'pricing', 'guides', 'schools', 'business', 'support', 'security', 'ambassadors'];   // (developers: the API reference below says it all, in English)
 export function htmlToMarkdown(html) {
   let m = /<main[^>]*>([\s\S]*?)<\/main>/i.exec(html)?.[1] ?? '';
   m = m.replace(/<(script|style|svg|template|noscript)\b[\s\S]*?<\/\1>/gi, '').replace(/<!--[\s\S]*?-->/g, '')
@@ -190,7 +190,7 @@ function ensureSite() {
 
 // The website's pages in each language (the Spanish ones at the top, the others in /en/…),
 // and the sitemap with all of them. A text missing from a language stops the build.
-export const PAGES = [['index', '1.0'], ['pricing', '0.8'], ['support', '0.6'], ['schools', '0.7'], ['ambassadors', '0.6'], ['guides', '0.7'], ['contact', '0.5'], ['business', '0.7'], ['security', '0.4']];
+export const PAGES = [['index', '1.0'], ['pricing', '0.8'], ['support', '0.6'], ['schools', '0.7'], ['ambassadors', '0.6'], ['guides', '0.7'], ['contact', '0.5'], ['business', '0.7'], ['security', '0.4'], ['download', '0.6']];
 const dictOf = l => JSON.parse(readFileSync(join(ROOT, 'site', 'i18n', l + '.json'), 'utf8'));
 export function missingTexts() {
   ensureSite();

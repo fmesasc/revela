@@ -9,7 +9,7 @@
 
 import { state, subscribe } from '../../core/store.js';
 import { approxSize } from '../../core/model.js';
-import { EDITION } from '../../core/config.js';
+import { EDITION, OFFICIAL_SITE } from '../../core/config.js';
 import { t } from '../../i18n/index.js';
 import { slug } from '../../io/files.js';
 import { saveProject } from '../../io/formats/project.js';
@@ -19,7 +19,8 @@ import { footHTML } from '../dialogs/dlgkit.js';
 
 let BIG_DECK = 200e6;                                   // characters (its files as base64: some 150 MB)
 export const setBigDeckLimit = n => { BIG_DECK = n; };   // (for the tests)
-export const DESKTOP_DOWNLOAD = 'https://github.com/fmesasc/revela/releases/latest';
+// (Revela's page for it — the installers and a one-line command for each system —, in the interface's language.)
+export const DESKTOP_DOWNLOAD = OFFICIAL_SITE + '/download';
 export const deckMB = (deck = state.deck) => Math.round(approxSize(deck) * 0.75 / 1e6);
 export const isBigDeck = (deck = state.deck) => approxSize(deck) > BIG_DECK;
 // (How the app is opened: an address the system gives to it. For the tests, another.)
