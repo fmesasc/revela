@@ -102,7 +102,7 @@ export const asIs = (src, name = '') => ({ name: name || templateTheme(src).name
 function templateSummary(src) {
   const k = { x: 1280 / docSize(src).w, y: 720 / docSize(src).h }, bg = String(templateBackground(src));
   const objs = (src.master?.blocks || []).filter(b => !b.ph).slice(0, 12).map(b => ({ type: b.type === 'shape' ? b.shape || 'rect' : b.type, x: Math.round(b.x * k.x), y: Math.round(b.y * k.y), w: Math.round(b.w * k.x), h: Math.round(b.h * k.y), ...(b.fill && { color: b.fill }) }));
-  return { theme: templateTheme(src), background: /^data:|url\(/.test(bg) ? 'a picture' : bg, decorations: objs, layouts: (src.layouts || []).map(l => l.name).slice(0, 12) };
+  return { theme: templateTheme(src), background: /^data:|^blob:|^rvmedia:|url\(/.test(bg) ? 'a picture' : bg, decorations: objs, layouts: (src.layouts || []).map(l => l.name).slice(0, 12) };
 }
 
 // → [design, design, design] ; Error 'BAD_ANSWER' if none came right.

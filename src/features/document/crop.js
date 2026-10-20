@@ -12,6 +12,7 @@
 import { commit, currentSlide } from '../../core/store.js';
 import { shortSig } from '../../core/text.js';
 import { isGif } from '../live/media.js';
+import { mediaType } from '../../core/mediastore.js';
 
 const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src; });
 // Its earlier crop, if it's still that picture.
@@ -53,11 +54,11 @@ export function boxOnSlide(b, r) {
 export async function cutPicture(src, f) {
   const img = await loadImg(src), W = img.naturalWidth, H = img.naturalHeight;
   // (An SVG has no pixels of its own: drawn at least as big as it shows, twice for sharp screens.)
-  const svg = /^data:image\/svg|\.svg(\?|$)/i.test(src), k = svg ? Math.max(1, 2 * 1600 / Math.max(W, H)) : 1;
+  const svg = mediaType(src) === 'image/svg+xml' || /\.svg(\?|$)/i.test(src), k = svg ? Math.max(1, 2 * 1600 / Math.max(W, H)) : 1;
   const x = W * f.l, y = H * f.t, w = Math.max(1, W * (1 - f.l - f.r)), h = Math.max(1, H * (1 - f.t - f.b));
   const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
   c.getContext('2d').drawImage(img, x, y, w, h, 0, 0, c.width, c.height);
-  return /^data:image\/jpe?g/.test(src) ? c.toDataURL('image/jpeg', 0.92) : c.toDataURL('image/png');
+  return /^image\/jpe?g$/.test(mediaType(src)) ? c.toDataURL('image/jpeg', 0.92) : c.toDataURL('image/png');   // (data: or by address: core/mediastore.js)
 }
 
 // The frame C on the whole picture D (box coordinates) becomes the picture. All of it: back to the whole one.

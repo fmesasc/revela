@@ -19,7 +19,7 @@
 // Effects without an equivalent (shadows, SmartArt…) are approximated or skipped.
 
 import { FX, fxOfPreset, dirOfSubtype } from '../../features/animation/fxcatalog.js';
-import { zipDataURL } from '../files.js';
+import { storeBytes, mediaType, MEDIA_MIN } from '../../core/mediastore.js';
 import { parseCommentText } from '../../features/collab/comments.js';
 import { esc } from '../../core/text.js';
 import { uid } from '../../core/model.js';
@@ -53,12 +53,12 @@ async function loadJSZip() {
 // The part of a picture left after cutting fractions [left, top, right, bottom],
 // in its own format (JPEG stays JPEG); as it was if nothing is cut or it can't be read.
 async function cropPicture(src, [l, t, r, b]) {
-  if (l + t + r + b < 0.001 || l + r >= 1 || t + b >= 1 || /^data:image\/svg/.test(src)) return src;
+  if (l + t + r + b < 0.001 || l + r >= 1 || t + b >= 1 || /svg/.test(mediaType(src))) return src;
   try {
     const img = new Image(); img.src = src; await img.decode();
     const W = img.naturalWidth, H = img.naturalHeight, x = Math.round(W * l), y = Math.round(H * t), w = Math.max(1, Math.round(W * (1 - l - r))), h = Math.max(1, Math.round(H * (1 - t - b)));
     const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, x, y, w, h, 0, 0, w, h);
-    return /^data:image\/jpe?g/.test(src) ? c.toDataURL('image/jpeg', 0.92) : c.toDataURL('image/png');
+    return /^image\/jpe?g$/.test(mediaType(src)) ? c.toDataURL('image/jpeg', 0.92) : c.toDataURL('image/png');
   } catch { return src; }
 }
 
@@ -66,7 +66,7 @@ async function cropPicture(src, [l, t, r, b]) {
 // its lights in the second, by luminance, keeping its transparency (a green world map from a black one); a:grayscl,
 // in greys. Done once here, on its pixels, so the editor, presenting and every export show it alike. (Not SVG pictures.)
 async function recolorPicture(src, dark, light) {
-  if (/^data:image\/svg/.test(src)) return src;
+  if (/svg/.test(mediaType(src))) return src;
   try {
     const img = new Image(); img.src = src; await img.decode();
     const w = img.naturalWidth, h = img.naturalHeight; if (!w || !h || w * h > 40e6) return src;
@@ -78,7 +78,7 @@ async function recolorPicture(src, dark, light) {
       px[i] = A[0] + (B[0] - A[0]) * l; px[i + 1] = A[1] + (B[1] - A[1]) * l; px[i + 2] = A[2] + (B[2] - A[2]) * l;
     }
     g.putImageData(d, 0, 0);
-    return /^data:image\/jpe?g/.test(src) ? c.toDataURL('image/jpeg', 0.92) : c.toDataURL('image/png');
+    return /^image\/jpe?g$/.test(mediaType(src)) ? c.toDataURL('image/jpeg', 0.92) : c.toDataURL('image/png');
   } catch { return src; }
 }
 
@@ -559,28 +559,43 @@ export const MEDIA_MAX = 350e6, MEDIA_BIG = 50e6;
 const readers = new WeakMap();                         // zip → its reader (importPPTX sets it)
 // (JSZip knows a file's size before reading it.)
 const sizeInZip = f => +(f?._data?.uncompressedSize || 0);
+// A picture, video or sound of some size goes straight to this browser's store and the slide gets its address
+// (core/mediastore.js): never base64 text in the page — a 417 MB PowerPoint opened in a third of the time and memory.
+// Small ones, SVGs (drawn stretched: core/svgstretch.js) and pictures inside a CSS background (inline: a whole-text
+// reference can't be inside a longer text) stay data: URLs, as before.
+let byAddress = true;
+export const setImportByAddress = on => { byAddress = !!on; };          // (tests: the old way)
+async function zipMedia(f, mime, inline) {
+  const bytes = await f.async('uint8array');
+  if (inline || !byAddress || bytes.length < MEDIA_MIN || /svg/i.test(mime) || typeof indexedDB === 'undefined') {
+    return new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => ko(r.error); r.readAsDataURL(new Blob([bytes], { type: mime })); });
+  }
+  return storeBytes(bytes, mime);
+}
 function mediaReader(zip, notes, progress, max = MEDIA_MAX, big = MEDIA_BIG) {
   const done = new Map();
-  return (path, mime) => {
-    if (!done.has(path)) {
+  return (path, mime, inline = false) => {
+    const key = (inline ? 'i:' : 'a:') + path;
+    if (!done.has(key)) {
       const f = zip.file(path), bytes = sizeInZip(f), name = path.split('/').pop();
-      if (!f) done.set(path, Promise.resolve(null));
-      else if (bytes > max) { notes.push({ kind: 'tooBig', name, bytes }); done.set(path, Promise.resolve(null)); }
+      if (!f) done.set(key, Promise.resolve(null));
+      else if (bytes > max) { if (!done.has('n:' + path)) notes.push({ kind: 'tooBig', name, bytes }); done.set('n:' + path, 1); done.set(key, Promise.resolve(null)); }
       else {
-        if (bytes > big) { notes.push({ kind: 'big', name, bytes }); progress?.({ file: name, bytes }); }
-        done.set(path, zipDataURL(f, mime).catch(() => { notes.push({ kind: 'unread', name, bytes }); return null; }));
+        if (bytes > big && !done.has('n:' + path)) { notes.push({ kind: 'big', name, bytes }); progress?.({ file: name, bytes }); }
+        done.set('n:' + path, 1);
+        done.set(key, zipMedia(f, mime, inline).catch(() => { notes.push({ kind: 'unread', name, bytes }); return null; }));
       }
     }
-    return done.get(path);
+    return done.get(key);
   };
 }
-const readMedia = (zip, path, mime) => (readers.get(zip) || ((p, m) => (zip.file(p) ? zipDataURL(zip.file(p), m) : Promise.resolve(null))))(path, mime);
+const readMedia = (zip, path, mime, inline = false) => (readers.get(zip) || ((p, m, i) => (zip.file(p) ? zipMedia(zip.file(p), m, i) : Promise.resolve(null))))(path, mime, inline);
 
 // ---- Parts: layout and master (placeholders, decorations, background) ------
 // A picture of the package as a CSS background (stretched, or tiled).
 async function pictureBg(zip, t, tile) {
   if (!t || !zip.file(t.path)) return null;
-  const ext = t.path.split('.').pop().toLowerCase(), u = await readMedia(zip, t.path, MIME[ext] || 'image/png');
+  const ext = t.path.split('.').pop().toLowerCase(), u = await readMedia(zip, t.path, MIME[ext] || 'image/png', true);
   return u ? `url(${u}) ${tile ? 'repeat' : 'center/cover no-repeat'}` : null;
 }
 // The background of a slide, layout or master (p:cSld/p:bg): its own fill

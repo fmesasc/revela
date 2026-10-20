@@ -7,6 +7,7 @@ import { commit } from '../../core/store.js';
 import * as blocks from '../../features/document/blocks.js';
 import { DIAGRAM_NAMES, PIC_FITS, parseOutline, pictureOf } from '../../render/diagrams.js';
 import { readFile } from '../shell/openfile.js';
+import { mediaType } from '../../core/mediastore.js';
 
 export function openDiagramText(b) {
   document.getElementById('dg-modal')?.remove();
@@ -53,12 +54,12 @@ function carried(b, before, after) {
 // A picture made small enough to travel inside the presentation: at most 640 px; PNG keeps its transparency (logos),
 // a photo goes as JPEG; SVG and GIF as they are.
 export function smallPicture(src, max = 640) {
-  if (/^data:image\/(svg|gif)/i.test(src)) return Promise.resolve(src);
+  if (/^image\/(svg|gif)/.test(mediaType(src))) return Promise.resolve(src);
   return new Promise(res => {
     const i = new Image();
     i.onload = () => { const k = Math.min(1, max / Math.max(i.naturalWidth, i.naturalHeight)); if (k === 1 && src.length < 400e3) return res(src);
       const c = document.createElement('canvas'); c.width = Math.round(i.naturalWidth * k); c.height = Math.round(i.naturalHeight * k); c.getContext('2d').drawImage(i, 0, 0, c.width, c.height);
-      res(/^data:image\/jpe?g/i.test(src) ? c.toDataURL('image/jpeg', 0.86) : c.toDataURL('image/png')); };
+      res(/^image\/jpe?g$/.test(mediaType(src)) ? c.toDataURL('image/jpeg', 0.86) : c.toDataURL('image/png')); };
     i.onerror = () => res(src); i.src = src;
   });
 }

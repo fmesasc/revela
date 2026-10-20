@@ -20,6 +20,7 @@ import { JSZIP, loadScript } from '../../core/vendor.js';
 import { OFFICIAL_SITE } from '../../core/config.js';
 import { offlineHTML, htmlParts, partsBlob } from '../formats/html.js';
 import { download, slug } from '../files.js';
+import { portable } from '../../core/mediastore.js';
 
 const xml = s => String(s ?? '').replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
 
@@ -98,6 +99,7 @@ export function scormManifest(deck, pass) {
 // → { blob, offline } (offline: it works without internet; a dynamic one never does).
 // opts: { pass, docId (dynamic: the presentation in Revela's cloud, shared by link) }
 export async function buildScorm(deck = state.deck, { pass = 50, docId = null } = {}) {
+  deck = await portable(deck);                             // (its files by address, as data: core/mediastore.js)
   let page, offline = false;
   if (docId) page = scormLauncher(docId, deck.name || 'Revela', pass);
   else {

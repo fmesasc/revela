@@ -3,7 +3,7 @@
 
 import { state, commit, currentSlide } from '../../core/store.js';
 import { uid, shareCopy } from '../../core/model.js';
-import { dehydrate, hydrate, hasRefs } from '../../core/mediastore.js';
+import { dehydrate, liveDeck, hasRefs } from '../../core/mediastore.js';
 
 const USER_KEY = 'revela.templates.v1';
 
@@ -60,9 +60,9 @@ export const BUILTIN = {
 // Apply a layout. Like PowerPoint's "Layout", what was already written moves
 // into the new placeholders (title into the title, the rest in order into the
 // other placeholders) and pictures, charts, etc. are kept.
-export function applyTemplate(tpl) {
+export function applyTemplate(tpl, read = false) {
   // (A saved one keeps its big pictures as references to this browser's media store: read back first.)
-  if (hasRefs(tpl.blocks)) { hydrate(tpl.blocks).then(blocks => applyTemplate({ ...tpl, blocks })); return; }
+  if (!read && hasRefs(tpl.blocks)) { liveDeck(tpl.blocks).then(blocks => applyTemplate({ ...tpl, blocks }, true)); return; }
   commit(() => {
     const s = currentSlide(), old = s.blocks;
     const texts = old.filter(b => b.type === 'text' && b.html && b.html.replace(/<[^>]*>/g, '').trim());

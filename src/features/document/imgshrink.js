@@ -5,6 +5,7 @@
 // (drawings and animations). Transparency is kept. A smaller picture replaces it only if it weighs less.
 
 import { state, commit } from '../../core/store.js';
+import { mediaType, liveBytes } from '../../core/mediastore.js';
 
 const KEY = 'revela.images';
 export const SHRINK_SIZES = [0, 1280, 1920, 2560, 3840];        // (0: as they are)
@@ -15,8 +16,9 @@ export function shrinkPrefs() {
 }
 export function setShrinkPrefs(p) { try { localStorage.setItem(KEY, JSON.stringify({ ...shrinkPrefs(), ...p })); } catch {} }
 
-const SHRINKABLE = /^data:image\/(png|jpeg|jpg|webp);base64,/i;
-const bytesOf = url => Math.floor((url.length - url.indexOf(',') - 1) * 3 / 4);
+// (A data: URL or a file by address — core/mediastore.js —, which is measured by its bytes.)
+const SHRINKABLE = /^image\/(png|jpeg|jpg|webp)$/;
+const bytesOf = url => (url.startsWith('data:') ? Math.floor((url.length - url.indexOf(',') - 1) * 3 / 4) : liveBytes(url));
 const load = src => new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ko(new Error('IMAGE')); i.src = src; });
 // Whether a picture has see-through pixels (sampled: a small copy is enough).
 function hasAlpha(img) {
@@ -27,7 +29,7 @@ function hasAlpha(img) {
 }
 // The picture at most `max` px on its longest side → a smaller data URL, or null (nothing to gain).
 export async function shrinkImage(src, { max = shrinkPrefs().max, quality = shrinkPrefs().quality } = {}) {
-  if (!max || typeof document === 'undefined' || !SHRINKABLE.test(String(src))) return null;
+  if (!max || typeof document === 'undefined' || !SHRINKABLE.test(mediaType(String(src)))) return null;
   const img = await load(src), nw = img.naturalWidth, nh = img.naturalHeight;
   const k = Math.min(1, max / Math.max(nw, nh)), before = bytesOf(src);
   if (k === 1 && before < 400 * 1024) return null;                // (already small enough)
@@ -50,7 +52,7 @@ export async function shrinkImage(src, { max = shrinkPrefs().max, quality = shri
 // → { done, saved } (how many, and the bytes saved). onProgress(done, total).
 export async function shrinkDeckImages({ onProgress = () => {}, ...opts } = {}) {
   const deck = state.deck, all = [];
-  for (const s of [...deck.slides, ...(deck.layouts || []), ...(deck.masters || []), ...(deck.master ? [deck.master] : [])]) for (const b of s.blocks || []) if (b.type === 'image' && SHRINKABLE.test(String(b.src))) all.push(b);
+  for (const s of [...deck.slides, ...(deck.layouts || []), ...(deck.masters || []), ...(deck.master ? [deck.master] : [])]) for (const b of s.blocks || []) if (b.type === 'image' && SHRINKABLE.test(mediaType(String(b.src)))) all.push(b);
   const found = new Map(); let saved = 0, n = 0;
   for (const b of all) {
     try { const small = await shrinkImage(b.src, { ...shrinkPrefs(), ...opts }); if (small) { found.set(b, small); saved += bytesOf(b.src) - bytesOf(small); } } catch {}

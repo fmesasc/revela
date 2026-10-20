@@ -16,6 +16,7 @@ import { diff, applyOps, allowed, ROLES } from './collabsync.js';
 import { cleanValue } from '../document/sanitize.js';
 import { PEERJS, loadScript } from '../../core/vendor.js';
 import { peerOptions } from '../../core/ice.js';
+import { portable, hasLive } from '../../core/mediastore.js';
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const rand = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), x => ALPHABET[x % ALPHABET.length]).join('');
@@ -29,11 +30,12 @@ const emit = (what, data) => listeners.forEach(fn => { try { fn(what, data); } c
 
 // ---- Shared by host and guest -------------------------------------------------
 function watchLocal(sendOps) {
-  let last = snapshot(state.deck), lastPresence = '';
+  let last = snapshot(state.deck), lastPresence = '', out = Promise.resolve();
   const check = () => {
     if (!session) return;
     const ops = diff(last, state.deck);
-    if (ops.length) { last = snapshot(state.deck); sendOps(ops); }
+    // (Its files by address — core/mediastore.js — go as data; one change after another, in order.)
+    if (ops.length) { last = snapshot(state.deck); out = out.then(() => (hasLive(ops) ? portable(ops) : ops)).then(sendOps).catch(() => {}); }
     const me = presenceOf();
     const key = JSON.stringify(me);
     if (key !== lastPresence) { lastPresence = key; session.sendPresence(me); }
@@ -80,9 +82,14 @@ export function hostCollab({ name, listen, code = rand(6) }) {
       if (!g) {                                              // first message: who, and with which link
         const role = msg.t === 'hello' && roleOf(msg.token);
         if (!role) { conn.send({ t: 'denied' }); conn.close?.(); return; }
-        const guest = { conn, name: String(msg.name || '').slice(0, 40) || 'Invitado', color: COLORS[(n) % COLORS.length], role, slide: null, sel: null };
+        // (The deck with its files by address — core/mediastore.js — goes as data: while it's made, what else is sent
+        // to this person waits, to arrive after it.)
+        let held = hasLive(state.deck) ? [] : null;
+        const gconn = { send: m => (held ? held.push(m) : conn.send(m)), close: () => conn.close?.() };
+        const guest = { conn: gconn, name: String(msg.name || '').slice(0, 40) || 'Invitado', color: COLORS[(n) % COLORS.length], role, slide: null, sel: null };
         guests.set(id, guest);
-        conn.send({ t: 'welcome', you: id, role, color: guest.color, deck: state.deck, peers: peersList(), chat: chat.slice(-100), acks: 1 });
+        const welcome = deck => { conn.send({ t: 'welcome', you: id, role, color: guest.color, deck, peers: peersList(), chat: chat.slice(-100), acks: 1 }); const h = held; held = null; h?.forEach(m => conn.send(m)); };
+        if (held) portable(snapshot(state.deck)).then(welcome, () => welcome(state.deck)); else welcome(state.deck);
         toAll({ t: 'peers', peers: peersList() }, id); emit('peers');
         return;
       }

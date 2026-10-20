@@ -20,6 +20,7 @@ import { state, subscribe, snapshot, applyRemote, adoptDeck, replaceDeck, setPer
 import { diff, applyOps } from '../../features/live/collabsync.js';
 import { cleanValue } from '../../features/document/sanitize.js';
 import { approxSize } from '../../core/model.js';
+import { portable, liveBytes } from '../../core/mediastore.js';
 
 // How requests reach the server: the account's API (the tests put a stand-in here).
 let transport = api;
@@ -161,10 +162,12 @@ export async function openDoc(id, { io = send, pollMs = 5000, debounceMs = 1200 
 // The largest presentation Revela's cloud keeps (server: MAX_MB, 30 MB — its pictures, videos and 3D models inside):
 // known here, so a bigger one is told before it is sent, with where it does fit (Drive, a file).
 export const CLOUD_MAX_MB = 30;
-export const cloudFits = (deck = state.deck) => approxSize(deck) * 1.02 + 65536 <= CLOUD_MAX_MB * 1024 * 1024;
-export const deckMB = (deck = state.deck) => Math.max(1, Math.round(approxSize(deck) / 1048576));
+// (Its files by address — core/mediastore.js — count as the data: URLs they become on their way.)
+const sizeOf = deck => approxSize(deck) + liveBytes(deck) * 4 / 3;
+export const cloudFits = (deck = state.deck) => sizeOf(deck) * 1.02 + 65536 <= CLOUD_MAX_MB * 1024 * 1024;
+export const deckMB = (deck = state.deck) => Math.max(1, Math.round(sizeOf(deck) / 1048576));
 export async function saveToCloud({ io = send, pollMs = 5000, debounceMs = 1200, folder = null } = {}) {
-  const deck = snapshot(state.deck), r = await io('docs', { deck, ...(folder && { folder }) });
+  const deck = await portable(snapshot(state.deck)), r = await io('docs', { deck, ...(folder && { folder }) });
   closeDoc();
   cur = { id: r.id, role: 'owner', rev: r.rev, base: deck, sharing: { link: 'none', people: {} }, owner: null, status: 'saved', io };
   startSync(pollMs, debounceMs);
@@ -176,7 +179,7 @@ export async function saveToCloud({ io = send, pollMs = 5000, debounceMs = 1200,
 // sent yet goes now (its last edits would be lost otherwise), then it is let go.
 export function closeDoc() {
   if (!cur) return;
-  { const me = cur; if (me.role !== 'view' && !me.readOnly) { const ops = diff(me.base, state.deck); if (ops.length) me.io(path(me.id, 'ops'), { ops }).catch(() => {}); } }
+  { const me = cur; if (me.role !== 'view' && !me.readOnly) { const ops = diff(me.base, state.deck); if (ops.length) portable(ops).then(ops => me.io(path(me.id, 'ops'), { ops })).catch(() => {}); } }
   cur.stop?.(); cur = null; state.ui.lock = null; state.ui.noCopy = false; setPersist(true); emit('close');
 }
 // Read-only (beyond the plan): keep what's in the editor as a presentation of this browser, apart from the cloud's.
@@ -237,7 +240,7 @@ async function push(me) {
   const ops = diff(me.base, state.deck);
   if (!ops.length) { setStatus('saved'); return; }
   setStatus('saving');
-  let r; try { r = await me.io(path(me.id, 'ops'), { ops }); } catch (e) { return fail(me, e); }
+  let r; try { r = await me.io(path(me.id, 'ops'), { ops: await portable(ops) }); } catch (e) { return fail(me, e); }   // (files by address, as data)
   if (cur !== me) return;
   applyOps(me.base, ops);
   if (r.rev === me.rev + 1) me.rev = r.rev;              // (else others changed it in between: the next pull brings both)

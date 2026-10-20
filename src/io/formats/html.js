@@ -59,6 +59,7 @@ import { customPath, pathEnd, animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CS
 import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars, layoutOf } from '../../features/document/master.js';
 import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, magOrigin, underArea, viewOf, MAG_SKIP } from '../../features/document/magnify.js';
 import { watermarkPage } from '../../features/document/watermark.js';
+import { portable } from '../../core/mediastore.js';
 
 
 const tf = b => `rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''}`;
@@ -253,7 +254,7 @@ export const blocksOf = (s, deck = state.deck) => [...masterBlocksFor(s, deck), 
 // (the overview, slides saved as images). A library thumbnail (assets/…) as a full address.
 function posterAttr(b) {
   const p = String(b.poster || '');
-  if (!/^(data:image\/|https?:)/i.test(p) && (/^[a-z][a-z0-9+.-]*:/i.test(p) || !p)) return '';
+  if (!/^(data:image\/|https?:|blob:)/i.test(p) && (/^[a-z][a-z0-9+.-]*:/i.test(p) || !p)) return '';
   let u = p; if (!/^(data|https?):/i.test(p)) try { u = new URL(p, document.baseURI).href; } catch { return ''; }
   return safeURL(u) ? ` data-poster="${esc(u)}"` : '';
 }
@@ -1105,7 +1106,7 @@ function dedupeMedia(html) {
 // plugins and styles inside it (fetched now). → whether it could be made so (else it needs a connection;
 // 3D models, maps, fonts and videos from the internet always do).
 export async function exportHTML() {
-  const p = htmlParts(), { html, offline } = await offlineHTML(p.html);
+  const p = htmlParts(await portable(state.deck)), { html, offline } = await offlineHTML(p.html);   // (files by address, as data: core/mediastore.js)
   download(partsBlob(html, p.files), slug(state.deck.name) + '.html');
   return offline;
 }

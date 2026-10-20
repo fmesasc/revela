@@ -6,7 +6,7 @@
 import { state, subscribe, replaceDeck, snapshot, docVersion, docEpoch, onBeforeReplace } from '../../core/store.js';
 import { approxSize, isBlankDeck, shareCopy } from '../../core/model.js';
 import { verPut, verGet, verDel, verMeta } from '../../core/idb.js';
-import { dehydrate, hydrate, hasRefs } from '../../core/mediastore.js';
+import { dehydrate, hydrate, liveDeck, hasRefs } from '../../core/mediastore.js';
 
 const AUTO_EVERY = 5 * 60 * 1000;     // at most one automatic snapshot every 5 minutes of editing
 const AUTO_KEEP = 30;                 // automatic snapshots kept (named ones are never pruned)
@@ -37,7 +37,7 @@ export async function listVersions() {
 export async function restoreVersion(id) {
   const v = await verGet(id); if (!v) return false;
   await saveVersion('', true, 'before');                     // keep what we had before restoring (not pruned with the automatic ones)
-  const deck = hasRefs(v.deck) ? await hydrate(v.deck) : shareCopy(v.deck);
+  const deck = hasRefs(v.deck) ? await liveDeck(v.deck) : shareCopy(v.deck);
   restoring = true; replaceDeck(deck);       // (that copy is the one: not a second from keepBeforeReplacing)
   return true;
 }

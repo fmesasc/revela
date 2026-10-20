@@ -20,8 +20,8 @@ export function openBackgroundDialog() {
       <label class="fr-l">${t('Ajuste')}<select class="bg-fit"${hasImg ? '' : ' disabled'}>${opt('cover', 'Cubrir', fit)}${opt('contain', 'Contener', fit)}${opt('tile', 'Mosaico', fit)}</select></label>
       <label class="fr-l">${t('Opacidad del fondo')} <input type="range" class="bg-op" min="10" max="100" step="5" value="${s.bgOpacity ?? 100}"></label></fieldset>
     ${moreHTML(`    <fieldset class="bgf"><legend>${t('Vídeo de fondo')}</legend>
-      <label class="fr-l"><input type="url" class="bg-vurl" placeholder="https://…/video.mp4" value="${s.bgVideo && !s.bgVideo.startsWith('data:') ? s.bgVideo.replace(/"/g, '&quot;') : ''}"></label>
-      <div class="bg-row"><button class="bg-vfile mini2">${t('Elegir archivo…')}</button><span class="bg-vname">${s.bgVideo?.startsWith('data:') ? t('Vídeo del equipo') : ''}</span></div>
+      <label class="fr-l"><input type="url" class="bg-vurl" placeholder="https://…/video.mp4" value="${s.bgVideo && /^https?:/i.test(s.bgVideo) ? s.bgVideo.replace(/"/g, '&quot;') : ''}"></label>
+      <div class="bg-row"><button class="bg-vfile mini2">${t('Elegir archivo…')}</button><span class="bg-vname">${s.bgVideo && !/^https?:/i.test(s.bgVideo) ? t('Vídeo del equipo') : ''}</span></div>
       <label class="fr-chk"><input type="checkbox" class="bg-loop"${s.bgVideoLoop !== false ? ' checked' : ''}> ${t('En bucle')}</label>
       <label class="fr-chk"><input type="checkbox" class="bg-mute"${s.bgVideoMuted !== false ? ' checked' : ''}> ${t('Sin sonido')}</label></fieldset>
     <fieldset class="bgf"><legend>${t('Página web de fondo')}</legend>
@@ -32,7 +32,7 @@ export function openBackgroundDialog() {
     <div class="fr-actions"><button class="bg-clear mini2">${t('Quitar vídeo y web')}</button><button class="fr-do bg-ok">${t('Aplicar')}</button></div></div>`;
   document.body.appendChild(back);
   const q = x => back.querySelector(x), close = () => back.remove();
-  let videoData = s.bgVideo?.startsWith('data:') ? s.bgVideo : null;
+  let videoData = s.bgVideo && !/^https?:/i.test(s.bgVideo) ? s.bgVideo : null;   // (data:, or a file by address: core/mediastore.js)
   q('.modal-close').addEventListener('click', close);
   back.addEventListener('click', e => { if (e.target === back) close(); });
   q('.bg-vfile').addEventListener('click', () => {

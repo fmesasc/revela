@@ -8,6 +8,7 @@ import { state, replaceDeck, subscribe, docEpoch, docVersion, onBeforeReplace } 
 import { signedIn, apiFor, cloudReady } from './othercloud.js';
 import { approxSize } from '../../core/model.js';
 import { packDeck, deckFile } from '../../core/deckfile.js';
+import { portable, liveBytes } from '../../core/mediastore.js';
 
 const GRAPH = 'https://graph.microsoft.com/v1.0/me/drive';
 const LS = 'revela.onedrive.file';
@@ -109,7 +110,7 @@ export async function saveAsOneDrive({ folder = null, name, format = 'revela' })
   }
   setStatus('saving');
   try {
-    const version = docVersion(), f = await put({ folder, name: base + '.revela.json', body: deckFile(packDeck(state.deck)), type: 'application/json' });
+    const version = docVersion(), f = await put({ folder, name: base + '.revela.json', body: deckFile(packDeck(await portable(state.deck))), type: 'application/json' });
     link({ id: f.id, name: f.name, eTag: f.eTag, folder: f.parentReference?.id || folder }); lastSaved = version; setStatus('saved');
     return { id: f.id, name: f.name, link: f.webUrl || '' };
   } catch (e) { setStatus(e.message === 'NO_TOKEN' ? 'offline' : 'error'); throw e; }
@@ -121,8 +122,8 @@ export function saveOneDriveNow({ force = false, auto = false } = {}) {
   const run = saving.catch(() => {}).then(async () => {
     const f = linkedOneDrive(); if (!f) return false;
     if (!onedriveSignedIn()) { setStatus('offline'); return false; }
-    const packed = packDeck(state.deck);
-    if (auto && approxSize(packed) > AUTO_MAX) { setStatus('big'); return false; }
+    if (auto && approxSize(packDeck(state.deck)) + liveBytes(state.deck) * 4 / 3 > AUTO_MAX) { setStatus('big'); return false; }
+    const packed = packDeck(await portable(state.deck));   // (its files by address, as data: core/mediastore.js)
     const version = docVersion(); setStatus('saving');
     try {
       const r = await put({ id: f.id, body: deckFile(packed), type: 'application/json', ifMatch: force ? null : f.eTag });

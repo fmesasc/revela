@@ -16,7 +16,8 @@ const URL_ATTRS = new Set(['href', 'src', 'xlink:href', 'action', 'formaction', 
 export function safeURL(u) {
   const s = String(u ?? '').replace(/[\u0000-\u0020]+/g, '');     // (browsers ignore these inside a scheme)
   if (!s || !/^[a-z][a-z0-9+.-]*:/i.test(s)) return true;             // relative
-  return /^(https?|mailto|tel|blob):/i.test(s) || /^data:(image|video|audio|model|font)\//i.test(s) || /^data:application\/(octet-stream|pdf)[;,]/i.test(s);
+  return /^(https?|mailto|tel|blob):/i.test(s) || /^data:(image|video|audio|model|font)\//i.test(s) || /^data:application\/(octet-stream|pdf)[;,]/i.test(s)
+    || /^rvmedia:[0-9a-f]{32}$/.test(s);                               // (a file of this browser's store: core/mediastore.js)
 }
 export function cleanHTML(html) {
   const s = String(html ?? '');

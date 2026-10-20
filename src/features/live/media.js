@@ -6,6 +6,7 @@
 
 import { commit, currentSlide, setSelection } from '../../core/store.js';
 import { uid } from '../../core/model.js';
+import { mediaType } from '../../core/mediastore.js';
 
 export const canRecord = () => typeof window.MediaRecorder === 'function' && !!navigator.mediaDevices;
 
@@ -119,7 +120,7 @@ export function setCameraLook(id, props) {
 // presentation plays the next: from second X to second Y), start by itself
 // when the slide appears, loop, be muted, and have a colour made transparent
 // (chroma key). Those need the media player (io/runtime/media.js).
-export const isGif = b => b?.type === 'image' && /^data:image\/gif|\.gif(\?|$)/i.test(b.src || '');
+export const isGif = b => b?.type === 'image' && (mediaType(b.src) === 'image/gif' || /\.gif(\?|$)/i.test(b.src || ''));   // (data: or by address: core/mediastore.js)
 export const mediaKind = b => (b?.type === 'video' ? 'video' : isGif(b) ? 'gif' : null);
 // Speed: the whole video's (b.speed) and each segment's own (s.speed) — to go quickly through what's between the
 // parts that matter: 1.5×, 2×, 4×, 8× (0.5×: slow motion).

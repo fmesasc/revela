@@ -21,6 +21,7 @@ import { blockImage } from '../export/images.js';
 import { JSZIP, loadScript } from '../../core/vendor.js';
 import { odpTimingXML, readODPAnimations } from './odp-anim.js';
 import { transitionName } from '../../features/animation/transitions.js';
+import { portable } from '../../core/mediastore.js';
 
 const loadZip = () => loadScript(JSZIP, 'JSZip');
 
@@ -68,6 +69,7 @@ function fromSmil(type, sub, reverse) {
 const colour = c => (/^#[0-9a-f]{3,8}$/i.test(c || '') ? c : null);
 
 export async function buildODP(deck = state.deck) {
+  deck = await portable(deck);                             // (its files by address, as data: core/mediastore.js)
   const JSZip = await loadZip();
   const { w: W, h: H } = deck.size;
   const CM = 28 / 1280;                                   // 1280 px ↔ 28 cm (16:9 default in Impress)

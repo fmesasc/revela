@@ -12,6 +12,7 @@ import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { openAccount } from './account.js';
 import { ssoBox, wireSso } from './teamsso.js';
 import { tabsHTML, wireTabs, tipHTML } from './dlgkit.js';
+import { portable } from '../../core/mediastore.js';
 
 const errorText = e => (e.status === 402 && e.data?.error === 'no seats' ? t('No quedan puestos libres ({n}). Compra más puestos para invitar a más personas.').replace('{n}', e.data.seats)
   : e.status === 403 ? t('Solo la administración del equipo puede hacer esto.') : e.data?.error === 'last admin' ? t('El equipo necesita al menos una persona que lo administre.')
@@ -114,7 +115,7 @@ export async function openTeam() {
     body.querySelectorAll('[data-tpl-rm]').forEach(b => b.addEventListener('click', act(async () => { if (await confirmDialog(t('¿Borrar esta plantilla del equipo?'))) await acc.api('team/template/delete', { id: b.dataset.tplRm }); })));
     q('.tm-publish')?.addEventListener('click', act(async () => {
       const name = await promptDialog(t('Nombre de la plantilla:'), state.deck.name || ''); if (!name) return;
-      await acc.api('team/template', { name, deck: snapshot(state.deck) });
+      await acc.api('team/template', { name, deck: await portable(snapshot(state.deck)) });   // (files by address, as data)
     }));
     wireTabs(body, 'revela.team.tab');
   }

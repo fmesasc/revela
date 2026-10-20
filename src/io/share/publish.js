@@ -10,6 +10,7 @@ import { addShare, viewLink, iframeCode } from './shares.js';
 import { driveShareSealed, gdriveConfig } from '../cloud/gdrive.js';
 import { serverShare, serverSealedURL } from '../cloud/shareserver.js';
 import { t, currentLang } from '../../i18n/index.js';
+import { portable } from '../../core/mediastore.js';
 
 const OPENER_TEXTS = () => ({ locked: t('Presentación protegida'), ask: t('Escribe la contraseña para verla.'), open: t('Abrir'),
   wrong: t('Contraseña incorrecta.'), nokey: t('Falta la clave del enlace: cópialo entero, con lo que va detrás de «#».'),
@@ -18,6 +19,7 @@ const OPENER_TEXTS = () => ({ locked: t('Presentación protegida'), ask: t('Escr
 
 // where: 'file' | 'drive' | 'server'. password: null → secret link.
 export async function publish({ where = 'file', password = null, days = 0, domain = '', deck = state.deck } = {}) {
+  deck = await portable(deck);                             // (its files by address, as data: core/mediastore.js)
   const name = deck.name || t('Presentación');
   // A file without a password: the presentation itself, which opens anywhere (also offline). (Sealed with a
   // key in its address, it wouldn't open from where it is uploaded — Moodle, a school site — without it.)

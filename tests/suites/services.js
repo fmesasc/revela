@@ -201,7 +201,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       opened.push('/home/ana/Clase.revela'); await DK.openGivenForTests();
       for (let i = 0; i < 80 && R.state.deck.name !== 'Del paquete'; i++) await sleep(25);
       eq(R.state.deck.name, 'Del paquete', 'abierto');
-      eq(R.state.deck.slides[0].blocks.find(b => b.id === 'mz')?.src, big1, 'con su modelo');
+      eq(await (await W.eval("import('/src/core/mediastore.js')")).portable(R.state.deck.slides[0].blocks.find(b => b.id === 'mz')?.src), big1, 'con su modelo (por su dirección)');
       assert(calls.some(c => c.cmd === 'read_range') && !calls.some(c => c.cmd === 'read_opened'), 'a trozos, nunca entero');
       assert(calls.some(c => c.cmd === 'release_opened' && c.args.path === '/home/ana/Clase.revela'), 'y luego deja de poder leerlo');
       // From Archivo ▸ Abrir (the system's dialog): the same.

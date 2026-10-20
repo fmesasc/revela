@@ -27,6 +27,7 @@ import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
 import { animTimeline, animEntries, isEntrance, motionPoints } from '../../features/animation/transitions.js';
 import { download } from '../files.js';
 import { writeTheme } from './ooxml-theme.js';
+import { portable } from '../../core/mediastore.js';
 
 
 
@@ -480,6 +481,7 @@ async function breathe() {
 // progress({ step: 'pictures', done, of } | { step: 'slides', slide, of } | { step: 'zip', percent }): how far it is
 // (300 slides take a while). done/of: objects looked at to draw as pictures.
 export async function buildPptx(deck = state.deck, { progress = null } = {}) {
+  deck = await portable(deck);                             // (its files by address, as data: core/mediastore.js)
   exportDeck = deck; ranSince = performance.now();
   await Promise.all([loadScript(JSZIP, 'JSZip').then(() => loadScript(PPTXGEN, 'PptxGenJS')), naturalSizes(deck)]);   // (PPTXGEN needs JSZip: vendor.js)
   const pptx = new window.PptxGenJS(), media = new Map();
@@ -830,6 +832,7 @@ async function addComments(zip, deck) {
 
 // progress: as buildPptx's.
 export async function buildPptxBlob(deck = state.deck, { progress = null } = {}) {
+  deck = await portable(deck);
   const pptx = await buildPptx(deck, { progress });
   return addMotion(await pptx.write({ outputType: 'arraybuffer', compression: false }), deck, progress, pptx.rvMedia);
 }

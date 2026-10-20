@@ -11,6 +11,7 @@ import { t, currentLang } from '../../i18n/index.js';
 import { alertDialog, confirmDialog } from './dialog.js';
 import { toast } from '../shell/toast.js';
 import { moreHTML, footHTML } from './dlgkit.js';
+import { portable } from '../../core/mediastore.js';
 
 export const SUBJECT_NAMES = { math: 'Matemáticas', lang: 'Lengua y literatura', science: 'Ciencias', social: 'Ciencias sociales e historia', arts: 'Arte y plástica', music: 'Música', pe: 'Educación física',
   tech: 'Tecnología e informática', languages: 'Idiomas', values: 'Valores, filosofía y religión', vocational: 'Formación profesional', business: 'Empresa', other: 'Otra' };
@@ -54,7 +55,7 @@ export async function openPublish() {
     if (!q('.cm-rights').checked) { note.textContent = t('Marca la casilla para confirmar que puedes publicarla.'); return; }
     q('.cm-go').disabled = true; note.textContent = t('Enviando…');
     try {
-      const deck = JSON.parse(JSON.stringify(state.deck)); delete deck.comments;
+      const deck = JSON.parse(JSON.stringify(await portable(state.deck))); delete deck.comments;   // (files by address, as data: core/mediastore.js)
       await cm.publish({ title: q('.cm-title').value, description: q('.cm-desc').value, subject: q('.cm-subject').value, level: q('.cm-level').value, lang: currentLang(),
         license: back.querySelector('[name="cm-lic"]:checked').value, author: q('.cm-author').value, rights: true, deck, thumb: await picture(state.deck) });
       close(); toast(t('Enviada: la revisaremos y aparecerá en la comunidad.'), { action: { label: t('Mis publicaciones'), run: openMine } });

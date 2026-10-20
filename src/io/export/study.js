@@ -122,7 +122,8 @@ ${tabs ? `<div role="tablist" aria-label="${esc(t('Fichas y práctica'))}"><butt
 export function exportStudy(deck = state.deck, opts = {}) {
   const D = studyData(deck, opts);
   if (!D.cards.length && !D.items.length) return 0;
-  download(new Blob([studyHTML(deck, opts)], { type: 'text/html' }), slug(deck.name) + '-' + slug(t('Fichas y práctica')) + '.html');
+  // (Its files by address — core/mediastore.js — as data: the page is opened elsewhere.)
+  import('../../core/mediastore.js').then(m => m.portable(deck)).then(d => download(new Blob([studyHTML(d, opts)], { type: 'text/html' }), slug(deck.name) + '-' + slug(t('Fichas y práctica')) + '.html'));
   return D.cards.length + D.items.length;
 }
 

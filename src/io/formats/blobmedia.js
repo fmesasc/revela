@@ -10,6 +10,7 @@
 // Found by hand (indexOf), not with regular expressions: a file of several MB in a pattern overflows the regex
 // engine's stack.
 
+import { isRef, refURL } from '../../core/mediastore.js';
 const MIN = 64 * 1024, SMALL = 2000;
 const B64 = new Uint8Array(128); for (const c of 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=') B64[c.charCodeAt(0)] = 1;
 const cache = new Map();                                 // data: URL → blob: URL
@@ -18,6 +19,7 @@ const ok = () => typeof Blob !== 'undefined' && typeof URL.createObjectURL === '
 // One whole data: URL → its blob: address (the same one every time), or the data: URL as it is if it's small, not
 // base64, or can't be read.
 export function blobURL(d) {
+  if (isRef(d)) return refURL(d) || d;                   // (a reference — core/mediastore.js —: its registered address)
   if (typeof d !== 'string' || d.length < MIN || !d.startsWith('data:') || !ok()) return d;
   let u = cache.get(d); if (u) return u;
   const i = d.indexOf(','), meta = d.slice(5, i);
@@ -32,6 +34,7 @@ export function blobURL(d) {
 // Every base64 data: URL of some size in a text (a background's url(…), a text's inline image…) → blob: addresses.
 // seen: collects the data: URLs found (pruneBlobs).
 export function withBlobs(s, seen = null) {
+  if (isRef(s)) return seen ? s : refURL(s) || s;
   if (typeof s !== 'string' || s.length < MIN || !s.includes('data:')) return s;
   if (s.startsWith('data:') && s.indexOf('data:', 5) < 0 && s.indexOf(')') < 0) { seen?.add(s); return seen ? s : blobURL(s); }
   let out = '', last = 0;

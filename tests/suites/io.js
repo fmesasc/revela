@@ -322,7 +322,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     M.saveDeck(big); await M.flushSave(big);
     assert(JSON.parse(frame.contentWindow.localStorage.getItem(M.STORAGE_KEY)).tooBig, 'localStorage no se desborda');
     eq(M.loadDeck(), null, 'la carga síncrona lo deja a IndexedDB');
-    const got = await M.loadNewerDeck({ savedAt: 0 }); eq(got?.slides[0].blocks.at(-1).src.length, big.slides[0].blocks.at(-1).src.length, 'recuperado entero de IndexedDB');
+    const got = await (await frame.contentWindow.eval("import('/src/core/mediastore.js')")).portable(await M.loadNewerDeck({ savedAt: 0 })); eq(got?.slides[0].blocks.at(-1).src.length, big.slides[0].blocks.at(-1).src.length, 'recuperado entero de IndexedDB');
     R.store.commit(() => {});                                  // vuelve a guardar el estado actual
   });
 
@@ -373,7 +373,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(doc.format === 'revela-package' && JSON.stringify(doc.deck).length < 20000, 'la presentación, ligera: sus archivos aparte');
     eq((await idx.get(names.find(n => n.endsWith('.glb'))).read()).size, 120000, 'el modelo, tal cual (no como texto)');
     // Opened back: the same deck.
-    const back = await PK.readPackage(new W.File([pkg], 'Mía.revela'));
+    const PO = (await W.eval("import('/src/core/mediastore.js')")).portable, back = await PO(await PK.readPackage(new W.File([pkg], 'Mía.revela')));
     const src = id => back.slides[0].blocks.find(b => b.id === id).src;
     assert(src('p1') === big1 && src('p2') === big1 && src('m1') === big2, 'abierto, igual que era');
     assert(await PK.isPackage(new W.File([pkg], 'sin-extension')), 'se reconoce por dentro, también sin su extensión');
@@ -381,7 +381,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const files = [...idx].map(([name, e]) => ({ name, e }));
     const parts = [];
     for (const { name, e } of files) parts.push({ name, blob: name.endsWith('.glb') ? new W.Blob([bytes(120000).map(x => x ^ 1)]) : await e.read() });
-    const evil = await Z.zipBlobs(parts), bad = await PK.readPackage(new W.File([evil], 'x.revela'));
+    const evil = await Z.zipBlobs(parts), bad = await PO(await PK.readPackage(new W.File([evil], 'x.revela')));
     eq(bad.slides[0].blocks.find(b => b.id === 'm1').src, big2, 'el cambiado no sustituye al de verdad que ya tenía este navegador');
     eq(bad.slides[0].blocks.find(b => b.id === 'p1').src, big1, 'los demás, bien');
     // One this browser doesn't have, and false: left empty.
@@ -397,7 +397,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const file = new W.File([await (await W.fetch(got.href)).blob()], got.name);
     R.store.commit(() => { slide().blocks = slide().blocks.filter(b => !['p1', 'p2', 'm1'].includes(b.id)); });
     const OF = await W.eval("import('/src/ui/shell/openfile.js')"); assert(await OF.openProjectFile(file), 'se abre');
-    eq(R.state.deck.slides[0].blocks.find(b => b.id === 'm1')?.src, big2, 'con sus archivos');
+    eq(await (await W.eval("import('/src/core/mediastore.js')")).portable(R.state.deck.slides[0].blocks.find(b => b.id === 'm1')?.src), big2, 'con sus archivos');
   });
 
   await test('fotos y vídeos guardados aparte en el navegador: una vez cada uno, en la presentación y en las versiones', async () => {
@@ -419,12 +419,36 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(MS.hasRefs((await I.verGet(id)).deck) && JSON.stringify((await I.verGet(id)).deck).length < 20000, 'la versión, sin otra copia de la foto');
     R.store.commit(() => { R.state.deck.slides[0].blocks = R.state.deck.slides[0].blocks.filter(b => b.type !== 'image'); });
     assert(await R.versions.restoreVersion(id), 'restaurada'); await sleep(20);
-    eq(R.state.deck.slides[0].blocks.find(b => b.id === 'a')?.src, photo, 'con su foto');
+    eq(await MS.portable(R.state.deck.slides[0].blocks.find(b => b.id === 'a')?.src), photo, 'con su foto (por su dirección)');
     // A file nothing refers to: deleted (not one stored just now, whose deck may be on its way).
     const fresh = await MS.dehydrate({ x: 'data:image/png;base64,' + 'B'.repeat(70000) });
     eq(await MS.collectGarbage([]), 0, 'lo recién guardado no se borra');
     for (const v of await R.versions.listVersions()) await R.versions.deleteVersion(v.id);
     assert(MS.isRef(fresh.x), 'referencia');
+    reset();
+  });
+
+  await test('fotos y vídeos por dirección en la presentación abierta: guardados como referencias, enviados como datos', async () => {
+    reset(); const W = frame.contentWindow, MS = await W.eval("import('/src/core/mediastore.js')"), I = await W.eval("import('/src/core/idb.js')"), M = R.model;
+    const c = D.createElement('canvas'); c.width = 300; c.height = 200; const g = c.getContext('2d');
+    for (let i = 0; i < 3000; i++) { g.fillStyle = `hsl(${(i * 7) % 360},70%,50%)`; g.fillRect((i * 37) % 300, (i * 53) % 200, 7, 7); }
+    const photo = c.toDataURL('image/png'), bytes = new W.Uint8Array(await (await W.fetch(photo)).arrayBuffer());
+    const url = await MS.storeBytes(bytes, 'image/png');
+    assert(/^blob:/.test(url) && MS.isLive(url), 'una dirección blob: registrada: ' + url.slice(0, 30));
+    eq(MS.mediaType(url), 'image/png', 'su tipo');
+    const deck = M.emptyDeck(); deck.slides[0].blocks.push({ id: 'a', type: 'image', src: url, x: 0, y: 0, w: 10, h: 10 });
+    const light = await MS.dehydrate(deck);
+    assert(/^rvmedia:[0-9a-f]{32}$/.test(light.slides[0].blocks.find(b => b.id === 'a').src), 'guardada: una referencia');
+    eq((await MS.liveDeck(light)).slides[0].blocks.find(b => b.id === 'a').src, url, 'leída: la misma dirección');
+    const out = await MS.portable(deck);
+    eq(out.slides[0].blocks.find(b => b.id === 'a').src, photo, 'para fuera: la foto entera');
+    assert(!MS.hasLive(out) && deck.slides[0].blocks.find(b => b.id === 'a').src === url, 'la copia sin direcciones; la presentación, intacta');
+    assert(MS.liveBytes(deck) === bytes.length, 'su tamaño, contado');
+    // Autosave: only IndexedDB (with the reference); localStorage just says it's there.
+    R.store.replaceDeck(deck); await M.flushSave(R.state.deck);
+    assert(MS.hasRefs(await I.kvGet('deck')), 'el autoguardado, con referencias');
+    assert(JSON.parse(W.localStorage.getItem(M.STORAGE_KEY) || '{}').tooBig, 'localStorage no guarda direcciones');
+    const again = await M.loadNewerDeck(null); eq(again?.slides[0].blocks.find(b => b.id === 'a')?.src, url, 'al volver, con su dirección');
     reset();
   });
 
@@ -443,7 +467,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     await M.tidyStored(M.emptyDeck());
     for (const n of [1, 2, 3]) { const v = await I.verGet('old' + n); assert(MS.hasRefs(v.deck) && JSON.stringify(v.deck).length < 20000, 'la ' + n + ', con referencia'); }
     assert(await R.versions.restoreVersion('old2'), 'y se restaura'); await sleep(20);
-    eq(R.state.deck.slides[0].blocks.find(b => b.id === 'p')?.src, photo, 'con su foto entera');
+    eq(await MS.portable(R.state.deck.slides[0].blocks.find(b => b.id === 'p')?.src), photo, 'con su foto entera');
     for (const v of await R.versions.listVersions()) await R.versions.deleteVersion(v.id);
     reset();
   });

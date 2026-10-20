@@ -13,6 +13,7 @@
 // the camera movements and walking run with io/runtime/model3d.js (embedded as source).
 
 import { readModel, writeGLB } from './gltf.js';
+import { mediaType, mediaBlobOf } from '../../core/mediastore.js';
 
 export const MOTIONS_3D = [
   ['none', 'Ninguno'], ['swing', 'Balanceo'], ['zoom', 'Acercar al entrar'], ['orbit', 'Vuelta completa al entrar'],
@@ -106,6 +107,8 @@ export const modelAttrsHTML = b => modelAttrs(b).map(([k, v]) => (v === '' ? ` $
 export async function modelFile(b) {
   const name = (String(b.alt || b.caption || 'modelo').split(' — ')[0].replace(/[\\/:*?"<>|]+/g, '').trim().slice(0, 60) || 'modelo') + '.glb';
   let src = b.src || '';
+  // (A .glb by address — core/mediastore.js —: its bytes as they are.)
+  if (mediaType(src) === 'model/gltf-binary' && !src.startsWith('data:')) return { blob: new Blob([await mediaBlobOf(src)], { type: 'model/gltf-binary' }), name };
   if (!/^data:model\/gltf-binary/.test(src)) src = writeGLB(await readModel(src));
   const bin = atob(src.slice(src.indexOf(',') + 1)), u8 = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);

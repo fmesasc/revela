@@ -2221,7 +2221,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // Pasted in another tab (what it reads is that): the picture comes back whole.
     const n = slide().blocks.length; C.paste(C.fromSystemText('revela-objects:' + kept));
     for (let k = 0; k < 100 && slide().blocks.length === n; k++) await sleep(30);
-    eq(slide().blocks.length, n + 2, 'pegados en la otra pestaña'); eq(slide().blocks.at(-1).src, big, 'con la imagen entera');
+    eq(slide().blocks.length, n + 2, 'pegados en la otra pestaña');
+    // (Read back as an address of the file — core/mediastore.js —, which goes out whole.)
+    const MS = await W.eval("import('/src/core/mediastore.js')"), got = slide().blocks.at(-1).src;
+    assert(MS.isLive(got), 'por su dirección: ' + got.slice(0, 30)); eq(await MS.mediaBlobOf(got).then(b => b.size), W.atob(big.slice(big.indexOf(',') + 1)).length, 'con la imagen entera');
     // Duplicating a slide with them: the copy shares them (no second copy of each).
     R.slides.duplicateSlide?.(R.state.ui.slideIndex); await sleep(20);
     eq(R.state.deck.slides[R.state.ui.slideIndex].blocks.find(b => b.src === big)?.src.length, big.length, 'duplicar la diapositiva, también');
@@ -2248,8 +2251,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(saved.length < 20000 && /rvmedia:/.test(saved), 'la plantilla guarda una referencia, no la imagen: ' + saved.length);
     const tpl = Object.values(T.userTemplates()).find(x => x.name === 'Con foto');
     R.slides.addSlide('blank'); T.applyTemplate(tpl);
-    for (let k = 0; k < 100 && !slide().blocks.some(b => b.src === big); k++) await sleep(30);
-    assert(slide().blocks.some(b => b.src === big), 'y aplicada, con la imagen entera');
+    const MS = await W.eval("import('/src/core/mediastore.js')"), live = () => slide().blocks.find(b => MS.isLive(b.src));
+    for (let k = 0; k < 100 && !live(); k++) await sleep(30);
+    assert(live() && (await MS.portable(live().src)) === big, 'y aplicada, con la imagen entera (por su dirección)');
     // Another language: a copy of the deck that shares the files (the deck itself is untouched).
     const L = await W.eval("import('/src/features/document/languages.js')");
     R.store.commit(() => { R.state.deck.i18n = { base: 'es', langs: ['en'], texts: { en: {} } }; });

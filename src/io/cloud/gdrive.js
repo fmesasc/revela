@@ -24,6 +24,7 @@ import { plainText } from '../../core/text.js';
 import { account as revelaAccount } from './account.js';
 import { approxSize } from '../../core/model.js';
 import { packDeck, deckFile } from '../../core/deckfile.js';
+import { portable, liveBytes } from '../../core/mediastore.js';
 
 const GIS = 'https://accounts.google.com/gsi/client';
 const GAPI = 'https://apis.google.com/js/api.js';
@@ -271,8 +272,9 @@ export function savePresentation(opts = {}) {
 // which isn't anyone's change. (Linked before there was a fingerprint: the version, once.)
 const changedThere = (cur, m) => (cur.md5 && m.md5Checksum ? cur.md5 !== m.md5Checksum : !!(cur.version && m.version && +m.version > +cur.version));
 async function saveNow({ interactive = true, force = false, asNew = false, name, folder } = {}) {
-  const packed = packDeck(state.deck);
-  if (!interactive && approxSize(packed) > AUTO_MAX) { setStatus('big'); return false; }
+  // (Its files by address — core/mediastore.js — as data, after measuring: not read whole only to find it's too big.)
+  if (!interactive && approxSize(packDeck(state.deck)) + liveBytes(state.deck) * 4 / 3 > AUTO_MAX) { setStatus('big'); return false; }
+  const packed = packDeck(await portable(state.deck));
   const body = deckFile(packed, PROJECT_MIME), text = deckIndexText();
   const savedVersion = docVersion();                     // (what this upload contains)
   let thumbnail = null; try { thumbnail = await makeThumbnail(); } catch {}
@@ -324,11 +326,12 @@ export function startAutosave() {
 onBeforeReplace(old => {
   const f = linkedFile();
   if (!f || !account() || !hasToken() || docVersion() === lastSaved || status === 'conflict') return;
-  const packed = packDeck(old); if (approxSize(packed) > AUTO_MAX) return;
+  if (approxSize(packDeck(old)) + liveBytes(old) * 4 / 3 > AUTO_MAX) return;
   clearTimeout(timer);
-  const body = deckFile(packed, PROJECT_MIME), text = deckIndexText(old);
+  const text = deckIndexText(old);
   saving = saving.catch(() => {}).then(async () => {
     try {
+      const body = deckFile(packDeck(await portable(old)), PROJECT_MIME);
       // (A plain look, not fileState: by now another document is open, and the link must not follow this file.)
       const r = await api(`/drive/v3/files/${encodeURIComponent(f.id)}?fields=version,md5Checksum,trashed`, {}, false);
       const m = r.ok ? await r.json() : null;
@@ -427,7 +430,7 @@ export async function pickSlidesFile() {
 // Export the reveal.js HTML presentation to Drive (a new file each time).
 export async function driveSaveHtml() {
   if (!gdriveReady()) return openGdriveSetup();
-  const p = htmlParts();                                 // (in pieces: io/formats/html.js htmlParts)
+  const p = htmlParts(await portable(state.deck));       // (in pieces: io/formats/html.js htmlParts; files by address as data)
   await upload({ name: safeName() + '.html', mimeType: 'text/html', body: partsBlob(p.html, p.files), parent: newFolder || lastFolder()?.id });
   return true;
 }

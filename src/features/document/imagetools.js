@@ -12,6 +12,7 @@ import { commit, currentSlide, state, setMulti } from '../../core/store.js';
 import { uid, shareCopy } from '../../core/model.js';
 import { t } from '../../i18n/index.js';
 import { boxBlur } from '../../render/imagelook.js';
+import { mediaType } from '../../core/mediastore.js';
 
 const MAX = 4096;                                        // (the longest side made: a browser's canvas limit is not far)
 export function loadPicture(src) {
@@ -19,7 +20,7 @@ export function loadPicture(src) {
 }
 const canvasOf = (w, h) => Object.assign(document.createElement('canvas'), { width: Math.max(1, Math.round(w)), height: Math.max(1, Math.round(h)) });
 // (A photo stays a JPEG — a fraction of the size —; anything that may be see-through, a PNG.)
-const encode = (c, src) => (/^data:image\/jpe?g/i.test(src || '') ? c.toDataURL('image/jpeg', 0.92) : c.toDataURL('image/png'));
+const encode = (c, src) => (/^image\/jpe?g$/.test(mediaType(src)) ? c.toDataURL('image/jpeg', 0.92) : c.toDataURL('image/png'));
 
 // The part of the picture in sight in its box (its fit, focus and crop): [sx, sy, sw, sh] in the picture's pixels,
 // where it is drawn in the box [x, y, w, h], and k: slide pixels per picture pixel.

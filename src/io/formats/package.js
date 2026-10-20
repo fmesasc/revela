@@ -8,7 +8,7 @@
 // memory as one text. A big presentation is downloaded as a package (project.js: past PACKAGE_MIN); a small one is
 // still a .revela.json, as always. Both open on the web and in the desktop app.
 
-import { dehydrate, mediaBlob, storeMedia, mediaId, usedRefs, MEDIA_REF } from '../../core/mediastore.js';
+import { dehydrate, mediaBlobOf, storeMedia, mediaId, usedRefs, registerMedia, liveDeck, MEDIA_REF } from '../../core/mediastore.js';
 import { zipBlobs, unzipIndex } from './zipstore.js';
 
 export const PACKAGE_TYPE = 'application/vnd.revela+zip';
@@ -33,7 +33,7 @@ const blobOfURL = async d => { const at = d.indexOf(','), type = d.slice(5, at).
 async function lighten(deck) {
   try {
     const light = await dehydrate(deck), blobs = new Map();
-    for (const id of usedRefs(light, new Set())) blobs.set(id, () => mediaBlob(id));
+    for (const id of usedRefs(light, new Set())) blobs.set(id, () => mediaBlobOf(MEDIA_REF + id));   // (this page's, else the store's)
     return { light, blobs };
   } catch {
     const blobs = new Map(), known = new Map();
@@ -74,21 +74,20 @@ export async function readPackage(file, { onProgress } = {}) {
   if (!main) throw new Error('package: no presentation.json');
   const doc = JSON.parse(await main.text());
   if (!doc || doc.format !== 'revela-package' || !doc.deck) throw new Error('package: not a Revela package');
-  const mem = new Map(), list = Object.entries(doc.files || {}).filter(([id]) => isId(id));
+  const urls = new Map(), list = Object.entries(doc.files || {}).filter(([id]) => isId(id));
   const total = list.reduce((n, [, f]) => n + (+f.size || 0), 0); let done = 0;
   for (const [id, f] of list) {
     const e = idx.get(String(f.path || '')); if (!e) continue;
     const blob = await e.read(String(f.type || ''));
     done += blob.size; onProgress?.(done, total);
     if (await mediaId(await blob.arrayBuffer()) !== id) continue;
-    try { await storeMedia(id, blob); } catch { mem.set(id, blob); }
+    await storeMedia(id, blob).catch(() => {});             // (no store — a private window —: this page still has it)
+    urls.set(id, registerMedia(id, blob).url);
   }
-  const read = b => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => ko(r.error); r.readAsDataURL(b); });
-  const cache = new Map();
-  return walk(doc.deck, async v => {
-    if (typeof v !== 'string' || !v.startsWith(MEDIA_REF) || v.length > 80) return v;
-    const id = v.slice(MEDIA_REF.length);
-    if (!cache.has(id)) cache.set(id, (async () => { const b = mem.get(id) || await mediaBlob(id).catch(() => null); return b ? read(b) : ''; })());
-    return cache.get(id);
-  });
+  // (Each file by its address — core/mediastore.js —, never as text: a package of 400 MB opens without 530 MB of
+  // base64 in the page.)
+  // (One not in the package, or changed in it — its bytes aren't its id —: this browser's own, if it has it; else empty.)
+  const isR = v => typeof v === 'string' && v.startsWith(MEDIA_REF) && v.length <= 80;
+  const deck = await liveDeck(await walk(doc.deck, async v => (isR(v) ? urls.get(v.slice(MEDIA_REF.length)) || v : v)));
+  return walk(deck, async v => (isR(v) ? '' : v));
 }

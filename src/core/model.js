@@ -11,7 +11,7 @@
 // `animation` describes its entrance (effect + order).
 
 import { kvGet, kvSet, verGet, verPut, verEach } from './idb.js';
-import { dehydrate, hydrate, hasRefs, collectGarbage, usedRefs } from './mediastore.js';
+import { dehydrate, liveDeck, hasRefs, hasLive, collectGarbage, usedRefs } from './mediastore.js';
 
 export const STORAGE_KEY = 'revela.deck.v1';
 
@@ -165,7 +165,9 @@ function setKept(v) { if (v !== kept) { kept = v; keptWatchers.forEach(fn => fn(
 // True if the whole deck went into localStorage.
 function writeLocal(deck, size = approxSize(deck)) {
   try {
-    if (size < LS_MAX) { localStorage.setItem(STORAGE_KEY, JSON.stringify(deck)); return true; }
+    // (One with files by address — core/mediastore.js —: only IndexedDB, where they go as references; here, the
+    // addresses would point to nothing after a reload.)
+    if (size < LS_MAX && !hasLive(deck)) { localStorage.setItem(STORAGE_KEY, JSON.stringify(deck)); return true; }
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ tooBig: true, savedAt: deck.savedAt, name: String(deck.name || '').slice(0, 80) }));
   } catch {}
   return false;
@@ -223,7 +225,7 @@ export function bigDeckWaiting() {
 export async function loadNewerDeck(current) {
   try {
     const d = await kvGet('deck');
-    if (d && d.slides && (!current || (d.savedAt || 0) > (current.savedAt || 0))) return migrate(hasRefs(d) ? await hydrate(d) : d);
+    if (d && d.slides && (!current || (d.savedAt || 0) > (current.savedAt || 0))) return migrate(hasRefs(d) ? await liveDeck(d) : d);   // (its files as addresses: core/mediastore.js)
   } catch {}
   return null;
 }

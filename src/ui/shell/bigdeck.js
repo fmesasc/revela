@@ -9,6 +9,7 @@
 
 import { state, subscribe } from '../../core/store.js';
 import { approxSize } from '../../core/model.js';
+import { liveBytes } from '../../core/mediastore.js';
 import { EDITION, OFFICIAL_SITE } from '../../core/config.js';
 import { t } from '../../i18n/index.js';
 import { slug } from '../../io/files.js';
@@ -21,8 +22,10 @@ let BIG_DECK = 200e6;                                   // characters (its files
 export const setBigDeckLimit = n => { BIG_DECK = n; };   // (for the tests)
 // (Revela's page for it — the installers and a one-line command for each system —, in the interface's language.)
 export const DESKTOP_DOWNLOAD = OFFICIAL_SITE + '/download';
-export const deckMB = (deck = state.deck) => Math.round(approxSize(deck) * 0.75 / 1e6);
-export const isBigDeck = (deck = state.deck) => approxSize(deck) > BIG_DECK;
+// (Its files by address — core/mediastore.js — count as the base64 they would be.)
+const charsOf = deck => approxSize(deck) + liveBytes(deck) * 4 / 3;
+export const deckMB = (deck = state.deck) => Math.round(charsOf(deck) * 0.75 / 1e6);
+export const isBigDeck = (deck = state.deck) => charsOf(deck) > BIG_DECK;
 // (How the app is opened: an address the system gives to it. For the tests, another.)
 let launch = url => { location.href = url; };
 export const setLauncher = fn => { launch = fn; };

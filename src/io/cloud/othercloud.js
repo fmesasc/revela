@@ -8,6 +8,7 @@ import { state, replaceDeck } from '../../core/store.js';
 import { CLOUD_KEYS } from '../../core/config.js';
 import { pkceLogin } from './oauth.js';
 import { packDeck, deckFile } from '../../core/deckfile.js';
+import { portable } from '../../core/mediastore.js';
 
 const LS = 'revela.cloudKeys';
 const read = () => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch { return {}; } };
@@ -109,7 +110,7 @@ export function apiFor(id) {
 const fileName = () => ((state.deck.name || 'presentacion').replace(/[^\p{L}\p{N} _-]/gu, '').trim() || 'presentacion') + '.revela.json';
 export const listCloud = id => PROVIDERS[id].list(apiFor(id));
 // (core/deckfile.js: repeated pictures once; in pieces when big — as one text it ran the tab out of memory.)
-export const saveToCloud = (id, name = fileName()) => PROVIDERS[id].save(apiFor(id), name, deckFile(packDeck(state.deck)));
+export const saveToCloud = async (id, name = fileName()) => PROVIDERS[id].save(apiFor(id), name, deckFile(packDeck(await portable(state.deck))));   // (files by address as data: core/mediastore.js)
 export async function openFromCloud(id, fileId) {
   let deck; try { deck = JSON.parse(await PROVIDERS[id].open(apiFor(id), fileId)); } catch (e) { if (e.message === 'NO_TOKEN' || e.status) throw e; deck = null; }
   if (!deck || !Array.isArray(deck.slides)) throw new Error('NOT_REVELA');

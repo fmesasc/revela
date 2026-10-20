@@ -8,7 +8,7 @@
 import { cleanValue } from './sanitize.js';
 import { state, commit, currentSlide, selectedBlocks, setMulti } from '../../core/store.js';
 import { uid, approxSize, shareCopy as share } from '../../core/model.js';
-import { dehydrate, hydrate, hasRefs } from '../../core/mediastore.js';
+import { dehydrate, liveDeck, hasRefs, hasLive } from '../../core/mediastore.js';
 
 // (The objects copied share their texts — pictures, videos — with the slide's: core/model.js shareCopy.)
 // Small copies go to the other tabs and the system clipboard as they are; bigger ones with their files as references
@@ -18,7 +18,8 @@ let written = 0;
 async function publish(data) {
   const me = ++written;
   let out = data;
-  if (approxSize(data.blocks) > SMALL) { try { out = { ...data, blocks: await dehydrate(data.blocks) }; } catch { return; } }
+  // (Files by address — core/mediastore.js — go as references too: an address lasts only while its page does.)
+  if (approxSize(data.blocks) > SMALL || hasLive(data.blocks)) { try { out = { ...data, blocks: await dehydrate(data.blocks) }; } catch { return; } }
   if (me !== written) return;                                 // (a newer copy meanwhile)
   const text = JSON.stringify(out);
   try { localStorage.setItem(KEY, text); } catch {}
@@ -69,7 +70,7 @@ export function fromSystemText(text) {
 export function paste(data = clipboardData()) {
   if (!data?.blocks?.length) return 0;
   // (Copied in another tab with its files as references: read back first.)
-  if (hasRefs(data.blocks)) { const n = data.blocks.length; hydrate(data.blocks).then(blocks => pasteNow({ ...data, blocks }, data)); return n; }
+  if (hasRefs(data.blocks)) { const n = data.blocks.length; liveDeck(data.blocks).then(blocks => pasteNow({ ...data, blocks }, data)); return n; }
   return pasteNow(data, data);
 }
 function pasteNow(data, orig) {

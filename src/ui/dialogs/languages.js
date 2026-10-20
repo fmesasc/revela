@@ -120,7 +120,7 @@ export function openLanguages() {
     else if (b.matches('.lg-present')) { close(); (await import('../shell/present.js')).present({ lang: see() }); }
     else if (b.matches('.lg-html')) {
       const H = await import('../../io/formats/html.js'), F = await import('../../io/files.js');
-      const { html } = await H.offlineHTML(H.buildHTML(L.deckIn(d, see())));
+      const { html } = await H.offlineHTML(H.buildHTML(await (await import('../../core/mediastore.js')).portable(L.deckIn(d, see()))));
       F.download(new Blob([html], { type: 'text/html' }), `${F.slug(d.name)}-${see()}.html`);
     } else if (b.matches('.lg-link')) {
       const link = cd.embedLink(cd.cloudDoc().id) + '&lang=' + encodeURIComponent(see());
