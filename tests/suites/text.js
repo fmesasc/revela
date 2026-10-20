@@ -80,6 +80,33 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     }
   });
 
+  await test('cuadros como en PowerPoint: segundo clic para escribir donde se pulsa, escribir añade (no borra), y en un grupo el segundo clic elige uno', async () => {
+    reset(); const W = frame.contentWindow, now = id => slide().blocks.find(x => x.id === id);
+    R.blocks.addText(); const a = last(); R.blocks.addText(); const g1 = last(); R.blocks.addText(); const g2 = last();
+    R.store.commit(() => { Object.assign(a, { x: 60, y: 60, w: 400, h: 100, html: 'Texto del cuadro' }); Object.assign(g1, { x: 60, y: 400, w: 250, h: 80, html: 'Uno' }); Object.assign(g2, { x: 400, y: 400, w: 250, h: 80, html: 'Dos' }); });
+    R.store.setMulti([g1.id, g2.id]); R.blocks.groupSelected(); R.state.ui.multi = []; R.state.ui.selection = null; R.render(); await sleep(30);
+    const click = async id => { const el = D.querySelector(`#stage .block[data-id="${id}"]`), r = el.querySelector('.rich').getBoundingClientRect(), o = { bubbles: true, cancelable: true, clientX: r.left + 10, clientY: r.top + r.height / 2, pointerId: 1, button: 0 };
+      el.dispatchEvent(new W.PointerEvent('pointerdown', o)); el.dispatchEvent(new W.PointerEvent('pointerup', o)); await sleep(40); };
+    const editing = id => D.querySelector(`#stage .block[data-id="${id}"]`)?.classList.contains('editing');
+    await click(a.id); eq(R.state.ui.selection, a.id, 'primer clic: seleccionado'); assert(!editing(a.id), 'aún sin escribir');
+    await click(a.id); assert(editing(a.id), 'segundo clic: escribiendo en él');
+    D.activeElement.blur(); R.state.ui.multi = []; R.state.ui.selection = a.id; R.render(); await sleep(20);
+    D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'X', bubbles: true, cancelable: true })); await sleep(20);
+    assert(editing(a.id), 'una tecla con el cuadro seleccionado: a escribir en él'); D.execCommand('insertText', false, 'X'); D.activeElement.blur(); await sleep(30);
+    eq(now(a.id).html, 'Texto del cuadroX', 'se añade al final, sin borrar lo que había');
+    // A group: the first click, all of it; the second, the one clicked; typing goes to the one clicked.
+    R.state.ui.multi = []; R.state.ui.selection = null; R.render(); await sleep(20);
+    await click(g1.id); eq(R.store.selectedIds().length, 2, 'primer clic: el grupo entero'); eq(R.state.ui.selection, g1.id, 'con el pulsado como principal');
+    D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Z', bubbles: true, cancelable: true })); await sleep(20);
+    assert(editing(g1.id), 'escribir con el grupo seleccionado: en el pulsado'); D.activeElement.blur(); await sleep(20);
+    R.state.ui.multi = []; R.state.ui.selection = null; R.render(); await sleep(20);
+    await click(g2.id); await click(g2.id); eq(R.store.selectedIds().join(), g2.id, 'segundo clic: solo ese del grupo');
+    // Placeholder text («Escribe aquí»): typed over.
+    R.blocks.addText(); const n = last(); R.state.ui.multi = []; R.state.ui.selection = n.id; R.render(); await sleep(20);
+    D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'H', bubbles: true, cancelable: true })); await sleep(20);
+    eq(W.getSelection().toString().trim(), R.i18n.t('Escribe aquí'), 'el texto de ejemplo, seleccionado para escribir encima'); D.activeElement.blur();
+  });
+
   await test('fuentes propias: se suben, van dentro de la presentación y se usan como las demás', async () => {
     reset(); const W = frame.contentWindow, F = await W.eval("import('/src/features/design/fonts.js')");
     const data = F.fontDataURL('data:application/octet-stream;base64,AAEAAAALAIAAAwAwT1MvMg==', 'MiMarca-Bold.ttf');

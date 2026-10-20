@@ -73,7 +73,8 @@ export function setMulti(ids) { state.ui.multi = [...ids]; state.ui.selection = 
 // Selecting a grouped block selects its whole group.
 export function selectWithGroup(id) {
   const s = currentSlide(); const b = s && s.blocks.find(x => x.id === id);
-  if (b && b.groupId) setMulti(s.blocks.filter(x => x.groupId === b.groupId).map(x => x.id));
+  // (The one clicked stays the primary: typing, Enter or a second click go to it.)
+  if (b && b.groupId) { setMulti(s.blocks.filter(x => x.groupId === b.groupId).map(x => x.id)); state.ui.selection = id; }
   else setSelection(id);
 }
 export const clampSlide = () => {

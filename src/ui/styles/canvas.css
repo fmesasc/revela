@@ -6,9 +6,13 @@
 .block{position:absolute;cursor:grab;touch-action:none}
 /* The selection frame is an outline, not a border: a border takes 2 px from the
    object's inside, so thin lines (3 px) looked faded in the editor. */
-.block.selected{outline:1px solid var(--accent)}
+.block{--sel:#3b8bff}                   /* (a bright blue: seen on dark slides and on light ones) */
+.block.selected{outline:2px solid var(--sel);outline-offset:1px}
 .block.dragging{cursor:grabbing;opacity:.75}
-.block.editing{cursor:auto}
+/* Writing in it: a dashed frame and the text cursor — selected (moved, resized) and being written in no longer look
+   the same. */
+.block.editing{cursor:auto;outline:2px dashed var(--sel);outline-offset:2px}
+.block.editing .rich{cursor:text}
 .block .rich{width:100%;height:100%;outline:none;padding:6px;color:inherit;overflow-wrap:anywhere}
 .block .rich ul{list-style-type:var(--bullet,disc)}
 .block .rich ol{list-style-type:var(--num,decimal)}
@@ -83,12 +87,12 @@
   border-radius:1px;background:#fff;transform:translate(-50%,-50%) rotate(45deg)}
 .handle-del::after{transform:translate(-50%,-50%) rotate(-45deg)}
 .handle-rot{position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:16px;height:16px;
-  border-radius:50%;background:#fff;border:2px solid var(--accent);box-shadow:0 1px 4px #0004;
+  border-radius:50%;background:#fff;border:2px solid var(--sel,var(--accent));box-shadow:0 1px 4px #0004;
   cursor:grab;display:none;z-index:7}
 .handle-rot::before{content:"";position:absolute;left:50%;top:100%;width:2px;height:14px;
-  background:var(--accent);transform:translateX(-50%)}
+  background:var(--sel,var(--accent));transform:translateX(-50%)}
 .block.selected .handle-rot{display:block}
-.handle-size{position:absolute;width:11px;height:11px;background:#fff;border:1.5px solid var(--accent);
+.handle-size{position:absolute;width:11px;height:11px;background:#fff;border:1.5px solid var(--sel,var(--accent));box-shadow:0 0 0 1px #0003;
   border-radius:2px;display:none;z-index:6}
 .handle-size.nw{left:-6px;top:-6px;cursor:nwse-resize}
 .handle-size.ne{right:-6px;top:-6px;cursor:nesw-resize}

@@ -3,7 +3,8 @@
 
 import { state, commit, mutate, currentSlide, selectedBlocks, selectedIds, isSelected, setSelection, toggleSelection, setMulti, selectWithGroup } from '../../core/store.js';
 import { t } from '../../i18n/index.js';
-import { exitEdit } from './content.js';
+import { exitEdit, editTextAt } from './content.js';
+import { plainText } from '../../core/text.js';
 import { readOnly, stage, transformOf } from './canvas.js';
 import { paintMagnify } from './magnifyview.js';
 import { sourceToBox } from '../../features/document/magnify.js';
@@ -63,6 +64,8 @@ export function startMarquee(ev) {
   };
   window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
 }
+// A text box, or a shape with text in it (not lines): a click on it, selected, writes in it.
+const writable = b => !b.locked && (b.type === 'text' || (b.type === 'shape' && !['line', 'arrow', 'doublearrow', 'curve', 'pathline'].includes(b.shape) && !!plainText(b.html || '').trim()));
 export const factor = () => state.deck.size.w / stage.getBoundingClientRect().width;
 export function startDrag(ev, b, el) {
   if (el.classList.contains('editing')) {
@@ -78,6 +81,10 @@ export function startDrag(ev, b, el) {
 
   // Shift‑click toggles the block in the selection without moving it.
   if (ev.shiftKey) { ev.preventDefault(); commit(() => toggleSelection(b.id), { history: false }); return; }
+  // (What a click without moving will do — as in PowerPoint —: on a text box already selected alone, writing in it, the
+  // caret there; on an object of a group selected whole, that object alone.)
+  const ids = selectedIds(), alone = isSelected(b.id) && ids.length === 1;
+  const inGroup = !!b.groupId && isSelected(b.id) && ids.length > 1 && selectedBlocks().every(x => x.groupId === b.groupId);
   // A plain click on an unselected block selects just it; clicking one that is
   // already part of a multi‑selection keeps the group so it can be moved together.
   if (!isSelected(b.id)) commit(() => selectWithGroup(b.id), { history: false });
@@ -113,6 +120,9 @@ export function startDrag(ev, b, el) {
     clearGuides(); ghosts?.forEach(g => g.remove());
     if (dup && (dx || dy)) { duplicateMoved(movers, origins); return; }   // (one undo step: the copy where it was dropped)
     commit(() => {});                       // one undo step per drag (none if it didn't move)
+    if (dx || dy || dup || ev.button !== 0) return;
+    if (inGroup) { commit(() => setSelection(b.id), { history: false }); return; }
+    if (alone && writable(b)) editTextAt(b.id, ev.clientX, ev.clientY);
   };
   el.addEventListener('pointermove', onMove); el.addEventListener('pointerup', onUp);
 }

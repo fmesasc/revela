@@ -474,6 +474,16 @@ export function editText(id, { selectAll = true } = {}) {
   const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
   return true;
 }
+// A second click on a text box already selected (PowerPoint, Google Slides): writing in it, the caret where it was
+// clicked (at the end if that isn't in its text).
+export function editTextAt(id, x, y) {
+  if (!editText(id, { selectAll: false })) return false;
+  const rich = document.querySelector(`#stage .block[data-id="${id}"] .rich`);
+  const pos = document.caretPositionFromPoint?.(x, y), alt = pos ? null : document.caretRangeFromPoint?.(x, y);
+  const node = pos ? pos.offsetNode : alt?.startContainer, off = pos ? pos.offset : alt?.startOffset;
+  if (node && rich?.contains(node)) { const r = document.createRange(); r.setStart(node, off); r.collapse(true); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+  return true;
+}
 // Double‑click enters content mode: text becomes editable, a model can be
 // orbited. Clicking elsewhere leaves it.
 // The word under the pointer selected, as a double-click does in any editor (the

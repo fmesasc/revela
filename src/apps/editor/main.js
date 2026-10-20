@@ -55,6 +55,7 @@ import * as update from '../../ui/shell/update.js';
 import * as palette from '../../ui/shell/palette.js';
 import { initDraw } from '../../ui/shell/draw.js';
 import { initI18n, t } from '../../i18n/index.js';
+import { plainText } from '../../core/text.js';
 import { deleteSelected, duplicateSelected, groupSelected, ungroupSelected } from '../../features/document/blocks.js';
 import { openFindPanel } from '../../ui/dialogs/find.js';
 // Namespaces exposed to the test harness (see tests/).
@@ -227,11 +228,17 @@ function keyboard(e) {
   if (meta && e.key.toLowerCase() === 'g') { e.preventDefault(); e.shiftKey ? ungroupSelected() : groupSelected(); return; }
   // Shift+2: zoom to the selection, as in Figma (by the key, not the character: it's " or @ by layout).
   if (e.shiftKey && !meta && !e.altKey && e.code === 'Digit2') { e.preventDefault(); ACTIONS['zoom-selection'](); return; }
-  // A text box selected: Enter or F2 edits it; typing replaces its text (PowerPoint, Google Slides).
-  const one = selectedBlocks().length === 1 ? selectedBlock() : null;
-  if ((one?.type === 'text' || (one?.type === 'shape' && !['line', 'arrow'].includes(one.shape))) && !one.locked && !meta && !e.altKey) {
+  // A text box selected (alone, or the one clicked in a group selected whole): Enter or F2 edits it; typing writes in
+  // it, after its text — over it only when it is the sample «Escribe aquí» (Francisco: «si escribo, que me escriba
+  // dentro del recuadro»; before, typing replaced all it said).
+  const sel = selectedBlocks(), prim = selectedBlock();
+  const one = sel.length === 1 ? prim : prim?.groupId && sel.length > 1 && sel.every(x => x.groupId === prim.groupId) ? prim : null;
+  if ((one?.type === 'text' || (one?.type === 'shape' && !['line', 'arrow', 'doublearrow', 'curve', 'pathline'].includes(one.shape))) && !one.locked && !meta && !e.altKey) {
     if (e.key === 'Enter' || e.key === 'F2') { e.preventDefault(); editText(one.id, { selectAll: false }); return; }
-    if (e.key.length === 1 && e.key !== ' ') { editText(one.id); return; }   // (the key then types over it)
+    if (e.key.length === 1 && e.key !== ' ') {
+      const said = plainText(one.html || '').trim();
+      editText(one.id, { selectAll: !said || said === t('Escribe aquí') || said === 'Escribe aquí' }); return;   // (the key then goes in)
+    }
   }
   if ((e.key === 'Delete' || e.key === 'Backspace') && state.ui.selection) { e.preventDefault(); deleteSelected(); return; }
   if (selectedBlock()) {
