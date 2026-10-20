@@ -17,6 +17,11 @@
 //   restarted. Without internet it simply opens as it is. Linux .deb/.rpm installs can't replace themselves
 //   (only the AppImage can): there it opens the download page instead. Installed from Flathub, never: Flathub
 //   forbids apps that update themselves (flatpak updates it), so there's simply never a newer version.
+// - Links (revela://, desktop/src-tauri/tauri.conf.json): open?doc=<id>, a presentation of Revela's cloud, which the page
+//   opens (opened_links); open?downloaded=<name>, a .revela the web app has just downloaded for a presentation too big
+//   for the browser (ui/shell/bigdeck.js): looked for in Downloads only — by its name, a .revela, written in the last
+//   minutes —, waited for until it has finished downloading, and then opened as any file given to Revela.
+// - One window: opening a file or a link while Revela is open goes to that window (single-instance), not a second one.
 // The menu bar is built by the page too (its labels are translated there), with Tauri's menu API.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -25,6 +30,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
@@ -39,6 +45,101 @@ const OPENS: [&str; 10] = ["pptx", "pptm", "potx", "ppsx", "odp", "otp", "key", 
 struct Files {
     pending: Mutex<Vec<PathBuf>>,
     readable: Mutex<Vec<PathBuf>>,
+}
+// Presentations of Revela's cloud asked for by a link (their ids), waiting for the page.
+#[derive(Default)]
+struct Links {
+    pending: Mutex<Vec<String>>,
+    // (A link may come twice — as an argument and through the link plugin —: the same one, within seconds, once.)
+    seen: Mutex<Vec<(String, std::time::Instant)>>,
+}
+
+// What the program is given (its arguments, a second launch's, a link): files to open and revela:// links. (On Linux
+// the menu entry passes a file as a file:// address.)
+fn take_args<I: IntoIterator<Item = String>>(app: &AppHandle, args: I) {
+    let mut files = Vec::new();
+    for a in args {
+        if a.starts_with("revela://") { follow_link(app, &a); continue; }
+        let p = if a.starts_with("file://") { tauri::Url::parse(&a).ok().and_then(|u| u.to_file_path().ok()) } else { Some(PathBuf::from(&a)) };
+        if let Some(p) = p.filter(opens) { files.push(p); }
+    }
+    if !files.is_empty() {
+        app.state::<Files>().pending.lock().unwrap().extend(files);
+        let _ = app.emit("revela://opened", ());
+    }
+}
+
+fn show_window(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") { let _ = w.unminimize(); let _ = w.show(); let _ = w.set_focus(); }
+}
+
+// revela://open?doc=<id> or ?downloaded=<name>; anything else, ignored.
+fn follow_link(app: &AppHandle, link: &str) {
+    let Ok(u) = tauri::Url::parse(link) else { return };
+    if u.scheme() != "revela" { return; }
+    {
+        let mut seen = app.state::<Links>().seen.lock().unwrap();
+        seen.retain(|(_, t)| t.elapsed().as_secs() < 10);
+        if seen.iter().any(|(l, _)| l == link) { return; }
+        seen.push((link.to_string(), std::time::Instant::now()));
+    }
+    for (k, v) in u.query_pairs() {
+        let v = v.into_owned();
+        if k == "doc" && (16..=40).contains(&v.len()) && v.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+            app.state::<Links>().pending.lock().unwrap().push(v);
+            let _ = app.emit("revela://link", ());
+        } else if k == "downloaded" {
+            let app = app.clone();
+            std::thread::spawn(move || wait_download(&app, &v));
+        }
+    }
+    show_window(app);
+}
+
+// The .revela just downloaded with that name — or the browser's «name (1).revela» —, in Downloads, written in the last
+// 15 minutes; once it has finished (no «.crdownload» / «.part» beside it, the same size a second later). Up to 4
+// minutes: a package of hundreds of MB takes a while to save.
+fn wait_download(app: &AppHandle, name: &str) {
+    let low = name.to_ascii_lowercase();
+    if name.is_empty() || name.len() > 200 || name.contains(['/', '\\', ':']) || name.starts_with('.') || !low.ends_with(".revela") { return; }
+    let Ok(dir) = app.path().download_dir() else { return };
+    let stem = &name[..name.len() - ".revela".len()];
+    let recent = |m: &std::fs::Metadata| m.modified().ok().and_then(|t| t.elapsed().ok()).is_some_and(|e| e.as_secs() < 15 * 60);
+    for _ in 0..240 {
+        let mut best: Option<(PathBuf, std::time::SystemTime)> = None;
+        if let Ok(list) = std::fs::read_dir(&dir) {
+            for e in list.flatten() {
+                let n = e.file_name().to_string_lossy().into_owned();
+                if !n.to_ascii_lowercase().ends_with(".revela") || !n.starts_with(stem) { continue; }
+                let middle = n[stem.len()..n.len() - ".revela".len()].trim();
+                if !(middle.is_empty() || (middle.starts_with('(') && middle.ends_with(')'))) { continue; }
+                let Ok(m) = e.metadata() else { continue };
+                if !m.is_file() || !recent(&m) { continue; }
+                let t = m.modified().unwrap_or(std::time::UNIX_EPOCH);
+                if best.as_ref().map_or(true, |(_, bt)| t > *bt) { best = Some((e.path(), t)); }
+            }
+        }
+        if let Some((p, _)) = best {
+            let busy = ["crdownload", "part", "download"].iter().any(|x| { let mut q = p.clone().into_os_string(); q.push(format!(".{x}")); PathBuf::from(q).exists() });
+            let size = || std::fs::metadata(&p).map(|m| m.len()).unwrap_or(0);
+            let a = size();
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            if !busy && a > 0 && a == size() {
+                app.state::<Files>().pending.lock().unwrap().push(p);
+                let _ = app.emit("revela://opened", ());
+                show_window(app);
+                return;
+            }
+        } else {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+    }
+}
+
+// The cloud presentations asked for by links, for the page (each once).
+#[tauri::command]
+fn opened_links(links: State<'_, Links>) -> Vec<String> {
+    links.pending.lock().unwrap().drain(..).collect()
 }
 
 fn opens(p: &PathBuf) -> bool {
@@ -235,17 +336,33 @@ async fn install_update(app: AppHandle) -> Result<String, String> {
 
 fn main() {
     let app = tauri::Builder::default()
+        // (First: a second launch — a file or a link opened while Revela is open — hands them to this one and quits.)
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| { take_args(app, argv.into_iter().skip(1)); show_window(app); }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
         .manage(Files::default())
         .manage(Saves::default())
-        .invoke_handler(tauri::generate_handler![save_file, save_begin, save_chunk, save_end, opened_files, pick_files, read_opened, opened_size, read_range, release_opened, menu_bar, update_available, install_update])
+        .manage(Links::default())
+        .invoke_handler(tauri::generate_handler![opened_links, save_file, save_begin, save_chunk, save_end, opened_files, pick_files, read_opened, opened_size, read_range, release_opened, menu_bar, update_available, install_update])
         .setup(|app| {
-            // Windows and Linux: what to open comes as arguments («Open with», a double click).
-            let given: Vec<PathBuf> = std::env::args_os().skip(1).map(PathBuf::from).filter(opens).collect();
-            app.state::<Files>().pending.lock().unwrap().extend(given);
+            // Windows and Linux: what to open comes as arguments («Open with», a double click, a revela:// link).
+            let mut files = Vec::new();
+            for a in std::env::args_os().skip(1) {
+                match a.to_str() {
+                    Some(t) if t.starts_with("revela://") || t.starts_with("file://") => take_args(app.handle(), [t.to_string()]),
+                    _ => { let p = PathBuf::from(a); if opens(&p) { files.push(p); } }
+                }
+            }
+            app.state::<Files>().pending.lock().unwrap().extend(files);
+            // revela:// links: registered for this app (the AppImage has no installer to do it), and those that come
+            // while it runs (macOS: all of them).
+            #[cfg(any(windows, target_os = "linux"))]
+            let _ = app.deep_link().register_all();
+            let handle = app.handle().clone();
+            app.deep_link().on_open_url(move |event| { for u in event.urls() { follow_link(&handle, u.as_str()); } });
             Ok(())
         })
         .build(tauri::generate_context!())

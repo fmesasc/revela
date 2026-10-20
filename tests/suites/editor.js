@@ -1111,6 +1111,25 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     R.store.commit(() => { slide().blocks = slide().blocks.filter(b => b.id !== 'big3d'); });
   });
 
+  await test('presentación muy grande: avisa una vez y ofrece la aplicación de escritorio (abrirla allí o descargarla); y Archivo ▸ App de escritorio', async () => {
+    reset(); const W = frame.contentWindow, B = await W.eval("import('/src/ui/shell/bigdeck.js')"), launched = [];
+    B.setBigDeckLimit(1e6); B.setLauncher(u => launched.push(u));
+    let raw = ''; for (let i = 0; i < 3e5; i++) raw += String.fromCharCode(i % 251);
+    R.store.commit(() => { R.state.deck.name = 'Clase con vídeo'; slide().blocks.push({ id: 'bigV', type: 'image', x: 0, y: 0, w: 100, h: 100, src: 'data:image/png;base64,' + W.btoa(raw).repeat(4) }); });
+    const stop = B.watchBigDecks({ every: 10 }); await sleep(60);
+    try {
+      const box = D.getElementById('bigdeck-modal'); assert(box, 'avisa');
+      assert(/MB de vídeos e imágenes/.test(box.textContent) && box.querySelector('.bd-open') && box.querySelector('.bd-get'), 'cuánto pesa, abrir en la aplicación o descargarla: ' + box.textContent.slice(0, 120));
+      box.querySelector('.bd-later').click(); R.store.commit(() => { slide().blocks[0].x += 1; }); await sleep(60);
+      assert(!D.getElementById('bigdeck-modal'), 'una vez por presentación');
+      // Open it in the app: downloaded as a package, then the app asked to open that file.
+      eq(await B.openInDesktop(), 'file', 'como archivo'); eq(launched.at(-1), 'revela://open?downloaded=clase-con-v%C3%ADdeo.revela', 'y la aplicación, a abrirlo');
+      // Archivo ▸ App de escritorio (in the browser).
+      const btn = D.querySelector('#ribbon [data-action="open-desktop"]'); assert(btn && !btn.hidden, 'el botón en Archivo');
+      btn.click(); await sleep(30); assert(D.getElementById('bigdeck-modal'), 'que lo ofrece cuando se quiera'); D.querySelector('#bigdeck-modal .modal-close').click();
+    } finally { stop(); B.setBigDeckLimit(200e6); B.setLauncher(u => { W.location.href = u; }); R.store.commit(() => { slide().blocks = slide().blocks.filter(b => b.id !== 'bigV'); }); }
+  });
+
   await test('si el navegador no puede guardar, la barra lo dice y un clic descarga una copia', async () => {
     reset(); const S = W.Storage.prototype, P = W.IDBObjectStore.prototype, set = S.setItem, put = P.put;
     const ss = D.getElementById('save-state');

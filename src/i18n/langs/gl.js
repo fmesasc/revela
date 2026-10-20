@@ -4955,4 +4955,13 @@ export default {
   "En tu cuenta de Revela (hasta {max} MB): desde ahí la compartes con personas concretas y ves sus estadísticas.": "Na túa conta de Revela (ata {max} MB): desde aí compártela con persoas concretas e ves as súas estatísticas.",
   "Esta presentación lleva unos {n} MB de fotos, vídeos y sonidos: demasiado para una sola página web (el navegador no puede crear un archivo así). Guárdala como archivo de Revela (Archivo ▸ Guardar) o expórtala a PowerPoint; para verla en otro sitio, preséntala desde Revela.": "Esta presentación leva uns {n} MB de fotos, vídeos e sons: demasiado para unha soa páxina web (o navegador non pode crear un ficheiro así). Gárdaa como ficheiro de Revela (Ficheiro ▸ Gardar) ou expórtaa a PowerPoint; para vela noutro sitio, preséntaa desde Revela.",
   "No se pudo guardar la plantilla: el navegador no tiene sitio para ella.": "Non se puido gardar o modelo: o navegador non ten sitio para el.",
+  "Descargado «{f}». Se abre en la aplicación de escritorio en cuanto termina de bajar; si no la tienes, descárgala, o abre el archivo con doble clic.": "Descargado «{f}». Ábrese na aplicación de escritorio en canto remata de baixar; se non a tes, descárgaa, ou abre o ficheiro con dobre clic.",
+  "Descargar la aplicación": "Descargar a aplicación",
+  "La aplicación de escritorio de Revela abre lo mismo, sin los límites del navegador: para presentaciones con mucho vídeo, o para trabajar sin conexión. Se descarga gratis para Windows, macOS y Linux.": "A aplicación de escritorio de Revela abre o mesmo, sen os límites do navegador: para presentacións con moito vídeo, ou para traballar sen conexión. Descárgase de balde para Windows, macOS e Linux.",
+  "Lleva unos {n} MB de vídeos e imágenes. El navegador funciona, pero al límite de lo que le deja a una pestaña: algo pesado (copiar mucho, exportar) puede cerrarla. La aplicación de escritorio de Revela no tiene ese límite y abre lo mismo.": "Leva uns {n} MB de vídeos e imaxes. O navegador funciona, pero ao límite do que lle deixa a unha lapela: algo pesado (copiar moito, exportar) pode pechala. A aplicación de escritorio de Revela non ten ese límite e abre o mesmo.",
+  "Seguir aquí": "Seguir aquí",
+  "Abrir en la aplicación de escritorio": "Abrir na aplicación de escritorio",
+  "App de escritorio": "App de escritorio",
+  "Abrir esta presentación en la aplicación de escritorio de Revela, sin los límites del navegador": "Abrir esta presentación na aplicación de escritorio de Revela, sen os límites do navegador",
+  "Una presentación muy grande": "Unha presentación moi grande",
 };

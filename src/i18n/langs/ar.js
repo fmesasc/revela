@@ -4955,4 +4955,13 @@ export default {
   "En tu cuenta de Revela (hasta {max} MB): desde ahí la compartes con personas concretas y ves sus estadísticas.": "في حسابك على Revela (حتى {max} ميغابايت): من هناك تشاركه مع أشخاص محددين وترى إحصاءاته.",
   "Esta presentación lleva unos {n} MB de fotos, vídeos y sonidos: demasiado para una sola página web (el navegador no puede crear un archivo así). Guárdala como archivo de Revela (Archivo ▸ Guardar) o expórtala a PowerPoint; para verla en otro sitio, preséntala desde Revela.": "يحتوي هذا العرض على نحو {n} ميغابايت من الصور والفيديوهات والأصوات: أكثر مما تحتمله صفحة ويب واحدة (لا يستطيع المتصفح إنشاء ملف كهذا). احفظه كملف Revela (ملف ▸ حفظ) أو صدّره إلى PowerPoint؛ ولعرضه في مكان آخر، اعرضه من Revela.",
   "No se pudo guardar la plantilla: el navegador no tiene sitio para ella.": "تعذّر حفظ القالب: لا توجد مساحة له في المتصفح.",
+  "Descargado «{f}». Se abre en la aplicación de escritorio en cuanto termina de bajar; si no la tienes, descárgala, o abre el archivo con doble clic.": "تم تنزيل «{f}». سيُفتح في تطبيق سطح المكتب فور انتهاء التنزيل؛ إن لم يكن لديك التطبيق فنزّله، أو افتح الملف بنقرة مزدوجة.",
+  "Descargar la aplicación": "تنزيل التطبيق",
+  "La aplicación de escritorio de Revela abre lo mismo, sin los límites del navegador: para presentaciones con mucho vídeo, o para trabajar sin conexión. Se descarga gratis para Windows, macOS y Linux.": "يفتح تطبيق Revela لسطح المكتب الشيء نفسه، دون قيود المتصفح: للعروض التي فيها فيديو كثير، أو للعمل دون اتصال. يُنزَّل مجانًا لأنظمة Windows وmacOS وLinux.",
+  "Lleva unos {n} MB de vídeos e imágenes. El navegador funciona, pero al límite de lo que le deja a una pestaña: algo pesado (copiar mucho, exportar) puede cerrarla. La aplicación de escritorio de Revela no tiene ese límite y abre lo mismo.": "يحتوي على نحو {n} ميغابايت من الفيديوهات والصور. المتصفح يعمل، لكن عند حد ما يسمح به لعلامة تبويب: عملية ثقيلة (نسخ الكثير، التصدير) قد تغلقها. تطبيق Revela لسطح المكتب ليس فيه هذا الحد ويفتح الشيء نفسه.",
+  "Seguir aquí": "المتابعة هنا",
+  "Abrir en la aplicación de escritorio": "فتح في تطبيق سطح المكتب",
+  "App de escritorio": "تطبيق سطح المكتب",
+  "Abrir esta presentación en la aplicación de escritorio de Revela, sin los límites del navegador": "فتح هذا العرض في تطبيق Revela لسطح المكتب، دون قيود المتصفح",
+  "Una presentación muy grande": "عرض كبير جدًا",
 };

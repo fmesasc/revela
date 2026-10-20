@@ -4955,4 +4955,13 @@ export default {
   "En tu cuenta de Revela (hasta {max} MB): desde ahí la compartes con personas concretas y ves sus estadísticas.": "Zure Revela kontuan ({max} MB arte): handik pertsona jakinekin partekatzen duzu eta haren estatistikak ikusten dituzu.",
   "Esta presentación lleva unos {n} MB de fotos, vídeos y sonidos: demasiado para una sola página web (el navegador no puede crear un archivo así). Guárdala como archivo de Revela (Archivo ▸ Guardar) o expórtala a PowerPoint; para verla en otro sitio, preséntala desde Revela.": "Aurkezpen honek {n} MB inguru ditu argazki, bideo eta soinutan: gehiegi web-orri bakar baterako (nabigatzaileak ezin du horrelako fitxategirik sortu). Gorde Revela fitxategi gisa (Fitxategia ▸ Gorde) edo esportatu PowerPointera; beste nonbait erakusteko, aurkeztu Revelatik.",
   "No se pudo guardar la plantilla: el navegador no tiene sitio para ella.": "Ezin izan da txantiloia gorde: nabigatzaileak ez du lekurik.",
+  "Descargado «{f}». Se abre en la aplicación de escritorio en cuanto termina de bajar; si no la tienes, descárgala, o abre el archivo con doble clic.": "«{f}» deskargatuta. Mahaigaineko aplikazioan irekiko da deskargatzen amaitu bezain laster; ez baduzu, deskargatu, edo ireki fitxategia klik bikoitzarekin.",
+  "Descargar la aplicación": "Deskargatu aplikazioa",
+  "La aplicación de escritorio de Revela abre lo mismo, sin los límites del navegador: para presentaciones con mucho vídeo, o para trabajar sin conexión. Se descarga gratis para Windows, macOS y Linux.": "Revelaren mahaigaineko aplikazioak gauza bera irekitzen du, nabigatzailearen mugarik gabe: bideo asko duten aurkezpenetarako, edo konexiorik gabe lan egiteko. Doan deskargatzen da Windows, macOS eta Linuxerako.",
+  "Lleva unos {n} MB de vídeos e imágenes. El navegador funciona, pero al límite de lo que le deja a una pestaña: algo pesado (copiar mucho, exportar) puede cerrarla. La aplicación de escritorio de Revela no tiene ese límite y abre lo mismo.": "{n} MB inguru ditu bideo eta irudietan. Nabigatzaileak funtzionatzen du, baina fitxa bati uzten dionaren mugan: zerbait astunak (asko kopiatzea, esportatzea) itxi dezake. Revelaren mahaigaineko aplikazioak ez du muga hori eta gauza bera irekitzen du.",
+  "Seguir aquí": "Hemen jarraitu",
+  "Abrir en la aplicación de escritorio": "Ireki mahaigaineko aplikazioan",
+  "App de escritorio": "Mahaigaineko aplikazioa",
+  "Abrir esta presentación en la aplicación de escritorio de Revela, sin los límites del navegador": "Ireki aurkezpen hau Revelaren mahaigaineko aplikazioan, nabigatzailearen mugarik gabe",
+  "Una presentación muy grande": "Aurkezpen oso handia",
 };

@@ -129,6 +129,7 @@ export const ACTIONS = {
   'home': () => openHome(),
   'versions': () => openVersions(),
   'storage': () => openStorage(),
+  'open-desktop': () => import('../shell/bigdeck.js').then(m => m.bigDeckNotice({ asked: true })),
   'review-panel': () => toggleReview(),
   'cloud-docs': () => openCloudDocs(),
   'cloud-share': () => openCloudShare(),

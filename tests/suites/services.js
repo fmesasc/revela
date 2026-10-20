@@ -85,19 +85,26 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const tauri = {
       core: { invoke: async (cmd, args, opts) => { calls.push({ cmd, args, opts });
         if (cmd === 'opened_files') return opened.splice(0);
+        if (cmd === 'opened_links') return [];
         if (cmd === 'read_opened') return project.buffer.slice(0);
         if (cmd === 'save_file') return '/home/ana/' + decodeURIComponent(opts.headers['x-name']);
         if (cmd === 'update_available') return null;
         if (cmd === 'pick_files') return picked.splice(0); } },
       menu: { Menu: { new: async o => ({ ...o, setAsAppMenu: async () => { menu = o; } }) }, Submenu: mk('sub'), MenuItem: mk('item'), PredefinedMenuItem: mk('pre'), CheckMenuItem: mk('check') },
       app: { getVersion: async () => '9.9.9', defaultWindowIcon: async () => null },
-      event: { listen: async () => () => {} }, opener: { openUrl: async u => calls.push({ open: u }) },
+      event: { listen: async (n, fn) => { heard[n] = fn; return () => {}; } }, opener: { openUrl: async u => calls.push({ open: u }) },
     };
+    const heard = {};
     try {
       assert(await DK.initDesktop({ tauri, updates: false }), 'arranca con Tauri');
+      assert(calls.some(c => c.cmd === 'opened_links') && heard['revela://link'] && heard['revela://opened'], 'pregunta por los enlaces revela:// y escucha lo que llegue con la aplicación abierta');
       // The file it was opened with: open, as if dropped.
       for (let i = 0; i < 40 && R.state.deck.name !== 'Desde el escritorio'; i++) await sleep(25);
       eq(R.state.deck.name, 'Desde el escritorio', 'abre el archivo con el que se abrió Revela');
+      // A file that arrives while it is open (another double click, or the .revela the web app downloaded for it).
+      R.store.commit(() => { R.state.deck.name = 'Otra cosa'; }); opened = ['/home/ana/Descargas/clase.revela.json']; heard['revela://opened']();
+      for (let i = 0; i < 40 && R.state.deck.name !== 'Desde el escritorio'; i++) await sleep(25);
+      eq(R.state.deck.name, 'Desde el escritorio', 'y lo que llega con la aplicación ya abierta');
       assert(calls.some(c => c.cmd === 'read_opened' && c.args.path === '/home/ana/Clase 3.revela.json'), 'lo pide por su ruta');
       // The menu bar, in the interface's language; every item does something that exists.
       eq(menu.items.map(s => s.text).join(','), 'Archivo,Editar,Ver,Insertar,Ayuda', 'los menús');

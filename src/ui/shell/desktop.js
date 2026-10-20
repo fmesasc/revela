@@ -238,6 +238,14 @@ async function openGiven() {
   }
 }
 
+// Presentations of Revela's cloud asked for by a revela://open?doc=… link (the web app's «Abrir en la aplicación de
+// escritorio», ui/shell/bigdeck.js): opened as their link would be in the browser.
+async function openLinks() {
+  let ids = [];
+  try { ids = await invoke('opened_links'); } catch { return; }
+  for (const id of Array.isArray(ids) ? ids : []) { try { await (await import('../dialogs/cloud.js')).openFromLink(id); } catch (e) { toast(t('No se pudo abrir la presentación:') + ' ' + (e?.message || e), { error: true }); } }
+}
+
 // tauri: window.__TAURI__ (withGlobalTauri; tests give their own).
 export async function initDesktop({ tauri = globalThis.__TAURI__, updates = true } = {}) {
   if (!tauri?.core) return false;
@@ -247,8 +255,11 @@ export async function initDesktop({ tauri = globalThis.__TAURI__, updates = true
   bar(pinned()); altShowsBar();
   const rebuild = () => build().catch(() => {});
   window.addEventListener('revela:lang', rebuild); undoers.push(() => window.removeEventListener('revela:lang', rebuild));
-  await openGiven();
-  tauri.event?.listen?.('revela://opened', () => openGiven());     // (macOS: opened while running)
+  await openGiven(); await openLinks();
+  // (Opened while running: a file — double click, «Open with», one the web app downloaded for it — or a revela:// link;
+  // desktop/src-tauri/src/main.rs sends them to this window.)
+  tauri.event?.listen?.('revela://opened', () => openGiven());
+  tauri.event?.listen?.('revela://link', () => openLinks());
   if (updates) setTimeout(() => checkUpdates(), 3000);              // (after the editor is ready; quiet without internet)
   return true;
 }

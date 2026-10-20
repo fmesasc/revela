@@ -341,6 +341,8 @@ if (!testing) loadPlugins();
 if (!testing) import('../../features/document/storage.js').then(S => S.watchStorage(e => toast(
   t('Revela está usando el {p} % del espacio que le deja el navegador. Libera algo antes de que no pueda guardar.').replace('{p}', Math.round(S.share(e) * 100)),
   { error: true, ms: 15000, action: { label: t('Ver el espacio'), run: () => import('../../ui/dialogs/storage.js').then(m => m.openStorage()) } }))).catch(() => {});
+// A very big presentation: the desktop app offered once (ui/shell/bigdeck.js).
+if (!testing) import('../../ui/shell/bigdeck.js').then(m => m.watchBigDecks()).catch(() => {});
 // The desktop app: its menu bar, saving and opening files through the system, its updates (ui/shell/desktop.js).
 if (!testing && globalThis.__TAURI__) import('../../ui/shell/desktop.js').then(m => m.initDesktop()).catch(e => console.warn('Escritorio:', e));
 // Charts linked to a CSV load fresh data when the editor opens.

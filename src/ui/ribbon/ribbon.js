@@ -110,6 +110,8 @@ export function initRibbon() {
   const pre = document.getElementById('premium');
   if (pre && EDITION === 'open') { pre.href = OFFICIAL_SITE + '/pricing'; pre.hidden = false; }
   document.body.dataset.edition = EDITION;
+  // (Archivo ▸ App de escritorio: in the browser; in the app itself, nothing to open.)
+  document.querySelectorAll('[data-action="open-desktop"]').forEach(b => { b.hidden = EDITION === 'desktop' || !!globalThis.__TAURI__; });
   document.getElementById('final-banner')?.addEventListener('click', e => {
     if (e.target.closest('[data-action="mark-final"]')) editAnyway();
   });
