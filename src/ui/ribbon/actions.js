@@ -146,7 +146,7 @@ export const ACTIONS = {
   'cloud-dropbox': () => openCloud('dropbox'),
   // (A download alone is easy to miss: each one says what it was and what next.)
   'export': async () => {
-    const offline = await exportHTML();
+    let offline; try { offline = await exportHTML(); } catch (e) { alertDialog(e.message || String(e)); return; }
     toast(offline ? t('Página web descargada: se abre con cualquier navegador, también sin conexión (los modelos 3D, mapas y vídeos de internet sí la necesitan).')
       : t('Página web descargada: para verla hace falta conexión a internet.'));
   },
@@ -298,7 +298,7 @@ export const ACTIONS = {
     animPaint = a; document.body.classList.add('anim-painting');
     $('[data-action="anim-paint"]')?.classList.add('on');
   },
-  'template-save': () => promptDialog(t('Nombre de la plantilla')).then(n => { if (n) templates.saveCurrentAsTemplate(n); }),
+  'template-save': () => promptDialog(t('Nombre de la plantilla')).then(n => n && templates.saveCurrentAsTemplate(n)).catch(() => alertDialog(t('No se pudo guardar la plantilla: el navegador no tiene sitio para ella.'))),
   'toggle-guides': () => commit(() => (state.ui.showGuides = !state.ui.showGuides), { history: false }),
   'toggle-ruler': () => commit(() => (state.ui.showRuler = !state.ui.showRuler), { history: false }),
   'toggle-snap': () => commit(() => (state.ui.snap = state.ui.snap === false), { history: false }),

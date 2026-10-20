@@ -18,7 +18,7 @@ import { state, replaceDeck, subscribe, docEpoch, docVersion, onBeforeReplace } 
 import { alertUser } from '../../core/notify.js';
 import { GOOGLE } from '../../core/config.js';
 import { t } from '../../i18n/index.js';
-import { buildHTML } from '../formats/html.js';
+import { htmlParts, partsBlob } from '../formats/html.js';
 import { loadScript } from '../../core/vendor.js';
 import { plainText } from '../../core/text.js';
 import { account as revelaAccount } from './account.js';
@@ -427,7 +427,8 @@ export async function pickSlidesFile() {
 // Export the reveal.js HTML presentation to Drive (a new file each time).
 export async function driveSaveHtml() {
   if (!gdriveReady()) return openGdriveSetup();
-  await upload({ name: safeName() + '.html', mimeType: 'text/html', body: buildHTML(), parent: newFolder || lastFolder()?.id });
+  const p = htmlParts();                                 // (in pieces: io/formats/html.js htmlParts)
+  await upload({ name: safeName() + '.html', mimeType: 'text/html', body: partsBlob(p.html, p.files), parent: newFolder || lastFolder()?.id });
   return true;
 }
 

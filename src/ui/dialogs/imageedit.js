@@ -32,7 +32,7 @@ import { EXTEND_RATIOS, EXTEND_FILLS, extendCanvas, extendImage, loadPicture, se
   pixelsOf, maskWeights, hideData, hideArea, eraseData, eraseArea, retouchCutout, cutoutOrigins, subjectEffect, recolourData, recolour, photoColours,
   BG_KINDS, pictureSubject, previewBackground, changeBackground, pixelateData, pixelateImage, textBoxFor,
   PIECES_MAX, PIECES_GAP_MAX, pieceMap, defaultPiecesGap, visiblePieces, splitPieces } from '../../features/document/imagetools.js';
-import { textBlock } from '../../core/model.js';
+import { textBlock, shareCopy } from '../../core/model.js';
 import { applyPalette, currentPalette } from '../../features/design/palettes.js';
 import { tabsHTML, wireTabs, moreHTML, tipHTML, footHTML } from './dlgkit.js';
 import { IMG_PRESETS, openImageCrop, removeBackground } from './object.js';
@@ -552,7 +552,7 @@ export function openImageEditor(b0, tab = '') {
     const P = await pixelsOf(b.src, 1536), w = maskWeights(bmask, P.W, P.H), d = P.data.data;
     for (let i = 0; i < w.length; i++) if (w[i] > 0.05) { d[i * 4] = 255; d[i * 4 + 1] = 0; d[i * 4 + 2] = 255; d[i * 4 + 3] = 255; }
     P.g.putImageData(P.data, 0, 0);
-    const marked = { ...structuredClone(b), src: P.c.toDataURL('image/jpeg', 0.9) };
+    const marked = { ...shareCopy(b), src: P.c.toDataURL('image/jpeg', 0.9) };
     const [{ run }, A] = await Promise.all([import('./ai.js'), import('../../features/ai/openrouter.js')]);
     const made = await run(() => A.editImage(marked, 'erase', { what: 'the area painted over in solid magenta (whatever is under it, and the magenta paint itself)' }));
     if (made) { commit(() => { const x = cur(); if (x) { x.src = made; delete x.crop; delete x.uncropped; } }); done(); }

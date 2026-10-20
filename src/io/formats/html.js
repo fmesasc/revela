@@ -814,7 +814,56 @@ const CHART_KINDS = { bar: 'Barras', stacked: 'Barras apiladas', stacked100: 'Ba
   stackedArea: 'Áreas apiladas', pie: 'Circular', doughnut: 'Dona', scatter: 'Dispersión', radar: 'Radar', bubble: 'Burbujas', treemap: 'Rectángulos (treemap)', waterfall: 'Cascada', funnel: 'Embudo', map: 'Mapa' };
 const chartCaption = b => `${t('Gráfico')} · ${t(CHART_KINDS[b.chartType || 'bar'] || 'Barras')}: ${[b.seriesName, ...(b.series || []).map(x => x.name)].filter(Boolean).join(', ') || (b.data || []).slice(0, 4).map(d => d.label).join(', ')}`;
 
+// One page with everything inside (an export, a link, SCORM): a text, and a browser can't make one past some 500 M
+// characters — «Invalid string length» with 550 MB of video and pictures (2026-10-20), and nothing said. Measured
+// first (each file once, as dedupeMedia leaves it), and said plainly, with what does work for a presentation so big.
+const ONE_FILE_MAX = 400e6;
+export function oneFileSize(deck) {
+  const seen = new Set(); let n = 0;
+  const walk = v => {
+    if (typeof v === 'string') { if (v.length > 65536) { if (seen.has(v)) return; seen.add(v); } n += v.length; }
+    else if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === 'object') for (const k in v) walk(v[k]);
+  };
+  walk(deck); return n;
+}
+// The same page in pieces, for a file of any size (Francisco, 2026-10-20: «¿no puedes optimizarlo para que no falle
+// el límite del string?»). Each big file (a data: URL of 64 KB or more) goes into the page as a short slot — its own
+// header, so what reads the type («data:video/…») reads the same, then a marker —; the page is made as always, small;
+// and the file is put together as a Blob of pieces — the page's text and, in each slot, that file's own text —, which
+// has no such limit. A file used several times is one slot, and dedupeMedia writes it once. (The marker is letters and
+// a long run of «A»: valid base64, and long enough for dedupeMedia to share a repeated one.)
+const SLOT = 'RVBIGSLOT', SLOT_PAD = 'A'.repeat(2048), SLOT_MIN = 65536;
+export function htmlParts(deck = state.deck, opts = {}) {
+  const files = [], ids = new Map();
+  const walk = v => {
+    if (typeof v === 'string') {
+      if (v.length < SLOT_MIN || !v.startsWith('data:')) return v;
+      const c = v.indexOf(','); if (c < 0 || c > 200 || !v.slice(0, c).endsWith(';base64')) return v;   // (base64 only: nothing in it the page would escape)
+      let id = ids.get(v); if (id == null) { id = files.length; files.push(v.slice(c + 1)); ids.set(v, id); }
+      return v.slice(0, c + 1) + SLOT + id + 'X' + SLOT_PAD;
+    }
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === 'object') { const o = {}; for (const k in v) o[k] = walk(v[k]); return o; }
+    return v;
+  };
+  return { html: buildHTML(walk(deck), { ...opts, inApp: false }), files };
+}
+// The page with its files, as a Blob (the slots filled).
+export function partsBlob(html, files, type = 'text/html') {
+  const out = []; let last = 0;
+  for (let i = html.indexOf(SLOT); i >= 0; i = html.indexOf(SLOT, last)) {
+    const x = html.indexOf('X', i + SLOT.length), id = +html.slice(i + SLOT.length, x);
+    if (!(id >= 0 && id < files.length)) { out.push(html.slice(last, i + SLOT.length)); last = i + SLOT.length; continue; }
+    out.push(html.slice(last, i), files[id]); last = x + 1 + SLOT_PAD.length;
+  }
+  out.push(html.slice(last));
+  return new Blob(out, { type });
+}
 export function buildHTML(deck = state.deck, opts = {}) {
+  if (!opts.inApp) {
+    const n = oneFileSize(deck);
+    if (n > (opts.maxChars || ONE_FILE_MAX)) throw Object.assign(new Error(t('Esta presentación lleva unos {n} MB de fotos, vídeos y sonidos: demasiado para una sola página web (el navegador no puede crear un archivo así). Guárdala como archivo de Revela (Archivo ▸ Guardar) o expórtala a PowerPoint; para verla en otro sitio, preséntala desde Revela.').replace('{n}', Math.round(n * 0.75 / 1e6))), { tooBig: true });
+  }
   // (Shown in this window: its big pictures, videos and sounds as blob: addresses, io/formats/blobmedia.js.)
   const was = outDeck; outDeck = deck;
   try { return dedupeMedia(buildHTMLRaw(opts.inApp ? blobMedia(deck) : deck, opts)); } finally { outDeck = was; }
@@ -1056,8 +1105,8 @@ function dedupeMedia(html) {
 // plugins and styles inside it (fetched now). → whether it could be made so (else it needs a connection;
 // 3D models, maps, fonts and videos from the internet always do).
 export async function exportHTML() {
-  const { html, offline } = await offlineHTML(buildHTML());
-  download(new Blob([html], { type: 'text/html' }), slug(state.deck.name) + '.html');
+  const p = htmlParts(), { html, offline } = await offlineHTML(p.html);
+  download(partsBlob(html, p.files), slug(state.deck.name) + '.html');
   return offline;
 }
 const inlined = new Map();

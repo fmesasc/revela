@@ -4953,4 +4953,6 @@ export default {
   "Google Drive (tu cuenta de Google)": "Google Drive (je Google-account)",
   "Recomendado: se guarda sola, sin límite de tamaño, y la abres desde cualquier dispositivo.": "Aanbevolen: wordt vanzelf bewaard, zonder groottelimiet, en je opent haar op elk apparaat.",
   "En tu cuenta de Revela (hasta {max} MB): desde ahí la compartes con personas concretas y ves sus estadísticas.": "In je Revela-account (tot {max} MB): van daaruit deel je haar met bepaalde personen en zie je de statistieken.",
+  "Esta presentación lleva unos {n} MB de fotos, vídeos y sonidos: demasiado para una sola página web (el navegador no puede crear un archivo así). Guárdala como archivo de Revela (Archivo ▸ Guardar) o expórtala a PowerPoint; para verla en otro sitio, preséntala desde Revela.": "Deze presentatie bevat ongeveer {n} MB aan foto's, video's en geluiden: te veel voor één webpagina (de browser kan zo'n bestand niet maken). Bewaar haar als Revela-bestand (Bestand ▸ Opslaan) of exporteer naar PowerPoint; om haar elders te tonen, presenteer haar vanuit Revela.",
+  "No se pudo guardar la plantilla: el navegador no tiene sitio para ella.": "Het sjabloon kon niet worden opgeslagen: de browser heeft er geen ruimte voor.",
 };

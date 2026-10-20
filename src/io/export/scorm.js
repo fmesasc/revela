@@ -18,7 +18,7 @@
 import { state } from '../../core/store.js';
 import { JSZIP, loadScript } from '../../core/vendor.js';
 import { OFFICIAL_SITE } from '../../core/config.js';
-import { buildHTML, offlineHTML } from '../formats/html.js';
+import { offlineHTML, htmlParts, partsBlob } from '../formats/html.js';
 import { download, slug } from '../files.js';
 
 const xml = s => String(s ?? '').replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
@@ -101,10 +101,11 @@ export async function buildScorm(deck = state.deck, { pass = 50, docId = null } 
   let page, offline = false;
   if (docId) page = scormLauncher(docId, deck.name || 'Revela', pass);
   else {
-    const r = await offlineHTML(buildHTML(deck, { selfPaced: true })); offline = r.offline;
+    // (In pieces — io/formats/html.js htmlParts —: a presentation with hundreds of MB of video fits too.)
+    const p = htmlParts(deck, { selfPaced: true }), r = await offlineHTML(p.html); offline = r.offline;
     // (Before the page's last </body>: reveal.js, put inside the page, has that text in its own code too.)
     const at = r.html.toLowerCase().lastIndexOf('</body>'), tag = `<script>${scormRuntime(pass)}</script>`;
-    page = at < 0 ? r.html + tag : r.html.slice(0, at) + tag + r.html.slice(at);
+    page = partsBlob(at < 0 ? r.html + tag : r.html.slice(0, at) + tag + r.html.slice(at), p.files);
   }
   const JSZip = await loadScript(JSZIP, 'JSZip'), zip = new JSZip();
   zip.file('imsmanifest.xml', scormManifest(deck, pass));

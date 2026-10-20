@@ -4953,4 +4953,6 @@ export default {
   "Google Drive (tu cuenta de Google)": "Google Drive (حسابك في Google)",
   "Recomendado: se guarda sola, sin límite de tamaño, y la abres desde cualquier dispositivo.": "موصى به: يُحفظ تلقائيًا، دون حد للحجم، وتفتحه من أي جهاز.",
   "En tu cuenta de Revela (hasta {max} MB): desde ahí la compartes con personas concretas y ves sus estadísticas.": "في حسابك على Revela (حتى {max} ميغابايت): من هناك تشاركه مع أشخاص محددين وترى إحصاءاته.",
+  "Esta presentación lleva unos {n} MB de fotos, vídeos y sonidos: demasiado para una sola página web (el navegador no puede crear un archivo así). Guárdala como archivo de Revela (Archivo ▸ Guardar) o expórtala a PowerPoint; para verla en otro sitio, preséntala desde Revela.": "يحتوي هذا العرض على نحو {n} ميغابايت من الصور والفيديوهات والأصوات: أكثر مما تحتمله صفحة ويب واحدة (لا يستطيع المتصفح إنشاء ملف كهذا). احفظه كملف Revela (ملف ▸ حفظ) أو صدّره إلى PowerPoint؛ ولعرضه في مكان آخر، اعرضه من Revela.",
+  "No se pudo guardar la plantilla: el navegador no tiene sitio para ella.": "تعذّر حفظ القالب: لا توجد مساحة له في المتصفح.",
 };

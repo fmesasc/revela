@@ -4953,4 +4953,6 @@ export default {
   "Google Drive (tu cuenta de Google)": "Google Drive (a túa conta de Google)",
   "Recomendado: se guarda sola, sin límite de tamaño, y la abres desde cualquier dispositivo.": "Recomendado: gárdase soa, sen límite de tamaño, e ábrela desde calquera dispositivo.",
   "En tu cuenta de Revela (hasta {max} MB): desde ahí la compartes con personas concretas y ves sus estadísticas.": "Na túa conta de Revela (ata {max} MB): desde aí compártela con persoas concretas e ves as súas estatísticas.",
+  "Esta presentación lleva unos {n} MB de fotos, vídeos y sonidos: demasiado para una sola página web (el navegador no puede crear un archivo así). Guárdala como archivo de Revela (Archivo ▸ Guardar) o expórtala a PowerPoint; para verla en otro sitio, preséntala desde Revela.": "Esta presentación leva uns {n} MB de fotos, vídeos e sons: demasiado para unha soa páxina web (o navegador non pode crear un ficheiro así). Gárdaa como ficheiro de Revela (Ficheiro ▸ Gardar) ou expórtaa a PowerPoint; para vela noutro sitio, preséntaa desde Revela.",
+  "No se pudo guardar la plantilla: el navegador no tiene sitio para ella.": "Non se puido gardar o modelo: o navegador non ten sitio para el.",
 };

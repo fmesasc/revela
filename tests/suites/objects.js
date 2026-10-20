@@ -2227,6 +2227,36 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(R.state.deck.slides[R.state.ui.slideIndex].blocks.find(b => b.src === big)?.src.length, big.length, 'duplicar la diapositiva, también');
   });
 
+  await test('presentaciones con cientos de MB de vídeo e imágenes: una página web sola lo dice, y plantilla, idioma y duplicar no copian los archivos', async () => {
+    // (2026-10-20, with a 417 MB PowerPoint: the web page failed without a word, a template hung the tab, another
+    // language ran out of memory, and duplicating doubled it.)
+    reset(); const W = frame.contentWindow, H = await W.eval("import('/src/io/formats/html.js')");
+    let raw = ''; for (let i = 0; i < 3e5; i++) raw += String.fromCharCode(i % 251);
+    const big = 'data:image/png;base64,' + W.btoa(raw).repeat(4);
+    R.store.commit(() => { slide().blocks.push({ id: 'bigA', type: 'image', x: 10, y: 10, w: 100, h: 100, src: big }, { id: 'bigB', type: 'image', x: 200, y: 10, w: 100, h: 100, src: big }); });
+    eq(H.oneFileSize(R.state.deck) < big.length * 1.2, true, 'la misma imagen dos veces cuenta una');
+    let msg = ''; try { H.buildHTML(R.state.deck, { maxChars: 1e6 }); } catch (e) { msg = e.message; }
+    assert(/MB de fotos, vídeos y sonidos/.test(msg) && /PowerPoint/.test(msg), 'demasiado para una página: lo dice, y qué hacer: ' + msg);
+    assert(R.io.buildHTML(R.state.deck, { inApp: true }).length < 2e6, 'para presentar en Revela, sí (con direcciones blob:)');
+    // In pieces (htmlParts + partsBlob): the same page, letter by letter, with no text that big in between.
+    R.store.commit(() => { slide().blocks.push({ id: 'bigC', type: 'image', x: 400, y: 10, w: 100, h: 100, src: 'data:image/jpeg;base64,' + W.btoa(raw) }); });
+    const p = H.htmlParts(R.state.deck); assert(p.html.length < 200000 && p.files.length === 2, 'la página, pequeña; dos archivos distintos (uno repetido): ' + p.html.length + ' / ' + p.files.length);
+    eq(await H.partsBlob(p.html, p.files).text(), H.buildHTML(R.state.deck), 'montada por partes, igual que de una vez');
+    // A template with it: saved with a reference, applied with the picture whole.
+    const T = await W.eval("import('/src/features/document/templates.js')");
+    await T.saveCurrentAsTemplate('Con foto'); const saved = W.localStorage.getItem('revela.templates.v1');
+    assert(saved.length < 20000 && /rvmedia:/.test(saved), 'la plantilla guarda una referencia, no la imagen: ' + saved.length);
+    const tpl = Object.values(T.userTemplates()).find(x => x.name === 'Con foto');
+    R.slides.addSlide('blank'); T.applyTemplate(tpl);
+    for (let k = 0; k < 100 && !slide().blocks.some(b => b.src === big); k++) await sleep(30);
+    assert(slide().blocks.some(b => b.src === big), 'y aplicada, con la imagen entera');
+    // Another language: a copy of the deck that shares the files (the deck itself is untouched).
+    const L = await W.eval("import('/src/features/document/languages.js')");
+    R.store.commit(() => { R.state.deck.i18n = { base: 'es', langs: ['en'], texts: { en: {} } }; });
+    const d = L.deckIn(R.state.deck, 'en'); assert(d !== R.state.deck && d.slides.flatMap(s => s.blocks).some(b => b.src === big), 'en otro idioma, con sus imágenes');
+    R.store.commit(() => { delete R.state.deck.i18n; });
+  });
+
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');

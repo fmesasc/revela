@@ -4,7 +4,7 @@
 import { startMagnifyDraw } from '../canvas/magnifyview.js';
 import * as mag from '../../features/document/magnify.js';
 import { state, commit, currentSlide, selectedBlock, selectedBlocks, isSelected, setSelection, setMulti, isSlideSelected, selectedSlideIndices } from '../../core/store.js';
-import { uid } from '../../core/model.js';
+import { uid, shareCopy } from '../../core/model.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as shapeops from '../../features/document/shapeops.js';
 import * as master from '../../features/document/master.js';
@@ -480,7 +480,7 @@ function forCanvas() {
 
 function duplicate(b) {
   commit(() => {
-    const copy = structuredClone(b); copy.id = uid(); copy.x += 24; copy.y += 24;
+    const copy = shareCopy(b); copy.id = uid(); copy.x += 24; copy.y += 24;
     currentSlide().blocks.push(copy); state.ui.selection = copy.id;
   });
 }

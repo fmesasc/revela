@@ -2,7 +2,8 @@
 // current slide. User templates are stored locally.
 
 import { state, commit, currentSlide } from '../../core/store.js';
-import { uid } from '../../core/model.js';
+import { uid, shareCopy } from '../../core/model.js';
+import { dehydrate, hydrate, hasRefs } from '../../core/mediastore.js';
 
 const USER_KEY = 'revela.templates.v1';
 
@@ -60,13 +61,15 @@ export const BUILTIN = {
 // into the new placeholders (title into the title, the rest in order into the
 // other placeholders) and pictures, charts, etc. are kept.
 export function applyTemplate(tpl) {
+  // (A saved one keeps its big pictures as references to this browser's media store: read back first.)
+  if (hasRefs(tpl.blocks)) { hydrate(tpl.blocks).then(blocks => applyTemplate({ ...tpl, blocks })); return; }
   commit(() => {
     const s = currentSlide(), old = s.blocks;
     const texts = old.filter(b => b.type === 'text' && b.html && b.html.replace(/<[^>]*>/g, '').trim());
     const title = texts.find(b => b.ph === 'title') || texts[0];
     const rest = texts.filter(b => b !== title);
     // (New ids: a saved template keeps those of the slide it came from.)
-    const fresh = structuredClone(tpl.blocks).map(b => Object.assign({ rotation: 0, animation: null }, b, { id: uid() }));
+    const fresh = shareCopy(tpl.blocks).map(b => Object.assign({ rotation: 0, animation: null }, b, { id: uid() }));
     for (const b of fresh) {
       if (!b.ph) continue;
       const src = b.ph === 'title' ? title : rest.shift();
@@ -81,8 +84,14 @@ export function userTemplates() {
   try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch { return {}; }
 }
 
-export function saveCurrentAsTemplate(name) {
+// (Its big pictures, videos and sounds as references to the media store — core/mediastore.js —, not inside: a slide with
+// a 116 MB GIF written whole into localStorage hung the tab, 2026-10-20. Kept while the template is: core/model.js
+// tidyStored counts them.)
+export async function saveCurrentAsTemplate(name) {
+  const blocks = shareCopy(currentSlide().blocks);
+  const light = await dehydrate(blocks).catch(() => blocks);
   const all = userTemplates();
-  all[uid()] = { name, blocks: structuredClone(currentSlide().blocks) };
+  all[uid()] = { name, blocks: light };
   localStorage.setItem(USER_KEY, JSON.stringify(all));
 }
+export const TEMPLATES_KEY = USER_KEY;

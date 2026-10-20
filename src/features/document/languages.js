@@ -13,6 +13,7 @@
 
 import { textsOf, translateDeck, TEXT_KEYS, mathTexts } from '../content/tplang.js';
 import { sanitizeDeck } from './sanitize.js';
+import { shareCopy } from '../../core/model.js';
 
 // Languages offered (any other code also works): those of Revela and those most spoken in classrooms here.
 export const LANG_CODES = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'eu', 'nl', 'ar', 'ro', 'uk', 'ru', 'zh', 'ur', 'pl', 'bg', 'hi', 'ja', 'ko', 'tr', 'el', 'sv', 'he', 'fa', 'am', 'wo', 'tl', 'vi'];
@@ -76,7 +77,7 @@ export function pruneTexts(deck) {
 // A copy of the deck in that language (the deck itself for its base or a language it doesn't have).
 export function deckIn(deck, lang) {
   if (!lang || lang === baseOf(deck) || !langsOf(deck).includes(lang)) return deck;
-  const d = structuredClone(deck);
+  const d = shareCopy(deck);                    // (its pictures and videos shared, not copied: hundreds of MB)
   translateDeck(d, d.i18n.texts?.[lang] || {}, { rtl: RTL.includes(lang) });
   d.lang = lang;
   // (A box in another language than the rest — proofing.js textLang — is translated too: it reads in this one now.)

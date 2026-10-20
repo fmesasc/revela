@@ -16,7 +16,7 @@
 // id), the canvas edits that instead of the current slide (store.currentSlide).
 
 import { state, commit, amend, subscribe, currentSlide, selectedSlideIndices } from '../../core/store.js';
-import { uid } from '../../core/model.js';
+import { uid, shareCopy } from '../../core/model.js';
 import { canvasBackdrop } from '../design/canvasmode.js';
 import { styleColour, styleFont, linkStyleRefs } from '../design/palettes.js';
 
@@ -243,7 +243,7 @@ export function addLayout(copyOf = null) {
     const mid = src ? masterOf(src).id : contextMaster().id, owner = mid === ensureMaster().id ? {} : { masterId: mid };
     // (A new one starts with a title, as in PowerPoint.)
     const title = { id: uid(), type: 'text', ph: 'title', x: 100, y: 60, w: state.deck.size.w - 200, h: 100, rotation: 0, animation: null, html: '' };
-    const lay = src ? { ...structuredClone(src), id: uid(), name: src.name + ' (2)' } : { id: uid(), name: 'Diseño personalizado', background: null, blocks: [title], ...owner };
+    const lay = src ? { ...shareCopy(src), id: uid(), name: src.name + ' (2)' } : { id: uid(), name: 'Diseño personalizado', background: null, blocks: [title], ...owner };
     if (src) lay.blocks.forEach(b => { b.id = uid(); });
     // Right after the one it copies, or at the end of its master's.
     const lays = ensureLayouts(), after = src || lays.filter(l => masterOf(l) === masterOf(lay)).at(-1);
@@ -391,11 +391,11 @@ export function fillPlaceholder(id, block) {
 export function addMaster() {
   commit(() => {
     const d = state.deck, src = contextMaster(d), id = uid();
-    const copy = { ...structuredClone(src), id, name: `${src.name || 'Patrón'} (2)` };
+    const copy = { ...shareCopy(src), id, name: `${src.name || 'Patrón'} (2)` };
     copy.blocks.forEach(b => { b.id = uid(); });
     (d.masters ||= []).push(copy);
     const lays = ensureLayouts(d).filter(l => masterOf(l, d) === src).map(l => {
-      const c = { ...structuredClone(l), id: uid(), masterId: id };
+      const c = { ...shareCopy(l), id: uid(), masterId: id };
       c.blocks.forEach(b => { b.id = uid(); });
       return c;
     });

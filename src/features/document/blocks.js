@@ -7,7 +7,7 @@ import { plainText, esc } from '../../core/text.js';
 import { state, commit, subscribe, currentSlide, selectedBlock,
   selectedBlocks, selectedIds, setSelection, setMulti } from '../../core/store.js';
 import { DEFAULT_SHADOW } from '../../render/svg.js';
-import { uid, textBlock, tableBlock, codeBlock, chartBlock, mathBlock, figindexBlock, slideRefBlock } from '../../core/model.js';
+import { uid, shareCopy, textBlock, tableBlock, codeBlock, chartBlock, mathBlock, figindexBlock, slideRefBlock } from '../../core/model.js';
 import { currentLang, t } from '../../i18n/index.js';
 import { deckFg, currentPalette } from '../design/palettes.js';
 import { ACTION_GOTO, SHAPE_NAMES, isLineShape, isOpenShape, mapMatch } from '../../render/svg.js';
@@ -42,7 +42,7 @@ export function deleteSelected() {
 export function cloneBlocks(bs) {
   const ids = new Map(bs.map(b => [b.id, uid()])), groups = new Map();
   return bs.map(b => {
-    const c = structuredClone(b); c.id = ids.get(b.id);
+    const c = shareCopy(b); c.id = ids.get(b.id);
     if (c.groupId) { if (!groups.has(c.groupId)) groups.set(c.groupId, uid()); c.groupId = groups.get(c.groupId); }
     if (c.type === 'connector' && ids.has(c.from) && ids.has(c.to)) { c.from = ids.get(c.from); c.to = ids.get(c.to); }
     return c;

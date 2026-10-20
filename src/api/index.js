@@ -27,6 +27,7 @@ import { exportPDF } from '../io/export/print.js';
 import { buildPptxBlob } from '../io/formats/pptx-export.js';
 import { buildODP } from '../io/formats/odp.js';
 import { alertUser, confirmUser, promptUser } from '../core/notify.js';
+import { shareCopy } from '../core/model.js';
 
 const find = id => { for (const s of [state.deck.master, ...state.deck.slides]) { const b = s?.blocks.find(x => x.id === id); if (b) return b; } return null; };
 const last = () => currentSlide().blocks.at(-1);
@@ -48,7 +49,7 @@ function renderButtons() {
 
 export const Revela = Object.freeze({
   version: 1,
-  deck: () => structuredClone(state.deck),
+  deck: () => shareCopy(state.deck),   // (its pictures shared, not copied: core/model.js)
   slides: Object.freeze({
     add: () => { slides.addSlide(); return state.ui.slideIndex; },
     goTo: i => slides.goToSlide(i),
@@ -62,7 +63,7 @@ export const Revela = Object.freeze({
   }),
   selection: () => (state.ui.multi?.length ? [...state.ui.multi] : state.ui.selection ? [state.ui.selection] : []),
   select: id => commit(() => setSelection(id), { history: false }),
-  get: id => { const b = find(id); return b ? structuredClone(b) : null; },
+  get: id => { const b = find(id); return b ? shareCopy(b) : null; },
   update: (id, props) => { const b = find(id); if (b) commit(() => Object.assign(b, props)); return !!b; },
   remove: id => { const s = currentSlide(); commit(() => { s.blocks = s.blocks.filter(b => b.id !== id); }); },
   on: (ev, fn) => (ev === 'change' ? subscribe(() => fn(Revela)) : () => {}),

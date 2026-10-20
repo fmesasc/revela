@@ -185,7 +185,8 @@ const writeIdb = (deck, local) => (idbQueue = idbQueue.then(async () => {
 export async function tidyStored(light) {
   const used = usedRefs(light, new Set()), whole = [];
   // (What is copied, for another tab or a later paste — features/document/clipboard.js —: its files kept too.)
-  try { usedRefs(JSON.parse(localStorage.getItem('revela.clipboard.v1') || 'null'), used); } catch {}
+  // (And those of the slides saved as templates — features/document/templates.js.)
+  for (const k of ['revela.clipboard.v1', 'revela.templates.v1']) try { usedRefs(JSON.parse(localStorage.getItem(k) || 'null'), used); } catch {}
   await verEach(v => { usedRefs(v.deck, used); if (v.deck && !hasRefs(v.deck) && approxSize(v.deck) > 2e6) whole.push(v.id); }).catch(() => {});
   for (const id of whole) { const v = await verGet(id); if (v?.deck && !hasRefs(v.deck)) await verPut({ ...v, deck: await dehydrate(v.deck) }); }
   await collectGarbage(null, used);              // (the files just stored for those versions are recent: kept)

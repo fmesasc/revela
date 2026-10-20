@@ -9,7 +9,7 @@
 
 import { BG_REMOVAL } from '../../core/vendor.js';
 import { commit, currentSlide, state, setMulti } from '../../core/store.js';
-import { uid } from '../../core/model.js';
+import { uid, shareCopy } from '../../core/model.js';
 import { t } from '../../i18n/index.js';
 import { boxBlur } from '../../render/imagelook.js';
 
@@ -199,7 +199,7 @@ export async function pictureLayers(src) {
 export async function splitLayers(id) {
   const b = currentSlide().blocks.find(x => x.id === id); if (!b || b.type !== 'image') return null;
   const { subject, background } = await pictureLayers(b.src);
-  const top = { ...structuredClone(b), id: uid(), src: subject, animation: null };
+  const top = { ...shareCopy(b), id: uid(), src: subject, animation: null };
   for (const p of ['anims', 'link', 'zoomable', 'pano']) delete top[p];
   commit(() => {
     const s = currentSlide(), i = s.blocks.indexOf(b); if (i < 0) return;
@@ -625,7 +625,7 @@ export async function splitPieces(id, gap) {
     const dx = bx + bw / 2 - b.w / 2, dy = by + bh / 2 - b.h / 2, cx = b.x + b.w / 2 + dx * cos - dy * sin, cy = b.y + b.h / 2 + dx * sin + dy * cos;
     // (Each edge rounded to the slide's pixel, not the size: half a pixel off at most, on every side.)
     const L = Math.round(cx - bw / 2), T = Math.round(cy - bh / 2);
-    const piece = { ...structuredClone(b), id: uid(), src: c.toDataURL('image/png'), x: L, y: T,
+    const piece = { ...shareCopy(b), id: uid(), src: c.toDataURL('image/png'), x: L, y: T,
       w: Math.max(1, Math.round(cx + bw / 2) - L), h: Math.max(1, Math.round(cy + bh / 2) - T), fit: b.fit === 'fill' ? 'fill' : 'contain', groupId: group, animation: null };
     for (const p of ['crop', 'uncropped', 'focusX', 'focusY', 'ratio', 'mask', 'focusBlur', 'reflect', 'anims', 'trigger', 'lp', 'morphId', 'zoomable', 'pano']) delete piece[p];
     made.push(piece);

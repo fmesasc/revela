@@ -4953,4 +4953,6 @@ export default {
   "Google Drive (tu cuenta de Google)": "Google Drive (zure Google kontua)",
   "Recomendado: se guarda sola, sin límite de tamaño, y la abres desde cualquier dispositivo.": "Gomendatua: bere kabuz gordetzen da, tamaina-mugarik gabe, eta edozein gailutatik irekitzen duzu.",
   "En tu cuenta de Revela (hasta {max} MB): desde ahí la compartes con personas concretas y ves sus estadísticas.": "Zure Revela kontuan ({max} MB arte): handik pertsona jakinekin partekatzen duzu eta haren estatistikak ikusten dituzu.",
+  "Esta presentación lleva unos {n} MB de fotos, vídeos y sonidos: demasiado para una sola página web (el navegador no puede crear un archivo así). Guárdala como archivo de Revela (Archivo ▸ Guardar) o expórtala a PowerPoint; para verla en otro sitio, preséntala desde Revela.": "Aurkezpen honek {n} MB inguru ditu argazki, bideo eta soinutan: gehiegi web-orri bakar baterako (nabigatzaileak ezin du horrelako fitxategirik sortu). Gorde Revela fitxategi gisa (Fitxategia ▸ Gorde) edo esportatu PowerPointera; beste nonbait erakusteko, aurkeztu Revelatik.",
+  "No se pudo guardar la plantilla: el navegador no tiene sitio para ella.": "Ezin izan da txantiloia gorde: nabigatzaileak ez du lekurik.",
 };

@@ -3,7 +3,7 @@
 // it is password-protected) and the code to embed it in an iframe.
 
 import { state } from '../../core/store.js';
-import { buildHTML, offlineHTML } from '../formats/html.js';
+import { buildHTML, offlineHTML, htmlParts, partsBlob } from '../formats/html.js';
 import { download, slug } from '../files.js';
 import { seal, openerPageHTML } from './seal.js';
 import { addShare, viewLink, iframeCode } from './shares.js';
@@ -22,8 +22,8 @@ export async function publish({ where = 'file', password = null, days = 0, domai
   // A file without a password: the presentation itself, which opens anywhere (also offline). (Sealed with a
   // key in its address, it wouldn't open from where it is uploaded — Moodle, a school site — without it.)
   if (where === 'file' && !password) {
-    const { html } = await offlineHTML(buildHTML(deck)), file = `${slug(name)}.html`;
-    download(new Blob([html], { type: 'text/html' }), file);
+    const p = htmlParts(deck), { html } = await offlineHTML(p.html), file = `${slug(name)}.html`;
+    download(partsBlob(html, p.files), file);
     return { where, file, key: null, suffix: '' };
   }
   const { env, key } = await seal(buildHTML(deck), { password });
