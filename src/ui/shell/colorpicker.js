@@ -10,6 +10,8 @@
 // and an eyedropper — the browser's where there is one, else a click on the slide (drawn as it is: a picture's
 // pixels too) or on anything of the window. What is chosen goes into the input with its usual «input» event (and
 // «change» when done), so everything bound to it works as before, undo included; a text selection is kept.
+// Fills, borders and highlights (inputs marked data-alpha) may be see-through: a «Transparencia» slider, and the colour
+// as #rrggbbaa — which a colour input can't hold, so every colour input keeps the whole value aside (initColourPicker).
 
 import { t } from '../../i18n/index.js';
 import { state, currentSlide } from '../../core/store.js';
@@ -26,6 +28,9 @@ function remember(hex) { try { localStorage.setItem(RECENT, JSON.stringify([hex,
 
 // ---- Colours as text ----------------------------------------------------------------------------------------
 const isHex = c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+const isHexA = c => typeof c === 'string' && /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(c);
+// #rrggbb and an opacity 0–1 → #rrggbb, or #rrggbbaa when see-through.
+const withAlpha = (hex, a) => (a >= 0.999 ? hex : hex + hex2(a * 255));
 const hex2 = n => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0');
 export const rgbHex = (r, g, b) => '#' + hex2(r) + hex2(g) + hex2(b);
 // Whatever is typed or pasted (#abc, #aabbcc, aabbcc, rgb(…), a CSS name…) → #rrggbb, or null.
@@ -66,7 +71,7 @@ function apply(hex, done = false) {
   if (!cur || !isHex(hex)) return;
   cur.value = hex; paint();
   restoreSelection();
-  cur.input.value = hex; cur.input.dispatchEvent(new Event('input', { bubbles: true }));
+  cur.input.value = withAlpha(hex, cur.alpha); cur.input.dispatchEvent(new Event('input', { bubbles: true }));
   if (done) { cur.input.dispatchEvent(new Event('change', { bubbles: true })); remember(hex); }
 }
 function paint() {
@@ -76,6 +81,9 @@ function paint() {
   pop.querySelector('.cp-hue').value = String(Math.round(hsv.h));
   pop.querySelector('.cp-now').style.background = value;
   const code = pop.querySelector('.cp-code'); if (document.activeElement !== code) code.value = value;
+  const al = pop.querySelector('.cp-alpha');
+  if (al) { al.value = String(Math.round((1 - cur.alpha) * 100)); pop.querySelector('.cp-alpha-v').textContent = al.value + ' %';
+    al.style.background = `linear-gradient(to right,${value},${value}00),repeating-conic-gradient(#ccc 0 25%,#fff 0 50%) 0 0/10px 10px`; }
 }
 const swatches = (cols, label) => (cols.length ? `<div class="cp-row"><span>${label}</span><div class="cp-sw">${cols.map(c => `<button type="button" data-c="${c}" title="${c}" style="background:${c}"></button>`).join('')}</div></div>` : '');
 
@@ -83,18 +91,21 @@ export function openColourPicker(input) {
   closeColourPicker();
   // (Words selected in the text being edited: selected again before each colour goes in — it is applied to them.)
   const tc = textCaret(), caret = tc && tc.end > tc.start && getSelection().toString() ? tc : null;
-  const value = isHex(input.value) ? input.value.toLowerCase() : '#000000';
+  const full = [input.value, input.getAttribute('value')].find(isHexA)?.toLowerCase() || '#000000';
+  const value = full.slice(0, 7), canAlpha = input.dataset.alpha != null;
+  const alpha = canAlpha && full.length === 9 ? parseInt(full.slice(7), 16) / 255 : 1;
   const theme = (() => { try { return [...new Set([...paletteColours(), ...kitColours()].map(c => String(c).toLowerCase()).filter(isHex))].slice(0, 20); } catch { return []; } })();
   const pop = document.createElement('div');
   pop.className = 'popover cp-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', t('Color'));
   pop.innerHTML = `${swatches(theme, t('Tema'))}${swatches(STANDARD, t('Estándar'))}${swatches(recent(), t('Recientes'))}
     <div class="cp-sv"><span class="cp-dot"></span></div>
     <input type="range" class="cp-hue" min="0" max="359" step="1" aria-label="${t('Tono')}">
+    ${canAlpha ? `<label class="cp-al"><span>${t('Transparencia')}</span><input type="range" class="cp-alpha" min="0" max="100" step="1"><b class="cp-alpha-v"></b></label>` : ''}
     <div class="cp-bar"><span class="cp-now"></span><input class="cp-code" spellcheck="false" aria-label="${t('Código del color')}">
       <button type="button" class="cp-copy" title="${t('Copiar el código')}"><i class="ms">content_copy</i></button>
       <button type="button" class="cp-drop" title="${t('Cuentagotas: toma el color de un punto de la diapositiva o de la ventana')}"><i class="ms">colorize</i></button></div>`;
   document.body.appendChild(pop);
-  cur = { input, pop, caret, value, hsv: toHsv(value) };
+  cur = { input, pop, caret, value, alpha, hsv: toHsv(value) };
   keepFocus(pop);
   place(pop, input);
   paint();
@@ -121,6 +132,9 @@ export function openColourPicker(input) {
   const hue = pop.querySelector('.cp-hue');
   hue.addEventListener('input', () => { cur.hsv = { ...cur.hsv, h: +hue.value, s: cur.hsv.s || 1, v: cur.hsv.v || 1 }; apply(fromHsv(cur.hsv)); });
   hue.addEventListener('change', () => apply(cur.value, true));
+  const al = pop.querySelector('.cp-alpha');
+  al?.addEventListener('input', () => { cur.alpha = 1 - +al.value / 100; apply(cur.value); });
+  al?.addEventListener('change', () => apply(cur.value, true));
   // The code: typed or pasted, applied with Enter (or on leaving it).
   const code = pop.querySelector('.cp-code');
   const typed = () => { const c = parseColour(code.value); if (c) { cur.hsv = toHsv(c); apply(c, true); } else code.value = cur.value; };
@@ -136,7 +150,8 @@ export function closeColourPicker() {
   document.removeEventListener('pointerdown', outside, true); document.removeEventListener('keydown', onKey, true);
 }
 const outside = e => { if (cur && !cur.pop.contains(e.target) && !e.target.closest?.('.cp-eyedrop')) closeColourPicker(); };
-const onKey = e => { if (e.key === 'Escape' && cur && !e.target.closest?.('.cp-code')) { e.preventDefault(); closeColourPicker(); } };
+// (Esc closes only the picker: the object stays selected.)
+const onKey = e => { if (e.key === 'Escape' && cur && !e.target.closest?.('.cp-code')) { e.preventDefault(); e.stopImmediatePropagation(); closeColourPicker(); } };
 function place(pop, input) {
   const a = (input.closest('label') || input).getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
   let x = Math.min(Math.max(8, a.left), innerWidth - w - 8), y = a.bottom + 6;
@@ -207,7 +222,22 @@ async function colourAt(x, y, drawn, picture) {
 
 // ---- Every colour input -------------------------------------------------------------------------------------
 // A click on one (or on its label; or Enter / Space on it): this picker, not the browser's.
+// (Every colour input holds its whole value — #rrggbbaa too — beside the #rrggbb it can show: set as usual, read as
+// usual, by every part of the app.)
+let patched = false;
+function keepWholeValues() {
+  if (patched || typeof HTMLInputElement === 'undefined') return; patched = true;
+  const d = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  Object.defineProperty(HTMLInputElement.prototype, 'value', { ...d,
+    get() { const v = d.get.call(this); if (this.type !== 'color') return v; const w = this.dataset.value; return w && w.slice(0, 7) === v.toLowerCase() ? w : v; },
+    set(v) {
+      if (this.type === 'color' && typeof v === 'string' && /^#[0-9a-f]{8}$/i.test(v)) { this.dataset.value = v.toLowerCase(); d.set.call(this, v.slice(0, 7)); return; }
+      if (this.type === 'color') delete this.dataset.value;
+      d.set.call(this, v);
+    } });
+}
 export function initColourPicker() {
+  keepWholeValues();
   const onClick = e => {
     const inp = e.target instanceof HTMLInputElement && e.target.type === 'color' ? e.target : null;
     if (!inp || inp.disabled || inp.dataset.native != null) return;

@@ -2179,12 +2179,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.querySelector('[data-action="clip-copy"]').disabled, 'Copiar activo con selección');
     D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true }));
     assert(C.hasClipboard(), 'Ctrl+C copia'); eq(C.clipboardData().blocks.length, 3, 'dos objetos y su conector');
-    D.querySelector('[data-action="clip-paste"]').click(); await sleep(10);
+    // (Pegar looks at the system clipboard first — features/document/syspaste.js —: a moment.)
+    const pasteBtn = async n => { D.querySelector('[data-action="clip-paste"]').click(); for (let i = 0; i < 100 && slide().blocks.length < n; i++) await sleep(20); };
+    await pasteBtn(6);
     const s = slide(); eq(s.blocks.length, 6, 'pegado en la misma diapositiva');
     const pa = s.blocks[3]; eq(pa.x, a.x + 24, 'desplazado para no tapar el original');
     const pc = s.blocks.find((x, i) => i >= 3 && x.type === 'connector');
     assert(pc.from === s.blocks[3].id && pc.to === s.blocks[4].id, 'el conector une las copias');
-    D.querySelector('[data-action="clip-paste"]').click(); await sleep(10);
+    await pasteBtn(9);
     eq(slide().blocks[6].x, a.x + 48, 'segundo pegado, más desplazado');
     R.slides.addSlide('blank'); await sleep(10);
     const dt = new W.DataTransfer(); dt.setData('text/plain', 'revela-objects:' + JSON.stringify(C.clipboardData()));
@@ -2422,6 +2424,63 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const other = Object.keys(R.palettes.PALETTES).find(k => k !== (R.state.deck.palette || 'revela') && R.palettes.PALETTES[k].accents[0].toLowerCase() !== a0.toLowerCase());
     R.palettes.applyPalette(other); await sleep(20);
     eq(slide().blocks.find(x => x.id === tb.id).cellBg['2,2'].toLowerCase(), R.palettes.PALETTES[other].accents[0].toLowerCase(), 'cambiar los colores del tema cambia el de la celda');
+  });
+
+  await test('transparencia en los colores de relleno y borde: en el selector, en la diapositiva y al exportar a PowerPoint', async () => {
+    reset(); const W = frame.contentWindow, CP = await W.eval("import('/src/ui/shell/colorpicker.js')");
+    R.blocks.addShape('rect'); const b = last(); R.state.ui.multi = []; select(b); await sleep(20);
+    const inp = D.querySelector('#ribbon [data-shape-fill]');
+    inp.dispatchEvent(new W.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(10);
+    const al = D.querySelector('.cp-pop .cp-alpha'); assert(al, 'el relleno tiene «Transparencia»');
+    D.querySelector('.cp-pop [data-c="#ff0000"]').click(); await sleep(20);
+    al.value = '50'; al.dispatchEvent(new W.Event('input', { bubbles: true })); al.dispatchEvent(new W.Event('change', { bubbles: true })); await sleep(30);
+    const fill = () => slide().blocks.find(x => x.id === b.id).fill;
+    eq(fill(), '#ff000080', 'rojo al 50 %');
+    eq(inp.value, '#ff000080', 'el selector la conserva');
+    CP.closeColourPicker();
+    const svg = D.querySelector(`#stage .block[data-id="${b.id}"] [fill]`);
+    assert(svg && /#ff000080|rgba\(255,\s*0,\s*0,\s*0\.5/i.test(svg.getAttribute('fill') + getComputedStyle(svg).fill), 'en la diapositiva, transparente: ' + svg?.getAttribute('fill'));
+    // The text colour has none (a font colour can't be see-through in every program).
+    D.querySelector('#ribbon [data-color]').dispatchEvent(new W.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(10);
+    assert(D.querySelector('.cp-pop') && !D.querySelector('.cp-pop .cp-alpha'), 'el color del texto, sin transparencia'); CP.closeColourPicker();
+    // PowerPoint: the fill's transparency.
+    const PX = await W.eval("import('/src/io/formats/pptx-export.js')"), Z = await W.eval("import('/src/io/formats/zipstore.js')");
+    const idx = await Z.unzipIndex(new W.Blob([await PX.buildPptxBlob(R.state.deck)]));
+    const xml = await (await idx.get('ppt/slides/slide1.xml').read()).text();
+    assert(/<a:srgbClr val="FF0000"><a:alpha val="50000"\/>/.test(xml), 'exportado con su transparencia');
+  });
+
+  await test('Mayús+clic en varios objetos y arrastrar: sin selección de texto del navegador ni su arrastre (la «sombra» de toda la diapositiva)', async () => {
+    reset(); const W = frame.contentWindow; R.blocks.addText(); const a = last(); R.blocks.addText(); const c = last();
+    R.store.commit(() => { a.html = 'Uno'; c.html = 'Dos'; c.x = a.x + 300; }); R.state.ui.multi = []; select(a); await sleep(30);
+    // A text selection across the slide, as a Shift+click leaves it.
+    const r = D.createRange(); r.selectNodeContents(D.getElementById('stage')); W.getSelection().removeAllRanges(); W.getSelection().addRange(r);
+    const el = D.querySelector(`#stage .block[data-id="${c.id}"]`), box = el.getBoundingClientRect();
+    const down = new W.PointerEvent('pointerdown', { bubbles: true, cancelable: true, shiftKey: true, clientX: box.left + 5, clientY: box.top + 5, pointerId: 1, button: 0 });
+    el.dispatchEvent(down); await sleep(20);
+    assert(down.defaultPrevented, 'Mayús+clic no deja seleccionar texto'); eq(W.getSelection().toString(), '', 'la selección de texto, quitada');
+    eq(R.store.selectedIds().sort().join(), [a.id, c.id].sort().join(), 'los dos, seleccionados');
+    const ds = new W.DragEvent('dragstart', { bubbles: true, cancelable: true }); el.dispatchEvent(ds);
+    assert(ds.defaultPrevented, 'el navegador no arrastra nada por su cuenta');
+    el.dispatchEvent(new W.PointerEvent('pointerup', { bubbles: true, pointerId: 1 }));
+  });
+
+  await test('varios objetos del mismo tipo: sus opciones para todos a la vez, y animaciones añadidas a todos', async () => {
+    reset(); const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    R.blocks.addImage(PNG); const a = last(); R.blocks.addImage(PNG); const c = last(); await sleep(20);
+    R.store.setMulti([a.id, c.id]); R.state.ui.selection = a.id; R.render(); await sleep(30);
+    const tab = D.querySelector('#ribbon [data-tab="ctx"]'); assert(/\(2\)/.test(tab.textContent) && !/Varios/.test(tab.textContent), 'la pestaña de las imágenes, para las dos: ' + tab.textContent);
+    const page = D.querySelector('#ribbon [data-page="ctx"]');
+    const fill = [...page.querySelectorAll('button')].find(x => /Rellenar/.test(x.title || x.textContent)); assert(fill, 'con sus opciones (Rellenar)');
+    fill.click(); await sleep(30);
+    const get = id => slide().blocks.find(x => x.id === id);
+    eq([get(a.id).fit, get(c.id).fit].join(), 'cover,cover', 'aplicado a las dos');
+    assert([...page.querySelectorAll('button')].some(x => /Izquierda/.test(x.title || x.textContent)), 'y las de varios objetos (alinear)');
+    // «Añadir animación» with both selected: each gets it.
+    R.trans.addAnimation('fade-in'); await sleep(20);
+    assert(get(a.id).animation?.effect === 'fade-in' && get(c.id).animation?.effect === 'fade-in', 'la animación, a las dos');
+    R.trans.clearAnimation(); await sleep(20);
+    assert(!get(a.id).animation && !get(c.id).animation, 'y quitada de las dos');
   });
 
   await test('cuentagotas: aplica el color elegido al objetivo', async () => {

@@ -124,9 +124,11 @@ function selectAllIfCollapsed(el) {
 
 // ---- Character formatting (needs a selection) -----------------------------
 export function exec(cmd, value = null) {
-  // (Several boxes: each one whole — bold, a colour… — as if all its text were selected.)
+  // (Several boxes — or one selected as an object, not being written in —: each one whole — bold, a colour… — as if all
+  // its text were selected, as PowerPoint does. Before, with the box only selected, a colour went nowhere.)
   const cs = ctxs();
-  if (cs.length > 1) {
+  const writing = el => el.isContentEditable && el.contains(window.getSelection().anchorNode);
+  if (cs.length > 1 || (cs.length === 1 && !/^insert/.test(cmd) && !writing(cs[0].el) && cs[0].el.textContent.trim())) {
     const out = cs.map(c => {
       const was = c.el.getAttribute('contenteditable'); c.el.contentEditable = 'true';
       const sel = window.getSelection(), r = document.createRange(); r.selectNodeContents(c.el); sel.removeAllRanges(); sel.addRange(r);

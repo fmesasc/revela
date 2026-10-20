@@ -42,6 +42,7 @@ import { closePopover, togglePopover } from './popovers.js';
 import { syncMasterRibbon } from '../shell/masterview.js';
 import { syncCharState, syncBoxFormat, syncSlideState, press } from './reflect.js';
 import { wireAnimRibbon, syncAnimRibbon } from './animribbon.js';
+import { canReadClipboard } from '../../features/document/syspaste.js';
 
 // Insert ▸ Templates buttons that are the deck's layouts.
 const TEMPLATE_LAYOUT = { title: 'title', titleContent: 'titleContent', twoContent: 'twoContent', sectionHeader: 'section', blank: 'blank' };
@@ -409,7 +410,7 @@ export function renderRibbon(change) {
     for (const [a, ok] of Object.entries(need)) document.querySelectorAll(`[data-action="${a}"]`).forEach(el => { el.disabled = !ok; }); }
   // (From the slides panel: the selected slides.)
   { const has = !!selectedBlock() || slidesFocused(); ['clip-copy', 'clip-cut', 'obj-duplicate'].forEach(a => { const el = $(`[data-action="${a}"]`); if (el) el.disabled = !has; });
-    const p = $('[data-action="clip-paste"]'); if (p) p.disabled = !clip.hasClipboard() && !(state.ui.navFocus && slides.hasSlideClip());
+    const p = $('[data-action="clip-paste"]'); if (p) p.disabled = !clip.hasClipboard() && !(state.ui.navFocus && slides.hasSlideClip()) && !canReadClipboard();
     // (Selection as a picture: like Copy, off without anything selected — not a button that answers with an alert.)
     const sp = $('[data-action="save-picture"]'); if (sp) sp.disabled = !selectedBlock() && !(state.ui.multi || []).length; }
   $('[data-action="mark-final"]')?.classList.toggle('on', protect.isFinal());

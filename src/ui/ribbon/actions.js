@@ -92,6 +92,7 @@ import { setView } from '../shell/views.js';
 import { openDevMode, insertHTML } from '../dialogs/devmode.js';
 import { openLanguages } from '../dialogs/languages.js';
 import { openBroadcast } from '../shell/broadcast.js';
+import { pasteAnything } from '../../features/document/syspaste.js';
 
 const $ = s => document.querySelector(s);
 
@@ -284,7 +285,9 @@ export const ACTIONS = {
   // (From the slides panel, with no object selected: the selected slides.)
   'clip-copy': () => (slidesFocused() ? slides.copySlides() : clip.copySelected()),
   'clip-cut': () => (slidesFocused() ? slides.cutSlides() : clip.cutSelected()),
-  'clip-paste': () => (state.ui.navFocus && slides.hasSlideClip() ? slides.pasteSlides() : clip.paste()),
+  // (Also what another program copied: features/document/syspaste.js.)
+  'clip-paste': () => (state.ui.navFocus && slides.hasSlideClip() ? slides.pasteSlides()
+    : pasteAnything().then(ok => { if (!ok) toast(t('No hay nada que pegar. Si lo copiaste en otro programa, prueba con Ctrl+V.')); })),
   'obj-duplicate': () => (slidesFocused() ? slides.duplicateSlide() : blocks.duplicateSelected()),
   'group': () => blocks.groupSelected(),
   'ungroup': () => blocks.ungroupSelected(),

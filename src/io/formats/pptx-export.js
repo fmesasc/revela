@@ -36,6 +36,13 @@ const IN = px => +(px / 96).toFixed(3);
 const DASH = { dash: 'dash', dot: 'sysDot', dashDot: 'dashDot' };
 const dashOf = d => (DASH[d] ? { dashType: DASH[d] } : {});                 // 96 dpi → inches
 const hex = c => (String(c || '').match(/^#?([0-9a-fA-F]{6})/) || [])[1] || null;
+// A see-through colour (#rrggbbaa: ui/shell/colorpicker.js) as PowerPoint's transparency, 0–100 — combined with the
+// object's own opacity (see) when it has one.
+const tr = (c, see = {}) => {
+  const m = /^#?[0-9a-f]{6}([0-9a-f]{2})$/i.exec(String(c || '')); if (!m) return {};
+  const t = 100 - (100 - Math.round((1 - parseInt(m[1], 16) / 255) * 100)) * (100 - (see.transparency || 0)) / 100;
+  return t > 0 ? { transparency: Math.round(t) } : {};
+};
 // A cell's shading as PowerPoint wants it (RRGGBB), from any way render/svg.js cellBg lets through.
 const cellHex = c => { const m = String(c).match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i), n = String(c).match(/^rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)/i);
   return m ? (m[1] + m[1] + m[2] + m[2] + m[3] + m[3]).toUpperCase() : n ? n.slice(1).map(v => Math.min(255, +v).toString(16).padStart(2, '0')).join('').toUpperCase() : hex(c); };
@@ -202,7 +209,7 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
         ...(fam && { fontFace: fam }), ...(b.fontWeight === '700' && { bold: true }), ...(b.fontStyle === 'italic' && { italic: true }),
         ...(b.lineHeight && { lineSpacingMultiple: +b.lineHeight }) };
       const opts = { ...pos, valign: { middle: 'middle', bottom: 'bottom' }[b.vAlign] || 'top', margin: 4,
-        ...(hex(b.bg) && { fill: { color: hex(b.bg) } }), ...(hex(b.borderColor) && { line: { color: hex(b.borderColor), width: 1.5, ...dashOf(b.borderDash) } }),
+        ...(hex(b.bg) && { fill: { color: hex(b.bg), ...tr(b.bg) } }), ...(hex(b.borderColor) && { line: { color: hex(b.borderColor), width: 1.5, ...dashOf(b.borderDash), ...tr(b.borderColor) } }),
         ...(b.radius && hex(b.bg) && { shape: pptx.ShapeType.roundRect, rectRadius: Math.min(0.5, b.radius / 100) }) };
       slide.addText(htmlToRuns(b.html, base), opts);
     } else if (b.type === 'code') {
@@ -265,29 +272,29 @@ function addBlock(slide, b, pptx, raster = new Map(), blocksById = new Map(), li
     } else if (b.type === 'shape') {
       if (b.shape === 'custom' && b.rings?.length) {
         // Merged shape → custom geometry (points in inches inside the box).
-        const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497', ...see } : { type: 'none' };
+        const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497', ...see, ...tr(b.fill, see) } : { type: 'none' };
         const points = b.rings.flatMap(r => r.map(([u, v], i) => ({ x: IN(u / 100 * b.w), y: IN(v / 100 * b.h), ...(i === 0 && { moveTo: true }) }))
           .concat({ close: true }));
-        slide.addShape(pptx.ShapeType.custGeom, { ...pos, ...hl, points, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash), ...see } });
+        slide.addShape(pptx.ShapeType.custGeom, { ...pos, ...hl, points, fill, line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash), ...see, ...tr(b.stroke, see) } });
       } else if (b.shape === 'line' || b.shape === 'arrow' || b.shape === 'doublearrow') {
-        slide.addShape(pptx.ShapeType.line, { ...pos, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash), ...see,
+        slide.addShape(pptx.ShapeType.line, { ...pos, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash), ...see, ...tr(b.stroke, see),
           endArrowType: b.shape === 'line' ? 'none' : 'triangle', ...(b.shape === 'doublearrow' && { beginArrowType: 'triangle' }) } });
       } else if (b.shape === 'pathline') {                 // an open path (an elbow or curved connector): a freeform, its arrowheads
         const P = (u, v) => ({ x: IN(u / 100 * b.w), y: IN(v / 100 * b.h) });
         const points = (b.route || []).filter(c => Array.isArray(c) && /^[MLC]$/.test(c[0])).map(c => (c[0] === 'C'
           ? { ...P(c[5], c[6]), curve: { type: 'cubic', x1: P(c[1], c[2]).x, y1: P(c[1], c[2]).y, x2: P(c[3], c[4]).x, y2: P(c[3], c[4]).y } }
           : { ...P(c[1], c[2]), ...(c[0] === 'M' && { moveTo: true }) }));
-        slide.addShape(pptx.ShapeType.custGeom, { ...pos, fill: { type: 'none' }, points, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash), ...see,
+        slide.addShape(pptx.ShapeType.custGeom, { ...pos, fill: { type: 'none' }, points, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash), ...see, ...tr(b.stroke, see),
           ...(b.arrowEnd && { endArrowType: 'triangle' }), ...(b.arrowStart && { beginArrowType: 'triangle' }) } });
       } else if (b.shape === 'curve') {                    // the same curve, as a PowerPoint freeform (no fill)
         const P = (u, v) => ({ x: IN(u / 100 * b.w), y: IN(v / 100 * b.h) });
-        slide.addShape(pptx.ShapeType.custGeom, { ...pos, fill: { type: 'none' }, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash), ...see },
+        slide.addShape(pptx.ShapeType.custGeom, { ...pos, fill: { type: 'none' }, line: { color: hex(b.stroke) || '888888', width: b.strokeWidth || 2, ...dashOf(b.dash), ...see, ...tr(b.stroke, see) },
           points: [{ ...P(3, 82), moveTo: true }, { ...P(97, 82), curve: { type: 'cubic', x1: P(28, -8).x, y1: P(28, -8).y, x2: P(72, -8).x, y2: P(72, -8).y } }] });
       } else {
         // (PptxGenJS knows the folded corner only misspelt, «folderCorner»: given by its real name, it writes it as it is.)
         const st = pptx.ShapeType[SHAPE_MAP[b.shape]] || (SHAPE_MAP[b.shape] === 'foldedCorner' ? 'foldedCorner' : pptx.ShapeType.rect);
-        const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497', ...see } : { type: 'none' };
-        const line = { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash), ...see };
+        const fill = b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497', ...see, ...tr(b.fill, see) } : { type: 'none' };
+        const line = { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth || 1, ...dashOf(b.dash), ...see, ...tr(b.stroke, see) };
         if (b.html && plainText(b.html).trim()) {          // text inside: one PowerPoint shape with its text
           const s2 = shapeTextStyle(b), fam = (s2.fontFamily || deckBodyFont() || '').split(',')[0].replace(/['"]/g, '').trim();
           const base = { ...runLang(b), fontSize: Math.round(s2.fontSize * 0.75), color: hex(s2.color) || hex(deckFg()) || 'FFFFFF', align: s2.textAlign,
@@ -413,8 +420,8 @@ function masterObject(b) {
   // text with that shape. (Not merged shapes, curves or arrows: those are drawn on each slide.)
   if (b.type === 'shape' && SHAPE_MAP[b.shape] && !['custom', 'curve', 'arrow', 'doublearrow'].includes(b.shape) && !(b.html && plainText(b.html).trim())) {
     const see = opacityOf(b) < 1 ? { transparency: Math.round((1 - opacityOf(b)) * 100) } : {};
-    return { text: { text: '', options: { ...pos, shape: SHAPE_MAP[b.shape], fill: b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497', ...see } : { type: 'none' },
-      ...(b.strokeWidth ? { line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth * 0.75, ...dashOf(b.dash), ...see } } : {}) } } };
+    return { text: { text: '', options: { ...pos, shape: SHAPE_MAP[b.shape], fill: b.fill && b.fill !== 'none' ? { color: hex(b.fill) || '3F6497', ...see, ...tr(b.fill, see) } : { type: 'none' },
+      ...(b.strokeWidth ? { line: { color: hex(b.stroke) || '1E2A3A', width: b.strokeWidth * 0.75, ...dashOf(b.dash), ...see, ...tr(b.stroke, see) } } : {}) } } };
   }
   if (b.type === 'image' && /^data:image\/(png|jpe?g|gif)/.test(b.src || '') && !b.crop && !hasLook(b) && !hasDecor(b)) return { image: { ...pos, data: b.src } };
   return null;

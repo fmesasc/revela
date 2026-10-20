@@ -4970,4 +4970,5 @@ export default {
   "Cuentagotas: toma el color de un punto de la diapositiva o de la ventana": "Contagotas: colle a cor dun punto da diapositiva ou da xanela",
   "Copiado: {c}": "Copiado: {c}",
   "Haz clic en la diapositiva (o en cualquier punto de la ventana) para tomar su color. Esc: cancelar.": "Fai clic na diapositiva (ou en calquera punto da xanela) para coller a súa cor. Esc: cancelar.",
+  "No hay nada que pegar. Si lo copiaste en otro programa, prueba con Ctrl+V.": "Non hai nada que pegar. Se o copiaches noutro programa, proba con Ctrl+V.",
 };

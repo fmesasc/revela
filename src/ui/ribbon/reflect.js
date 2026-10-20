@@ -36,11 +36,11 @@ function showColour(sel, v) {
 }
 function toHex(c) {
   if (!c || c === MIXED) return null;
-  if (/^#[0-9a-f]{6}$/i.test(c)) return c.toLowerCase();
+  if (/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(c)) return c.toLowerCase();        // (#rrggbbaa: with its transparency)
   if (/^#[0-9a-f]{3}$/i.test(c)) return '#' + [...c.slice(1)].map(x => x + x).join('').toLowerCase();
   const m = String(c).match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
   if (!m || (m[4] !== undefined && +m[4] === 0)) return null;
-  return '#' + m.slice(1, 4).map(n => (+n).toString(16).padStart(2, '0')).join('');
+  return '#' + m.slice(1, 4).map(n => (+n).toString(16).padStart(2, '0')).join('') + (m[4] !== undefined && +m[4] < 1 ? Math.round(+m[4] * 255).toString(16).padStart(2, '0') : '');
 }
 
 // ---- Character formatting -------------------------------------------------

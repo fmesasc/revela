@@ -39,6 +39,7 @@ const ODF_SHAPE = { rect: 'rectangle', rounded: 'round-rectangle', ellipse: 'ell
   parallelogram: 'parallelogram', trapezoid: 'trapezoid', chevron: 'chevron', plus: 'cross' };
 const FROM_ODF = Object.fromEntries(Object.entries(ODF_SHAPE).map(([k, v]) => [v, k]));
 const hex = c => (String(c || '').match(/#[0-9a-f]{6}/i) || [null])[0];
+const alphaPct = c => { const m = /^#[0-9a-f]{6}([0-9a-f]{2})$/i.exec(String(c || '')); return m ? Math.round(parseInt(m[1], 16) / 2.55) : null; };
 
 // ---- Export ----------------------------------------------------------------
 // Slide transitions and auto-advance (SMIL types, as LibreOffice writes them).
@@ -156,7 +157,9 @@ export async function buildODP(deck = state.deck) {
   const gstyle = (fill, stroke, sw, extra = '', dash = null) => style('graphic', 'gr', `<style:graphic-properties draw:fill="${fill && fill !== 'none' ? 'solid' : 'none'}"`
     + `${hex(fill) ? ` draw:fill-color="${hex(fill)}"` : ''} draw:stroke="${stroke && stroke !== 'none' && sw !== 0 ? (dash ? 'dash' : 'solid') : 'none'}"`
     + `${dash && stroke && stroke !== 'none' && sw !== 0 ? ` draw:stroke-dash="Revela_${dash}"` : ''}`
-    + `${hex(stroke) ? ` svg:stroke-color="${hex(stroke)}"` : ''}${sw ? ` svg:stroke-width="${cm(sw)}"` : ''}${extra}/>`);
+    + `${hex(stroke) ? ` svg:stroke-color="${hex(stroke)}"` : ''}${sw ? ` svg:stroke-width="${cm(sw)}"` : ''}`
+    // (A see-through colour, #rrggbbaa — ui/shell/colorpicker.js —: its opacity.)
+    + `${alphaPct(fill) != null ? ` draw:opacity="${alphaPct(fill)}%"` : ''}${alphaPct(stroke) != null ? ` svg:stroke-opacity="${alphaPct(stroke)}%"` : ''}${extra}/>`);
 
   const svgPicture = (b, svg) => {
     const n = pic(new Blob([`<?xml version="1.0" encoding="UTF-8"?>${svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')}`], { type: 'image/svg+xml' }), 'svg');

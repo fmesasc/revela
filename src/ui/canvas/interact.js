@@ -70,9 +70,14 @@ export function startDrag(ev, b, el) {
     exitEdit(el);                                          // grabbed the frame: leave edit and move
   }
   ev.stopPropagation();
+  // (No text of the slide selected by the browser meanwhile — a Shift+click extended it across the slide —: dragging
+  // then started the browser's own drag of that text, a ghost of the whole slide. Francisco: «se arrastra como toda la
+  // diapositiva en el previo».)
+  const ws = getSelection();
+  if (ws.rangeCount && !ws.anchorNode?.parentElement?.closest?.('.editing')) ws.removeAllRanges();
 
   // Shift‑click toggles the block in the selection without moving it.
-  if (ev.shiftKey) { commit(() => toggleSelection(b.id), { history: false }); return; }
+  if (ev.shiftKey) { ev.preventDefault(); commit(() => toggleSelection(b.id), { history: false }); return; }
   // A plain click on an unselected block selects just it; clicking one that is
   // already part of a multi‑selection keeps the group so it can be moved together.
   if (!isSelected(b.id)) commit(() => selectWithGroup(b.id), { history: false });

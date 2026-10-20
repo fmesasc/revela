@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window: the core defaults (the menu bar, events, the app's version), full screen from the menu, and opening only revelaslides.com pages in the browser (signing in, payments, the guides). Files: only through the app's own commands (main.rs) — saving where the person chooses, reading what was opened with Revela. revela:// links (deep-link) are read by the app itself (main.rs), not the page. No other file-system or shell access.",
+  "description": "The main window: the core defaults (the menu bar, events, the app's version), full screen from the menu, and opening only revelaslides.com pages in the browser (signing in, payments, the guides). Files: only through the app's own commands (main.rs) — saving where the person chooses, reading what was opened with Revela. revela:// links (deep-link) are read by the app itself (main.rs), not the page. No other file-system or shell access. The clipboard: read only (text and pictures), for pasting what another program copied.",
   "windows": [
     "main"
   ],
@@ -17,6 +17,8 @@
           "url": "https://revelaslides.com/*"
         }
       ]
-    }
+    },
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-read-image"
   ]
 }

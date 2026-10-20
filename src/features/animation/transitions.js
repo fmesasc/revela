@@ -302,16 +302,19 @@ export function setAnimation(effect) {
     normalizeAnim();
   });
 }
-// One more animation for the selected object, after the ones it has (by default
-// right after the previous one). Returns its index; it becomes the one edited.
+// One more animation for each selected object, after the ones it has (by default right after the previous one) — all
+// of them at once, as PowerPoint's «Add animation» with several selected. Returns the primary one's index; it becomes
+// the one edited.
 export function addAnimation(effect, props = {}) {
-  const b = selectedBlock(); if (!b) return -1;
+  const list = animSelection(), b = selectedBlock() && list.includes(selectedBlock()) ? selectedBlock() : list[0]; if (!b) return -1;
   let idx = 0;
   commit(() => {
-    const a = b.animation ? fresh(effect, { start: 'afterPrev', ...props }) : fresh(effect, props);
-    if (!b.animation) b.animation = a; else (b.anims ||= []).push(a);
-    normalizeAnim();
-    idx = animsOf(b).indexOf(a);
+    for (const x of list) {
+      const a = x.animation ? fresh(effect, { start: 'afterPrev', ...props }) : fresh(effect, props);
+      if (!x.animation) x.animation = a; else (x.anims ||= []).push(a);
+      normalizeAnim();
+      if (x === b) idx = animsOf(b).indexOf(a);
+    }
     state.ui.animEdit = { id: b.id, i: idx };
   });
   return idx;
@@ -339,8 +342,8 @@ export function pasteAnimationTo(ids, anim) {
   });
 }
 export function clearAnimation() {
-  const b = selectedBlock(); if (!b) return;
-  commit(() => { b.animation = null; delete b.anims; normalizeAnim(); });
+  const list = animSelection(); if (!list.length) return;
+  commit(() => { for (const b of list) { b.animation = null; delete b.anims; } normalizeAnim(); });
 }
 
 // The slide's animated blocks, in the order of their first animation.

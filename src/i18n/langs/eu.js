@@ -4970,4 +4970,5 @@ export default {
   "Cuentagotas: toma el color de un punto de la diapositiva o de la ventana": "Tanta-kontagailua: hartu diapositibako edo leihoko puntu baten kolorea",
   "Copiado: {c}": "Kopiatuta: {c}",
   "Haz clic en la diapositiva (o en cualquier punto de la ventana) para tomar su color. Esc: cancelar.": "Egin klik diapositiban (edo leihoko edozein puntutan) haren kolorea hartzeko. Esc: utzi.",
+  "No hay nada que pegar. Si lo copiaste en otro programa, prueba con Ctrl+V.": "Ez dago itsasteko ezer. Beste programa batean kopiatu baduzu, saiatu Ctrl+V-rekin.",
 };

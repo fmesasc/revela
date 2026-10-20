@@ -62,6 +62,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { CP.useNativeEyedropper(true); CP.closeColourPicker(); }
   });
 
+  await test('color del texto con el objeto seleccionado (sin escribir dentro): a todo su texto, en un cuadro y en una forma; Esc cierra el selector sin deseleccionar', async () => {
+    const W = frame.contentWindow;
+    const pick = async (sel, c) => { D.querySelector(sel).dispatchEvent(new W.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(20);
+      const sw = D.querySelector(`.cp-pop [data-c="${c}"]`); sw.dispatchEvent(new W.MouseEvent('mousedown', { bubbles: true, cancelable: true })); sw.click(); await sleep(50);
+      D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); await sleep(20); };
+    for (const kind of ['text', 'shape']) {
+      reset(); if (kind === 'text') R.blocks.addText(); else R.blocks.addShape('rect');
+      const b = last(); R.store.commit(() => { b.html = 'Hola mundo'; }); R.state.ui.multi = []; select(b); await sleep(30); D.activeElement?.blur?.();
+      const now = () => slide().blocks.find(x => x.id === b.id);
+      await pick('#ribbon [data-color]', '#ff0000');
+      assert(/(#ff0000|rgb\(255,\s*0,\s*0\))[^>]*>Hola mundo/i.test(now().html), kind + ': todo su texto, en rojo: ' + now().html);
+      eq(R.state.ui.selection, b.id, kind + ': sigue seleccionado tras cerrar con Esc');
+      await pick('#ribbon [data-highlight]', '#ffff00');
+      assert(/background-color:\s*rgb\(255,\s*255,\s*0\)/.test(now().html), kind + ': y resaltado: ' + now().html);
+      if (kind === 'shape') { await pick('#ribbon [data-shape-fill]', '#00b050'); eq(now().fill, '#00b050', 'y su relleno'); }
+    }
+  });
+
   await test('fuentes propias: se suben, van dentro de la presentación y se usan como las demás', async () => {
     reset(); const W = frame.contentWindow, F = await W.eval("import('/src/features/design/fonts.js')");
     const data = F.fontDataURL('data:application/octet-stream;base64,AAEAAAALAIAAAwAwT1MvMg==', 'MiMarca-Bold.ttf');

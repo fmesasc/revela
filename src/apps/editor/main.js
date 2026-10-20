@@ -21,6 +21,7 @@ import * as openfile from '../../ui/shell/openfile.js';
 import * as files from '../../features/content/files.js';
 import { subscribe, state, undo, redo, selectedBlock, selectedBlocks } from '../../core/store.js';
 import * as clip from '../../features/document/clipboard.js';
+import * as syspaste from '../../features/document/syspaste.js';
 import { sanitizeDeck } from '../../features/document/sanitize.js';
 import { initCanvas, renderCanvas, cycleSelection } from '../../ui/canvas/canvas.js';
 import { nudge } from '../../ui/canvas/interact.js';
@@ -54,7 +55,7 @@ import * as update from '../../ui/shell/update.js';
 import * as palette from '../../ui/shell/palette.js';
 import { initDraw } from '../../ui/shell/draw.js';
 import { initI18n, t } from '../../i18n/index.js';
-import { deleteSelected, duplicateSelected, groupSelected, ungroupSelected, addImage, addTableFromText, addText } from '../../features/document/blocks.js';
+import { deleteSelected, duplicateSelected, groupSelected, ungroupSelected } from '../../features/document/blocks.js';
 import { openFindPanel } from '../../ui/dialogs/find.js';
 // Namespaces exposed to the test harness (see tests/).
 import { initHome } from '../../ui/shell/home.js';
@@ -258,29 +259,25 @@ initDraw();
 initModalKeys();
 palette.initPalette();
 document.addEventListener('keydown', keyboard);
-// Paste onto the slide (not while typing): an image becomes a picture, cells
-// copied from a spreadsheet become a table, other text a text box.
+// Paste onto the slide (not while typing): Revela's own objects; from other programs (PowerPoint, Word, Excel, a web
+// page…) cells become a table, a picture a picture, text a text box with its formatting (features/document/syspaste.js).
+let pasteWait = 0;
 document.addEventListener('paste', e => {
+  clearTimeout(pasteWait);
   const a = document.activeElement;
   if (a?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a?.tagName || '') || document.querySelector('.modal-backdrop')) return;
   const cd = e.clipboardData; if (!cd) return;
+  const got = syspaste.fromEvent(cd);
   // Slides copied in the panel, pasted there.
-  if (state.ui.navFocus && slides.hasSlideClip() && ![...cd.files].length) { e.preventDefault(); slides.pasteSlides(); return; }
-  // Objects copied in Revela (this tab or another one).
-  const own = clip.fromSystemText(cd.getData('text/plain'));
-  if (own || (!cd.getData('text/plain') && ![...cd.files].length && clip.hasClipboard())) { e.preventDefault(); clip.paste(own && !clip.isCurrent(own) ? own : undefined); return; }
-  const img = [...cd.files].find(f => f.type.startsWith('image/'));
-  if (img) {
-    e.preventDefault();
-    const r = new FileReader(); r.onload = () => addImage(r.result); r.readAsDataURL(img);
-    return;
-  }
-  const txt = cd.getData('text/plain');
-  if (!txt || !txt.trim()) return;
-  e.preventDefault();
-  if (txt.includes('\t')) addTableFromText(txt);
-  else addText(txt.trim().split(/\n/).map(l => l.replace(/&/g, '&amp;').replace(/</g, '&lt;')).join('<br>'));
+  if (state.ui.navFocus && slides.hasSlideClip() && !got.files.length) { e.preventDefault(); slides.pasteSlides(); return; }
+  if (!got.files.length && !got.text && !got.html) { if (clip.hasClipboard()) { e.preventDefault(); clip.paste(); } return; }
+  e.preventDefault(); syspaste.pasteData(got);
 });
+// (The desktop app's web view may send no paste event outside a text: there Ctrl+V reads the clipboard itself.)
+document.addEventListener('keydown', e => {
+  if (!globalThis.__TAURI__ || !(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'v' || !syspaste.pastingOnSlide()) return;
+  clearTimeout(pasteWait); pasteWait = setTimeout(() => syspaste.pasteAnything(), 150);
+}, true);
 subscribe(() => render(store.lastChange()));
 // Shared without copies (io/cloud/clouddocs.js): the page knows (no selecting or dragging out, blank printouts), and
 // copying the slide's text or objects says why instead.

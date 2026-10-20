@@ -69,7 +69,10 @@ const chartMap = (b, scope) => blocks.setChartMap(b.id, scope).catch(e => alertD
 const btn = (icon, label, fn, on = null, key = '') => ['btn', icon, label, fn, on, key];
 // Icon only (the name as a tooltip): «Organizar», which every object tab ends with (as on Home).
 const ico = (icon, label, fn, on = null, key = '') => ['ibtn', icon, label, fn, on, key];
-const set = (b, fn) => commit(() => { const x = currentSlide().blocks.find(y => y.id === b.id); if (x) fn(x); });
+const ALPHA_ICONS = new Set(['format_color_fill', 'border_color', 'gradient']);
+// A change to the object — and, with several of the same kind selected, to each of them (peers), as PowerPoint does.
+let peers = [];
+const set = (b, fn) => commit(() => { for (const id of [b.id, ...peers.map(p => p.id)]) { const x = currentSlide().blocks.find(y => y.id === id); if (x) fn(x); } });
 function replaceModel(b) {
   const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.glb,.gltf,model/gltf-binary';
   inp.onchange = () => { const f = inp.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => set(b, x => { x.src = r.result.replace(/^data:[^;]*/, 'data:model/gltf-binary'); delete x.clip; delete x.walk; }); r.readAsDataURL(f); };
@@ -384,7 +387,12 @@ export function renderContextual() {
   if (!tab) { tab = document.createElement('button'); tab.dataset.tab = 'ctx'; tab.className = 'ctx-tab'; tabs.appendChild(tab); }
   if (!page) { page = document.createElement('section'); page.className = 'ribbon-page'; page.dataset.page = 'ctx'; pages.appendChild(page); }
   // (Also while editing the master or a layout: its objects are edited the same way — currentSlide() is it.)
-  const list = selectedBlocks(), b = list.length === 1 ? selectedBlock() : null;
+  // (Several of the same kind — three pictures, four shapes —: that kind's options, for all of them; and the ones for
+  // several objects too.)
+  const list = selectedBlocks(), prim = selectedBlock();
+  const same = list.length > 1 && list.every(x => x.type === list[0].type) && list[0].type !== 'connector';
+  const b = list.length === 1 ? prim : same ? (list.includes(prim) ? prim : list[0]) : null;
+  peers = same ? list.filter(x => x !== b) : [];
   const show = list.length > 0;
   tab.hidden = !show;
   if (!show) {
@@ -406,7 +414,7 @@ export function renderContextual() {
     document.querySelectorAll('#ribbon .ribbon-page').forEach(p => p.classList.toggle('active', p.dataset.page === 'ctx'));
   }
   known = ids;
-  const title = b ? t(TITLES[b.type] || 'Objeto') : t('Varios objetos') + ` (${list.length})`;
+  const title = b ? t(TITLES[b.type] || 'Objeto') + (same ? ` (${list.length})` : '') : t('Varios objetos') + ` (${list.length})`;
   if (tab.textContent !== title) tab.textContent = title;
   if (opened) tab.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });   // (with its name, so all of it shows)
   const names = b?.type === 'model' ? clipsOf(b) : [];
@@ -416,7 +424,12 @@ export function renderContextual() {
   const sig = shortSig([list.map(x => x.id), list.length > 1 && list.map(x => [x.fill, x.stroke, x.strokeWidth, x.dash, !!x.shadow, x.groupId]), b && { ...b, x: 0, y: 0, w: 0, h: 0, ...(b.type === 'table' && { rows: b.rows.length + 'x' + (b.rows[0]?.length || 0) }) }, names, b && styled(b, currentSlide()).fontSize, b?.type === 'camera' && cameraLive(), b?.type === 'model' && puppetTrying(), b?.type === 'magnify' && Math.round(mag.zoomOf(b) * 10), b?.type === 'table' && blocks.hasTableCells(b) && state.ui.tableCells]);
   if (sig === lastSig) return;
   lastSig = sig;
-  const groups = b ? groupsFor(b) : groupsForMany(list);
+  let groups = b ? groupsFor(b) : groupsForMany(list);
+  if (same) {                                  // (shapes' style: the common values, or «mixed» — groupsForMany)
+    const many = groupsForMany(list), style = many.find(g => g[0] === 'Estilo de forma');
+    if (style) groups = groups.map(g => (g[0] === 'Estilo de forma' ? style : g));
+    groups.push(...many.filter(g => !['Estilo de forma', 'Organizar'].includes(g[0])));
+  }
   page.replaceChildren(...groups.map(([label, controls]) => {
     const g = document.createElement('div'); g.className = 'group';
     const row = document.createElement('div'); row.className = 'row';
@@ -459,7 +472,8 @@ function control(c) {
   }
   if (c[0] === 'color') {
     const [, icon, label, value, fn, mixed] = c, el = document.createElement('label'); el.className = 'color' + (mixed ? ' mixed' : ''); el.title = t(label);
-    el.innerHTML = `<i class="ms">${icon}</i><input type="color">`; const inp = el.querySelector('input'); inp.value = /^#[0-9a-f]{6}$/i.test(value) ? value : '#000000';
+    el.innerHTML = `<i class="ms">${icon}</i><input type="color">`; const inp = el.querySelector('input'); inp.value = /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(value) ? value : '#000000';
+    if (ALPHA_ICONS.has(icon)) inp.dataset.alpha = '';           // (fills and borders may be see-through: ui/shell/colorpicker.js)
     inp.addEventListener('change', () => fn(inp.value)); return el;
   }
   const el = document.createElement('label'); el.className = 'ctx-field';

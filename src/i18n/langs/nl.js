@@ -4970,4 +4970,5 @@ export default {
   "Cuentagotas: toma el color de un punto de la diapositiva o de la ventana": "Pipet: neem de kleur van een punt op de dia of in het venster",
   "Copiado: {c}": "Gekopieerd: {c}",
   "Haz clic en la diapositiva (o en cualquier punto de la ventana) para tomar su color. Esc: cancelar.": "Klik op de dia (of ergens in het venster) om de kleur over te nemen. Esc: annuleren.",
+  "No hay nada que pegar. Si lo copiaste en otro programa, prueba con Ctrl+V.": "Niets om te plakken. Als je het in een ander programma hebt gekopieerd, probeer dan Ctrl+V.",
 };

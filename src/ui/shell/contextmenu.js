@@ -37,6 +37,7 @@ import { puppetTrying, tryPuppet, togglePuppet } from '../canvas/puppetview.js';
 import { openCameraEffects } from '../dialogs/media.js';
 import { spellAt, spellMenu } from './spellcheck.js';
 import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle, openCellShading } from '../dialogs/object.js';
+import { pasteAnything, canReadClipboard } from '../../features/document/syspaste.js';
 
 let menuEl, menuOpenedAt = 0;
 // The live camera's background, straight from the menu.
@@ -259,7 +260,7 @@ function forBlock(b, cell = null) {
   const items = [
     ['Copiar', () => clip.copySelected()],
     ['Cortar', () => clip.cutSelected()],
-    ['Pegar', clip.hasClipboard() ? () => clip.paste() : null],
+    ['Pegar', clip.hasClipboard() || canReadClipboard() ? () => pasteAnything() : null],
     ['Duplicar', () => duplicate(b)],
     [b.dragLive ? 'No se puede mover al presentar' : 'Se puede mover al presentar (arrastrándolo)', () => commit(() => { const x = currentSlide().blocks.find(y => y.id === b.id); if (!x) return; if (x.dragLive) delete x.dragLive; else x.dragLive = true; })],
     ['Eliminar', () => blocks.deleteBlock(b.id)],
@@ -463,7 +464,7 @@ function editText(b) {
 export function contextItems() { const b = selectedBlocks().length === 1 ? selectedBlock() : null; return (b ? forBlock(b) : forCanvas()).filter(it => it?.[1]); }
 function forCanvas() {
   return [
-    ['Pegar', clip.hasClipboard() ? () => clip.paste() : null],
+    ['Pegar', clip.hasClipboard() || canReadClipboard() ? () => pasteAnything() : null],
     ['Nuevo cuadro de texto', () => addText()],
     ['Seleccionar todo', currentSlide()?.blocks.some(b => !b.locked)
       ? () => commit(() => setMulti(currentSlide().blocks.filter(b => !b.locked).map(b => b.id)), { history: false }) : null],

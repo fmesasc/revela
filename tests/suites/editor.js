@@ -1068,6 +1068,42 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     press('Escape'); assert(D.getElementById('context-menu').hidden, 'Esc lo cierra');
   });
 
+  await test('pegar lo copiado en otro programa: texto con su formato (PowerPoint, Word, web), celdas como tabla e imágenes; también desde el botón Pegar', async () => {
+    reset(); const W = frame.contentWindow, SP = await W.eval("import('/src/features/document/syspaste.js')");
+    const paste = (setup) => { D.activeElement?.blur?.(); R.state.ui.navFocus = false; const dt = new W.DataTransfer(); setup(dt);
+      const ev = new W.ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }); D.dispatchEvent(ev); return ev; };
+    // Text from PowerPoint (its HTML): bold, italics and colour kept; its fonts and sizes, the theme's.
+    let n = slide().blocks.length;
+    const office = '<html><head><style>p{margin:0}</style></head><body><!--StartFragment--><p style="font-size:28pt;font-family:Calibri"><span style="font-weight:bold">Objetivos</span> del <i>curso</i></p><p><span style="color:#C00000">Importante</span></p><!--EndFragment--></body></html>';
+    let ev = paste(dt => { dt.setData('text/html', office); dt.setData('text/plain', 'Objetivos del curso\nImportante'); }); await sleep(60);
+    assert(ev.defaultPrevented, 'se pega en la diapositiva');
+    let b = slide().blocks.at(-1); eq(slide().blocks.length, n + 1, 'un cuadro de texto'); eq(b.type, 'text');
+    assert(/<b>Objetivos<\/b>/.test(b.html) && /<i>curso<\/i>/.test(b.html) && /color:\s*#C00000[^>]*>Importante/i.test(b.html), 'con negrita, cursiva y color: ' + b.html);
+    assert(!/font-size|font-family|Calibri|<style/i.test(b.html), 'sin sus fuentes ni tamaños (los del tema)');
+    // Cells (Excel, Sheets): a table, even with the picture Excel puts beside.
+    const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAEElEQVR4nGP4z8AARwzIHABvqgf5gNwAKAAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
+    n = slide().blocks.length;
+    paste(dt => { dt.setData('text/plain', 'Nombre\tNota\nAna\t9\n'); dt.items.add(new W.File([png], 'image.png', { type: 'image/png' })); }); await sleep(60);
+    eq(slide().blocks.at(-1).type, 'table', 'las celdas, como tabla');
+    // A picture alone (PowerPoint's shapes, a screenshot): a picture.
+    n = slide().blocks.length;
+    paste(dt => dt.items.add(new W.File([png], 'image.png', { type: 'image/png' }))); await sleep(100);
+    eq(slide().blocks.length, n + 1); eq(slide().blocks.at(-1).type, 'image', 'la imagen, como imagen');
+    // Plain text (a terminal, a notes app).
+    paste(dt => dt.setData('text/plain', 'Uno <dos>\ntres')); await sleep(40);
+    eq(slide().blocks.at(-1).html, 'Uno &lt;dos&gt;<br>tres', 'el texto, tal cual');
+    // Pegar (the ribbon): reads the system clipboard itself.
+    const realRead = W.navigator.clipboard.read;
+    W.navigator.clipboard.read = async () => [{ types: ['text/html', 'text/plain'], getType: async t => new W.Blob([t === 'text/html' ? '<b>Desde</b> el botón' : 'Desde el botón'], { type: t }) }];
+    try {
+      const btn = D.querySelector('[data-action="clip-paste"]'); R.render(); assert(!btn.disabled, 'Pegar, disponible aunque no se haya copiado nada en Revela');
+      n = slide().blocks.length; btn.click(); await sleep(80);
+      eq(slide().blocks.length, n + 1); assert(/<b>Desde<\/b> el botón/.test(slide().blocks.at(-1).html), 'pegado desde el botón: ' + slide().blocks.at(-1).html);
+    } finally { W.navigator.clipboard.read = realRead; }
+    eq(SP.htmlToText('<ul><li>a</li><li><b>b</b></li></ul>'), '<ul><li>a</li><li><b>b</b></li></ul>', 'las listas, como listas');
+    assert(!/onerror|script/.test(SP.htmlToText('<img src=x onerror=alert(1)><script>alert(1)</script>hola')), 'nada que se ejecute');
+  });
+
   await test('archivos soltados en cualquier parte de la ventana (no solo en la diapositiva) se insertan, con aviso al arrastrar', async () => {
     reset(); const n = slide().blocks.length;
     const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAQAAAACCAIAAADwyuo0AAAAEElEQVR4nGP4z8AARwzIHABvqgf5gNwAKAAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));

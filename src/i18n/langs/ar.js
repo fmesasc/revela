@@ -4970,4 +4970,5 @@ export default {
   "Cuentagotas: toma el color de un punto de la diapositiva o de la ventana": "القطارة: خذ لون نقطة من الشريحة أو من النافذة",
   "Copiado: {c}": "تم النسخ: {c}",
   "Haz clic en la diapositiva (o en cualquier punto de la ventana) para tomar su color. Esc: cancelar.": "انقر على الشريحة (أو على أي نقطة في النافذة) لأخذ لونها. Esc: إلغاء.",
+  "No hay nada que pegar. Si lo copiaste en otro programa, prueba con Ctrl+V.": "لا يوجد ما يُلصق. إذا نسخته في برنامج آخر، جرّب Ctrl+V.",
 };

@@ -43,6 +43,9 @@ export let stage;
 
 export function initCanvas() {
   stage = document.getElementById('stage');
+  // (Objects are moved by Revela, never by the browser's drag and drop — its ghost of the selection, a whole slide —;
+  // only text dragged inside a text being edited.)
+  stage.addEventListener('dragstart', e => { if (!e.target.closest?.('.editing')) e.preventDefault(); });
   // Master text levels (sizes and bullets per list level) on the canvas.
   const lv = document.createElement('style'); lv.textContent = levelCSS('#stage '); document.head.appendChild(lv);
   stage.addEventListener('pointerdown', e => {
