@@ -78,7 +78,8 @@ fn follow_link(app: &AppHandle, link: &str) {
     let Ok(u) = tauri::Url::parse(link) else { return };
     if u.scheme() != "revela" { return; }
     {
-        let mut seen = app.state::<Links>().seen.lock().unwrap();
+        let links = app.state::<Links>();
+        let mut seen = links.seen.lock().unwrap();
         seen.retain(|(_, t)| t.elapsed().as_secs() < 10);
         if seen.iter().any(|(l, _)| l == link) { return; }
         seen.push((link.to_string(), std::time::Instant::now()));

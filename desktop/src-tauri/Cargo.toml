@@ -21,6 +21,11 @@ tauri-plugin-deep-link = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 serde_json = "1"          # used by tauri::generate_context! for the plugins configuration
 
+# (Linux: tauri-plugin-deep-link 2.6 builds rust-ini's ParseOption field by field, and rust-ini 0.21.3 added fields —
+# «missing fields enabled_indented_mutiline_value…». Held at 0.21.1 until the plugin catches up.)
+[target.'cfg(target_os = "linux")'.dependencies]
+rust-ini = "=0.21.1"
+
 [profile.release]
 codegen-units = 1
 lto = true
