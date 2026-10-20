@@ -34,11 +34,19 @@ jobs:
         include:
           - os: ubuntu-22.04
             name: linux
+          - os: ubuntu-22.04-arm                # (ARM64, natively: GitHub's ARM machines, free for public repositories)
+            name: linux-arm64
           - os: windows-latest
             name: windows
+          - os: windows-latest                  # (ARM64 laptops — Snapdragon —, cross-compiled; only the .exe: the MSI
+            name: windows-arm64                 #  bundler, WiX 3, can't make ARM64 installers)
+            target: aarch64-pc-windows-msvc
+            rust-targets: aarch64-pc-windows-msvc
+            bundles: nsis
           - os: macos-latest
             name: macos
             target: universal-apple-darwin      # Apple silicon and Intel in one
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -47,7 +55,7 @@ jobs:
           node-version: 22
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.rust-targets || '' }}
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: desktop/src-tauri
@@ -76,7 +84,7 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: npx --yes @tauri-apps/cli@2 build ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
+        run: npx --yes @tauri-apps/cli@2 build ${{ matrix.target && format('--target {0}', matrix.target) || '' }} ${{ matrix.bundles && format('--bundles {0}', matrix.bundles) || '' }}
       - uses: actions/upload-artifact@v4
         with:
           name: revela-${{ matrix.name }}
@@ -118,8 +126,10 @@ jobs:
           const entry = re => { const f = all.find(x => re.test(x) && !x.endsWith('.sig')); if (!f || !fs.existsSync(f + '.sig')) throw new Error('missing ' + re);
             return { signature: fs.readFileSync(f + '.sig', 'utf8').trim(), url: `https://github.com/${repo}/releases/download/${tag}/${encodeURIComponent(path.basename(f))}` }; };
           const mac = entry(/\.app\.tar\.gz$/);
+          // (Each system and processor its own file — x64 and ARM64 side by side, so by their names, not their extensions.)
           const manifest = { version, notes: `Revela ${version}`, pub_date: new Date().toISOString(),
-            platforms: { 'windows-x86_64': entry(/-setup\.exe$/), 'linux-x86_64': entry(/\.AppImage$/), 'darwin-aarch64': mac, 'darwin-x86_64': mac } };
+            platforms: { 'windows-x86_64': entry(/_x64-setup\.exe$/), 'windows-aarch64': entry(/_arm64-setup\.exe$/),
+              'linux-x86_64': entry(/_amd64\.AppImage$/), 'linux-aarch64': entry(/_aarch64\.AppImage$/), 'darwin-aarch64': mac, 'darwin-x86_64': mac } };
           fs.writeFileSync('out/latest.json', JSON.stringify(manifest, null, 2));
           console.log(JSON.stringify(manifest, null, 2));
           JS
@@ -152,11 +162,15 @@ jobs:
           set -euo pipefail
           pick() { find out -type f -name "$1" ! -name '*.sig' | head -n 1; }
           cp "$(pick '*_x64-setup.exe')" out/Revela-Windows.exe
-          cp "$(pick '*.msi')" out/Revela-Windows.msi
+          cp "$(pick '*_x64_en-US.msi')" out/Revela-Windows.msi
+          cp "$(pick '*_arm64-setup.exe')" out/Revela-Windows-ARM64.exe
           cp "$(pick '*.dmg')" out/Revela-macOS.dmg
-          cp "$(pick '*.AppImage')" out/Revela-Linux.AppImage
-          cp "$(pick '*.deb')" out/Revela-Linux.deb
-          cp "$(pick '*.rpm')" out/Revela-Linux.rpm
+          cp "$(pick '*_amd64.AppImage')" out/Revela-Linux.AppImage
+          cp "$(pick '*_amd64.deb')" out/Revela-Linux.deb
+          cp "$(pick '*.x86_64.rpm')" out/Revela-Linux.rpm
+          cp "$(pick '*_aarch64.AppImage')" out/Revela-Linux-ARM64.AppImage
+          cp "$(pick '*_arm64.deb')" out/Revela-Linux-ARM64.deb
+          cp "$(pick '*.aarch64.rpm')" out/Revela-Linux-ARM64.rpm
       - name: Publish
         shell: bash
         run: |
@@ -186,3 +200,25 @@ jobs:
           gh release create "$GITHUB_REF_NAME" "${FILES[@]}" -R "$GITHUB_REPOSITORY" --verify-tag --title "Revela ${GITHUB_REF_NAME#v}" --notes-file notes.md --latest
           # (The old «latest» release, replaced each time until versions were kept: gone.)
           gh release delete latest -R "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>/dev/null || true
+
+  # winget (Windows): each published version, a pull request to microsoft/winget-pkgs updating FMLab.Revela — its
+  # installers, SHA-256 and the rest kept from the version before —, opened from the fork fmesasc/winget-pkgs by
+  # winget-releaser. It needs the secret WINGET_TOKEN (a classic GitHub token with only «public_repo»); without it, this
+  # is skipped. Not «needs» of anything: a refusal there never holds up a release. (Homebrew follows the releases from
+  # its own repository, fmesasc/homebrew-revela: no token.)
+  winget:
+    needs: release
+    runs-on: ubuntu-latest
+    env:
+      HAS_TOKEN: ${{ secrets.WINGET_TOKEN != '' }}
+    steps:
+      - name: winget-pkgs pull request
+        if: env.HAS_TOKEN == 'true'
+        continue-on-error: true
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: FMLab.Revela
+          installers-regex: '_(x64|arm64)-setup\.exe$|_x64_en-US\.msi$'
+          token: ${{ secrets.WINGET_TOKEN }}
+      - if: env.HAS_TOKEN != 'true'
+        run: "echo 'Sin WINGET_TOKEN, la versión no se envía a winget (desktop/winget/README.md).'"
