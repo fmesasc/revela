@@ -96,6 +96,7 @@ export function usedRefs(v, used) { if (isRef(v)) used.add(v.slice(REF.length));
 export async function collectGarbage(decks, used = new Set()) {
   (decks || []).forEach(d => usedRefs(d, used));
   for (const id of othersLive()) used.add(id);          // (in use in this page or another open tab)
+  diskGc?.([...used]).catch?.(() => {});                // (desktop: its folder too)
   const now = Date.now(), all = await keys().catch(() => []);
   const gone = all.filter(id => !used.has(id) && !(now - (recent.get(id) || 0) < 10 * 60e3));
   if (gone.length) { await del(gone); gone.forEach(id => { stored?.delete(id); }); }
@@ -142,11 +143,13 @@ const live = new Map(), byURL = new Map();
 export const refId = v => (isRef(v) ? v.slice(REF.length) : null);
 // Whether a value is the address of a registered file.
 export const isLive = v => typeof v === 'string' && v.length < 300 && byURL.has(v);
-// A file this page has, registered (a Blob — or, desktop, an address of its own and its type —); its entry back.
-export function registerMedia(id, blob, { url = null, type = null } = {}) {
+// A file this page has, registered (a Blob — or, desktop, a file on disk: its address, path, type and size —); its
+// entry back.
+export function registerMedia(id, blob, { url = null, type = null, path = null, size = null } = {}) {
   const had = live.get(id);
   if (had && (had.url || !url)) return had;
-  const e = { type: type ?? blob?.type ?? '', url: url || (blob && typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(blob) : ''), blob: blob || null };
+  const e = { type: type ?? blob?.type ?? '', url: url || (blob && typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(blob) : ''), blob: blob || null,
+    path, size: size ?? blob?.size ?? 0 };
   live.set(id, e); if (e.url) byURL.set(e.url, id); liveChanged(); return e;
 }
 // The address that shows a reference, or a registered address itself ('' when not registered yet — liveDeck first).
@@ -163,7 +166,8 @@ export async function mediaBlobOf(v) {
   const id = isLive(v) ? byURL.get(v) : refId(v);
   if (id) {
     const e = live.get(id); if (e?.blob) return e.blob;
-    if (e?.url) { try { const r = await fetch(e.url); if (r.ok) return await r.blob(); } catch {} }
+    // (Its type as registered: a file on disk may come back as «application/octet-stream».)
+    if (e?.url) { try { const r = await fetch(e.url); if (r.ok) { const b = await r.blob(); return !e.type || b.type === e.type ? b : b.slice(0, b.size, e.type); } } catch {} }
     return (await get(id).catch(() => null)) || null;
   }
   if (typeof v === 'string' && v.startsWith('data:')) return (await fetch(v)).blob();
@@ -186,7 +190,8 @@ export async function storeBytes(bytes, type = '') {
 // (as Blobs: on disk, not in memory). A reference whose file isn't there stays as it is.
 export async function liveDeck(v) {
   const ids = [...usedRefs(v, new Set())].filter(id => !live.has(id));
-  await Promise.all(ids.map(id => get(id).then(b => { if (b) registerMedia(id, b); }).catch(() => {})));
+  await Promise.all(ids.map(id => get(id).then(b => { if (b) registerMedia(id, b); }).catch(() => {})
+    .then(() => (!live.has(id) && finder ? finder(id) : null)).catch(() => {})));     // (desktop: a file of its folder)
   return mapStrings(v, s => (isRef(s) ? live.get(refId(s))?.url || s : s));
 }
 // A copy that can leave this page — an export, the cloud, Drive, a co-editor, another app —: references and addresses
@@ -210,12 +215,18 @@ export function hasLive(v) {
 }
 // How many bytes its addresses and references stand for (a size check before sending: deckMB…).
 export function liveBytes(v, seen = new Set()) {
-  if (typeof v === 'string') { const id = isLive(v) ? byURL.get(v) : refId(v); if (id && !seen.has(id)) { seen.add(id); return live.get(id)?.blob?.size || 0; } return 0; }
+  if (typeof v === 'string') { const id = isLive(v) ? byURL.get(v) : refId(v); if (id && !seen.has(id)) { seen.add(id); return live.get(id)?.size || 0; } return 0; }
   let n = 0;
   if (Array.isArray(v)) for (const x of v) n += liveBytes(x, seen);
   else if (v && typeof v === 'object') for (const k in v) n += liveBytes(v[k], seen);
   return n;
 }
+// The desktop app (ui/shell/desktop.js): a file by its id from its folder, registered (finder); the files of its folder
+// nothing refers to, deleted (diskGc).
+let finder = null, diskGc = null;
+export function setDiskMedia({ find = null, gc = null } = {}) { finder = find; diskGc = gc; }
+// A registered file's entry (its type, size, and — desktop — its path), or null.
+export const mediaEntry = id => live.get(id) || null;
 const mapStrings = (v, fn) => {
   if (typeof v === 'string') return fn(v);
   if (Array.isArray(v)) return v.map(x => mapStrings(x, fn));

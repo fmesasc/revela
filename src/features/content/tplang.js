@@ -24,7 +24,7 @@ export const RTL_LANGS = ['ar'];
 export const TEXT_KEYS = new Set(['html', 'notes', 'name', 'rows', 'label', 'alt', 'options', 'question', 'text', 'seriesName', 'yTitle', 'xTitle', 'endText', 'note']);
 // (A table's formula — =SUMA(ARRIBA), =B2*C2 — is not a text; a text that only starts with «=» — «= 52 años: la rueda
 // calendárica», under a sum — is: core/formulas.js isSheetFormula tells them apart.)
-const isText = v => typeof v === 'string' && /\p{L}/u.test(v.replace(/<[^>]*>/g, '')) && !isSheetFormula(v) && !/^(data:|https?:|blob:|rvmedia:|assets\/)/.test(v);
+const isText = v => typeof v === 'string' && /\p{L}/u.test(v.replace(/<[^>]*>/g, '')) && !isSheetFormula(v) && !/^(data:|https?:|blob:|rvmedia:|asset:|assets\/)/.test(v);
 
 // The words inside an equation (an object's `latex`): what \text{…}, \textrm{…}, \mbox{…}, \mathrm{…}… hold —
 // «E = \dfrac{\text{alquiler}}{\text{ingresos netos}}» — are text too, and were left in Spanish in every language.

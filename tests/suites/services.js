@@ -165,7 +165,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
 
   await test('escritorio: un archivo grande se guarda por partes y un paquete .revela se abre leyendo trozos (Tauri simulado, con su disco)', async () => {
     reset(); const W = frame.contentWindow, DK = await W.eval("import('/src/ui/shell/desktop.js')"), PK = await W.eval("import('/src/io/formats/package.js')");
-    const disk = new Map(), calls = [], writing = new Map(); let opened = [], picked = [];
+    const disk = new Map(), calls = [], writing = new Map(), zips = new Map(), media = new Map(), urls = new Map(); let opened = [], picked = [], zipN = 0;
+    const Z = await W.eval("import('/src/io/formats/zipstore.js')"), MS = await W.eval("import('/src/core/mediastore.js')");
     const tauri = {
       core: { invoke: async (cmd, args, opts) => { calls.push({ cmd, args: ArrayBuffer.isView(args) ? { bytes: args.length } : args });
         if (cmd === 'opened_files') return opened.splice(0);
@@ -178,7 +179,26 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
         if (cmd === 'save_end') { const w = writing.get(args.token); writing.delete(args.token); const path = '/home/ana/' + w.name; disk.set(path, new W.Blob(w.parts)); return path; }
         if (cmd === 'opened_size') return disk.get(args.path).size;
         if (cmd === 'read_range') return disk.get(args.path).slice(args.start, args.start + args.len).arrayBuffer();
-        if (cmd === 'release_opened') return null; } },
+        if (cmd === 'release_opened') return null;
+        // (The window's zips and media folder — desktop/src-tauri/src/media.rs —, here in memory.)
+        if (cmd === 'zip_open') { const idx = await Z.unzipIndex(disk.get(args.path)); zips.set(++zipN, idx); return [zipN, [...idx].map(([n, e]) => [n, e.size])]; }
+        if (cmd === 'zip_read') return (await zips.get(args.token).get(args.name).read()).arrayBuffer();
+        if (cmd === 'zip_close') { zips.delete(args.token); return null; }
+        if (cmd === 'zip_extract') {
+          const blob = await zips.get(args.token).get(args.name).read(), id = await MS.mediaId(new Uint8Array(await blob.arrayBuffer()));
+          if (args.expect && args.expect !== id) return null;
+          const path = `/media/${id}.${args.ext}`; media.set(path, blob); return [id, path, blob.size];
+        }
+        if (cmd === 'media_find') { const path = [...media.keys()].find(k => k.startsWith(`/media/${args.id}.`)); return path ? [path, media.get(path).size] : null; }
+        if (cmd === 'media_put') { const blob = new W.Blob([args]), id = await MS.mediaId(args), path = `/media/${id}.${opts.headers['x-ext']}`; media.set(path, blob); return [id, path, blob.size]; }
+        if (cmd === 'media_gc') return 0;
+        if (cmd === 'save_package') {
+          const of = id => media.get([...media.keys()].find(k => k.startsWith(`/media/${id}.`)));
+          const blob = await Z.zipBlobs([{ name: 'mimetype', blob: new W.Blob(['application/vnd.revela+zip']) }, { name: 'presentation.json', blob: new W.Blob([args.json]) },
+            ...args.files.map(([id, at]) => ({ name: at, blob: of(id) }))]);
+          const path = '/home/ana/' + decodeURIComponent(args.name); disk.set(path, blob); return path;
+        } },
+        convertFileSrc: path => { if (!urls.has(path) && media.has(path)) urls.set(path, W.URL.createObjectURL(media.get(path))); return urls.get(path) || ''; } },
       menu: { Menu: { new: async o => ({ ...o, setAsAppMenu: async () => {} }) }, Submenu: { new: async o => o }, MenuItem: { new: async o => o }, PredefinedMenuItem: { new: async o => o }, CheckMenuItem: { new: async o => o } },
       app: { getVersion: async () => '9.9.9', defaultWindowIcon: async () => null }, event: { listen: async () => () => {} }, opener: { openUrl: async () => {} },
     };
@@ -193,7 +213,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const saved = new Uint8Array(await disk.get('/home/ana/Grande.revela').arrayBuffer());
       assert(saved.length === 70e6 && saved[0] === 7 && saved.at(-1) === 9, 'el archivo, entero y en orden');
       assert(!calls.some(c => c.cmd === 'save_file'), 'sin pasarlo entero');
-      // A package opened with Revela (a double click): read a piece at a time, and let go after.
+      // A package opened with Revela (a double click): unzipped by the window, its files into its folder (never through
+      // the page), shown from there; let go after.
       let bin = ''; for (let i = 0; i < 200000; i++) bin += String.fromCharCode((i * 13) % 251);
       const big1 = 'data:model/gltf-binary;base64,' + W.btoa(bin);
       R.store.commit(() => { R.state.deck.name = 'Del paquete'; slide().blocks.push({ id: 'mz', type: 'model', src: big1, x: 0, y: 0, w: 10, h: 10 }); });
@@ -201,15 +222,38 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       opened.push('/home/ana/Clase.revela'); await DK.openGivenForTests();
       for (let i = 0; i < 80 && R.state.deck.name !== 'Del paquete'; i++) await sleep(25);
       eq(R.state.deck.name, 'Del paquete', 'abierto');
-      eq(await (await W.eval("import('/src/core/mediastore.js')")).portable(R.state.deck.slides[0].blocks.find(b => b.id === 'mz')?.src), big1, 'con su modelo (por su dirección)');
-      assert(calls.some(c => c.cmd === 'read_range') && !calls.some(c => c.cmd === 'read_opened'), 'a trozos, nunca entero');
-      assert(calls.some(c => c.cmd === 'release_opened' && c.args.path === '/home/ana/Clase.revela'), 'y luego deja de poder leerlo');
+      const mz = () => R.state.deck.slides[0].blocks.find(b => b.id === 'mz')?.src;
+      assert(MS.isLive(mz()) && MS.mediaEntry(MS.refId((await MS.dehydrate({ s: mz() })).s))?.path, 'su modelo, desde la carpeta de Revela: ' + String(mz()).slice(0, 30));
+      eq(await MS.portable(mz()), big1, 'el modelo entero');
+      assert(calls.some(c => c.cmd === 'zip_extract') && !calls.some(c => ['read_opened', 'read_range'].includes(c.cmd)), 'por la ventana, nunca por la página');
+      assert(calls.some(c => c.cmd === 'release_opened' && c.args.path === '/home/ana/Clase.revela') && calls.some(c => c.cmd === 'zip_close'), 'y luego deja de poder leerlo');
       // From Archivo ▸ Abrir (the system's dialog): the same.
       reset(); calls.length = 0; picked.push('/home/ana/Clase.revela');
       const OF = await W.eval("import('/src/ui/shell/openfile.js')"); OF.openAnyPresentation();
       for (let i = 0; i < 80 && R.state.deck.name !== 'Del paquete'; i++) await sleep(25);
       eq(R.state.deck.name, 'Del paquete', 'también desde Abrir');
-      assert(calls.some(c => c.cmd === 'read_range') && !calls.some(c => c.cmd === 'read_opened'), 'también a trozos');
+      assert(calls.some(c => c.cmd === 'zip_extract') && !calls.some(c => c.cmd === 'read_opened'), 'también por la ventana');
+      // Archivo ▸ Descargar: the .revela put together by the window from its folder (only the text through the page).
+      calls.length = 0; R.store.commit(() => { R.state.deck.name = 'Otra vez'; });
+      const PR = await W.eval("import('/src/io/formats/project.js')"); eq(await PR.saveProject(), 'package', 'guardado');
+      const sp = calls.find(c => c.cmd === 'save_package');
+      assert(sp && sp.args.json.length < 20000 && sp.args.files.length === 1 && !calls.some(c => ['save_chunk', 'save_file'].includes(c.cmd)), 'por la ventana, con su archivo aparte');
+      reset(); opened.push('/home/ana/' + decodeURIComponent(sp.args.name)); await DK.openGivenForTests();
+      for (let i = 0; i < 80 && R.state.deck.name !== 'Otra vez'; i++) await sleep(25);
+      eq(R.state.deck.name, 'Otra vez', 'se vuelve a abrir'); eq(await MS.portable(mz()), big1, 'igual');
+      // A PowerPoint chosen in «Abrir»: a stand-in in the input; the importer reads the file through the window.
+      const c = D.createElement('canvas'); c.width = 300; c.height = 200; const g = c.getContext('2d'), px = g.createImageData(300, 200);
+      for (let i = 0; i < px.data.length; i += 65536) crypto.getRandomValues(px.data.subarray(i, i + 65536)); for (let i = 3; i < px.data.length; i += 4) px.data[i] = 255;
+      g.putImageData(px, 0, 0); const photo = c.toDataURL('image/png'); assert(photo.length > 120000, 'foto de prueba grande: ' + photo.length);
+      reset(); R.store.commit(() => { R.state.deck.name = 'Del PowerPoint'; slide().blocks.push({ id: 'ph', type: 'image', src: photo, x: 0, y: 0, w: 300, h: 200 }); });
+      const PX = await W.eval("import('/src/io/formats/pptx-export.js')");
+      disk.set('/home/ana/Clase.pptx', new W.Blob([await PX.buildPptxBlob(R.state.deck)])); reset(); calls.length = 0;
+      picked.push('/home/ana/Clase.pptx'); OF.openAnyPresentation();
+      const pic = () => R.state.deck.slides.flatMap(s => s.blocks).find(b => b.type === 'image' && MS.isLive(b.src));
+      for (let i = 0; i < 120 && !pic(); i++) await sleep(25);
+      assert(pic() && MS.mediaEntry(MS.refId((await MS.dehydrate({ s: pic().src })).s))?.path, 'la foto del PowerPoint, desde la carpeta de Revela');
+      assert(/^image\//.test(MS.mediaType(pic().src)) && MS.liveBytes(pic().src) > 50000, 'entera: ' + MS.mediaType(pic().src) + ' ' + MS.liveBytes(pic().src));
+      assert(calls.some(c => c.cmd === 'zip_open') && !calls.some(c => c.cmd === 'read_opened'), 'el PowerPoint, leído por la ventana');
     } finally { DK.stopDesktop(); }
   });
 
@@ -2772,6 +2816,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // A fake Google: accounts (token) and Drive (files with versions).
     const drive = new Map(), sessions = new Map(), bigUploads = []; let n = 0, requests = [];
     const md5 = c => { let h = 7; for (const ch of String(c)) h = (h * 31 + ch.charCodeAt(0)) | 0; return 'h' + (h >>> 0).toString(16); };   // (a fingerprint of the content, like Drive's)
+    // (A package — a zip — kept as a «binary string», a character per byte: searchable, and given back byte for byte.)
+    const bin = u8 => { let x = ''; for (let i = 0; i < u8.length; i += 8192) x += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return x; };
+    const bytesOf = x => Uint8Array.from(x, c => c.charCodeAt(0));
+    const raw = async b => (typeof b === 'string' ? b : bin(new Uint8Array(await b.arrayBuffer())));
+    const isZip = x => typeof x === 'string' && x.startsWith('PK');
     const realGoogle = W.google, realFetch = W.fetch;
     W.google = { accounts: { oauth2: { initTokenClient: o => ({ requestAccessToken() { this.callback({ access_token: 'tok', expires_in: 3600 }); } }), revoke: (_, cb) => cb?.() } } };
     const file = (id, name, content, extra = {}) => drive.set(id, { id, name, content, version: '1', parents: ['raiz0'], modifiedTime: new Date(Date.now() - 1000 * (++n)).toISOString(), ...extra });
@@ -2787,25 +2836,25 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       // (Big files in two steps: the description gives an address, the bytes go there.)
       if (url.includes('uploadType=resumable')) { const sid = 's' + (++n); sessions.set(sid, { id, meta: JSON.parse(o.body), size: +o.headers['X-Upload-Content-Length'] }); return new W.Response('', { status: 200, headers: { Location: 'https://www.googleapis.com/upload/session/' + sid } }); }
       if (url.includes('/upload/session/')) {
-        const { id: sid, meta, size } = sessions.get(url.split('/').pop()), content = await o.body.text(); bigUploads.push({ size, got: o.body.size, typeOf: typeof o.body });
+        const { id: sid, meta, size } = sessions.get(url.split('/').pop()), content = await raw(o.body); bigUploads.push({ size, got: o.body.size, typeOf: typeof o.body });
         if (sid) { const f = drive.get(sid); f.content = content; f.version = String(+f.version + 1); f.thumb = !!meta.contentHints; return ok(f); }
         const nid = 'new' + (++n); file(nid, meta.name, content, { modifiedTime: new Date().toISOString() }); return ok(drive.get(nid));
       }
       if (url.includes('/upload/drive/v3/files')) {
-        const parts = o.body.split(/--revela\w+/).filter(x => x.includes('\r\n\r\n')).map(x => x.split('\r\n\r\n').slice(1).join('\r\n\r\n').replace(/\r\n$/, ''));
-        const meta = JSON.parse(parts[0]), content = parts[1];
+        const body = await raw(o.body), parts = body.split(/--revela\w+/).filter(x => x.includes('\r\n\r\n')).map(x => x.split('\r\n\r\n').slice(1).join('\r\n\r\n').replace(/\r\n$/, ''));
+        const meta = JSON.parse(typeof o.body === 'string' ? parts[0] : new TextDecoder().decode(bytesOf(parts[0]))), content = parts[1];
         if (id) { const f = drive.get(id); f.content = content; f.version = String(+f.version + 1); f.modifiedTime = new Date().toISOString(); f.thumb = !!meta.contentHints; return ok(f); }
         const nid = 'new' + (++n); file(nid, meta.name, content, { modifiedTime: new Date().toISOString(), thumb: !!meta.contentHints, ...(meta.parents && { parents: meta.parents }) }); return ok(drive.get(nid));
       }
       if (url.includes('/drive/v3/files?q=')) return ok({ files: [...drive.values()].filter(f => !f.trashed).sort((a, b) => b.modifiedTime.localeCompare(a.modifiedTime)) });
       if (id && folders.has(id)) return ok(folders.get(id));
       if (id && !drive.has(id)) return new W.Response('{"error":{"code":404}}', { status: 404 });
-      if (id && url.includes('alt=media')) return ok(drive.get(id).content);
+      if (id && url.includes('alt=media')) { const c = drive.get(id).content; return isZip(c) ? new W.Response(bytesOf(c), { status: 200 }) : ok(c); }
       if (id && o.method === 'PATCH') { drive.get(id).trashed = true; return ok({}); }
       if (id) return ok(drive.get(id));
       return new W.Response('{}', { status: 404 });
     };
-    GD.setThumbnailMaker(async () => 'AAAA'); GD.setAutosaveDelay(50);
+    GD.setThumbnailMaker(async () => 'AAAA'); GD.setAutosaveDelay(50); GD.setBigAutosaveDelay(50);
     try {
       const btn = D.getElementById('account-btn');
       assert(/Google Drive/.test(btn.textContent), 'botón para conectar Google Drive (no «Iniciar sesión»: la cuenta de Revela tiene el suyo)');
@@ -2835,14 +2884,18 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       await Promise.all([GD.savePresentation({ interactive: false }), GD.savePresentation({ interactive: false })]);
       assert(D.getElementById('drive-conflict').hidden, 'dos guardados seguidos no se pisan');
       // A big one (pictures of several MB): written in pieces and sent in two steps — never one huge text.
-      const pic = 'data:image/png;base64,' + 'A'.repeat(6e6);
+      const pic = 'data:image/png;base64,' + 'A'.repeat(9e6);                  // (as a package, its bytes: 6.75 MB)
       R.store.commit(() => { R.state.deck.slides[0].blocks.push({ id: 'bigpic', type: 'image', x: 0, y: 0, w: 100, h: 100, src: pic }); }); await sleep(400);
       eq(bigUploads.length, 1, 'subida en dos pasos'); eq(bigUploads[0].typeOf, 'object', 'el contenido, a trozos (no un texto)'); eq(bigUploads[0].got, bigUploads[0].size, 'del tamaño anunciado');
-      eq(JSON.parse(drive.get('old2').content).slides[0].blocks.find(b => b.id === 'bigpic')?.src.length, pic.length, 'y en Drive está entera');
+      const PK = await W.eval("import('/src/io/formats/package.js')"), MS = await W.eval("import('/src/core/mediastore.js')");
+      const inDrive = await PK.readPackage(new W.File([bytesOf(drive.get('old2').content)], 'x.revela'));
+      eq((await MS.portable(inDrive.slides[0].blocks.find(b => b.id === 'bigpic')?.src)).length, pic.length, 'y en Drive está entera (un paquete .revela)');
       R.store.commit(() => { R.state.deck.slides[0].blocks = R.state.deck.slides[0].blocks.filter(b => b.id !== 'bigpic'); }); await sleep(250);
+      for (let i = 0; i < 100 && D.getElementById('drive-status').dataset.state !== 'saved'; i++) await sleep(30);   // (that save, done)
       // Moved to another folder and renamed in Drive: the same file, so it keeps saving there; it learns where, and says so.
       Object.assign(drive.get('old2'), { parents: ['fproy'], name: 'Clase 2 bis.revela.json' });
       R.store.commit(() => { R.state.deck.slides[0].notes = 'nota 1c'; }); await sleep(250);
+      for (let i = 0; i < 100 && !drive.get('old2').content.includes('nota 1c'); i++) await sleep(30);
       assert(drive.get('old2').content.includes('nota 1c') && D.getElementById('drive-conflict').hidden, 'movida: se sigue guardando en el mismo archivo');
       eq(GD.linkedFile().folder?.name, 'Proyectos', 'sabe en qué carpeta está ahora'); eq(GD.linkedFile().name, 'Clase 2 bis.revela.json', 'y su nombre nuevo');
       assert(/Proyectos/.test(D.getElementById('toasts')?.textContent || ''), 'y lo dice: ' + D.getElementById('toasts')?.textContent);
@@ -2879,7 +2932,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       eq(GD.linkedFile(), null, 'ya no está vinculada'); eq(drive.size, count, 'y no se ha creado nada sin preguntar');
       // Sign out.
       await GD.signOut(); eq(GD.account(), null, 'cerrar sesión'); eq(GD.linkedFile(), null);
-    } finally { W.fetch = realFetch; W.google = realGoogle; GD.setAutosaveDelay(4000); D.getElementById('home-screen')?.remove(); }
+    } finally { W.fetch = realFetch; W.google = realGoogle; GD.setAutosaveDelay(4000); GD.setBigAutosaveDelay(3 * 60e3); D.getElementById('home-screen')?.remove(); }
   });
 
   await test('colaborar con el servidor de Revela: pide la sesión de Google y, si falla, ofrece hacerlo directo', async () => {
@@ -3344,11 +3397,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       dlg.querySelector('.gs-name').value = 'Mi charla';
       dlg.querySelector('.gs-ok').click(); await until(() => D.getElementById('gs-done'));
       let u = ups.at(-1);
-      eq(u.method, 'POST'); eq(JSON.stringify(u.meta.parents), '["F9"]', 'se sube a la carpeta elegida'); eq(u.meta.name, 'Mi charla.revela.json');
-      eq(u.meta.mimeType, 'application/vnd.revela+json', 'con el tipo propio de Revela');
+      eq(u.method, 'POST'); eq(JSON.stringify(u.meta.parents), '["F9"]', 'se sube a la carpeta elegida'); eq(u.meta.name, 'Mi charla.revela');
+      eq(u.meta.mimeType, 'application/vnd.revela+zip', 'con el tipo propio de Revela (un paquete)');
       assert(/Texto que busca Drive/.test(u.meta.contentHints?.indexableText || ''), 'Drive encuentra sus textos (indexableText)');
       assert(u.meta.contentHints.thumbnail?.image, 'y muestra su primera diapositiva');
-      eq(D.querySelector('#gs-done .gs-path').textContent, 'Guardado en Drive ▸ Clases/Mi charla.revela.json', 'dice dónde está');
+      eq(D.querySelector('#gs-done .gs-path').textContent, 'Guardado en Drive ▸ Clases/Mi charla.revela', 'dice dónde está');
       eq(D.querySelector('#gs-done .gs-open').href, 'https://drive.google.com/file/d/n1/view', 'con un enlace para abrirla en Drive');
       D.querySelector('#gs-done .gs-close').click();
       eq(GD.lastFolder()?.id, 'F9', 'recuerda la carpeta'); eq(GD.linkedFile()?.id, 'n1');

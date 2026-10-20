@@ -12,6 +12,8 @@
 // - Choosing files: pick_files shows the system's «Open» dialog (the web view's own, on Linux, filters only by
 //   MIME type and hid PowerPoint files). Only what is opened with Revela or chosen there can be read
 //   (read_opened), once: nothing else of the disk.
+// - Pictures, videos and sounds on disk (media.rs): a .pptx or .revela unzipped here, its files in Revela's own folder,
+//   shown from there; a .revela put together from them. The page gets only the text.
 // - Updates: update_available / install_update. The page asks, in the interface's language; the installer is
 //   downloaded, its signature checked against the public key in tauri.conf.json, installed and the app
 //   restarted. Without internet it simply opens as it is. Linux .deb/.rpm installs can't replace themselves
@@ -34,6 +36,8 @@ use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
+
+mod media;
 
 const RELEASES: &str = "https://github.com/fmesasc/revela/releases/latest";
 // What Revela opens (the rest of the arguments are ignored): presentations, its projects, PDFs («Open with»).
@@ -347,7 +351,9 @@ fn main() {
         .manage(Files::default())
         .manage(Saves::default())
         .manage(Links::default())
-        .invoke_handler(tauri::generate_handler![opened_links, save_file, save_begin, save_chunk, save_end, opened_files, pick_files, read_opened, opened_size, read_range, release_opened, menu_bar, update_available, install_update])
+        .manage(media::Zips::default())
+        .invoke_handler(tauri::generate_handler![opened_links, save_file, save_begin, save_chunk, save_end, opened_files, pick_files, read_opened, opened_size, read_range, release_opened, menu_bar, update_available, install_update,
+            media::zip_open, media::zip_read, media::zip_extract, media::zip_close, media::media_find, media::media_put, media::media_gc, media::save_package])
         .setup(|app| {
             // Windows and Linux: what to open comes as arguments («Open with», a double click, a revela:// link).
             let mut files = Vec::new();

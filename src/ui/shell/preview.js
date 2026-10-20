@@ -17,6 +17,7 @@ import { lockSVG } from '../../render/svg.js';
 import { ensureLook } from '../../render/imagelook.js';
 import { mapPreviewHTML } from '../../features/content/geomap.js';
 import { shadowCSS, borderCSS, levelCSS, shapeSVG, imgFilter, imgOpacity, imgClip, chartSVG, iconSVG, wordartCSS, tableRowsHTML, inkSVG, timerSVG, curvedTextSVG, shapeTextHTML, hasShapeText, deviceCSS, tableClass, tableVars, tableCSS } from '../../render/svg.js';
+import { isLive } from '../../core/mediastore.js';
 
 // Table look for thumbnails (same rules as the exports), injected once.
 function ensurePreviewCSS() {
@@ -60,7 +61,7 @@ export function blockPreview(b, slide, { small = false } = {}) {
     el.replaceChildren(img);
   } else if (b.type === 'video') {
     // (Its poster — from PowerPoint — if it has one, as PowerPoint shows it; else a play sign.)
-    if (b.poster && /^(data:image\/|https:|blob:)/.test(b.poster)) { const im = document.createElement('img'); im.loading = 'lazy'; im.src = small && needsSmall(b.poster) ? smallImage(b.poster, u => { im.src = u; }) || 'data:,' : blobURL(b.poster); im.alt = ''; im.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000'; el.replaceChildren(im); }
+    if (b.poster && (/^(data:image\/|https:|blob:)/.test(b.poster) || isLive(b.poster))) { const im = document.createElement('img'); im.loading = 'lazy'; im.src = small && needsSmall(b.poster) ? smallImage(b.poster, u => { im.src = u; }) || 'data:,' : blobURL(b.poster); im.alt = ''; im.style.cssText = 'width:100%;height:100%;object-fit:contain;background:#000'; el.replaceChildren(im); }
     else el.innerHTML = `<div style="width:100%;height:100%;background:#000;display:grid;place-items:center;color:#fff;font-size:60px">▶</div>`;
   } else if (b.type === 'audio') {
     el.innerHTML = `<div style="width:100%;height:100%;background:#0004;display:grid;place-items:center;font-size:32px">🔊</div>`;

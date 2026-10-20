@@ -23,6 +23,9 @@ import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
 import { undo, redo, canRedo } from '../../core/store.js';
 import { t } from '../../i18n/index.js';
 import { OFFICIAL_SITE } from '../../core/config.js';
+import { setDeskApi, holdDesktopFile, openDeskZip, registerDiskMedia } from '../../io/deskzip.js';
+import { setPackageSaver, extOf } from '../../io/formats/package.js';
+import { setDiskMedia, dehydrate, usedRefs, mediaEntry, mediaBlobOf, MEDIA_REF } from '../../core/mediastore.js';
 
 const mac = () => /Mac/i.test(globalThis.navigator?.platform || globalThis.navigator?.userAgent || '');
 const SEP = '-';
@@ -31,7 +34,7 @@ const SEP = '-';
 // these (DESK) —, a submenu [label, [items]], or SEP. Labels in Spanish: translated with t() when built.
 export const MENU = [
   ['Archivo', [['Nuevo', 'new'], ['Abrir…', 'open'], ['Mis presentaciones en la nube', 'cloud-docs'], SEP,
-    ['Guardar', 'save'], ['Descargar el proyecto (.revela.json)', 'download-project'], ['Historial de versiones', 'versions'], ['Espacio ocupado', 'storage'], SEP,
+    ['Guardar', 'save'], ['Descargar el proyecto (.revela)', 'download-project'], ['Historial de versiones', 'versions'], ['Espacio ocupado', 'storage'], SEP,
     ['Importar', [['PowerPoint u OpenDocument…', 'import-pptx'], ['Reutilizar diapositivas…', 'reuse-slides'], ['Markdown…', 'import-md'], ['Importar preguntas', 'import-questions']]],
     ['Exportar', [['PDF', 'export-pdf'], ['PowerPoint', 'export-pptx'], ['ODP', 'export-odp'], ['HTML', 'export'], ['Insertar en Moodle o en una web', 'export-embed'], ['Imágenes', 'export-png'], ['Vídeo', 'export-video'],
       ['SCORM', 'export-scorm'], SEP, ['Exportar preguntas', 'export-questions'], ['Fichas y práctica', 'export-study']]],
@@ -160,6 +163,7 @@ export class DesktopFile {
   constructor(path, size) { this.path = path; this.size = size; this.name = path.split(/[\\/]/).pop(); this.type = TYPES[this.name.split('.').pop().toLowerCase()] || ''; }
   slice(a = 0, b = this.size, type = '') { return new DesktopPiece(this.path, Math.max(0, a), Math.min(b, this.size), type); }
   text() { return this.slice().text(); }
+  deskZip() { return openDeskZip(this.path); }              // (a .pptx or .revela, read by the window: io/deskzip.js)
 }
 class DesktopPiece {
   constructor(path, a, b, type) { this.path = path; this.a = a; this.b = Math.max(a, b); this.size = this.b - this.a; this.type = type; }
@@ -172,9 +176,11 @@ class DesktopPiece {
   async arrayBuffer() { return (await this.blob()).arrayBuffer(); }
   async text() { return (await this.blob()).text(); }
 }
-// A path opened: a package as a DesktopFile (then let go: release_opened), anything else read whole, as before.
+// A path opened: a package or a PowerPoint as a DesktopFile — read by the window, its pictures and videos never through
+// the page — (then let go: release_opened); anything else read whole, as before.
+const ZIPPED = /\.(revela|pptx|pptm|potx|ppsx)$/i;
 async function opened(path) {
-  if (!/\.revela$/i.test(path)) return { file: fileAt(path, await invoke('read_opened', { path })), done: () => {} };
+  if (!ZIPPED.test(path)) return { file: fileAt(path, await invoke('read_opened', { path })), done: () => {} };
   return { file: new DesktopFile(path, await invoke('opened_size', { path })), done: () => invoke('release_opened', { path }).catch(() => {}) };
 }
 // Choosing files: every «choose a file» of the app (an <input type="file">, clicked or through its label) opens the
@@ -208,7 +214,9 @@ async function pickInto(inp) {
   const pkg = paths.find(p => /\.revela$/i.test(p));
   if (pkg) { const o = await opened(pkg); try { await dropFiles([o.file]); } finally { o.done(); } return; }
   const dt = new DataTransfer();
-  for (const path of paths) dt.items.add(fileAt(path, await invoke('read_opened', { path })));
+  // (A PowerPoint goes in as a stand-in for the file on disk, which the importer reads through the window: io/deskzip.js.)
+  for (const path of paths) dt.items.add(ZIPPED.test(path) ? holdDesktopFile(new DesktopFile(path, await invoke('opened_size', { path })))
+    : fileAt(path, await invoke('read_opened', { path })));
   inp.files = dt.files;
   inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
 }
@@ -223,6 +231,45 @@ function chooseFiles() {
   // (In the page — also through its <label> —: the click reaches the input, and its default, the web view's dialog, is stopped.)
   const onClick = e => { if (isFile(e.target)) { e.preventDefault(); pickInto(e.target); } };
   document.addEventListener('click', onClick, true); undoers.push(() => document.removeEventListener('click', onClick, true));
+}
+
+// ---- Pictures, videos and sounds on disk (desktop/src-tauri/src/media.rs) ------------------------------------------
+// A presentation's files live in Revela's own folder and are shown from there (an asset: address, core/mediastore.js).
+// Read back after a restart: found there by their id. Saved as a .revela: put together by the window from that folder
+// (those only this page has — a picture just inserted — written there first). Nothing referred to: deleted after a day.
+const typeOfPath = p => TYPES[p.split('.').pop().toLowerCase()] || '';
+async function savePackage(deck, name) {
+  const light = await dehydrate(deck), files = {}, list = [];
+  for (const id of usedRefs(light, new Set())) {
+    let e = mediaEntry(id);
+    if (!e?.path) {
+      const b = await mediaBlobOf(MEDIA_REF + id); if (!b) continue;
+      const r = await invoke('media_put', new Uint8Array(await b.arrayBuffer()), { headers: { 'x-ext': extOf(b.type) } });
+      if (r?.[0] !== id) continue;
+      e = { type: b.type, size: r[2] };
+    }
+    const at = `files/${id}.${extOf(e.type)}`;
+    files[id] = { path: at, type: e.type || '', size: e.size || 0 }; list.push([id, at]);
+  }
+  const json = JSON.stringify({ format: 'revela-package', version: 1, files, deck: light });
+  const path = await invoke('save_package', { name: encodeURIComponent(name), json, files: list });
+  if (path) toast(t('Guardado en {path}').replace('{path}', path));
+  return path;
+}
+function diskMedia() {
+  setDiskMedia({
+    find: async id => { const r = await invoke('media_find', { id }); if (r) registerDiskMedia(id, r[0], typeOfPath(r[0]), r[1]); },
+    gc: keep => invoke('media_gc', { keep }),
+  });
+  setPackageSaver(savePackage);
+  undoers.push(() => { setDiskMedia({}); setPackageSaver(null); });
+  // (Drawn on a canvas — a crop, a smaller copy, an export —, a picture of that folder must be asked for with CORS, or
+  // the canvas can't be read: every <img> given such an address asks so.)
+  const prefix = api.core.convertFileSrc?.('') || '';
+  const d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+  if (!prefix || !d?.set) return;
+  Object.defineProperty(HTMLImageElement.prototype, 'src', { ...d, set(v) { if (typeof v === 'string' && v.startsWith(prefix) && !this.crossOrigin) this.crossOrigin = 'anonymous'; d.set.call(this, v); } });
+  undoers.push(() => Object.defineProperty(HTMLImageElement.prototype, 'src', d));
 }
 
 // Files opened with Revela: each one as if dropped on the editor (a presentation opens; it asks first if the open
@@ -249,8 +296,8 @@ async function openLinks() {
 // tauri: window.__TAURI__ (withGlobalTauri; tests give their own).
 export async function initDesktop({ tauri = globalThis.__TAURI__, updates = true } = {}) {
   if (!tauri?.core) return false;
-  api = tauri;
-  saveDownloads(); chooseFiles();
+  api = tauri; setDeskApi(tauri);
+  saveDownloads(); chooseFiles(); diskMedia();
   try { await build(); } catch (e) { console.warn('Menú no creado:', e); }
   bar(pinned()); altShowsBar();
   const rebuild = () => build().catch(() => {});

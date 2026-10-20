@@ -1090,10 +1090,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq([...where.querySelectorAll('[data-w]')].map(b => b.dataset.w).filter(w => w !== 'cloud').join(), 'drive,onedrive,file', 'Drive, OneDrive o un archivo');
     where.querySelector('[data-w="file"]').click(); await sleep(20);
     const box = D.getElementById('toasts');
+    for (let i = 0; i < 100 && !/\.revela\)[\s\S]*Abrir/.test(box?.textContent || ''); i++) await sleep(30);   // (the package, put together first)
     assert(box && box.getAttribute('aria-live') === 'polite', 'una zona de avisos que se lee en voz alta');
-    assert(/revela\.json/.test(box.textContent) && /Abrir/.test(box.textContent), 'dice qué se descargó y cómo seguir: ' + box.textContent);
+    assert(/\.revela\)/.test(box.textContent) && /Abrir/.test(box.textContent), 'dice qué se descargó y cómo seguir: ' + box.textContent);
     // (That one: whatever else the page may have said meanwhile — a slow machine's notices — is not this test's.)
-    const own = [...box.querySelectorAll('.toast')].find(x => /revela\.json/.test(x.textContent));
+    const own = [...box.querySelectorAll('.toast')].find(x => /\.revela\)/.test(x.textContent));
     own.click(); await sleep(300);
     assert(!box.contains(own), 'un clic lo quita (quedan: ' + [...box.children].map(x => x.textContent.trim().slice(0, 40)).slice(0, 3).join(' | ') + ')');
   });

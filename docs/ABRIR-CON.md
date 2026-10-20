@@ -75,8 +75,8 @@ aparecen.**
 | Iconos de la aplicación (*Application icons*) | Los PNG de `icons/drive/` (fondo transparente), el del tamaño que pida cada casilla: `icon-16.png`, `icon-32.png`, `icon-48.png`, `icon-64.png`, `icon-96.png`, `icon-128.png`, `icon-256.png` |
 | Iconos de documento (*Document icons*) | nada: Google los da por obsoletos (ver arriba) |
 | URL de apertura (*Open URL*) | `https://revelaslides.com/app/` — tal cual, sin variables: Drive le añade `?state={"ids":[…],"action":"open","userId":…}`, que es lo que lee Revela (`openRequest` en `src/ui/shell/openwith.js`) |
-| Tipos MIME predeterminados | `application/vnd.revela+json` (el que pone Revela a todo lo que guarda en Drive) |
-| Extensiones predeterminadas | vacío. Para Drive la extensión de `Clase.revela.json` es `json` (la última), no `revela`; el tipo MIME de arriba ya basta. Poner `json` haría a Revela la aplicación de todos los JSON |
+| Tipos MIME predeterminados | `application/vnd.revela+zip` (el que pone Revela a todo lo que guarda en Drive desde octubre de 2026: un paquete `.revela`) y `application/vnd.revela+json` (los `.revela.json` de antes) |
+| Extensiones predeterminadas | `revela` (los paquetes `Clase.revela`). No `json`: para Drive la extensión de `Clase.revela.json` es `json`, y haría a Revela la aplicación de todos los JSON (su tipo MIME ya basta) |
 | Tipos MIME secundarios | `application/json` (presentaciones guardadas antes del tipo propio), `application/vnd.openxmlformats-officedocument.presentationml.presentation` (PowerPoint) y `application/vnd.oasis.opendocument.presentation` (LibreOffice) |
 | Extensiones secundarias | `pptx` y `odp` |
 | Creación de archivos | marcado · URL nueva (*New URL*): `https://revelaslides.com/app/` (Drive añade `?state={"action":"create","folderId":…}`; la presentación nueva se crea en esa carpeta) · nombre del documento: `Presentación de Revela` (Google dice que ya no se usa) |

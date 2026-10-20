@@ -87,7 +87,8 @@ la posición y el tamaño: `{ x, y, w, h }`, en una diapositiva de **1280 × 720
 
 | Llamada | Qué devuelve |
 |---|---|
-| `Revela.export.html()` | La presentación como una página HTML (texto). |
+| `Revela.export.html()` | La presentación como una página HTML (texto), para mostrarla dentro de Revela: las fotos y vídeos abiertos de un PowerPoint van como direcciones de este navegador. |
+| `Revela.export.htmlFile()` | Una promesa con la página HTML completa, con todos sus archivos dentro: la que sirve fuera de Revela. |
 | `Revela.export.pptx()` | Una promesa con un `Blob` de PowerPoint. |
 | `Revela.export.odp()` | Una promesa con un `Blob` de LibreOffice Impress. |
 | `Revela.export.pdf()` | Abre el diálogo de imprimir / guardar en PDF. |

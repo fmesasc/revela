@@ -30,7 +30,7 @@ const SECTIONS = [
     C('save', 'save', 'Guardar', 'Donde vive: Drive, tu nube o, si solo está en este navegador, donde elijas.'),
     C('gdrive-save-as', 'drive_file_move', 'Guardar en Drive como…', 'Una copia nueva: carpeta, nombre y formato.'),
     C('onedrive-save', 'cloud_upload', 'Guardar en OneDrive', 'La presentación (se guarda sola mientras trabajas), o una copia en PDF o PowerPoint.'),
-    C('download-project', 'download', 'Descargar una copia', 'Un archivo (.revela.json) que guardas tú.'),
+    C('download-project', 'download', 'Descargar una copia', 'Un archivo (.revela) que guardas tú.'),
     C('versions', 'history', 'Versiones', 'Las copias anteriores, para volver a una.'),
     C('gdrive-html', 'cloud_sync', 'Página web en Drive', 'La presentación como página, publicada en tu Drive.')] },
   { id: 'share', icon: 'share', title: 'Compartir', cards: [

@@ -20,6 +20,7 @@
 
 import { FX, fxOfPreset, dirOfSubtype } from '../../features/animation/fxcatalog.js';
 import { storeBytes, mediaType, MEDIA_MIN } from '../../core/mediastore.js';
+import { desktopFileOf } from '../deskzip.js';
 import { parseCommentText } from '../../features/collab/comments.js';
 import { esc } from '../../core/text.js';
 import { uid } from '../../core/model.js';
@@ -566,6 +567,8 @@ const sizeInZip = f => +(f?._data?.uncompressedSize || 0);
 let byAddress = true;
 export const setImportByAddress = on => { byAddress = !!on; };          // (tests: the old way)
 async function zipMedia(f, mime, inline) {
+  // (The desktop app: straight from the file on disk to Revela's folder, never through the page — io/deskzip.js.)
+  if (f.extract && byAddress && !inline && f.size >= MEDIA_MIN && !/svg/i.test(mime)) return f.extract(mime);
   const bytes = await f.async('uint8array');
   if (inline || !byAddress || bytes.length < MEDIA_MIN || /svg/i.test(mime) || typeof indexedDB === 'undefined') {
     return new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => ko(r.error); r.readAsDataURL(new Blob([bytes], { type: mime })); });
@@ -781,9 +784,14 @@ async function themeOnlyPackage(zip, main, file) {
 // progress({ slide, of } | { file, bytes }): how far it is (a 400 MB presentation takes a while);
 // notes: filled with what wasn't kept as it was ({ kind: 'tooBig' | 'unread' | 'format' | 'missing' | 'big', name, bytes });
 // mediaMax, mediaBig: the sizes past which a file is left out or said to be big (MEDIA_MAX, MEDIA_BIG).
-export async function importPPTX(file, { progress = null, notes: said = [], mediaMax = MEDIA_MAX, mediaBig = MEDIA_BIG } = {}) {
+export async function importPPTX(file, opts = {}) {
+  // (In the desktop app, a file on disk is read by the window itself: io/deskzip.js.)
+  const disk = desktopFileOf(file);
+  if (disk) { const zip = await disk.deskZip(); try { return await importZip(zip, file, { ...opts, mediaMax: Infinity }); } finally { zip.close(); } }
   const JSZip = await loadJSZip();
-  const zip = await JSZip.loadAsync(file);
+  return importZip(await JSZip.loadAsync(file), file, opts);
+}
+async function importZip(zip, file, { progress = null, notes: said = [], mediaMax = MEDIA_MAX, mediaBig = MEDIA_BIG } = {}) {
   readers.set(zip, mediaReader(zip, said, progress, mediaMax, mediaBig));
 
   // The main part: the presentation (ppt/presentation.xml), or a theme file's theme.

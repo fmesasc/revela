@@ -23,7 +23,8 @@ import { loadScript } from '../../core/vendor.js';
 import { plainText } from '../../core/text.js';
 import { account as revelaAccount } from './account.js';
 import { approxSize } from '../../core/model.js';
-import { packDeck, deckFile } from '../../core/deckfile.js';
+import { packDeck } from '../../core/deckfile.js';
+import { packageBlob, readPackage, PACKAGE_TYPE } from '../formats/package.js';
 import { portable, liveBytes } from '../../core/mediastore.js';
 
 const GIS = 'https://accounts.google.com/gsi/client';
@@ -161,9 +162,10 @@ export function deckIndexText(deck = state.deck) {
 
 // parent: a folder id ('root' = My Drive); by default Drive's "New" folder, if any.
 const UPLOAD_FIELDS = 'id,name,version,md5Checksum,parents,modifiedTime,webViewLink';
-async function upload({ id, name, mimeType, body, thumbnail, text, parent = newFolder }) {
+// change: what else changes in a file that is there (an old .revela.json becoming a package: its name and type).
+async function upload({ id, name, mimeType, body, thumbnail, text, parent = newFolder, change = null }) {
   const boundary = 'revela' + Math.random().toString(36).slice(2);
-  const meta = id ? {} : { name, mimeType, ...(mimeType === PROJECT_MIME && { appProperties: { revela: '1' } }), ...(parent && parent !== 'root' && { parents: [parent] }) };
+  const meta = id ? { ...change } : { name, mimeType, ...((mimeType === PROJECT_MIME || mimeType === PACKAGE_TYPE) && { appProperties: { revela: '1' } }), ...(parent && parent !== 'root' && { parents: [parent] }) };
   if (thumbnail || text) meta.contentHints = { ...(thumbnail && { thumbnail: { image: b64url(thumbnail), mimeType: 'image/jpeg' } }), ...(text && { indexableText: text }) };
   const head = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`, tail = `\r\n--${boundary}--`;
   if (typeof body !== 'string' && body.size > SMALL_UPLOAD) return uploadResumable({ id, meta, mimeType, body });
@@ -186,23 +188,31 @@ async function uploadResumable({ id, meta, mimeType, body }) {
   if (!r.ok) throw new Error(t('No se pudo guardar.'));
   return r.json();
 }
-// (The file's content: core/deckfile.js — repeated pictures once, and in pieces when big.)
-// Past this, changes aren't sent by themselves after each edit (each time the whole file goes up again):
-// the status says so, and a click saves it then. Meanwhile they're kept in this browser.
+// The file's content: a package (.revela, a zip: io/formats/package.js) — presentation.json and each picture, video
+// or sound as it is, as PowerPoint keeps a .pptx —; a third smaller than the same as text, and never one text in
+// memory. (Older files, .revela.json, still open; saved again, they become packages.)
+// Past this, changes aren't sent by themselves (each time the whole file goes up again): the status says so, and a
+// click saves it then. Meanwhile they're kept in this browser.
 const AUTO_MAX = 200e6;
+const sizeOf = deck => approxSize(packDeck(deck)) + liveBytes(deck);     // (its files by address: as their bytes)
+// An older .revela.json saved again: a package now, named so.
+const asPackage = f => (/\.revela\.json$/i.test(f?.name || '') ? { name: f.name.replace(/\.revela\.json$/i, '.revela'), mimeType: PACKAGE_TYPE } : null);
 
 // Revela projects in Drive, most recent first.
 export async function listPresentations() {
-  const q = encodeURIComponent("trashed=false and (appProperties has { key='revela' and value='1' } or name contains '.revela.json')");
+  const q = encodeURIComponent("trashed=false and (appProperties has { key='revela' and value='1' } or name contains '.revela')");
   const r = await api(`/drive/v3/files?q=${q}&orderBy=modifiedTime desc&pageSize=60&fields=files(id,name,modifiedTime,thumbnailLink,version)`);
   if (!r.ok) throw new Error(t('No se pudo leer tu Drive.'));
-  return ((await r.json()).files || []).map(f => ({ ...f, title: f.name.replace(/\.revela\.json$/i, '') }));
+  return ((await r.json()).files || []).map(f => ({ ...f, title: f.name.replace(/\.revela(\.json)?$/i, '') }));
 }
 export async function openPresentation(id) {
   const meta = await (await api(`/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,version,md5Checksum,parents`)).json();
   const r = await api(`/drive/v3/files/${encodeURIComponent(id)}?alt=media`);
   if (!r.ok) throw new Error(t('No se pudo abrir el archivo.'));
-  let deck; try { deck = JSON.parse(await r.text()); } catch { throw new Error(t('El archivo no es un proyecto de Revela.')); }
+  // (A package, or — older — the deck as text.)
+  // (Told apart by its first bytes — a zip starts «PK» —, not by its name: a file can be renamed in Drive.)
+  const blob = await r.blob(), head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
+  let deck; try { deck = head[0] === 0x50 && head[1] === 0x4b ? await readPackage(new File([blob], 'drive.revela')) : JSON.parse(await blob.text()); } catch { throw new Error(t('El archivo no es un proyecto de Revela.')); }
   if (!deck || !Array.isArray(deck.slides)) throw new Error(t('El archivo no es un proyecto de Revela.'));
   replaceDeck(deck); setLinked({ id: meta.id, name: meta.name, version: meta.version, md5: meta.md5Checksum || null, parent: meta.parents?.[0] || null });
   lastSaved = docVersion(); setStatus('saved');
@@ -273,9 +283,8 @@ export function savePresentation(opts = {}) {
 const changedThere = (cur, m) => (cur.md5 && m.md5Checksum ? cur.md5 !== m.md5Checksum : !!(cur.version && m.version && +m.version > +cur.version));
 async function saveNow({ interactive = true, force = false, asNew = false, name, folder } = {}) {
   // (Its files by address — core/mediastore.js — as data, after measuring: not read whole only to find it's too big.)
-  if (!interactive && approxSize(packDeck(state.deck)) + liveBytes(state.deck) * 4 / 3 > AUTO_MAX) { setStatus('big'); return false; }
-  const packed = packDeck(await portable(state.deck));
-  const body = deckFile(packed, PROJECT_MIME), text = deckIndexText();
+  if (!interactive && sizeOf(state.deck) > AUTO_MAX) { setStatus('big'); return false; }
+  const body = await packageBlob(state.deck), text = deckIndexText();
   const savedVersion = docVersion();                     // (what this upload contains)
   let thumbnail = null; try { thumbnail = await makeThumbnail(); } catch {}
   setStatus('saving');
@@ -288,11 +297,11 @@ async function saveNow({ interactive = true, force = false, asNew = false, name,
         if (m.trashed) { setLinked(null); return saveNow({ interactive, force, asNew }); }
         if (changedThere(cur, m)) { setStatus('conflict'); return 'conflict'; }
       }
-      const f = await upload({ id: cur.id, mimeType: PROJECT_MIME, body, thumbnail, text });
+      const f = await upload({ id: cur.id, mimeType: PACKAGE_TYPE, body, thumbnail, text, change: asPackage(cur) });
       setLinked({ ...linkedFile(), version: f.version, md5: f.md5Checksum || null, name: f.name, parent: f.parents?.[0] || linkedFile()?.parent || null, dirty: false });
     } else {
       const where = folder !== undefined ? folder || ROOT : newFolder ? { id: newFolder, name: '' } : lastFolder() || ROOT;
-      const f = await upload({ name: (cleanName(name) || safeName()) + '.revela.json', mimeType: PROJECT_MIME, body, thumbnail, text, parent: where.id });
+      const f = await upload({ name: (cleanName(name) || safeName()) + '.revela', mimeType: PACKAGE_TYPE, body, thumbnail, text, parent: where.id });
       setLinked({ id: f.id, name: f.name, version: f.version, md5: f.md5Checksum || null, parent: f.parents?.[0] || null, folder: where, link: f.webViewLink || '' });
       if (folder !== undefined) rememberFolder(folder);
     }
@@ -316,9 +325,19 @@ export function startAutosave() {
     if (docVersion() === lastSaved) return;                    // (only the document's content counts)
     if (!currentFile.dirty) setLinked({ ...currentFile, dirty: true });   // remembered across reloads
     if (status === 'saved' || status === 'idle') setStatus('pending');
-    clearTimeout(timer);
-    timer = setTimeout(() => { if (status !== 'conflict') savePresentation({ interactive: false }).catch(() => {}); }, delay);
+    // (A small one: a few seconds after the last change. A big one — the whole package goes up each time —: every few
+    // minutes while it changes, and when the tab is hidden or closed.)
+    const run = () => { timer = null; if (status !== 'conflict') savePresentation({ interactive: false }).catch(() => {}); };
+    if (sizeOf(state.deck) > BIG_FILE) { if (!timer) timer = setTimeout(run, bigDelay); return; }
+    clearTimeout(timer); timer = setTimeout(run, delay);
   });
+}
+const BIG_FILE = 5e6;
+let bigDelay = 3 * 60e3;
+export const setBigAutosaveDelay = ms => { bigDelay = ms; };
+if (typeof document !== 'undefined') {
+  const now = () => { if (timer && document.visibilityState === 'hidden') { clearTimeout(timer); timer = null; if (status !== 'conflict') savePresentation({ interactive: false }).catch(() => {}); } };
+  document.addEventListener('visibilitychange', now); window.addEventListener('pagehide', now);
 }
 // Another document replacing the linked one before its last changes reached Drive (they wait a few
 // seconds): they go now, to its file — unless it changed there meanwhile, or can't be reached without
@@ -326,17 +345,17 @@ export function startAutosave() {
 onBeforeReplace(old => {
   const f = linkedFile();
   if (!f || !account() || !hasToken() || docVersion() === lastSaved || status === 'conflict') return;
-  if (approxSize(packDeck(old)) + liveBytes(old) * 4 / 3 > AUTO_MAX) return;
-  clearTimeout(timer);
+  if (sizeOf(old) > AUTO_MAX) return;
+  clearTimeout(timer); timer = null;
   const text = deckIndexText(old);
   saving = saving.catch(() => {}).then(async () => {
     try {
-      const body = deckFile(packDeck(await portable(old)), PROJECT_MIME);
+      const body = await packageBlob(old);
       // (A plain look, not fileState: by now another document is open, and the link must not follow this file.)
       const r = await api(`/drive/v3/files/${encodeURIComponent(f.id)}?fields=version,md5Checksum,trashed`, {}, false);
       const m = r.ok ? await r.json() : null;
       if (!m || m.trashed || changedThere(f, m)) return;
-      await upload({ id: f.id, mimeType: PROJECT_MIME, body, text });
+      await upload({ id: f.id, mimeType: PACKAGE_TYPE, body, text, change: asPackage(f) });
     } catch {}
   });
 });
@@ -400,7 +419,7 @@ async function picker(makeView, title) {
     builder.build().setVisible(true);
   });
 }
-const pickFile = (mimeTypes = 'application/vnd.revela+json,application/json,text/html,application/octet-stream') =>
+const pickFile = (mimeTypes = 'application/vnd.revela+zip,application/vnd.revela+json,application/json,application/zip,text/html,application/octet-stream') =>
   picker(p => new p.DocsView(p.ViewId.DOCS).setMimeTypes(mimeTypes));
 // A folder to save in, starting at My Drive: { id, name }, or null if cancelled.
 export async function pickFolder() {

@@ -36,7 +36,7 @@ export async function openInDesktop() {
   if (doc?.id) { await cd.flushCloud().catch(() => {}); launch(`revela://open?doc=${encodeURIComponent(doc.id)}`); return 'doc'; }
   const name = slug(state.deck.name) + '.revela';
   try {
-    await withProgress(t('Preparando el paquete (.revela)…'), say => saveProject({ min: 0, onProgress: (a, b) => say(b ? Math.round(a * 100 / b) + ' %' : '') }));
+    await withProgress(t('Preparando el paquete (.revela)…'), say => saveProject({ onProgress: (a, b) => say(b ? Math.round(a * 100 / b) + ' %' : '') }));
   } catch (e) { toast(t('No se pudo preparar el paquete:') + ' ' + (e?.message || e), { error: true }); return null; }
   launch(`revela://open?downloaded=${encodeURIComponent(name)}`);
   toast(t('Descargado «{f}». Se abre en la aplicación de escritorio en cuanto termina de bajar; si no la tienes, descárgala, o abre el archivo con doble clic.').replace('{f}', name),

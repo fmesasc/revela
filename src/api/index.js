@@ -28,6 +28,7 @@ import { buildPptxBlob } from '../io/formats/pptx-export.js';
 import { buildODP } from '../io/formats/odp.js';
 import { alertUser, confirmUser, promptUser } from '../core/notify.js';
 import { shareCopy } from '../core/model.js';
+import { portable } from '../core/mediastore.js';
 
 const find = id => { for (const s of [state.deck.master, ...state.deck.slides]) { const b = s?.blocks.find(x => x.id === id); if (b) return b; } return null; };
 const last = () => currentSlide().blocks.at(-1);
@@ -67,7 +68,9 @@ export const Revela = Object.freeze({
   update: (id, props) => { const b = find(id); if (b) commit(() => Object.assign(b, props)); return !!b; },
   remove: id => { const s = currentSlide(); commit(() => { s.blocks = s.blocks.filter(b => b.id !== id); }); },
   on: (ev, fn) => (ev === 'change' ? subscribe(() => fn(Revela)) : () => {}),
-  export: Object.freeze({ html: () => buildHTML(), pptx: () => buildPptxBlob(), odp: () => buildODP(), pdf: () => exportPDF() }),
+  // (htmlFile: a page that works anywhere — the files of a PowerPoint, which the open presentation shows from this
+  // browser's store, inside it —; html: as before, for showing inside Revela.)
+  export: Object.freeze({ html: () => buildHTML(), htmlFile: async () => buildHTML(await portable(state.deck)), pptx: () => buildPptxBlob(), odp: () => buildODP(), pdf: () => exportPDF() }),
   ui: Object.freeze({
     addButton: b => { if (!b?.id || typeof b.onClick !== 'function') throw new Error('addButton({ id, label, onClick })'); buttons.set(b.id, b); renderButtons(); },
     removeButton: id => { buttons.delete(id); renderButtons(); },

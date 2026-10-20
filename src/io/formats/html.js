@@ -59,7 +59,7 @@ import { customPath, pathEnd, animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CS
 import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars, layoutOf } from '../../features/document/master.js';
 import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, magOrigin, underArea, viewOf, MAG_SKIP } from '../../features/document/magnify.js';
 import { watermarkPage } from '../../features/document/watermark.js';
-import { portable } from '../../core/mediastore.js';
+import { portable, isLive } from '../../core/mediastore.js';
 
 
 const tf = b => `rotate(${b.rotation || 0}deg)${b.flipH ? ' scaleX(-1)' : ''}${b.flipV ? ' scaleY(-1)' : ''}`;
@@ -221,7 +221,7 @@ function animAttrs(b, slide, a = b.animation, key = b.id) {
     + (effect === 'pdfview' ? ` data-pdfgo="${esc(JSON.stringify(pdfStep(a)))}"` : '')
     + (effect === 'mapfly' && stopIndex(b, a) > 0 ? ` data-mapgo="${stopIndex(b, a)}"` : '')
     + (MEDIA_FX.includes(effect) ? ` data-mfx="${effect}"` : '')
-    + (a.sound ? ` data-sound="${esc(a.sound)}"${a.sound === 'custom' && a.soundSrc && /^(data:audio\/|blob:)/.test(a.soundSrc) ? ` data-sound-src="${esc(a.soundSrc)}"` : ''}` : '');
+    + (a.sound ? ` data-sound="${esc(a.sound)}"${a.sound === 'custom' && a.soundSrc && (/^(data:audio\/|blob:)/.test(a.soundSrc) || isLive(a.soundSrc)) ? ` data-sound-src="${esc(a.soundSrc)}"` : ''}` : '');
   if (trigger && slide?.blocks.some(x => x.id === trigger))       // played on click of another object
     return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}${isFx(effect) ? ' ' + effect : ''}"${FX_REV(effect) ? ' data-rev' : ''} data-trig="${trigger}" data-kf="${effect === 'path' ? 'rvP' + cssKey(key) : effect === 'pdfview' || effect === 'mapfly' || MEDIA_FX.includes(effect) ? 'none' : EFFECT_KF[effect] || 'rvIn'}"`
       + ` data-dur="${duration ?? 500}" data-del="${delay ?? 0}"` + clip;
@@ -254,7 +254,7 @@ export const blocksOf = (s, deck = state.deck) => [...masterBlocksFor(s, deck), 
 // (the overview, slides saved as images). A library thumbnail (assets/…) as a full address.
 function posterAttr(b) {
   const p = String(b.poster || '');
-  if (!/^(data:image\/|https?:|blob:)/i.test(p) && (/^[a-z][a-z0-9+.-]*:/i.test(p) || !p)) return '';
+  if (!/^(data:image\/|https?:|blob:)/i.test(p) && !isLive(p) && (/^[a-z][a-z0-9+.-]*:/i.test(p) || !p)) return '';
   let u = p; if (!/^(data|https?):/i.test(p)) try { u = new URL(p, document.baseURI).href; } catch { return ''; }
   return safeURL(u) ? ` data-poster="${esc(u)}"` : '';
 }
@@ -414,7 +414,7 @@ function blockHTMLRaw(b, slide) {
       // (Its shadow after its look, else the picture's own filter would replace box()'s: a cut-out's follows its figure.)
       + `filter:${imgFilter(b)}${b.shadow ? ' ' + shadowCSS(b) : ''};clip-path:${imgClip(b)};${deviceCSS(b)}">`;
   if (b.type === 'video')
-    return `<video${a} data-vid="${b.id}" src="${esc(b.src || '')}"${b.poster && /^(data:image\/|https:|blob:)/.test(b.poster) ? ` poster="${esc(b.poster)}"` : ''} controls preload="metadata" style="${box(b)}object-fit:contain"></video>`;
+    return `<video${a} data-vid="${b.id}" src="${esc(b.src || '')}"${b.poster && (/^(data:image\/|https:|blob:)/.test(b.poster) || isLive(b.poster)) ? ` poster="${esc(b.poster)}"` : ''} controls preload="metadata" style="${box(b)}object-fit:contain"></video>`;
   if (b.type === 'poll')     // live poll: question, live results and the QR to vote
     return `<div${a} class="rv-poll" data-poll="${esc(JSON.stringify({ pollId: b.pollId, kind: b.kind, display: b.display, question: b.question, options: b.options, ...(b.kind === 'quiz' && { correct: b.correct || [0], time: b.time || 20, ...(b.mode && b.mode !== 'speed' && { mode: b.mode }) }), ...(ACTIVITIES.includes(b.kind) && { text: b.text, points: b.points, image: b.image }), ...(b.kind === 'wheel' && { time: b.time ?? 150 }),
       ...(b.kind === 'number' && { min: b.min, max: b.max, step: b.step, unit: b.unit, answer: b.answer }), ...(b.kind === 'image' && { images: b.images }), ...((b.kind === 'point' || b.kind === 'draw') && { image: b.image }), ...(b.kind === 'open' && b.rubric && { rubric: b.rubric }), ...(b.kind === 'qa' && b.moderate && { moderate: true }), ...(['qa', 'word', 'open'].includes(b.kind) && b.clean && { clean: true }), ...(b.login && { login: true }) }))}" `
@@ -762,7 +762,7 @@ function slideHTML(s0, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck)
     + slideNumberHTML(deck, s0, { fg: fgHere, accent, font: deckBodyFont(deck), words: numberWords(), ...barRoom(deck, s0) });
   const notes = (s.notes ? `<aside class="notes">${esc(s.notes)}</aside>` : '')
     // Voice-over: plays when the slide is shown (reveal.js's data-autoplay).
-    + (s.narration?.src && /^data:audio\/|^https:\/\/|^blob:/.test(s.narration.src) ? `<audio class="rv-narration" data-autoplay src="${esc(s.narration.src)}" preload="auto"></audio>` : '');
+    + (s.narration?.src && (/^data:audio\/|^https:\/\/|^blob:/.test(s.narration.src) || isLive(s.narration.src)) ? `<audio class="rv-narration" data-autoplay src="${esc(s.narration.src)}" preload="auto"></audio>` : '');
   // (Marked only because the next one morphs, it doesn't morph from the one before — reveal.js morphs any two marked
   // neighbours —: it comes in with its own transition, as in PowerPoint, where Morph is the incoming slide's.)
   const aa = (plan.marked.has(s.id) ? ' data-auto-animate' + (s.autoAnimate ? '' : ' data-auto-animate-restart') : '') + (s.aaDuration ? ` data-auto-animate-duration="${+s.aaDuration}"` : '') + (s.aaDelay ? ` data-auto-animate-delay="${+s.aaDelay}"` : '');

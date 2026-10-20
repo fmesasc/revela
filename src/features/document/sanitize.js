@@ -6,6 +6,7 @@
 
 import { unpackDeck } from '../../core/deckfile.js';
 import { normalizeMap } from '../content/geomap.js';
+import { isLive } from '../../core/mediastore.js';
 
 const RISKY_HTML = /<\s*\/?\s*(script|iframe|frame|object|embed|link|meta|style|base|form|input|textarea|button|select|svg|math|noscript|template|portal)\b|\son[a-z]+\s*=|javascript:|vbscript:|srcdoc|expression\s*\(/i;
 const DROP = new Set(['SCRIPT', 'IFRAME', 'FRAME', 'FRAMESET', 'OBJECT', 'EMBED', 'LINK', 'META', 'STYLE', 'BASE', 'FORM', 'INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'SVG', 'MATH', 'NOSCRIPT', 'TEMPLATE', 'PORTAL']);
@@ -17,7 +18,7 @@ export function safeURL(u) {
   const s = String(u ?? '').replace(/[\u0000-\u0020]+/g, '');     // (browsers ignore these inside a scheme)
   if (!s || !/^[a-z][a-z0-9+.-]*:/i.test(s)) return true;             // relative
   return /^(https?|mailto|tel|blob):/i.test(s) || /^data:(image|video|audio|model|font)\//i.test(s) || /^data:application\/(octet-stream|pdf)[;,]/i.test(s)
-    || /^rvmedia:[0-9a-f]{32}$/.test(s);                               // (a file of this browser's store: core/mediastore.js)
+    || /^rvmedia:[0-9a-f]{32}$/.test(s) || isLive(s);                  // (a file of this browser's store, or its address: core/mediastore.js)
 }
 export function cleanHTML(html) {
   const s = String(html ?? '');
