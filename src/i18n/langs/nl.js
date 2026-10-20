@@ -4964,4 +4964,10 @@ export default {
   "App de escritorio": "Desktop-app",
   "Abrir esta presentación en la aplicación de escritorio de Revela, sin los límites del navegador": "Deze presentatie openen in de desktop-app van Revela, zonder de grenzen van de browser",
   "Una presentación muy grande": "Een heel grote presentatie",
+  "Estándar": "Standaard",
+  "Código del color": "Kleurcode",
+  "Copiar el código": "Code kopiëren",
+  "Cuentagotas: toma el color de un punto de la diapositiva o de la ventana": "Pipet: neem de kleur van een punt op de dia of in het venster",
+  "Copiado: {c}": "Gekopieerd: {c}",
+  "Haz clic en la diapositiva (o en cualquier punto de la ventana) para tomar su color. Esc: cancelar.": "Klik op de dia (of ergens in het venster) om de kleur over te nemen. Esc: annuleren.",
 };

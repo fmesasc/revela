@@ -4964,4 +4964,10 @@ export default {
   "App de escritorio": "تطبيق سطح المكتب",
   "Abrir esta presentación en la aplicación de escritorio de Revela, sin los límites del navegador": "فتح هذا العرض في تطبيق Revela لسطح المكتب، دون قيود المتصفح",
   "Una presentación muy grande": "عرض كبير جدًا",
+  "Estándar": "قياسية",
+  "Código del color": "رمز اللون",
+  "Copiar el código": "نسخ الرمز",
+  "Cuentagotas: toma el color de un punto de la diapositiva o de la ventana": "القطارة: خذ لون نقطة من الشريحة أو من النافذة",
+  "Copiado: {c}": "تم النسخ: {c}",
+  "Haz clic en la diapositiva (o en cualquier punto de la ventana) para tomar su color. Esc: cancelar.": "انقر على الشريحة (أو على أي نقطة في النافذة) لأخذ لونها. Esc: إلغاء.",
 };

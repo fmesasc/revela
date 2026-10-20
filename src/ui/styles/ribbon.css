@@ -156,3 +156,20 @@
 [data-kind=entrance]{--kind:#2e9d4f}[data-kind=emphasis]{--kind:#d9a400}[data-kind=exit]{--kind:#d0453a}[data-kind=path]{--kind:#3f7fd0}
 .ribbon-page .anim-now b{font-size:11px;font-weight:600;color:var(--accent);white-space:nowrap}
 .ribbon-page .anim-now select[hidden]{display:none}
+/* Revela's own colour picker (ui/shell/colorpicker.js) */
+.cp-pop{width:252px;min-width:0;gap:7px}
+.cp-row{display:flex;flex-direction:column;gap:3px}
+.cp-row>span{font-size:11px;color:var(--txt2)}
+.cp-sw{display:grid;grid-template-columns:repeat(10,1fr);gap:3px}
+.cp-sw button{aspect-ratio:1;border:1px solid var(--line2);border-radius:4px;padding:0;cursor:pointer;min-width:0}
+.cp-sw button:hover{outline:2px solid var(--accent);outline-offset:1px}
+.cp-sv{position:relative;height:130px;border-radius:6px;cursor:crosshair;touch-action:none}
+.cp-dot{position:absolute;width:12px;height:12px;margin:-7px 0 0 -7px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #0008;pointer-events:none}
+.popover .cp-hue{-webkit-appearance:none;appearance:none;width:100%;height:12px;border-radius:6px;padding:0;border:0;
+  background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}
+.cp-bar{display:flex;align-items:center;gap:5px}
+.cp-now{width:26px;height:26px;border-radius:6px;border:1px solid var(--line2);flex:0 0 auto}
+.popover .cp-code{flex:1;min-width:0;font-family:ui-monospace,monospace;padding:4px 6px}
+.cp-bar button{border:1px solid var(--line2);background:var(--panel);color:var(--txt);border-radius:6px;padding:3px;cursor:pointer;line-height:0}
+.cp-bar button .ms{font-size:18px}
+.cp-eyedrop{position:fixed;inset:0;z-index:2100;cursor:crosshair}

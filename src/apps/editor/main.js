@@ -42,6 +42,7 @@ import { refreshLinkedCharts } from '../../features/live/dashboards.js';
 import * as comments from '../../features/collab/comments.js';
 import * as protect from '../../features/collab/protect.js';
 import { initRibbon, renderRibbon } from '../../ui/ribbon/ribbon.js';
+import { initColourPicker } from '../../ui/shell/colorpicker.js';
 import { initContextMenu } from '../../ui/shell/contextmenu.js';
 import * as spellcheck from '../../ui/shell/spellcheck.js';
 import * as spelling from '../../features/document/spelling.js';
@@ -244,6 +245,7 @@ function keyboard(e) {
 initCanvas();
 initPanel();
 initRibbon();
+initColourPicker();                 // (every <input type="color">: Revela's own picker, the same in the browser and the desktop app)
 initViews(ACTIONS); initDeckCSS();                                     // (classic, studio or simple: ui/shell/views.js)
 initBusy();                                             // (first: the «loading» bar sees every request)
 initErrorReports({ testing: new URLSearchParams(location.search).has('test') });   // (the app's errors, to Revela: ui/shell/errors.js)

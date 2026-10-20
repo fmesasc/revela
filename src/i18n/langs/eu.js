@@ -4964,4 +4964,10 @@ export default {
   "App de escritorio": "Mahaigaineko aplikazioa",
   "Abrir esta presentación en la aplicación de escritorio de Revela, sin los límites del navegador": "Ireki aurkezpen hau Revelaren mahaigaineko aplikazioan, nabigatzailearen mugarik gabe",
   "Una presentación muy grande": "Aurkezpen oso handia",
+  "Estándar": "Estandarra",
+  "Código del color": "Kolore-kodea",
+  "Copiar el código": "Kopiatu kodea",
+  "Cuentagotas: toma el color de un punto de la diapositiva o de la ventana": "Tanta-kontagailua: hartu diapositibako edo leihoko puntu baten kolorea",
+  "Copiado: {c}": "Kopiatuta: {c}",
+  "Haz clic en la diapositiva (o en cualquier punto de la ventana) para tomar su color. Esc: cancelar.": "Egin klik diapositiban (edo leihoko edozein puntutan) haren kolorea hartzeko. Esc: utzi.",
 };

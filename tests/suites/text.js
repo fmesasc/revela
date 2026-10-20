@@ -19,6 +19,49 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq([a, b, c].map(x => x.fontSize).join(), '24,36,44', 'con una, solo esa');
   });
 
+  await test('selector de color propio (igual en el navegador y en la app): a la parte seleccionada, colores del tema, código y cuentagotas', async () => {
+    reset(); const W = frame.contentWindow, CP = await W.eval("import('/src/ui/shell/colorpicker.js')");
+    R.blocks.addText(); const b = last(); b.html = 'Hola mundo'; R.render(); select(b); await sleep(20);
+    const rich = richOf(b); rich.dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true })); await sleep(20);
+    const tn = D.createTreeWalker(rich, 4).nextNode(); const r = D.createRange(); r.setStart(tn, 5); r.setEnd(tn, 10);
+    const sel = W.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    // A click on the text colour: Revela's picker, not the browser's.
+    const inp = D.querySelector('#ribbon [data-color]'), ev = new W.MouseEvent('click', { bubbles: true, cancelable: true }); inp.dispatchEvent(ev);
+    const pop = D.querySelector('.cp-pop');
+    assert(ev.defaultPrevented && pop, 'se abre el de Revela (el del navegador, no)');
+    const theme = R.palettes.paletteColours().map(c => c.toLowerCase());
+    assert(theme.some(c => pop.querySelector(`[data-c="${c}"]`)), 'con los colores del tema');
+    // A swatch: only the selected words, and the selection stays.
+    const sw = pop.querySelector('[data-c="#ff0000"]'), md = new W.MouseEvent('mousedown', { bubbles: true, cancelable: true }); sw.dispatchEvent(md);
+    assert(md.defaultPrevented, 'pulsar un color no quita la selección'); sw.click(); await sleep(30);
+    const red = /(#ff0000|rgb\(255,\s*0,\s*0\))/i, html = richOf(b).innerHTML;
+    assert(red.test(html) && /mundo/.test(html.slice(html.search(red))) && !red.test(html.slice(0, html.indexOf('Hola') + 4)), 'solo «mundo», en rojo: ' + html);
+    eq(W.getSelection().toString(), 'mundo', 'la selección sigue');
+    // The code: typed (any form), Enter.
+    const code = pop.querySelector('.cp-code'); eq(code.value, '#ff0000', 'su código');
+    code.focus(); code.value = 'rgb(0, 128, 255)'; code.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); await sleep(30);
+    assert(/(#0080ff|rgb\(0,\s*128,\s*255\))/i.test(richOf(b).innerHTML), 'escrito (rgb…) y aplicado: ' + richOf(b).innerHTML);
+    eq(CP.parseColour('#abc'), '#aabbcc'); eq(CP.parseColour('tomato'), '#ff6347'); eq(CP.parseColour('nada'), null, 'lo que no es un color, no');
+    assert(D.querySelector('.cp-pop [data-c="#0080ff"]') || JSON.parse(W.localStorage.getItem('revela.colours.recent') || '[]').includes('#0080ff'), 'queda entre los recientes');
+    D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(10);
+    assert(!D.querySelector('.cp-pop'), 'Esc lo cierra');
+    // The eyedropper without the browser's (the desktop app): a click on the slide takes the colour of what is there.
+    reset(); CP.useNativeEyedropper(false);
+    try {
+      R.blocks.addShape('rect'); const a = last(); R.blocks.addShape('rect'); const g = last();
+      R.store.commit(() => { Object.assign(a, { x: 40, y: 40, w: 200, h: 120, fill: '#3f6497' }); Object.assign(g, { x: 600, y: 300, w: 300, h: 200, fill: '#12ab34', stroke: 'none' }); });
+      R.state.ui.multi = []; select(a); await sleep(30);
+      D.querySelector('#ribbon [data-shape-fill]').dispatchEvent(new W.MouseEvent('click', { bubbles: true, cancelable: true })); await sleep(10);
+      D.querySelector('.cp-pop .cp-drop').click(); await sleep(20);
+      const shield = D.querySelector('.cp-eyedrop'); assert(shield, 'el cursor de cuentagotas');
+      const st = D.getElementById('stage').getBoundingClientRect(), k = st.width / R.state.deck.size.w;
+      shield.dispatchEvent(new W.PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: st.left + 750 * k, clientY: st.top + 400 * k }));
+      const fillOf = () => slide().blocks.find(x => x.id === a.id)?.fill;
+      for (let i = 0; i < 300 && fillOf() === '#3f6497'; i++) await sleep(50);
+      eq(fillOf(), '#12ab34', 'el color de la otra forma, tomado de la diapositiva');
+    } finally { CP.useNativeEyedropper(true); CP.closeColourPicker(); }
+  });
+
   await test('fuentes propias: se suben, van dentro de la presentación y se usan como las demás', async () => {
     reset(); const W = frame.contentWindow, F = await W.eval("import('/src/features/design/fonts.js')");
     const data = F.fontDataURL('data:application/octet-stream;base64,AAEAAAALAIAAAwAwT1MvMg==', 'MiMarca-Bold.ttf');

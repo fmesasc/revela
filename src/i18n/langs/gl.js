@@ -4964,4 +4964,10 @@ export default {
   "App de escritorio": "App de escritorio",
   "Abrir esta presentación en la aplicación de escritorio de Revela, sin los límites del navegador": "Abrir esta presentación na aplicación de escritorio de Revela, sen os límites do navegador",
   "Una presentación muy grande": "Unha presentación moi grande",
+  "Estándar": "Estándar",
+  "Código del color": "Código da cor",
+  "Copiar el código": "Copiar o código",
+  "Cuentagotas: toma el color de un punto de la diapositiva o de la ventana": "Contagotas: colle a cor dun punto da diapositiva ou da xanela",
+  "Copiado: {c}": "Copiado: {c}",
+  "Haz clic en la diapositiva (o en cualquier punto de la ventana) para tomar su color. Esc: cancelar.": "Fai clic na diapositiva (ou en calquera punto da xanela) para coller a súa cor. Esc: cancelar.",
 };
