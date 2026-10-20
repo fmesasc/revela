@@ -17,7 +17,8 @@
 // - Updates: update_available / install_update. The page asks, in the interface's language; the installer is
 //   downloaded, its signature checked against the public key in tauri.conf.json, installed and the app
 //   restarted. Without internet it simply opens as it is. Linux .deb/.rpm installs can't replace themselves
-//   (only the AppImage can): there it opens the download page instead. Installed from Flathub, never: Flathub
+//   (only the AppImage can): from Revela's apt repository, apt updates it after the system's password window; otherwise
+//   it opens the download page. Installed from Flathub, never: Flathub
 //   forbids apps that update themselves (flatpak updates it), so there's simply never a newer version.
 // - Links (revela://, desktop/src-tauri/tauri.conf.json): open?doc=<id>, a presentation of Revela's cloud, which the page
 //   opens (opened_links); open?downloaded=<name>, a .revela the web app has just downloaded for a presentation too big
@@ -40,6 +41,8 @@ use tauri_plugin_updater::UpdaterExt;
 mod media;
 
 const RELEASES: &str = "https://github.com/fmesasc/revela/releases/latest";
+// (Written by install.sh: Revela's own apt repository.)
+const APT_LIST: &str = "/etc/apt/sources.list.d/revela.list";
 // What Revela opens (the rest of the arguments are ignored): presentations, its projects, PDFs («Open with»).
 const OPENS: [&str; 10] = ["pptx", "pptm", "potx", "ppsx", "odp", "otp", "key", "json", "revela", "pdf"];
 
@@ -329,6 +332,18 @@ async fn install_update(app: AppHandle) -> Result<String, String> {
         return Err("Flatpak: updates come from flatpak (flatpak update)".into());
     }
     if cfg!(target_os = "linux") && std::env::var_os("APPIMAGE").is_none() {
+        // Installed from Revela's apt repository (install.sh): updated by apt — which checks the package's signature —,
+        // after the system's own password window (pkexec); only that repository is refreshed. Then restarted, new.
+        if std::path::Path::new(APT_LIST).exists() && std::path::Path::new("/usr/bin/pkexec").exists() {
+            let cmd = format!("export DEBIAN_FRONTEND=noninteractive; apt-get update -o Dir::Etc::sourcelist={APT_LIST} -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 && apt-get install -y --only-upgrade revela");
+            let status = tauri::async_runtime::spawn_blocking(move || std::process::Command::new("/usr/bin/pkexec").args(["/bin/sh", "-c", cmd.as_str()]).status())
+                .await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())?;
+            match status.code() {
+                Some(0) => app.restart(),
+                Some(126) => return Ok("cancelled".into()),            // (the password window closed)
+                _ => {}                                                  // (no password window here, or apt failed: the page)
+            }
+        }
         app.opener().open_url(RELEASES, None::<&str>).map_err(|e| e.to_string())?;
         return Ok("page".into());
     }

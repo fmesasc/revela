@@ -63,10 +63,12 @@ export async function checkUpdates({ asked = false } = {}) {
   try { v = await invoke('update_available'); } catch { if (asked) alertDialog(t('No se pudo buscar actualizaciones: comprueba la conexión a internet.')); return; }
   if (!v) { if (asked) alertDialog(t('Ya tienes la última versión de Revela.')); return; }
   if (!(await confirmDialog(t('Hay una versión nueva de Revela ({v}). ¿Actualizar ahora? Se reiniciará en unos segundos.').replace('{v}', v), { ok: t('Actualizar') }))) return;
-  toast(t('Descargando la actualización…'), { busy: true, ms: 120000 });
+  // (Linux, installed with apt: the system asks for the password first — main.rs install_update.)
+  const busy = toast(t('Descargando la actualización…'), { busy: true });
   try {
-    if ((await invoke('install_update')) === 'page') toast(t('Instala el paquete nuevo desde la página que se ha abierto. Si instalaste Revela con apt: sudo apt update && sudo apt upgrade.'), { ms: 12000 });
-  } catch (e) { toast(t('No se pudo actualizar:') + ' ' + (e?.message || e), { error: true }); }
+    const r = await invoke('install_update'); busy.close();
+    if (r === 'page') toast(t('Instala el paquete nuevo desde la página que se ha abierto. Si instalaste Revela con apt: sudo apt update && sudo apt upgrade.'), { ms: 12000 });
+  } catch (e) { busy.close(); toast(t('No se pudo actualizar:') + ' ' + (e?.message || e), { error: true }); }
 }
 
 // ---- The menu --------------------------------------------------------------------------------------------
