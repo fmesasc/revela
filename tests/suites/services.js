@@ -268,6 +268,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     };
     try {
       AI.disconnectAi(); W.sessionStorage.setItem('revela.ai.pkce', 'verificador');
+      // (The desktop app's sign-in, ?desktop=…&code=…, isn't OpenRouter's: left for the account dialog.)
+      const n0calls = calls.length;
+      eq(await AI.finishOpenRouterLogin({ search: '?desktop=' + 'n'.repeat(24) + '&code=ABC123', pathname: W.location.pathname, hash: '' }), false, 'el código de la app de escritorio no es de OpenRouter');
+      eq(calls.length, n0calls, 'ni se canjea');
       const ok = await AI.finishOpenRouterLogin({ search: '?test&code=CODIGO', pathname: W.location.pathname, hash: '' });
       assert(ok && AI.aiConnected(), 'código canjeado por la clave');
       eq(calls[0].body.code, 'CODIGO', 'envía el código'); eq(calls[0].body.code_verifier, 'verificador', 'y el verificador');

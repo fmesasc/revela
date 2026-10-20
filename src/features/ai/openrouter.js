@@ -52,11 +52,13 @@ export async function startOpenRouterLogin() {
 // Called on start-up: if we're back from OpenRouter with ?code=, get the key.
 export async function finishOpenRouterLogin(loc = location) {
   const params = new URLSearchParams(loc.search), code = params.get('code');
-  if (!code) return false;
+  // (Only a code this tab asked OpenRouter for — its verifier is here —: the desktop app's sign-in also comes with
+  // ?desktop=…&code=…, which the account dialog reads after this — io/cloud/account.js desktopRequest.)
+  if (!code || params.has('desktop')) return false;
   let verifier = ''; try { verifier = sessionStorage.getItem(VERIFIER) || ''; } catch {}
+  if (!verifier) return false;
   params.delete('code');
   history.replaceState(null, '', loc.pathname + (params.toString() ? '?' + params : '') + loc.hash);
-  if (!verifier) return false;
   const r = await fetch(`${API}/auth/keys`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, code_verifier: verifier, code_challenge_method: 'S256' }) });
   if (!r.ok) throw new Error('OpenRouter ' + r.status);
