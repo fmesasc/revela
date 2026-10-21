@@ -808,8 +808,8 @@ export default {
         keep(img(PLANE, 80, 180, 500, 500, 'Plano cartesiano de −5 a 5'), planeId),
         ...[...boat, [0, 4], [3, 0]].map(([x, y]) => dot(x, y, INK, 12)),
         on(lines(toPx(boat), '#8a5a2b', 5, true), 'draw', { duration: 1400 }),
-        // (The mast lies on the Y axis: lighter and thicker than the axis. A hair of slant: a perfectly vertical path isn't drawn at all.)
-        after(shape('custom', P(0, 4)[0] - 10, P(0, 4)[1], 20, P(0, -1)[1] - P(0, 4)[1], 'none', { path: 'M50 100 L50.01 0', stroke: '#8a5a2b', strokeWidth: 7 }), 'draw', { duration: 600 }),
+        // (The mast lies on the Y axis: lighter and thicker than the axis.)
+        after(shape('custom', P(0, 4)[0] - 10, P(0, 4)[1], 20, P(0, -1)[1] - P(0, 4)[1], 'none', { path: 'M50 100 L50 0', stroke: '#8a5a2b', strokeWidth: 7 }), 'draw', { duration: 600 }),
         after(lines(toPx(sail), RED, 5, true, { fill: '#b3261e30' }), 'draw', { duration: 1000, sound: 'whoosh' }),
         tableBlock({ x: 660, y: 190, w: 540, h: 330, fontSize: 24, header: true, headBg: INK, headFg: PARCH, stroke: '#c9a46a', banded: true, band: '#c9a46a', colW: [3, 2, 2],
           rows: [['Trazo', 'Desde', 'Hasta'], ['Casco', '(−4, −1)', '(4, −1)'], ['', '(3, −3)', '(−3, −3)'], ['Mástil', '(0, −1)', '(0, 4)'], ['Vela', '(0, 4)', '(3, 0)'], ['', '(0, 0)', '(0, 4)']] }),

@@ -161,6 +161,35 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { f.remove(); }
   });
 
+  await test('«Dibujar» en una línea propia perfectamente vertical (o horizontal): se traza entera', async () => {
+    // (Its box has no width — or no height — so nothing may be measured by dividing by it.)
+    reset();
+    R.store.commit(() => { slide().blocks = [
+      { id: 'mv', type: 'shape', shape: 'custom', x: 600, y: 100, w: 20, h: 500, rotation: 0, fill: 'none', stroke: '#8a5a2b', strokeWidth: 7, path: 'M50 100 L50 0',
+        animation: { effect: 'draw', order: 1, seq: 1, start: 'click', duration: 400, delay: 0 } },
+      { id: 'mh', type: 'shape', shape: 'custom', x: 100, y: 400, w: 900, h: 20, rotation: 0, fill: 'none', stroke: '#8a5a2b', strokeWidth: 7, path: 'M0 50 L100 50',
+        animation: { effect: 'draw', order: 1, seq: 2, start: 'withPrev', duration: 400, delay: 0 } }]; });
+    const S = await frame.contentWindow.eval("import('/src/render/svg.js')");
+    assert(/<path d="M50 100 L50 0"[^>]*class="rvd"/.test(S.shapeSVG(slide().blocks[0])), 'en el lienzo, con su trazo');
+    const html = R.io.buildHTML(R.state.deck, { inApp: true });
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+    f.srcdoc = html;
+    try {
+      for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
+      await sleep(100);
+      const ps = [...f.contentDocument.querySelectorAll('.fragment.draw .rvd')]; eq(ps.length, 2, 'las dos líneas');
+      for (const [p, name, len] of [[ps[0], 'vertical', 500], [ps[1], 'horizontal', 900]]) {
+        const d = parseFloat(p.style.getPropertyValue('--rvdl'));
+        assert(Number.isFinite(d) && d > len * 0.9, name + ': su raya, tan larga como la línea en la diapositiva: ' + d);
+        eq(f.contentWindow.getComputedStyle(p).strokeDashoffset, d + 'px', name + ': antes de su turno, oculta');
+      }
+      f.contentWindow.Reveal.next(); await sleep(50);
+      for (const p of ps) { const an = p.getAnimations()[0]; an.pause(); an.currentTime = 400; }
+      await sleep(20);
+      for (const p of ps) eq(f.contentWindow.getComputedStyle(p).strokeDasharray, 'none', 'al acabar, entera');
+    } finally { f.remove(); }
+  });
+
   await test('al presentar, «siguiente» con una animación a medias la termina (no salta al siguiente punto)', async () => {
     reset(); const b = slide().blocks[0]; select(b);
     R.trans.addAnimation('path', { dx: 300, dy: 0 });
