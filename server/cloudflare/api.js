@@ -134,6 +134,10 @@ export function settings(env) {
     // only what was spent is charged.)
     maxTokens: num(env.AI_MAX_TOKENS, 16000),
     models: String(env.AI_MODELS || 'openai/gpt-4o-mini,anthropic/claude-haiku-4.5,google/gemini-2.5-flash,google/gemini-2.5-flash-lite').split(/[\s,]+/).filter(Boolean),
+    // Three quality levels the app asks for by name (basic/medium/advanced): the model for each, set by the operator.
+    // Unset, they keep today's behaviour (the «advanced» features used gemini-2.5-flash). To raise quality, set
+    // AI_MODEL_ADVANCED (e.g. google/gemini-2.5-pro) and add it to AI_PRICES. A level's model needn't be in AI_MODELS.
+    tiers: { basic: env.AI_MODEL_BASIC || 'google/gemini-2.5-flash-lite', medium: env.AI_MODEL_MEDIUM || 'google/gemini-2.5-flash', advanced: env.AI_MODEL_ADVANCED || 'google/gemini-2.5-flash' },
     imageModel: env.AI_IMAGE_MODEL || 'bytedance-seed/seedream-4.5',
     ttsModel: env.AI_TTS_MODEL || 'openai/gpt-4o-mini-tts-2025-12-15',
     ttsVoices: String(env.AI_TTS_VOICES || 'alloy,ash,ballad,coral,echo,fable,nova,onyx,sage,shimmer').split(/[\s,]+/).filter(Boolean),

@@ -22,6 +22,7 @@ const OUTLINE_KINDS = [['', 'Automático'], ['title', 'Portada'], ['section', 'S
   ['table', 'Tabla'], ['quote', 'Cita'], ['math', 'Ecuación'], ['image', 'Imagen'], ['agenda', 'Agenda'], ['closing', 'Cierre']];
 
 // needed: opened because something asked for the AI (it says so first).
+const TIER_LABELS = { basic: 'Básico', medium: 'Medio', advanced: 'Avanzado' };
 export function openAiSettings({ needed = false } = {}) {
   document.getElementById('ai-modal')?.remove();
   const s = ai.aiSettings(), cloud = hasAccounts();
@@ -41,6 +42,8 @@ export function openAiSettings({ needed = false } = {}) {
       <div class="fr-actions" style="justify-content:flex-start"><button class="ai-save mini2">${t('Guardar clave')}</button></div>
       <label class="fr-l">${t('Modelo')} <input type="text" class="ai-model" list="ai-models" value="${s.model}">
         <datalist id="ai-models"><option value="openrouter/auto"></option></datalist></label>
+      <div class="ai-tiers">${ai.TIERS.map(tr => `<label class="fr-l">${t(TIER_LABELS[tr])} <input type="text" class="ai-tier" data-tier="${tr}" list="ai-models" placeholder="${ai.TIER_DEFAULTS[tr]}" value="${esc(s.tiers?.[tr] || '')}"></label>`).join('')}</div>
+      <p class="host-help">${t('Niveles de calidad: cada función usa el que necesita (mejorar→avanzado, notas→medio, traducir→básico). Vacío = Revela elige.')}</p>
       <label class="fr-l">${t('Modelo de imágenes')} <input type="text" class="ai-imodel" value="${ai.imageModel()}"></label>
       <p class="host-help">${t('«openrouter/auto» elige un modelo adecuado. Otros modelos:')} <a href="https://openrouter.ai/models" target="_blank" rel="noopener">openrouter.ai/models</a></p>
     </details>
@@ -58,6 +61,7 @@ export function openAiSettings({ needed = false } = {}) {
   back.querySelector('.ai-out').addEventListener('click', () => { ai.disconnectAi(); sync(); });
   back.querySelector('.ai-save').addEventListener('click', () => { const k = back.querySelector('.ai-key').value; if (k) { ai.setAiKey(k); back.querySelector('.ai-key').value = ''; sync(); } });
   back.querySelector('.ai-model').addEventListener('change', e => ai.setAiModel(e.target.value));
+  back.querySelectorAll('.ai-tier').forEach(inp => inp.addEventListener('change', e => ai.setAiTier(e.target.dataset.tier, e.target.value)));
   back.querySelector('.ai-imodel').addEventListener('change', e => ai.setImageModel(e.target.value));
   sync();
 }
@@ -392,7 +396,7 @@ async function openReview() {
 
 Object.assign(AI_ACTIONS, {
   'ai-deck': () => openCreateDeck(),
-  'ai-improve': () => run(() => deck.improveSlide()),
+  'ai-improve': () => import('./gallery.js').then(m => m.openImprovements()),
   'ai-agenda': () => run(() => deck.addAgenda()),
   'ai-quiz': () => run(async () => { const n = await deck.addQuiz(3); alertDialog(t('Preguntas añadidas al final: ') + n); }),
   'ai-livequiz': () => openLiveQuiz(),

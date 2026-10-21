@@ -178,6 +178,19 @@ ok((await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { messag
   await bad([{ role: 'user', content: [{ type: 'file', file: {} }] }], 'otras partes: 400');
   // (7 × 280 KB: each under its limit, but the request is over the 2 MB a request may be.)
   ok((await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { messages: parts(...Array(7).fill(pic(280))) } })).status === 413, 'demasiado en total: 413');
+  // Quality levels (basic/medium/advanced): the server resolves the level to its model; a valid model still wins, and an
+  // unknown level falls back to the first model. (env.AI_MODELS here starts with openai/gpt-4o-mini.)
+  aiCalls = [];
+  await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { tier: 'advanced', max_tokens: 50, messages: [{ role: 'user', content: 'x' }] } });
+  ok(aiCalls.at(-1)?.body.model === 'google/gemini-2.5-flash', 'nivel avanzado → su modelo por defecto (sin configurar): ' + aiCalls.at(-1)?.body.model);
+  env.AI_MODEL_ADVANCED = 'google/gemini-2.5-pro';
+  await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { tier: 'advanced', max_tokens: 50, messages: [{ role: 'user', content: 'x' }] } });
+  ok(aiCalls.at(-1)?.body.model === 'google/gemini-2.5-pro', 'nivel avanzado → el modelo que pone el operador (AI_MODEL_ADVANCED)');
+  await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { tier: 'advanced', model: 'openai/gpt-4o-mini', max_tokens: 50, messages: [{ role: 'user', content: 'x' }] } });
+  ok(aiCalls.at(-1)?.body.model === 'openai/gpt-4o-mini', 'un modelo válido pedido gana al nivel');
+  await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { tier: 'inventado', max_tokens: 50, messages: [{ role: 'user', content: 'x' }] } });
+  ok(aiCalls.at(-1)?.body.model === 'openai/gpt-4o-mini', 'un nivel desconocido → el modelo por defecto');
+  delete env.AI_MODEL_ADVANCED;
   env.AI_MODELS = models0; env.AI_PRICES = prices0;
   const S = acc('111').ctx.storage.m; S.set('lots', [{ n: 45, exp: Date.now() + 9e8 }]); S.set('credits', 45); S.set('debt', 0);
 }

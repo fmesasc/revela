@@ -53,7 +53,8 @@ export async function aiChat(env, s, A, body, json) {
   if (!messages || !messages.length || messages.length > 60) return json({ error: 'bad request' }, 400);
   const c = contentOf(messages);
   if (!c || c.text > 1.5e6) return json({ error: 'bad request' }, 400);
-  const model = s.models.includes(body.model) ? body.model : s.models[0];
+  // An allowed model wins; else the asked level (basic/medium/advanced → its configured model); else the first model.
+  const model = s.models.includes(body.model) ? body.model : (typeof body.tier === 'string' && s.tiers[body.tier]) || s.models[0];
   const maxTokens = Math.min(s.maxTokens, Math.max(16, Math.round(+body.max_tokens || 1000)));
   const [pin, pout] = priceOf(s, model), inTok = c.text / 3 + c.images * IMAGE_LIMITS.tokens;
   const estimate = (inTok * pin + maxTokens * pout) / 1e6 + (body.web ? WEB_USD : 0);

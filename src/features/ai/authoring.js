@@ -294,8 +294,8 @@ export const RICH = `Use the richest kind that fits each slide — a list ("bull
 - No forecasts, projections or estimates of your own: a figure for what hasn't happened yet (next quarter's sales, a growth to come) only when the person gave it; else a placeholder ("[previsión de ventas del T4]"). Figures worked out from theirs (a difference, a percentage) are fine.
 - Placeholders in plain words of the deck's language, with spaces — "[objetivo de crecimiento del sur]", never "[objetivo_crecimiento_sur]".
 - A "chart" only for a real series of numbers to compare — never to illustrate an idea. "code" only when the audience writes or reads code — never as decoration on another topic.`;
-// The model for writing whole decks (unless the person chose one): a capable one, not the cheapest of the list.
-const DECK_MODEL = 'google/gemini-2.5-flash';
+// Writing decks and improving slides ask for the «advanced» level, speaker notes for «medium» (openrouter.js tiers):
+// a model fit for the job, not the cheapest, with the actual model set by the operator or the person.
 const withResearch = (source, r) => (r ? `${source ? source + '\n\n' : ''}Research brief from the web (current facts; keep their [n] marks in the notes when you use them):\n${r.brief}` : source);
 
 // Before the outline, a few questions about this very case — what a good speechwriter would ask before writing:
@@ -306,7 +306,7 @@ export async function askAbout(opts = {}) {
     { role: 'system', content: `Someone is about to have a presentation made. Before planning it, ask them the 3-4 questions whose answers would most change it — specific to THIS topic and case, never generic ones they already answered (the topic, the audience, the tone and the number of slides are given). Think of: the purpose and what the audience should do or know afterwards; who exactly listens and what they already know; the time and setting; their own data, examples, names or constraints the slides must use; what must not be missing. Each with 2-5 short options to pick (they may still write their own). Answer only JSON {"questions":[{"q":"…","options":["…"],"multi":false}]}. Write in ${opts.language || lang()}.` },
     { role: 'user', content: [opts.topic && `Topic: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`, opts.count && `Slides: about ${opts.count}`,
       opts.source && `They also gave a document (excerpt): ${String(opts.source).slice(0, 1500)}`].filter(Boolean).join('\n') },
-  ], { json: true, maxTokens: 1200, feature: 'outline', prefer: DECK_MODEL });
+  ], { json: true, maxTokens: 1200, feature: 'outline', tier: 'advanced' });
   return (parseJSON(out)?.questions || []).filter(x => x && str(x.q).trim()).slice(0, 4)
     .map(x => ({ q: str(x.q).trim().slice(0, 200), options: (Array.isArray(x.options) ? x.options : []).map(o => str(o).trim().slice(0, 80)).filter(Boolean).slice(0, 5), multi: !!x.multi }));
 }
@@ -332,7 +332,7 @@ export async function createOutline(opts = {}) {
 ${RICH}
 ${opts.media === 'search' ? `- REQUIRED: 2-4 slides of kind "image", where SEEING the thing explains it — a labelled diagram, a map, the artwork, the place, the object, the experiment —, when something is better seen moving — a process, an experiment, a phenomenon, a demo of a tool — one of them a short video, and when it is understood by turning it around — an organ, a molecule, a monument, a machine, a planet — one an interactive 3D model; its points say what must be seen. (Only a topic with nothing to see — pure code, a company's own figures — may have none.)\n` : ''}Write in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments([opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`].filter(Boolean).join('\n') + TAILOR(opts.context) + source, opts.attachments || []) },
-  ], { maxTokens: 3000, feature: 'outline', prefer: DECK_MODEL });
+  ], { maxTokens: 3000, feature: 'outline', tier: 'advanced' });
   const res = out, slides = (res.slides || []).filter(x => x && str(x.title).trim()).slice(0, 40)
     .map(x => ({ title: str(x.title).trim(), ...(KINDS.includes(x.kind) && (pictures(opts) || x.kind !== 'image') && { kind: x.kind }), ...(x.below === true && { below: true }), points: (Array.isArray(x.points) ? x.points : []).map(str).map(p => p.trim()).filter(Boolean).slice(0, 6) }));
   if (!slides.length) throw new Error('EMPTY');
@@ -365,7 +365,7 @@ ${opts.media === 'search' ? SEARCHED : opts.images ? '- Use 1-3 "image" slides w
 Write everything in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments(brief + source + (pics.some(a => !a.figure)
       ? '\n\nThe attached pictures (notes, a whiteboard, slides, a document\'s pages, photos): base the deck on what they show — read their text and figures — together with the rest.' : ''), opts.attachments || []) },
-  ], { maxTokens: 16000, feature: 'create', prefer: DECK_MODEL });
+  ], { maxTokens: 16000, feature: 'create', tier: 'advanced' });
   const res = out;
   // (Cleaned, and what is too much for one slide in two.)
   const specs = (res.slides || []).filter(s => s && typeof s === 'object').slice(0, 40).flatMap(s => splitSpec(prepareSpec(s)));
@@ -489,7 +489,7 @@ ${SPEC_DOC}
 ${RICH}
 Do not use "image". Write in ${opts.language || lang()}.` },
     { role: 'user', content: `Presentation: ${str(opts.topic).slice(0, 400)}\nAll its titles, in order: ${JSON.stringify(specs.map(sp => sp.title || sp.statement || ''))}\n\nSlides to make again: ${JSON.stringify(want).slice(0, 30000)}` },
-  ], { json: true, maxTokens: 12000, feature: 'create', prefer: DECK_MODEL });
+  ], { json: true, maxTokens: 12000, feature: 'create', tier: 'advanced' });
   for (const s of parseJSON(out)?.slides || []) {
     const i = +s.i; if (!idx.includes(i) || !s || typeof s !== 'object') continue;
     const [sp] = splitSpec(prepareSpec(s)); if (!sp || sp.kind === 'image' || !hasContent(sp)) continue;   // (one that came back empty: the old one stays)
@@ -504,7 +504,7 @@ async function speakerNotes(specs, opts = {}) {
   const out = await chat([
     { role: 'system', content: `Write the speaker notes of these slides of a talk: what the presenter says out loud, 3-6 natural sentences (60-110 words) each, first person, with transitions between slides. Only facts from the slides and the source. Answer only JSON {"notes":[{"i":N,"title":"<the slide's title, as given>","notes":"…"}]}, one per slide given, with its own i. Write in ${opts.language || lang()}.` },
     { role: 'user', content: `Talk: ${str(opts.topic).slice(0, 300)}\n${opts.source ? `Source (excerpt):\n${String(opts.source).slice(0, 20000)}\n` : ''}\nSlides: ${JSON.stringify(want)}` },
-  ], { json: true, maxTokens: 6000, feature: 'notes', prefer: DECK_MODEL });
+  ], { json: true, maxTokens: 6000, feature: 'notes', tier: 'medium' });
   // (By its title when the model says it: a model that skipped or renumbered one put every note after it on the next
   // slide — what a slide said in its notes was the following one's.)
   const norm = v => str(v).toLowerCase().replace(/\s+/g, ' ').trim(), titleOf = sp => norm(sp.title || sp.statement || sp.quote || '');
@@ -590,10 +590,26 @@ export async function improveSlide(slide = currentSlide()) {
   const out = await chat([
     { role: 'system', content: `Improve this slide: clearer, better structured, richer, and choose the best kind. Keep the facts and the language of the slide. Answer only one slide as JSON {"kind":…}.\n${SPEC_DOC}\n${RICH}\nDo not use "image".` },
     { role: 'user', content: `Presentation: ${str(state.deck.name).slice(0, 200)}\nCurrent slide:\n${slideText(slide)}\n\nNotes: ${slide.notes || ''}` },
-  ], { json: true, maxTokens: 3000, feature: 'improve', prefer: DECK_MODEL });
+  ], { json: true, maxTokens: 3000, feature: 'improve', tier: 'advanced' });
   const spec = parseJSON(out); if (!spec || !spec.kind) throw new Error('EMPTY');
   commit(() => { rebuildSlide(slide, spec, state.deck); state.ui.selection = null; });
   return spec.kind;
+}
+
+// Several improved versions of a slide in ONE call: the person picks the best (or none), so a weak result doesn't cost
+// a credit each time it's tried again — one credit buys the choice. A stronger model than the deck's, because here the
+// quality is what saves the retries. Does NOT change the slide: it returns the specs, and the UI previews them and only
+// rebuilds the one chosen (ui/dialogs/gallery.js openImprovements). Throws EMPTY if none came back usable (a hard
+// failure of the call isn't charged — the server settles 0 — so retrying it is free).
+export async function improveSlideVariants(slide = currentSlide(), n = 3) {
+  const out = await chat([
+    { role: 'system', content: `Improve this slide: clearer, better structured, richer, and choose the best kind for each. Keep the facts and the language of the slide. Give ${n} DISTINCT improved versions — each a different structure, kind or emphasis, not the same one reworded —, the best first. Answer only JSON {"variants":[{"kind":…}, …]} with ${n} items.\n${SPEC_DOC}\n${RICH}\nDo not use "image".` },
+    { role: 'user', content: `Presentation: ${str(state.deck.name).slice(0, 200)}\nCurrent slide:\n${slideText(slide)}\n\nNotes: ${slide.notes || ''}` },
+  ], { json: true, maxTokens: 6000, feature: 'improve', tier: 'advanced' });
+  const data = parseJSON(out);
+  const variants = (Array.isArray(data?.variants) ? data.variants : data?.kind ? [data] : []).filter(v => v && typeof v === 'object' && v.kind).slice(0, n);
+  if (!variants.length) throw new Error('EMPTY');
+  return variants;
 }
 
 // Design ideas by the AI (PowerPoint Designer's "more ideas"): three new

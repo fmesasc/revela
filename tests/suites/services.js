@@ -912,6 +912,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       // Mejorar una diapositiva
       R.slides.goToSlide(3); answer = { kind: 'bullets', title: 'Ventajas claras', bullets: ['Limpia'], notes: 'n' };
       eq(await A.improveSlide(), 'bullets', 'mejorada'); assert(/Ventajas claras/.test(slide().blocks[0].html), 'título nuevo');
+      // Mejorar: varias versiones en una sola llamada, sin tocar la diapositiva (el modal previsualiza y solo aplica la elegida)
+      R.slides.goToSlide(3); const antes = JSON.stringify(slide().blocks);
+      answer = { variants: [{ kind: 'bullets', title: 'A', bullets: ['x'] }, { kind: 'features', title: 'B', items: [{ title: 'c', text: 'd' }] }, { kind: 'key_idea', title: 'E' }] };
+      const vs = await A.improveSlideVariants(); eq(vs.length, 3, 'tres versiones'); eq(vs[0].kind, 'bullets', 'la mejor primero');
+      eq(JSON.stringify(slide().blocks), antes, 'pedir versiones NO cambia la diapositiva');
+      answer = { kind: 'bullets', title: 'Sola' }; eq((await A.improveSlideVariants()).length, 1, 'si el modelo da una sola, una');
+      answer = { nada: true }; let fallo = false; try { await A.improveSlideVariants(); } catch { fallo = true; } assert(fallo, 'sin variantes válidas, falla (y no se aplica nada)');
       // Agenda y preguntas
       answer = { kind: 'bullets', title: 'Agenda', bullets: ['Intro', 'Datos'] }; await A.addAgenda();
       assert(/Agenda/.test(R.state.deck.slides[1].blocks[0].html), 'agenda en la segunda posición');

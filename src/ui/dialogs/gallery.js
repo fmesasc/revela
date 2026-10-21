@@ -3,7 +3,7 @@
 import { whileOpening } from '../shell/opening.js';
 import { galleryNotice } from '../shell/notices.js';
 import { isBlankDeck, emptyDeck } from '../../core/model.js';
-import { state, replaceDeck, currentSlide } from '../../core/store.js';
+import { state, replaceDeck, currentSlide, commit } from '../../core/store.js';
 import { designIdeas, previewBlocks, applyIdea } from '../../features/design/designer.js';
 import { GALLERY, buildFromGallery } from '../../features/design/gallery.js';
 import { EXAMPLES, CATEGORIES, loadExample, exampleNames } from '../../features/content/examples.js';
@@ -163,6 +163,42 @@ export function openDesignIdeas() {
     });
     grid.appendChild(more);
   }
+  document.body.appendChild(back);
+  back.querySelector('.modal-close').addEventListener('click', () => back.remove());
+  back.addEventListener('click', e => { if (e.target === back) back.remove(); });
+}
+
+// «Mejorar diapositiva»: one AI call brings several whole new versions of this slide; each is previewed and only the one
+// chosen is applied — the rest cost nothing, and closing keeps the original. So a weak result isn't a credit lost to a
+// blind retry: the credit buys the choice between the options. (features/ai/authoring.js improveSlideVariants.)
+export async function openImprovements(slide = currentSlide()) {
+  document.getElementById('ideas-modal')?.remove();
+  const deck = state.deck, idx = deck.slides.indexOf(slide), { w, h } = deck.size;
+  const variants = await runAi(() => aiDeck.improveSlideVariants(slide));
+  if (!variants) return;
+  const back = document.createElement('div');
+  back.id = 'ideas-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal" style="text-align:start;width:min(820px,94vw);max-width:94vw">
+    <button class="modal-close">✕</button><h3>${t('Mejorar diapositiva')}</h3>
+    <p class="host-help">${t('Elige una versión, o cierra para no cambiar nada.')}</p><div class="gal-grid"></div></div>`;
+  const grid = back.querySelector('.gal-grid');
+  // A preview is built by rebuilding a COPY of the slide, in its own place (so the layout lands right), without ever
+  // touching the real one — only the chosen spec is applied, on click.
+  const rebuilt = spec => { const cl = structuredClone(slide); deck.slides[idx] = cl; try { aiDeck.rebuildSlide(cl, spec, deck); } finally { deck.slides[idx] = slide; } return cl; };
+  const tile = (spec, i) => {
+    const cl = rebuilt(spec);
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'gal-item';
+    const cv = document.createElement('div'); cv.className = 'thumb-canvas'; cv.style.background = cl.background || deck.background || '#fff'; cv.style.setProperty('--ar', w / h);
+    const inner = document.createElement('div'); inner.className = 'thumb-inner';
+    inner.style.cssText = `width:${w}px;height:${h}px;transform:scale(${240 / w});color:${deckFg()}`;
+    for (const b of [...masterBlocksFor(cl, deck), ...cl.blocks.map(x => styled(x, cl, deck))]) inner.appendChild(blockPreview(b));
+    cv.appendChild(inner);
+    const lab = document.createElement('span'); lab.textContent = `${t('Versión')} ${i + 1}`;
+    btn.append(cv, lab);
+    btn.addEventListener('click', () => { commit(() => { aiDeck.rebuildSlide(slide, spec, deck); state.ui.selection = null; }); back.remove(); });
+    return btn;
+  };
+  variants.forEach((spec, i) => grid.appendChild(tile(spec, i)));
   document.body.appendChild(back);
   back.querySelector('.modal-close').addEventListener('click', () => back.remove());
   back.addEventListener('click', e => { if (e.target === back) back.remove(); });

@@ -20,7 +20,18 @@ export const APP_URL = 'https://fmesasc.github.io/revela/';
 
 const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
 const write = v => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} };
-export const aiSettings = () => ({ model: DEFAULT_MODEL, ...read() });
+// Three quality levels, so each AI feature asks for the one it needs (improve → advanced, notes → medium, translate →
+// basic) without naming a model. The person may set which model is each level (empty = Revela chooses); with the account's
+// cloud AI the server resolves the level (AI_MODEL_BASIC/MEDIUM/ADVANCED), so nothing here decides a cloud model.
+export const TIERS = ['basic', 'medium', 'advanced'];
+// Defaults match the server's (api.js settings tiers): «advanced» stays on flash so nothing changes by default — a
+// better model (gemini-2.5-pro, a Claude…) is opted into here or, for the cloud AI, with AI_MODEL_ADVANCED.
+export const TIER_DEFAULTS = { basic: 'google/gemini-2.5-flash-lite', medium: 'google/gemini-2.5-flash', advanced: 'google/gemini-2.5-flash' };
+export const aiSettings = () => ({ model: DEFAULT_MODEL, tiers: {}, ...read() });
+export const aiTiers = () => ({ ...read().tiers });
+export const setAiTier = (tier, model) => { if (!TIERS.includes(tier)) return; const tiers = { ...read().tiers }; const m = (model || '').trim(); if (m) tiers[tier] = m; else delete tiers[tier]; write({ ...read(), tiers }); };
+// The model for a level, with the user's own key: what they set, else — on «auto» — the default ladder, else their single model.
+const tierModel = (set, tier) => set.tiers?.[tier] || (set.model === DEFAULT_MODEL ? TIER_DEFAULTS[tier] : set.model);
 // The official edition's AI: through the person's Revela account (credits), set by
 // the app (io/cloud/account.js) — { active(), chat(body), image(body) }. With it,
 // requests go to Revela's server, which pays OpenRouter and charges credits.
@@ -81,16 +92,20 @@ export async function finishOpenRouterLogin(loc = location) {
 const sourcesOf = msg => { const seen = new Set();
   return (msg?.annotations || []).filter(a => a?.type === 'url_citation' && /^https?:\/\//.test(a.url_citation?.url || ''))
     .map(a => ({ title: String(a.url_citation.title || '').trim().slice(0, 160), url: a.url_citation.url })).filter(x => !seen.has(x.url) && seen.add(x.url)); };
-export async function chat(messages, { json = false, maxTokens = 2000, onUsage = null, signal = null, prefer = null, force = null, model: only = null, feature = null, web = false, onSources = null } = {}) {
-  const set = aiSettings(), key = set.key, model = force || only || (prefer && set.model === DEFAULT_MODEL ? prefer : set.model);
+export async function chat(messages, { json = false, maxTokens = 2000, onUsage = null, signal = null, prefer = null, force = null, model: only = null, tier = null, feature = null, web = false, onSources = null } = {}) {
+  const set = aiSettings(), key = set.key, override = force || only;
+  // With the account's cloud AI the level is resolved on the server (its AI_MODEL_<LEVEL>); only a forced model is sent.
   if (!key && usingCloudAi()) {
-    const data = await cloud.chat({ messages, max_tokens: maxTokens, json, ...(model !== DEFAULT_MODEL && { model }), ...(feature && { feature }), ...(web && { web: true }) }).catch(e => { throw cloudError(e); });
+    const data = await cloud.chat({ messages, max_tokens: maxTokens, json, ...(override && override !== DEFAULT_MODEL && { model: override }), ...(tier && !override && { tier }), ...(feature && { feature }), ...(web && { web: true }) }).catch(e => { throw cloudError(e); });
     if (signal?.aborted) throw new Error('STOPPED');
     if (onUsage && +data.charged > 0) onUsage({ credits: +data.charged });
     if (onSources) onSources(sourcesOf(data.choices?.[0]?.message));
     return data.choices?.[0]?.message?.content?.trim() || '';
   }
   if (!key) throw new Error('NO_KEY');
+  // The person's own key: the level resolves to their model (or the default ladder on «auto»); a forced model or the
+  // older «prefer» still win.
+  const model = override || (tier ? tierModel(set, tier) : prefer && set.model === DEFAULT_MODEL ? prefer : set.model);
   let r;
   try {
     r = await fetch(`${API}/chat/completions`, {
