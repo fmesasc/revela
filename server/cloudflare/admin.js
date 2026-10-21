@@ -45,6 +45,9 @@
 //   POST /api/admin/brakes                 { paused, reason } → { paused }   (the emergency switch: brakes.js; reason needed to turn it on)
 //   POST /api/admin/brakes/clear           → { ok }   (empties the list of incidents)
 //   POST /api/admin/storage-quota          { sub, mb (0: the plan's), reason } → { before, after }   (one account's own quota)
+//   POST /api/admin/impersonate            { sub, reason, minutes? } → { url, until, email }   («ver como este usuario»: a
+//                                          read-only session into the account for support; audit only, the person isn't told; the
+//                                          url is a one-time link that installs the session in the admin's browser)
 //   POST /api/admin/sessions-end           { sub, id?, reason } → { ended }   (one session, or all: a stolen account signed out
 //                                          everywhere; the person signs in again with Google)
 //   POST /api/admin/billing-test           { sub, on, reason }   (this account pays in Stripe's test mode: api.js stripeConf)
@@ -613,6 +616,19 @@ export async function handleAdmin(req, env, url) {
     await audit(env, { by, action: 'credits', target: body.sub, reason, before: { credits: r.before }, after: { credits: r.after, delta: r.delta, ...(delta > 0 && { expires: r.expires }) } });
     const mailed = delta > 0 && body.notify ? await call(acct(env, body.sub), 'admin-mail', { kind: 'creditsAdded', n: r.delta, exp: r.expires }) : null;
     return json({ ok: true, ...r, mailed: mailed?.ok ?? false });
+  }
+  // «Ver como este usuario»: a short, read-only session into the account, for support. It is recorded only in this
+  // audit log (the person is not told), never changes anything (the API refuses writes from it), and never shows in
+  // their own «Sesiones abiertas». Returns a one-time link that installs the session in the admin's browser.
+  if (POST && path === '/impersonate') {
+    const reason = clip(body.reason, 500).trim(), minutes = Math.min(120, Math.max(5, Math.round(+body.minutes || 30)));
+    if (!reason) return json({ error: 'bad request' }, 400);
+    if (!(await account(body.sub))) return json({ error: 'not found' }, 404);
+    const r = await call(acct(env, body.sub), 'impersonate', { by, minutes });
+    if (r.error) return json({ error: r.error }, 400);
+    await audit(env, { by, action: 'impersonate', target: body.sub, reason, after: { email: r.email, until: r.until, minutes, readOnly: true } });
+    const link = settings(env).site + '/api/impersonate/consume?sub=' + encodeURIComponent(body.sub) + '&code=' + r.code;
+    return json({ ok: true, url: link, until: r.until, email: r.email });
   }
   if (POST && path === '/refund') {
     if (!(await account(body.sub))) return json({ error: 'not found' }, 404);

@@ -1,7 +1,7 @@
 // Application bootstrap: wire the modules together and subscribe the render.
 
 import { hasAccounts, cloudAi, refreshAccount, onAccount, account } from '../../io/cloud/account.js';
-import { mountCloudStatus, openFromLink } from '../../ui/dialogs/cloud.js';
+import { mountCloudStatus, mountViewAsBanner, openFromLink } from '../../ui/dialogs/cloud.js';
 import { mountNotices } from '../../ui/shell/notices.js';
 import { docIdFrom } from '../../io/cloud/clouddocs.js';
 import * as clouddocs from '../../io/cloud/clouddocs.js';
@@ -360,7 +360,7 @@ if (hasAccounts()) {
   setCloudAi(cloudAi);
   const btn = document.getElementById('plan-btn'), paint = me => { btn.hidden = false;
     btn.querySelector('span').textContent = me ? `${Math.max(0, me.credits | 0)}` : t('Iniciar sesión'); btn.classList.toggle('in', !!me); };
-  onAccount(paint); paint(null); mountCloudStatus(); watchTerms(); mountNotices();
+  onAccount(paint); paint(null); mountCloudStatus(); mountViewAsBanner(); watchTerms(); mountNotices();
   initModelAi();
   btn.addEventListener('click', () => openAccount());
   window.addEventListener('revela:lang', () => paint(account()));

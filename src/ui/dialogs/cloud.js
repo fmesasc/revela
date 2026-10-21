@@ -294,6 +294,31 @@ export function mountCloudStatus() {
   paint();
 }
 
+// The operator's banner while «viewing as a user» (an admin, read-only session: api.js impersonation). It is for
+// whoever opened the view — so they can tell they are not in their own account and can leave — not for the person
+// whose account it is (they are never told; the session is read-only and only in the admin's audit log). A fixed bar,
+// loud on purpose, with whose account it is and a «Salir» that ends the session and reloads a clean app.
+export function mountViewAsBanner() {
+  if (!acc.hasAccounts()) return;
+  let bar = null;
+  const paint = () => {
+    const imp = acc.account()?.impersonation;
+    if (!imp) { if (bar) { bar.remove(); bar = null; document.body.style.removeProperty('padding-top'); } return; }
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.style.cssText = 'position:fixed;inset:0 0 auto 0;z-index:100000;display:flex;gap:12px;align-items:center;justify-content:center;'
+        + 'padding:8px 16px;background:#7a1020;color:#fff;font:600 14px/1.3 system-ui,sans-serif;box-shadow:0 2px 8px #0006';
+      document.body.appendChild(bar);
+      document.body.style.paddingTop = '40px';
+    }
+    bar.innerHTML = `<i class="ms" aria-hidden="true">visibility</i><span></span>`
+      + `<button type="button" style="margin-inline-start:8px;padding:4px 12px;border:1px solid #fff8;border-radius:6px;background:#fff2;color:#fff;font:inherit;cursor:pointer">${esc(t('Salir'))}</button>`;
+    bar.querySelector('span').textContent = t('Viendo como {email} · solo lectura').replace('{email}', acc.account().email || '');
+    bar.querySelector('button').onclick = async () => { try { await acc.signOut(); } catch {} location.href = location.pathname; };
+  };
+  acc.onAccount(paint); window.addEventListener('revela:lang', paint); paint();
+}
+
 // The notice above the slide while the open one is read-only beyond the plan: why, and what to do
 // (nothing done here is lost: it can be kept as a copy in this browser, or downloaded).
 function paintReadOnly() {

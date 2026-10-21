@@ -1234,6 +1234,28 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   ok((await A('GET', '/audit?target=1414')).j.entries.every(e => e.target === '1414'), 'auditoría: por cuenta');
   ok((await A('POST', '/audit', { body: {} })).status === 404 && !(await env.AUDIT.get('audit').fetch('https://a/delete', { method: 'POST', body: '{}' })).ok, 'auditoría: no se puede borrar ni cambiar');
 
+  // «Ver como este usuario» (solo lectura, solo auditoría): acuñar → enlace de un solo uso → qué puede y qué no.
+  {
+    ok((await A('POST', '/impersonate', { body: { sub: '1414' } })).status === 400, 'ver como usuario: sin motivo → 400');
+    ok((await A('POST', '/impersonate', { body: { sub: 'noexiste', reason: 'x' } })).status === 404, 'ver como usuario: cuenta que no existe → 404');
+    const im = await A('POST', '/impersonate', { body: { sub: '1414', reason: 'soporte: dice que no le carga el panel', minutes: 30 } });
+    ok(im.status === 200 && /\/api\/impersonate\/consume\?sub=1414&code=[\w-]+$/.test(im.j.url) && im.j.email === 'pia@example.com' && im.j.until > Date.now(), 'ver como usuario: enlace de un solo uso: ' + JSON.stringify(im.j));
+    const cpath = im.j.url.replace(SITE, '');
+    const cr = await req('GET', cpath), view = cookieFrom(cr);
+    ok(cr.status === 302 && cr.headers.get('Location') === SITE + '/app/?adminview=1' && /^rv_session=/.test(view), 'ver como usuario: el enlace instala la sesión y abre la app');
+    ok((await req('GET', cpath)).status === 404, 'ver como usuario: el enlace es de un solo uso');
+    const m = await (await req('GET', '/api/me', { headers: { Cookie: view } })).json();
+    ok(m.email === 'pia@example.com' && m.impersonation?.by === 'jefe@example.com' && m.impersonation.until > Date.now(), 'ver como usuario: /me trae la marca para el banner del operador: ' + JSON.stringify(m.impersonation));
+    ok((await req('GET', '/api/sessions', { headers: { Cookie: view } })).status === 200, 'ver como usuario: puede leer (GET)');
+    ok((await req('POST', '/api/sessions', { headers: { Cookie: view }, body: { others: true } })).status === 403, 'ver como usuario: no puede cambiar nada (POST → 403, solo lectura)');
+    const own = await (await req('GET', '/api/sessions', { headers: { Cookie: pia } })).json();
+    ok(!own.sessions.some(z => z.kind === 'impersonation'), 'ver como usuario: NO sale en las sesiones del propio usuario (solo auditoría)');
+    ok((await A('GET', '/users/1414')).j.sessions.list.some(z => z.kind === 'impersonation' && z.by === 'jefe@example.com'), 'ver como usuario: en la ficha del admin sí se ve, con quién');
+    ok((await A('GET', '/audit?target=1414')).j.entries.some(e => e.action === 'impersonate' && e.by === 'jefe@example.com' && e.reason && e.after.readOnly === true), 'ver como usuario: queda en la auditoría');
+    const out = await req('POST', '/api/logout', { headers: { Cookie: view } });
+    ok(out.status === 200 && (await req('GET', '/api/me', { headers: { Cookie: view } })).status === 401, 'ver como usuario: «Salir» cierra esa sesión');
+  }
+
   // Ticket lifecycle: open (our turn) → waiting (theirs) → closed; the person answers with the signed link in the emails.
   {
     const linkOf = m => decodeURIComponent((String(m?.text || '').match(/\/api\/support\/reply\?t=(\S+)/) || [])[1] || '');

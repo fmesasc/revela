@@ -408,6 +408,26 @@ export class Account {
         await this.put({ sessions: { ...Object.fromEntries(kept), [await sha256(secret)]: { created: Date.now(), last: Date.now(), expires: Date.now() + days * DAY, kind: a.kind || 'web', ...sessionPlace(a) } } });
         return this.json({ secret, days, ...(fresh && { fresh }) });
       }
+      // An admin «view as user» session: short-lived, read-only, and marked (kind 'impersonation', by: the admin). It
+      // doesn't touch the profile and isn't a login (no signup, no 'seen'), and it never shows in the person's own
+      // «Sesiones abiertas» — it lives only in the admin audit log. A one-time code (hashed, 5 min) hands it to the
+      // admin's browser through /api/impersonate/consume, so the session secret never travels in a URL.
+      case 'impersonate': {                                // { by, minutes? } → { code, until, email } | { error }
+        const prof = await this.get('profile', null); if (!prof) return this.json({ error: 'no account' });
+        const secret = random(32), sessions = await this.get('sessions', {});
+        const mins = Math.min(Math.max(Math.round(+a.minutes || 30), 5), 120), expires = Date.now() + mins * 60e3;
+        const kept = Object.entries(sessions).filter(([, v]) => v.expires > Date.now()).sort((x, y) => y[1].created - x[1].created).slice(0, 19);
+        await this.put({ sessions: { ...Object.fromEntries(kept), [await sha256(secret)]: { created: Date.now(), last: Date.now(), expires, kind: 'impersonation', imp: { by: String(a.by || '').slice(0, 200) } } } });
+        const code = random(32);
+        await this.put({ impLink: { hash: await sha256(code), secret, until: expires, expires: Date.now() + 5 * 60e3 } });
+        return this.json({ code, until: expires, email: prof.email || '' });
+      }
+      case 'imp-consume': {                                // { code } → { ok, secret, until } ; single use
+        const link = await this.get('impLink', null);
+        if (!link || link.expires < Date.now() || link.hash !== await sha256(String(a.code || ''))) return this.json({ ok: false });
+        await this.put({ impLink: null });
+        return this.json({ ok: true, secret: link.secret, until: link.until });
+      }
       case 'check': {                                      // { secret, device?, where? } → ok?
         const sessions = await this.get('sessions', {}), h = await sha256(a.secret || ''), v = sessions[h], ok = !!v && v.expires > Date.now();
         if (ok) await this.seen();
@@ -415,11 +435,12 @@ export class Account {
         // (30 days on the web, 90 in the desktop app, from now). Only an unused one runs out.
         // Its last use (and where from) is noted at most once an hour, to spare the storage.
         let renewed = 0;
-        if (ok) {
+        // An admin «view as user» session (kind 'impersonation') is short-lived and never renews: it runs out on its own.
+        if (ok && v.kind !== 'impersonation') {
           const days = v.kind === 'desktop' ? 90 : 30, renew = v.expires - Date.now() < days * DAY * 2 / 3, stale = Date.now() - (v.last || v.created) > HOUR;
           if (renew || stale) { sessions[h] = { ...v, last: Date.now(), ...sessionPlace(a, v), ...(renew && { expires: Date.now() + days * DAY }) }; await this.put({ sessions }); if (renew) renewed = days; }
         }
-        return this.json({ ok, ...(renewed && { renewed }), ...(ok && (await this.get('blocked', null)) && { blocked: true }), ...(ok && a.email && { email: (await this.get('profile', {})).email || '' }) });
+        return this.json({ ok, ...(renewed && { renewed }), ...(ok && v.kind === 'impersonation' && { imp: v.imp || {}, until: v.expires }), ...(ok && (await this.get('blocked', null)) && { blocked: true }), ...(ok && a.email && { email: (await this.get('profile', {})).email || '' }) });
       }
       case 'logout': {
         const sessions = await this.get('sessions', {}); delete sessions[await sha256(a.secret || '')];
@@ -684,7 +705,7 @@ export class Account {
         const sessions = Object.values(await this.get('sessions', {})).filter(v => v.expires > Date.now());
         return this.json({ profile: prof, plan: await this.plan(), until: await this.proUntil(), stored: await this.get('plan', null), proGift: await this.get('proGift', null),
           credits: await this.get('credits', 0), debt: await this.get('debt', 0), lots: await this.lots(), ledger: (await this.get('ledger', [])).slice(-50).reverse(),
-          sessions: { n: sessions.length, kinds: sessions.map(v => v.kind), list: sessionList(await this.get('sessions', {})) }, storage: await this.storage(), storageQuota: await this.get('storageQuota', null), docs: (await this.get('docs', [])).length, team: await this.get('team', null),
+          sessions: { n: sessions.length, kinds: sessions.map(v => v.kind), list: sessionList(await this.get('sessions', {}), '', true) }, storage: await this.storage(), storageQuota: await this.get('storageQuota', null), docs: (await this.get('docs', [])).length, team: await this.get('team', null),
           blocked: await this.get('blocked', null), lastSeen: await this.get('lastSeen', null), mailOff: await this.get('mailOff', []), customer: !!(await this.get('customer', null)), refunded: await this.get('refunded', []),
           billingTest: await this.get('billingTest', null), customerTest: !!(await this.get('customerTest', null)),
           trial: { used: !!(await this.get('trialUsed', null)), usedTest: !!(await this.get('trialUsedTest', null)), paid: !!(await this.get('proPaid', null)), paidTest: !!(await this.get('proPaidTest', null)) } });
@@ -828,8 +849,10 @@ export function deviceOf(ua = '') {
   return [br, os].filter(Boolean).join(' · ');
 }
 export const sessionClient = req => ({ device: deviceOf(req.headers.get('User-Agent') || ''), where: [req.cf?.city, req.cf?.country].filter(Boolean).join(', ') });
-const sessionList = (all, mine = '') => Object.entries(all).filter(([, v]) => v.expires > Date.now()).sort((x, y) => (y[1].last || y[1].created) - (x[1].last || x[1].created))
-  .map(([h, v]) => ({ id: h.slice(0, 16), kind: v.kind, device: v.device || '', where: v.where || '', created: v.created, last: v.last || v.created, expires: v.expires, ...(h === mine && { current: true }) }));
+// withImp: include the admin «view as user» sessions (kind 'impersonation'). Off by default, so a person's own
+// «Sesiones abiertas» never shows one — an admin view is only in the audit log. The admin account view asks for them.
+const sessionList = (all, mine = '', withImp = false) => Object.entries(all).filter(([, v]) => v.expires > Date.now() && (withImp || v.kind !== 'impersonation')).sort((x, y) => (y[1].last || y[1].created) - (x[1].last || x[1].created))
+  .map(([h, v]) => ({ id: h.slice(0, 16), kind: v.kind, device: v.device || '', where: v.where || '', created: v.created, last: v.last || v.created, expires: v.expires, ...(v.kind === 'impersonation' && v.imp && { by: v.imp.by }), ...(h === mine && { current: true }) }));
 const sessionPlace = (a, before = {}) => ({ device: String(a.device || before.device || '').slice(0, 60), where: String(a.where || before.where || '').slice(0, 80) });
 
 async function sessionOf(req, env) {
@@ -841,7 +864,7 @@ async function sessionOf(req, env) {
   }
   const raw = bearer || fromCookie, t = parseToken(raw); if (!t) return null;
   const r = await call(acct(env, t.sub), 'check', { secret: t.secret, ...sessionClient(req), ...(env.STAGE && { email: true }) });   // (the test site: whose, to check the invited list)
-  return r.ok ? { sub: t.sub, secret: t.secret, via: bearer ? 'bearer' : 'cookie', ...(r.blocked && { blocked: true }), ...(r.renewed && { renewed: r.renewed, raw }), ...(r.email && { email: r.email }) } : null;
+  return r.ok ? { sub: t.sub, secret: t.secret, via: bearer ? 'bearer' : 'cookie', ...(r.blocked && { blocked: true }), ...(r.renewed && { renewed: r.renewed, raw }), ...(r.email && { email: r.email }), ...(r.imp && { impersonation: { by: r.imp.by || '', until: r.until } }) } : null;
 }
 
 // ---- Relay servers (Cloudflare Realtime TURN) -----------------------------------------------------
@@ -998,6 +1021,15 @@ export async function handleApi(req, env, url) {
     if (kind === 'desktop') return json({ ok: true, token });
     return json({ ok: true }, 200, { 'Set-Cookie': `${COOKIE}=${token}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${r.days * 86400}` });
   }
+  // The admin «view as user» link (admin.js mints it): consumes the one-time code, installs the read-only session
+  // cookie and opens the app. No session of one's own is needed — the code is the single-use proof, good for 5 minutes.
+  if (path === '/impersonate/consume' && req.method === 'GET') {
+    const sub = url.searchParams.get('sub') || '', code = url.searchParams.get('code') || '';
+    const r = sub && code ? await call(acct(env, sub), 'imp-consume', { code }) : { ok: false };
+    if (!r.ok) return json({ error: 'not found' }, 404);
+    const token = tokenOf(sub, r.secret), maxAge = Math.max(60, Math.round((r.until - Date.now()) / 1000));
+    return new Response(null, { status: 302, headers: { Location: s.site + '/app/?adminview=1', 'Set-Cookie': `${COOKIE}=${token}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}` } });
+  }
   // The desktop app's start and claim need no session (the verifier is the proof).
   if (path === '/desktop/start' && req.method === 'POST') {
     if (!/^[\w-]{20,64}$/.test(body.nonce || '') || !/^[\w-]{40,64}$/.test(body.challenge || '')) return json({ error: 'bad request' }, 400);
@@ -1020,6 +1052,11 @@ export async function handleApi(req, env, url) {
     return path === '/mcp' ? handleMcp(req, env, me, body, json) : handleV1(path, req, body, url, env, me, json);
   }
   if (me?.via === 'key') return json({ error: 'an API key only opens /api/v1 and /api/mcp' }, 403);
+  // An admin «view as user» session is READ-ONLY: only GET (and /logout, to leave it). Nothing in the account can be
+  // changed from it — the guard is here, on the server, not only in the app. (The app also shows a banner and hides the
+  // controls, but a hand-made POST wouldn't get past this.)
+  if (me?.impersonation && req.method !== 'GET' && path !== '/logout')
+    return json({ error: 'read-only', message: 'Visualización de administración: la sesión es de solo lectura.' }, 403);
   // Votes through the server (broadcast.js): a phone's way in — with its account when it has a session here (a poll
   // that asks to sign in counts one vote per account) — and the 5 letters of a room typed on vote.html.
   const vt = path.match(/^\/vote\/([\w-]{1,40})$/);
@@ -1096,7 +1133,7 @@ export async function handleApi(req, env, url) {
       const trialDays = billing && r.plan !== 'pro' ? await trialOffer(env, A, mode) : 0;
       // (A renewed session: its cookie lasts as long again — the app asks /me when it opens.)
       const renew = me.renewed && me.via === 'cookie' ? { 'Set-Cookie': `${COOKIE}=${me.raw}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${me.renewed * 86400}` } : {};
-      return json({ ...r, billing, billingTest: mode === 'test', portal, trialDays, photos: photoProviders(env), model3d: configured3d(env) && !!env.MODELJOBS }, 200, renew);
+      return json({ ...r, billing, billingTest: mode === 'test', portal, trialDays, photos: photoProviders(env), model3d: configured3d(env) && !!env.MODELJOBS, ...(me.impersonation && { impersonation: { by: me.impersonation.by, until: me.impersonation.until } }) }, 200, renew);
     }
     case '/mail/test': {                                  // «Send me a test email» (only to the account's own address)
       if (req.method !== 'POST') return json({ error: 'method' }, 405);
