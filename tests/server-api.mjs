@@ -1018,6 +1018,15 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   G().set('lots', [{ n: 11, exp: Date.now() + 9e6 }]); G().set('debt', 0); G().set('credits', 11);
   r = await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'un edificio de oficinas de 5 plantas' } });
   ok(r.status === 402 && (await r.json()).credits === 11 && !G().get('slot:3d'), '3D: sin créditos suficientes, 402');
+  // A JavaScript / Three.js script (some models reach for it instead of Blender Python) is caught before any Blender run
+  // and sent back to be rewritten in bpy — so it can't burn round after round on code Blender will never run.
+  await acc('1212').fetch(new Request('https://do/grant', { method: 'POST', body: JSON.stringify({ credits: 100, reason: 'grant', ref: 't3djs' }) }));
+  answers = [say({ done: false, note: 'x', script: 'const scene = new THREE.Scene();\nconst s = new THREE.SphereGeometry(1);' })];
+  blenderCalls = [];
+  { const idJs = (await (await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una esfera' } })).json()).id;
+    await tick(idJs); const sj = await status(idJs);
+    ok(/JavaScript|Blender Python/.test(sj.rounds[0]?.error || '') && !blenderCalls.length, '3D: un guion de Three.js/JavaScript no llega a Blender, se pide reescribir en bpy: ' + JSON.stringify(sj.rounds[0]));
+    await req('POST', '/api/3d/jobs/' + idJs + '/cancel', { headers: { Cookie: gil }, body: {} }); }
   // The global monthly budget.
   env.MONTHLY_BUDGET_USD = '0.001';
   ok((await req('POST', '/api/3d/jobs', { headers: { Cookie: noa }, body: { prompt: 'una silla' } })).status === 503, '3D: tope de gasto mensual global');

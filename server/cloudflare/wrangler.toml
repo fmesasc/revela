@@ -60,6 +60,7 @@ AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6],"google/gemini-2.5-flash":[0.3,2.5
 # «Crear modelo 3D con IA» (model3d.js): the vision model that writes the Blender scripts (its price is in
 # AI_PRICES above), and what one second of the Blender container costs, in dollars (see docs/NUBE.md).
 AI_3D_MODEL = "anthropic/claude-sonnet-5"
+AI_3D_REASONING = "medium"
 BLENDER_USD_PER_SECOND = "0.0001"
 # BLENDER_URL (the revela-blender Worker, e.g. https://revela-blender.<account>.workers.dev) is set in
 # Cloudflare with the secret BLENDER_SECRET; without both the feature is off (503 'not configured').
@@ -332,6 +333,7 @@ AI_TTS_MODEL = "openai/gpt-4o-mini-tts-2025-12-15"
 AI_TTS_USD_PER_CHAR = "0.00002"
 AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6],"google/gemini-2.5-flash":[0.3,2.5],"google/gemini-2.5-flash-lite":[0.1,0.4],"anthropic/claude-haiku-4.5":[1,5],"google/gemini-3.8-flash":[0.75,3.75],"google/gemini-2.5-pro":[1.25,10],"anthropic/claude-sonnet-5":[2,10]}'
 AI_3D_MODEL = "anthropic/claude-sonnet-5"
+AI_3D_REASONING = "medium"
 BLENDER_USD_PER_SECOND = "0.0001"
 GOOGLE_CLIENT_ID = "960102070599-jahg4mdj304k5ftb9b6p2ck9hp5gtbc9.apps.googleusercontent.com"
 STRIPE_PRICE_PRO_MONTH = "price_1UMtlaRl48v6ZHv1voX3BPL4"

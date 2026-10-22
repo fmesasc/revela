@@ -35,6 +35,10 @@ export function settings3d(env) {
     usdPerSecond: num(env.BLENDER_USD_PER_SECOND, 0.0001),
     timeout: num(env.BLENDER_TIMEOUT, 90), startup: 30,   // (seconds charged at most: the run + a cold start)
     rounds: 4, maxRounds: num(env.AI_3D_MAX_ROUNDS, 12),
+    // How hard the model may think. Writing a Blender script is hard spatial code: with «low», a strong reasoning model
+    // rushes and falls back to its generic prior (a web app → Three.js, which only errors here). 'medium' by default;
+    // 'none' omits it (for models without reasoning). More thinking costs more tokens but saves wasted rounds.
+    reasoning: (env.AI_3D_REASONING || 'medium').trim().toLowerCase(),
     maxTokens: num(env.AI_3D_MAX_TOKENS, 8000), inTokens: 7000,
   };
 }
@@ -95,6 +99,8 @@ export async function handle3d(path, req, body, env, me, A, json) {
 const LANGS = { es: 'Spanish', en: 'English', ca: 'Catalan', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese', gl: 'Galician', nl: 'Dutch', eu: 'Basque', ar: 'Arabic' };
 export const SYSTEM_3D = lang => `You are a 3D artist who builds models by writing Blender Python scripts (bpy, Blender 4.5 LTS), for a presentation app. Each of your scripts is run in Blender, the model is exported as GLB, and you then see a render of it to check and improve it.
 
+The script is PYTHON for Blender and starts with \`import bpy\`. It is NOT Three.js, NOT JavaScript, NOT any web 3D library: never use THREE, Scene, renderer, Geometry/Mesh/Material as JS classes, "new", "const", "let" or arrow functions. Build the geometry with bpy and bmesh. (It runs in Blender's own Python, so a web/JS script only errors, round after round.)
+
 Answer ONLY a JSON object: {"done": false, "note": "…", "script": "…"}
 - "script": the complete Python script (not a diff). It starts from an EMPTY scene every time.
 - "note": one or two short sentences for the person, in ${LANGS[lang] || 'Spanish'}, saying what you made or changed.
@@ -127,6 +133,11 @@ export function parseAnswer(content) {
 }
 // (Caught before spending a Blender run: the container would refuse them anyway.)
 export const forbidden = script => (script.match(/\b(?:import|from)\s+(os|sys|subprocess|socket|ctypes|urllib|http|requests|shutil|pathlib|multiprocessing|threading|asyncio|importlib|builtins)\b|__import__|\bopen\s*\(|\beval\s*\(|\bexec\s*\(/) || [])[0] || null;
+// A script that is JavaScript / Three.js, not Blender Python — caught before a Blender run (it would only error there,
+// round after round). Some models, asked for «a 3D model for a web presentation app», reach for Three.js; the feedback
+// then tells them plainly to rewrite in bpy. Real Blender scripts always use bpy, so requiring no `bpy` avoids false hits.
+export const looksLikeJS = script => !/\bbpy\b/.test(script)
+  && /\bTHREE\s*\.|\bnew\s+[A-Z]\w*\s*\(|=>|\b(?:const|let)\s+\w+\s*=|\bfunction\s*\*?\s*\(|\bdocument\s*\.|\brequire\s*\(/.test(script);
 
 // ---- One job ------------------------------------------------------------------------------------------
 export class ModelJob {
@@ -219,7 +230,7 @@ export class ModelJob {
     try {
       r = await (env.FETCH || fetch)('https://openrouter.ai/api/v1/chat/completions', { method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENROUTER_KEY}`, 'HTTP-Referer': s.site, 'X-Title': 'Revela' },
-        body: JSON.stringify({ model: k.model, messages, max_tokens: k.maxTokens, usage: { include: true }, provider: { data_collection: 'deny' }, response_format: { type: 'json_object' }, reasoning: { effort: 'low' } }) });
+        body: JSON.stringify({ model: k.model, messages, max_tokens: k.maxTokens, usage: { include: true }, provider: { data_collection: 'deny' }, response_format: { type: 'json_object' }, ...(k.reasoning && k.reasoning !== 'none' && { reasoning: { effort: k.reasoning } }) }) });
       data = await r.json().catch(() => null);
     } catch { r = null; }
     if (!r || !r.ok || !data?.choices) { await call(A, 'settle', { id: hold, credits: 0 }); return this.finish(job, 'error', 'ai failed'); }   // (the AI failed: nothing charged)
@@ -232,6 +243,7 @@ export class ModelJob {
     else if (answer.done && job.glb && !job.pending && job.last?.ok) outcome = { done: true, note: answer.note };
     else if (!answer.script.trim()) outcome = { round: { n, ok: false, note: answer.note, error: 'no script' }, last: { ok: false, note: answer.note, script: '', error: 'You sent no script.' } };
     else if (forbidden(answer.script)) { const f = forbidden(answer.script); outcome = { round: { n, ok: false, note: answer.note, error: 'not allowed: ' + f }, last: { ok: false, note: answer.note, script: answer.script, error: `Not allowed in Revela: ${f}. Use only bpy, bmesh, mathutils, math and random, with no files.` } }; }
+    else if (looksLikeJS(answer.script)) { outcome = { round: { n, ok: false, note: answer.note, error: 'not Blender Python (looks like JavaScript/Three.js)' }, last: { ok: false, note: answer.note, script: answer.script, error: 'That script is JavaScript / Three.js, NOT Blender Python. Revela runs it in Blender\'s own Python interpreter — there is no THREE, no scene, no renderer. Rewrite the ENTIRE model in Python with bpy and bmesh (it must start with `import bpy`). Never use THREE, Scene, Mesh, Geometry, Material as JS classes, new, const, let or arrow functions; build the geometry with bmesh or bpy.data and give it a Principled BSDF material.' } }; }
     else {
       const t0 = Date.now(); res = await this.blender(answer.script); secs = Math.min(Math.round((Date.now() - t0) / 100) / 10, k.timeout + k.startup);   // (to the tenth of a second)
       if (res.unavailable) outcome = { unavailable: true };
