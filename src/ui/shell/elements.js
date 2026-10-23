@@ -33,6 +33,7 @@ const TABS = [
   ['team', 'De mi equipo', 'groups', null, null],             // (the team's own pictures: server/cloudflare/teams.js; only in a team)
   ['anim3d', '3D con movimiento', 'view_in_ar', null, null],
   ['poly', 'Modelos 3D', 'deployed_code', 'poly', 'Poly Haven (polyhaven.com)'],
+  ['icosa', 'Más modelos 3D', 'interests', 'icosa', 'Icosa Gallery (icosa.gallery)'],
   ['nasa', 'NASA', 'rocket_launch', null, null],
   ['commons3d', 'Museos y ciencia', 'museum', 'commons3d', 'Wikimedia Commons (commons.wikimedia.org)'],
   ['sketchfab', 'Sketchfab', 'travel_explore', 'sketchfab', 'Sketchfab (sketchfab.com)'],
@@ -48,6 +49,7 @@ const HELP = {
   stickers: 'Emojis animados de Google (Noto, CC BY 4.0). Se pueden animar por tramos y quitar el fondo como cualquier GIF.',
   anim3d: 'Modelos 3D con licencia libre, varios con animaciones propias (andar, bailar…). Se guardan dentro de la presentación. Muévelos con clic derecho ▸ Movimiento 3D.',
   poly: 'Más de 500 modelos 3D de Poly Haven, de dominio público (CC0). Se guardan dentro de la presentación.',
+  icosa: 'El archivo de Google Poly (Icosa Gallery): cientos de miles de modelos 3D —personas, animales, objetos…— casi todos CC BY; se añade la atribución (autor y licencia) como pie. Busca en inglés para más resultados.',
   nasa: 'Más de 250 modelos de la NASA: naves, satélites, cohetes, róveres, asteroides… Libres y sin copyright (sin usar sus logotipos como aval). Se guardan dentro de la presentación.',
   commons3d: 'Miles de modelos 3D de Wikimedia Commons (fósiles, piezas de museo, anatomía, edificios…) con licencias libres; se añade la atribución como pie. Busca en inglés para más resultados.',
   sketchfab: 'Millones de modelos 3D de Sketchfab, muchos animados. Se muestran con el visor de Sketchfab (necesita internet al presentar).',
@@ -62,9 +64,10 @@ const IDEAS = {
   audio: [['Aplausos', 'applause'], ['Campana', 'bell'], ['Risas', 'laughter'], ['Lluvia', 'rain'], ['Piano', 'piano'], ['Tambores', 'drums']],
   gif: [['Aplausos', 'applause'], ['Hola', 'hello'], ['Gracias', 'thank you'], ['Fuegos artificiales', 'fireworks'], ['Gatos', 'cat'], ['Baile', 'dance']],
   commons3d: [['Cráneo', 'skull'], ['Fósil', 'fossil'], ['Estatua', 'statue'], ['Corazón', 'heart'], ['Dinosaurio', 'dinosaur'], ['Edificio', 'building']],
+  icosa: [['Persona', 'person'], ['Coche', 'car'], ['Ordenador', 'computer'], ['Guitarra', 'guitar'], ['Dinosaurio', 'dinosaur'], ['Planeta', 'planet']],
   sketchfab: [['Robot', 'robot'], ['Coche', 'car'], ['Avión', 'airplane'], ['Animales', 'animal'], ['Casa', 'house'], ['Planeta', 'planet']],
 };
-const TYPING = new Set(['photos', 'images', 'icons', 'gif', 'videos', 'audio', 'sketchfab', 'commons3d']);          // need words to search
+const TYPING = new Set(['photos', 'images', 'icons', 'gif', 'videos', 'audio', 'sketchfab', 'commons3d', 'icosa']);          // need words to search
 const DRAG = 'application/x-revela-element';
 const sel = (cls, opts) => `<select class="${cls}">${opts.map(([v, l]) => `<option value="${v}">${esc(t(l))}</option>`).join('')}</select>`;
 // The picture search's filters, as the service takes them.
@@ -412,6 +415,11 @@ async function run(more = false) {
           async () => { const b = await R.insertLibraryModel(m); if (warn) toast(warn, { ms: 12000 }); return b; }]; });
     } else if (tab === 'poly') {
       list = (await R.searchPolyHaven(term)).slice(0, 120).map(a => [a.thumb, `${a.name} (CC0)`, a.name, () => R.insertPolyHaven(a)]);
+    } else if (tab === 'icosa') {
+      const r = await R.searchIcosa(term, more ? cursor || '' : '');
+      cursor = r.next; full = r.next != null;
+      // Al pasar por encima: los datos del modelo (nombre, autor, licencia y de dónde sale).
+      list = r.results.map(m => [m.thumb, `${m.title}${m.author ? ' — ' + m.author : ''} (${m.license}) · ${t('Google Poly')}`, m.title, () => R.insertIcosa(m)]);
     } else if (tab === 'nasa') {
       list = R.searchNASA3D(term).map(m => [m.thumb || 'icons/icon.svg', `${m.name} — NASA`, m.name, () => R.insertNASA3D(m)]);
     } else if (tab === 'commons3d') {

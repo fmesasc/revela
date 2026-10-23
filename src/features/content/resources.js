@@ -89,6 +89,31 @@ export async function insertPolyHaven(a, resolution = '1k') {
   return addModelBlock({ src, caption: `${a.name} — Poly Haven${a.authors ? ', ' + a.authors : ''} (CC0)`, credit: 'Poly Haven (CC0)' });
 }
 
+// ---- 3D: Icosa Gallery (the Google Poly archive) -----------------------------------------
+// Hundreds of thousands of models — people, animals, objects, scenes — mostly CC-BY (a few CC0).
+// Open API with CORS, so searched live from the browser; each one keeps its author, licence and
+// source, shown as the caption (attribution). Only the chosen model is downloaded (self-contained).
+export async function searchIcosa(q, pageToken = '') {
+  const u = new URL('https://api.icosa.gallery/v1/assets');
+  for (const [k, v] of Object.entries({ format: 'GLTF2', pageSize: '40', pageToken: String(pageToken || ''), keywords: q || '' })) if (v) u.searchParams.set(k, v);
+  const r = await fetch(u.href); if (!r.ok) throw new Error('Icosa ' + r.status);
+  const d = await r.json();
+  const lic = l => l === 'CREATIVE_COMMONS_BY' ? 'CC BY' : /CREATIVE_COMMONS_0|CC0/.test(l || '') ? 'CC0' : String(l || '').replace(/CREATIVE_COMMONS_/, 'CC ').replace(/_/g, ' ');
+  // Keep real models, not VR paintings: drop the «tilt» (Tilt Brush) art and the huge scenes, and only the files
+  // hosted on Icosa's own storage (CORS, so the browser can download them) — the web.archive copies don't load.
+  const usable = f => f.formatType === 'GLTF2' && (f.root?.url || '').includes('backblaze');
+  return { next: d.nextPageToken || null, results: (d.assets || [])
+    .filter(a => !(a.tags || []).includes('tilt') && (a.triangleCount || 0) <= 300000)
+    .map(a => { const gl = (a.formats || []).find(usable);
+      return gl ? { id: a.assetId, title: a.displayName || a.assetId, author: a.authorName || '', url: gl.root.url,
+        thumb: a.thumbnail?.url || '', license: lic(a.license), page: `https://icosa.gallery/view/${a.assetId}` } : null;
+    }).filter(Boolean) };
+}
+export async function insertIcosa(m) {
+  const src = await packGltf(m.url);
+  return addModelBlock({ src, caption: `${m.title}${m.author ? ' — ' + m.author : ''} (${m.license || 'CC BY'}) · Google Poly`, credit: `${m.author || ''} (${m.license || 'CC BY'}) ${m.page || ''}`.trim() });
+}
+
 // ---- 3D: NASA (257 models: spacecraft, rovers, rockets, planets…; free, without copyright) ----
 // Searched here (the list comes with Revela); only the chosen model is downloaded.
 const NASA_WORDS = { cohete: 'rocket saturn atlas ares booster launch', satelite: 'satellite', telescopio: 'telescope', asteroide: 'asteroid', cometa: 'comet', luna: 'moon lunar apollo', marte: 'mars',
