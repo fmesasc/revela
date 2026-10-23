@@ -1280,6 +1280,13 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok((await A('GET', '/audit?target=1414')).j.entries.some(e => e.action === 'impersonate' && e.by === 'jefe@example.com' && e.reason && e.after.readOnly === true), 'ver como usuario: queda en la auditoría');
     const out = await req('POST', '/api/logout', { headers: { Cookie: view } });
     ok(out.status === 200 && (await req('GET', '/api/me', { headers: { Cookie: view } })).status === 401, 'ver como usuario: «Salir» cierra esa sesión');
+    // El consume de una presentación concreta lleva al VISOR correcto (/app/view.html), y con &edit=1 al editor.
+    const vim = await A('POST', '/impersonate', { body: { sub: '1414', doc: 'deck-xyz789' } });
+    const vcr = await req('GET', vim.j.url.replace(SITE, ''));
+    ok(vcr.status === 302 && vcr.headers.get('Location') === SITE + '/app/view.html?doc=deck-xyz789', 'ver una presentación: el enlace lleva al VISOR /app/view.html: ' + vcr.headers.get('Location'));
+    const eim = await A('POST', '/impersonate', { body: { sub: '1414', doc: 'deck-xyz789', edit: true, reason: 'revisar una queja' } });
+    const ecr = await req('GET', eim.j.url.replace(SITE, ''));
+    ok(ecr.status === 302 && ecr.headers.get('Location') === SITE + '/app/?doc=deck-xyz789&adminview=1', 'abrir en el editor: enlace a /app/?doc=…&adminview=1: ' + ecr.headers.get('Location'));
   }
 
   // Ticket lifecycle: open (our turn) → waiting (theirs) → closed; the person answers with the signed link in the emails.

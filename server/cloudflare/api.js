@@ -1036,7 +1036,7 @@ export async function handleApi(req, env, url) {
     // (view.html, sin interfaz de edición, inequívoco); con &edit=1, el editor en modo adminview.
     const to = url.searchParams.get('to') || '';
     const dest = /^[\w-]{6,80}$/.test(to)
-      ? (url.searchParams.get('edit') === '1' ? '/app/?doc=' + encodeURIComponent(to) + '&adminview=1' : '/view.html?doc=' + encodeURIComponent(to))
+      ? (url.searchParams.get('edit') === '1' ? '/app/?doc=' + encodeURIComponent(to) + '&adminview=1' : '/app/view.html?doc=' + encodeURIComponent(to))
       : '/app/?adminview=1';
     return new Response(null, { status: 302, headers: { Location: s.site + dest, 'Set-Cookie': `${COOKIE}=${token}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}` } });
   }
