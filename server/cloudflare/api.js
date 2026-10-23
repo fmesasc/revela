@@ -1032,7 +1032,13 @@ export async function handleApi(req, env, url) {
     const r = sub && code ? await call(acct(env, sub), 'imp-consume', { code }) : { ok: false };
     if (!r.ok) return json({ error: 'not found' }, 404);
     const token = tokenOf(sub, r.secret), maxAge = Math.max(60, Math.round((r.until - Date.now()) / 1000));
-    return new Response(null, { status: 302, headers: { Location: s.site + '/app/?adminview=1', 'Set-Cookie': `${COOKIE}=${token}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}` } });
+    // Destino opcional: una presentación concreta del usuario, en SOLO LECTURA. Por defecto el VISOR
+    // (view.html, sin interfaz de edición, inequívoco); con &edit=1, el editor en modo adminview.
+    const to = url.searchParams.get('to') || '';
+    const dest = /^[\w-]{6,80}$/.test(to)
+      ? (url.searchParams.get('edit') === '1' ? '/app/?doc=' + encodeURIComponent(to) + '&adminview=1' : '/view.html?doc=' + encodeURIComponent(to))
+      : '/app/?adminview=1';
+    return new Response(null, { status: 302, headers: { Location: s.site + dest, 'Set-Cookie': `${COOKIE}=${token}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}` } });
   }
   // The desktop app's start and claim need no session (the verifier is the proof).
   if (path === '/desktop/start' && req.method === 'POST') {
