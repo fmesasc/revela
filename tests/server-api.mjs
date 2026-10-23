@@ -36,6 +36,7 @@ const env = { GOOGLE_CLIENT_ID: CID, OPENROUTER_KEY: 'sk-or-secreta', TRIAL_CRED
   AI_MODELS: 'openai/gpt-4o-mini,google/gemini-2.5-flash', AI_PRICES: '{"openai/gpt-4o-mini":[0.15,0.6]}', STRIPE_SECRET_KEY: 'sk_test', STRIPE_WEBHOOK_SECRET: 'whsec_x',
   STRIPE_PRICE_PRO_MONTH: 'price_pm', STRIPE_PRICE_CREDITS_500: 'price_c500', STRIPE_PRICE_TEAM_SEAT: 'price_team' };
 const turnCalls = [];
+let orBalance = { total_credits: 10, total_usage: 3 };   // saldo de OpenRouter que simula el mock de /credits (mutable en los tests)
 env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
@@ -55,6 +56,7 @@ env.FETCH = async (url, init = {}) => {
     return Response.json(u.includes('/download') ? {} : { results: [{ id: 'abc123', width: 4000, height: 3000, alt_description: 'Un faro', urls: { small: 'https://images.unsplash.com/s.jpg', regular: 'https://images.unsplash.com/r.jpg' },
       user: { name: 'Ana Foto', links: { html: 'https://unsplash.com/@ana' } }, links: { download_location: 'https://api.unsplash.com/photos/abc123/download?ixid=M3x1' } }, { id: 'malo', urls: { small: 'javascript:alert(1)', regular: 'http://x/y.jpg' }, user: {} }, { id: 'otro9', urls: { small: 'https://images.unsplash.com/s2.jpg', regular: 'https://images.unsplash.com/r2.jpg' }, user: { name: 'Leo', links: { html: 'javascript:alert(1)' } }, links: { download_location: 'https://evil.example/photos/otro9/download' } }] }); }
   if (u.startsWith('https://openrouter.ai/api/v1/audio/speech')) { aiCalls.push({ u, body: JSON.parse(init.body), auth: init.headers.Authorization }); return new Response(new Uint8Array([73, 68, 51, 4, 0]), { headers: { 'Content-Type': 'audio/mpeg' } }); }
+  if (u.startsWith('https://openrouter.ai/api/v1/credits')) return Response.json({ data: orBalance });
   if (u.startsWith('https://openrouter.ai/')) { aiCalls.push({ u, body: JSON.parse(init.body), auth: init.headers.Authorization }); const r = aiReply(u); return Response.json(r.body, { status: r.status }); }
   if (u.startsWith('https://blender.test/')) { blenderCalls.push({ u, body: init.body, sig: init.headers['X-Revela-Signature'] }); return blenderReply(JSON.parse(init.body)); }
   if (u.startsWith('https://api.stripe.com/')) { stripeCalls.push({ u, body: String(init.body), auth: init.headers?.Authorization }); return Response.json({ url: 'https://checkout.stripe.com/c/pay_x' }); }
@@ -1195,6 +1197,22 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   me = await (await req('GET', '/api/me', { headers: { Cookie: pia } })).json();
   ok(x.status === 200 && x.j.before.plan === 'free' && x.j.after.plan === 'pro' && me.plan === 'pro' && me.until === until && me.features.includes('share-people'), 'plan: Pro hasta una fecha: ' + JSON.stringify([x.j, me.plan, me.until]));
   ok((await A('GET', '/stats')).j.pro >= 1, 'resumen: cuenta los Pro');
+  // Resumen: saldo real de OpenRouter (comprado − usado) y «¿falta algo?» (qué está configurado, nunca el valor del secreto).
+  { const st = (await A('GET', '/stats')).j;
+    ok(st.openrouter && st.openrouter.available === 7 && st.openrouter.used === 3 && st.openrouter.total === 10 && st.openrouter.low === 5, 'resumen: saldo de OpenRouter: ' + JSON.stringify(st.openrouter));
+    ok(st.health && st.health.openrouterKey === true && typeof st.health.mail === 'boolean' && 'realistic3d' in st.health && 'blender' in st.health && st.health.aiModels, 'resumen: salud del servicio: ' + JSON.stringify(st.health));
+  }
+  // Aviso por correo cuando queda poco saldo de OpenRouter: una vez al día (brakes-claim lo deduplica).
+  { const { openRouterWatch } = await import('../server/cloudflare/openrouterwatch.js');
+    orBalance = { total_credits: 10, total_usage: 9.8 }; sent = [];                 // quedan $0,20 (< $5)
+    const r1 = await openRouterWatch(env);
+    ok(r1.sent === true && sent.some(m => /poco saldo de OpenRouter/i.test(m.subject)), 'poco saldo: avisa a los admin: ' + JSON.stringify(sent.map(m => m.subject)));
+    sent = []; const r2 = await openRouterWatch(env);
+    ok(r2.sent === false && sent.length === 0, 'poco saldo: no repite el mismo día');
+    orBalance = { total_credits: 10, total_usage: 3 }; sent = [];                   // saldo normal otra vez ($7)
+    const r3 = await openRouterWatch(env);
+    ok(r3.sent === false && sent.length === 0, 'saldo normal: no avisa');
+  }
   await A('POST', '/plan', { body: { sub: '1414', until: 0, reason: 'fin de la prueba' } });
   ok((await (await req('GET', '/api/me', { headers: { Cookie: pia } })).json()).plan === 'free', 'plan: quitarlo');
 

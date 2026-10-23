@@ -118,6 +118,7 @@ import { record, financeCall, financeSettings, cleanEntry, periodOk, dayOf, prom
 import { enc, dec, EMAIL, DAY } from './util.js';
 import { ALARMS, MIN_ALARM_MS, PAUSE_DEFER_MS, resetBrakesCache } from './brakes.js';
 import { quotaUsage, quotaConfigured, FREE_DAILY, QUOTA_ALERTS } from './quota.js';
+import { openRouterCredits } from './openrouterwatch.js';
 
 const pad = n => String(n).padStart(10, '0');
 export const STATUSES = ['open', 'waiting', 'closed'];   // (see Tickets)
@@ -135,6 +136,15 @@ export const adminHost = env => String(env.ADMIN_HOST || 'admin.revelaslides.com
 export const emails = env => String(env.ADMIN_EMAILS || '').toLowerCase().split(/[\s,;]+/).filter(Boolean);
 export const adminConfigured = env => !!(env.ACCESS_TEAM && env.ACCESS_AUD && emails(env).length && /^[a-z0-9-]{1,63}$/i.test(env.ACCESS_TEAM)
   && env.DIRECTORY && env.TICKETS && env.AUDIT);
+// «¿Falta algo?»: what is set up and what isn't, for the Resumen. Never the secret VALUES — only whether each is present.
+export const healthOf = env => ({
+  openrouterKey: !!env.OPENROUTER_KEY,                         // la IA funciona para quien no trae su clave
+  mail: mailConfigured(env),                                  // avisos por correo (poco saldo, cuota, tickets…)
+  realistic3d: !!env.FAL_KEY,                                 // 3D realista/animado (Meshy); sin ella, solo 3D por Blender
+  blender: !!(env.BLENDER_URL && env.BLENDER_SECRET),         // el contenedor que renderiza el 3D por código
+  aiModels: { basic: String(env.AI_MODEL_BASIC || ''), medium: String(env.AI_MODEL_MEDIUM || ''), advanced: String(env.AI_MODEL_ADVANCED || '') },
+  budgetLimit: +env.MONTHLY_BUDGET_USD || 50,                 // tope mensual simulado (api.js)
+});
 
 // ---- Cloudflare Access token (JWT, RS256) ----------------------------------------------------------
 // The team's keys are cached for an hour; an unknown key id fetches them again (rotation), at most once a minute.
@@ -596,9 +606,9 @@ export async function handleAdmin(req, env, url) {
 
   if (GET && path === '/whoami') return json({ email: by });
   if (GET && path === '/stats') {
-    const [u, ai, tickets, errors] = await Promise.all([call(D, 'stats'), env.BUDGET ? call(stub(env.BUDGET, 'global'), 'check', { usd: 0 }) : null, call(T, 'counts'),
-      env.VISITS ? visitsCall(env, 'err-summary').catch(() => null) : null]);
-    return json({ ...u, ai: ai && { month: new Date().toISOString().slice(0, 7), usd: ai.usd, limit: ai.limit }, tickets, errors });
+    const [u, ai, tickets, errors, openrouter] = await Promise.all([call(D, 'stats'), env.BUDGET ? call(stub(env.BUDGET, 'global'), 'check', { usd: 0 }) : null, call(T, 'counts'),
+      env.VISITS ? visitsCall(env, 'err-summary').catch(() => null) : null, openRouterCredits(env).catch(() => ({ error: 'fail' }))]);
+    return json({ ...u, ai: ai && { month: new Date().toISOString().slice(0, 7), usd: ai.usd, limit: ai.limit }, tickets, errors, openrouter, health: healthOf(env) });
   }
   if (GET && path === '/users') return json(await call(D, 'search', { q: clip(q.get('q'), 200), cursor: q.get('cursor') || null, limit: +q.get('limit') || 50 }));
   let m = path.match(/^\/users\/([\w.-]{1,100})$/);

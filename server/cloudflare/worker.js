@@ -63,6 +63,7 @@ import { Finance } from './finance.js';
 import { random, sha256 } from './util.js';
 import { runCron } from './brakes.js';
 import { quotaWatch, QUOTA_CRON } from './quota.js';
+import { openRouterWatch } from './openrouterwatch.js';
 export { CollabRoom, ShareBox, Limits, Account, Budget, DesktopLink, CloudDoc, Team, LtiStore, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community, Crawler, Visits, Broadcast, verifyGoogleToken, resetCerts };
 
 const box = (env, id) => env.SHAREBOX.get(env.SHAREBOX.idFromName(id));
@@ -136,6 +137,7 @@ export default {
       crm: () => runCrm(env, { sendMail, mailConfigured, adminEmails: adminEmails(env) }, now),
       releases: () => releasesAuto(env, now),
       storage: async st => { await storageBackfillDaily(env, st.marks, now); return storageWatch(env, { sendMail, adminEmails: adminEmails(env) }); },
+      openrouter: () => openRouterWatch(env, now),
     }).catch(e => console.log('cron', e?.message)));
   },
   async fetch(req, env) {
