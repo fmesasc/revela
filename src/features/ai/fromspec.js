@@ -19,6 +19,7 @@ import { ICON_NAMES } from '../../render/svg.js';
 import { richHTML, inline, inlineHTML } from './richtext.js';
 import { prepareSpec, RICH } from './specs.js';
 import { codeBlockAt, mathBlockAt, codeFontSize, codeHeight } from './codeobj.js';
+import { leg } from './legibility.js';
 
 export const STYLES = ['same', 'visual', 'minimal', 'animated', 'surprise'];
 export const hasLayouts = deck => Array.isArray(deck?.layouts) && deck.layouts.length > 0;
@@ -215,10 +216,11 @@ function textHeight(html, fs, w, lh, cw = 0.54, family = '') {
   return (plain && measuredHeight(html, fs, w, lh, family, cw >= 0.6 || /^\s*<b>/i.test(html))) || needHeight(html, fs, w, lh, cw);
 }
 // A free text: the size that fits.
-// (Never under 18 px — what still reads on a projected slide from the back; text that doesn't fit at 18 goes to more
-// rows or columns where it is laid out, not smaller.)
-function fitSize(html, size, w, h, lh = 1.25, min = 18, cw = 0.54, family = '') {
-  min = Math.max(18, min);
+// (Never under the destination's floor — what still reads on a projected slide from the back is bigger than what reads
+// on a screen; text that doesn't fit at the floor goes to more rows or columns where it is laid out, not smaller. The
+// floor is leg().minText: 18 on screen — as always —, higher for a projector, lower for a printed document.)
+function fitSize(html, size, w, h, lh = 1.25, min = 0, cw = 0.54, family = '') {
+  min = Math.max(leg().minText, min);
   let fs = size; while (fs > min && textHeight(html, fs, w, lh, cw, family) > h) fs = Math.max(min, fs - 2);
   return fs;
 }
@@ -446,6 +448,7 @@ function accentBack(slide, kind, look, deck) {
 // area: the free box under the title; look: { fg, accent, bodySize, body } (lookOf, or the palette's).
 export const CODE_MIN = 20;                      // (code under 20 px can't be read from the back of a room)
 export function codeCard(spec, area, look) {
+  const CODE_MIN = leg().minCode;   // (the least code size that reads at this destination: 20 px on screen, more projected)
   const out = [], pts = (spec.bullets || []).filter(Boolean), gap = 36, code = spec.code?.code || '';
   const capH = spec.caption ? 50 : 0, h = area.h - capH, bs = look.bodySize || 30, html = list(pts, look.accent);
   if (spec.kind === 'math') {
@@ -513,7 +516,7 @@ export function diagramCard(spec, area, look) {
 // without layouts: authoring.js).
 const ICONS = ['sparkles', 'target', 'lightbulb', 'star', 'award', 'rocket'];
 export function compose(kind, spec, area, look, { minimal = false, style = 'same' } = {}) {
-  const out = [], bs = Math.max(30, look.bodySize || 30), acc = i => (look.accents?.length ? look.accents[i % look.accents.length] : look.accent);
+  const out = [], bs = Math.max(leg().bodyFloor, look.bodySize || leg().bodyFloor), acc = i => (look.accents?.length ? look.accents[i % look.accents.length] : look.accent);
   const push = (...bl) => out.push(...bl.filter(Boolean).map(b => Object.assign(b, { fromSpec: kind })));
   const T = (x, y, w, h, html, props) => X(x, y, w, h, html, { fontFamily: look.body, color: look.fg, ...props });
   const card = (x, y, w, h) => (minimal ? null : S('rounded', x, y, w, h, look.fg, { opacity: 7, radius: 18 }));

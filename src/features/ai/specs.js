@@ -9,6 +9,7 @@
 
 import { outline, shapeOf, splitLabel, cleanLine, cleanTitle, itemsToBullets } from './richtext.js';
 import { codeLang, cleanCode, cleanLatex } from './codeobj.js';
+import { leg, profileFor } from './legibility.js';
 
 export const KINDS = ['title', 'section', 'bullets', 'two_columns', 'comparison', 'quote', 'key_idea', 'stats', 'steps', 'timeline', 'features', 'diagram', 'exercise', 'agenda', 'chart', 'table', 'image', 'code', 'math', 'closing'];
 // Kinds laid out as a composition of their own under the title (not the layout's body placeholder).
@@ -255,13 +256,14 @@ export function upgradeSpec(spec) {
 export const prepareSpec = raw => upgradeSpec(normalizeSpec(raw));
 
 // Too much for one slide: two (the list cut in half), or the list in two columns.
-export function splitSpec(spec) {
-  if (spec.kind === 'code') return splitCode(spec);
+// `dest` (when generating): the destination whose limits apply; otherwise the open deck's (leg()).
+export function splitSpec(spec, dest) {
+  if (spec.kind === 'code') return splitCode(spec, dest);
   if (spec.kind !== 'bullets' || !spec.bullets?.length) return [spec];
-  const groups = outline(spec.bullets), sh = shapeOf(groups);
-  if (sh.all <= 6 && sh.chars <= 420) return [spec];
-  if (sh.groups === 1 && !groups[0].heading && !sh.nested && sh.items <= 10 && sh.longest <= 70) return [{ ...spec, columns: 2 }];
-  if (sh.all <= 8 && sh.chars <= 560) return [spec];
+  const groups = outline(spec.bullets), sh = shapeOf(groups), sp = (dest ? profileFor(dest) : leg()).split;   // (how much fits a slide depends on where it is shown)
+  if (sh.all <= sp.a1 && sh.chars <= sp.c1) return [spec];
+  if (sh.groups === 1 && !groups[0].heading && !sh.nested && sh.items <= sp.colItems && sh.longest <= sp.colLong) return [{ ...spec, columns: 2 }];
+  if (sh.all <= sp.a2 && sh.chars <= sp.c2) return [spec];
   // (Cut at the top-level item nearest the middle, by length.)
   const flat = groups.flatMap(g => [...(g.heading ? [{ head: g.heading }] : []), ...g.items.map(i => ({ i }))]);
   const len = x => (x.head || '').length + (x.i ? JSON.stringify(itemsToBullets([x.i])).length : 0), total = flat.reduce((s, x) => s + len(x), 0);
@@ -325,10 +327,11 @@ function notesFor(notes, texts) {
 }
 // Code too long for one slide at a size that reads: two slides (three at most), each with the points that speak
 // of its part. Runs of blank lines become one.
-export function splitCode(spec) {
+export function splitCode(spec, dest) {
   const src = spec.code?.code; if (!src) return [spec];
   const ls = src.split('\n').filter((l, i, a) => !(blank(l) && i && blank(a[i - 1])));
   const pts = (spec.bullets || []).filter(b => !Array.isArray(b)), longest = Math.max(0, ...ls.map(l => l.length));
+  const CODE_ROOM = (dest ? profileFor(dest) : leg()).codeRoom;   // (how many lines read per slide depends on the destination's code size)
   const max = !pts.length || longest <= CODE_ROOM.sideChars ? CODE_ROOM.lines : CODE_ROOM.withPoints;
   // (Two slides if they hold it; three only when two can't.)
   // (Two slides if they hold it — with its points, or else the code alone, its points then said in the notes

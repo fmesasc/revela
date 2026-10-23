@@ -37,6 +37,7 @@ on:
       - 'src/features/ai/authoring.js'
       - 'src/features/ai/codeobj.js'
       - 'src/features/ai/fromspec.js'
+      - 'src/features/ai/legibility.js'
       - 'src/features/ai/media.js'
       - 'src/features/ai/openrouter.js'
       - 'src/features/ai/quality.js'

@@ -68,6 +68,25 @@ export function ensureLayouts(deck = state.deck) {
   ].map(l => ({ background: null, ...l }));
   return deck.layouts;
 }
+// Scale all of a deck's type sizes by a factor, at build time — so a deck meant
+// for a classroom projector comes out bigger everywhere (titles, bodies, the
+// bullet levels and the layouts' own sizes), and a printed document a touch
+// smaller. Used by the AI wizard from the destination (features/ai/legibility.js);
+// a factor of 1 (a screen deck) changes nothing. Baked into the deck, not a
+// render-time setting, so it persists and the rest of the editor sees plain sizes.
+export function scaleDeckType(deck, factor) {
+  if (!factor || factor === 1) return deck;
+  const z = n => Math.max(8, Math.round(n * factor));
+  for (const m of allMasters(deck)) {
+    const st = masterStyles(deck, m);
+    if (st.title?.size) st.title.size = z(st.title.size);
+    if (st.subtitle?.size) st.subtitle.size = z(st.subtitle.size);
+    if (st.body?.size) st.body.size = z(st.body.size);
+    for (const l of (st.body?.levels || [])) if (l.size) l.size = z(l.size);
+  }
+  for (const l of (deck.layouts || [])) for (const b of (l.blocks || [])) if (b.fontSize) b.fontSize = z(b.fontSize);
+  return deck;
+}
 export const layoutOf = (slide, deck = state.deck) => (slide?.layoutId && deck.layouts?.find(l => l.id === slide.layoutId)) || null;
 const isLayout = (x, deck) => !!deck.layouts?.includes(x);
 

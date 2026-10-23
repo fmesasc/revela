@@ -131,11 +131,13 @@ async function findVideos(list, { topic = '', language = lang() } = {}) {
 async function modelCandidates(q) {
   const nasa = searchNASA3D(q).slice(0, 3).map(m => ({ id: 'n' + m.id, title: m.name, thumb: m.thumb, nasa: m, creator: 'NASA', license: 'NASA', from: 'NASA 3D Resources' }));
   let sf = [];
-  for (const each of wider(q)) {
-    const got = (await searchSketchfab(each).catch(() => ({ results: [] }))).results.filter(m => m.thumb && !sf.some(x => x.uid === m.uid));
-    sf.push(...got); if (sf.length >= 6) break;
-  }
-  return [...nasa, ...sf.slice(0, 8).map(m => ({ id: m.uid, title: m.name, thumb: m.thumb, uid: m.uid, creator: m.user, license: m.license, source: m.page, from: 'Sketchfab' }))].slice(0, 9);
+  const add = results => { for (const m of results) if (m.thumb && !sf.some(x => x.uid === m.uid)) sf.push(m); };
+  // First the animated ones (moving parts: wheels, pistons, a beating heart): they autoplay in the viewer, so the
+  // model doesn't just turn, it moves — closer to what the slide is about.
+  add((await searchSketchfab(q, { animated: true }).catch(() => ({ results: [] }))).results);
+  for (const each of wider(q)) { if (sf.length >= 8) break; add((await searchSketchfab(each).catch(() => ({ results: [] }))).results); }
+  sf.sort((a, b) => (b.animated ? 1 : 0) - (a.animated ? 1 : 0));   // animated first, keeping each group's order
+  return [...nasa, ...sf.slice(0, 8).map(m => ({ id: m.uid, title: m.name, thumb: m.thumb, uid: m.uid, creator: m.user, license: m.license, source: m.page, animated: m.animated, from: 'Sketchfab' }))].slice(0, 9);
 }
 async function modelOf(c) {
   if (c.nasa) {

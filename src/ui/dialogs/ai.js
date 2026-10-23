@@ -4,7 +4,7 @@
 import { moreHTML } from './dlgkit.js';
 import { readAttachment, pdfFigures, ATTACH, ATTACH_ACCEPT } from '../../features/ai/attach.js';
 import { GALLERY, buildFromGallery } from '../../features/design/gallery.js';
-import { ensureLayouts } from '../../features/document/master.js';
+import { ensureLayouts, scaleDeckType } from '../../features/document/master.js';
 import { hasAccounts } from '../../io/cloud/account.js';
 import { openAccount } from './account.js';
 import * as ai from '../../features/ai/openrouter.js';
@@ -15,6 +15,7 @@ import { alertDialog, confirmDialog, promptDialog } from './dialog.js';
 import { t } from '../../i18n/index.js';
 import { esc } from '../../core/text.js';
 import { forBusiness } from '../../core/audience.js';
+import { DESTS, DEST_NAMES, profileFor } from '../../features/ai/legibility.js';
 import { askAssistant } from './assistant.js';
 // The kinds of slide the outline may choose (features/ai/specs.js KINDS), to see and change before the slides are made.
 const OUTLINE_KINDS = [['', 'Automático'], ['title', 'Portada'], ['section', 'Sección'], ['bullets', 'Lista'], ['code', 'Código'], ['steps', 'Pasos'], ['features', 'Características'],
@@ -186,6 +187,7 @@ export function openCreateDeck() {
     ${moreHTML(`<div class="ad-grid">
       <label class="fr-l">${t('Público')}<input type="text" class="ad-aud" placeholder="${t('p. ej.: directivos')}"></label>
       <label class="fr-l">${t('Tono')}<select class="ad-tone">${TONES.map(x => `<option value="${x}">${t(x)}</option>`).join('')}</select></label>
+      <label class="fr-l" style="grid-column:1/-1">${t('¿Dónde la mostrarás?')}<select class="ad-dest">${DESTS.map(d => `<option value="${d}"${d === 'screen' ? ' selected' : ''}>${t(DEST_NAMES[d])}</option>`).join('')}</select><span class="host-help" style="display:block;margin-top:2px">${t('En un proyector de aula la letra va más grande y con menos texto por diapositiva; un documento para leer admite más.')}</span></label>
       <label class="fr-l" style="grid-column:1/-1">${t('Diseño')}<select class="ad-pal"><option value="">${t('Automático (según el contenido)')}</option>${Object.keys(deck.DECK_DESIGNS).map(k => `<option value="${k}">${t(GALLERY[k].name)}</option>`).join('')}</select></label>
     </div>
     <label class="fr-l">${t('Imágenes y vídeos')}<select class="ad-media">
@@ -211,7 +213,7 @@ export function openCreateDeck() {
   back.addEventListener('click', e => { if (e.target === back) close(); });
   // (What was written is kept: connecting the AI may take the page to OpenRouter and back — the
   // form opens again, filled in, when it comes back: apps/editor/main.js.)
-  const FIELDS = ['.ad-topic', '.ad-source', '.ad-count', '.ad-aud', '.ad-tone', '.ad-pal'];   // (not .ad-web: a cost, chosen each time)
+  const FIELDS = ['.ad-topic', '.ad-source', '.ad-count', '.ad-aud', '.ad-tone', '.ad-pal', '.ad-dest'];   // (not .ad-web: a cost, chosen each time)
   try { const d = JSON.parse(sessionStorage.getItem(DECK_DRAFT) || 'null'); if (d) FIELDS.forEach((s, i) => { if (d[i] != null) q(s).value = d[i]; }); } catch {}
   back.addEventListener('input', () => { try { sessionStorage.setItem(DECK_DRAFT, JSON.stringify(FIELDS.map(s => q(s).value))); } catch {} });
   back.addEventListener('change', () => { try { sessionStorage.setItem(DECK_DRAFT, JSON.stringify(FIELDS.map(s => q(s).value))); } catch {} });
@@ -254,7 +256,7 @@ export function openCreateDeck() {
     const figs = (await Promise.all(files.filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf').map(f => pdfFigures(f).catch(() => [])))).flat();
     const docs = read.filter(a => a.kind === 'text'), pics = [...figs, ...read.filter(a => a.kind === 'image')].slice(0, ATTACH.count);
     if (docs.length) source = docs.map(d => d.text).join('\n\n') + (source ? '\n\n' + source : '');
-    return { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value, images: q('.ad-media').value === 'generate', media: q('.ad-media').value, attachments: pics };
+    return { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value, dest: q('.ad-dest').value, images: q('.ad-media').value === 'generate', media: q('.ad-media').value, attachments: pics };
   };
   // (Searched once for what the form says, and kept for the slides: the same sources for the outline and the deck.)
   let found = null, foundFor = '';
@@ -315,7 +317,7 @@ export function openCreateDeck() {
       const figs = (await Promise.all(files.filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf').map(f => pdfFigures(f).catch(() => [])))).flat();
       const docs = read.filter(a => a.kind === 'text'); pics = [...figs, ...read.filter(a => a.kind === 'image')].slice(0, ATTACH.count);
       if (docs.length) source = docs.map(d => d.text).join('\n\n') + (source ? '\n\n' + source : '');
-      const opts = { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value,
+      const opts = { topic, source, count: +q('.ad-count').value, audience: q('.ad-aud').value.trim(), tone: q('.ad-tone').value, dest: q('.ad-dest').value,
         images: q('.ad-media').value === 'generate', media: q('.ad-media').value, attachments: pics, context: context(), ...(outline && { outline: outline.slides }) };
       await run(async () => {
         const r = await researched(opts); if (r) opts.research = r;
@@ -326,6 +328,8 @@ export function openCreateDeck() {
         if (q('.ad-new').checked) {
           const d = buildFromGallery(q('.ad-pal').value || specs.design || 'minimal'); ensureLayouts(d);
           if (specs.title) d.name = specs.title;
+          d.legibility = opts.dest;   // (the destination the slides are laid out for: fromspec.js leg())
+          scaleDeckType(d, profileFor(opts.dest).scale);   // (projector: bigger type everywhere; print: a touch smaller)
           replaceDeck(d);
         }
         // (Real pictures and videos for the slides that show something: searched, looked at, described — media.js.)
