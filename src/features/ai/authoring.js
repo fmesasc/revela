@@ -307,7 +307,7 @@ export async function askAbout(opts = {}) {
     { role: 'system', content: `Someone is about to have a presentation made. Before planning it, ask them the 3-4 questions whose answers would most change it — specific to THIS topic and case, never generic ones they already answered (the topic, the audience, the tone and the number of slides are given). Think of: the purpose and what the audience should do or know afterwards; who exactly listens and what they already know; the time and setting; their own data, examples, names or constraints the slides must use; what must not be missing. Each with 2-5 short options to pick (they may still write their own). Answer only JSON {"questions":[{"q":"…","options":["…"],"multi":false}]}. Write in ${opts.language || lang()}.` },
     { role: 'user', content: [opts.topic && `Topic: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`, opts.count && `Slides: about ${opts.count}`,
       opts.source && `They also gave a document (excerpt): ${String(opts.source).slice(0, 1500)}`].filter(Boolean).join('\n') },
-  ], { json: true, maxTokens: 1200, feature: 'outline', tier: 'advanced' });
+  ], { json: true, maxTokens: 1200, feature: 'outline', tier: 'medium' });
   return (parseJSON(out)?.questions || []).filter(x => x && str(x.q).trim()).slice(0, 4)
     .map(x => ({ q: str(x.q).trim().slice(0, 200), options: (Array.isArray(x.options) ? x.options : []).map(o => str(o).trim().slice(0, 80)).filter(Boolean).slice(0, 5), multi: !!x.multi }));
 }
@@ -333,7 +333,7 @@ export async function createOutline(opts = {}) {
 ${RICH}
 ${opts.media === 'search' ? `- REQUIRED: 2-4 slides of kind "image", where SEEING the thing explains it — a labelled diagram, a map, the artwork, the place, the object, the experiment —, when something is better seen moving — a process, an experiment, a phenomenon, a demo of a tool — one of them a short video, and when a physical object is understood by turning it around — a machine or vehicle (a locomotive, an engine), an organ, a molecule, a monument, a planet — one an interactive 3D model; its points say what to look at while turning it. (Only a topic with nothing to see — pure code, a company's own figures — may have none.)\n` : ''}${profileFor(opts.dest).guide ? '- ' + profileFor(opts.dest).guide + '\n' : ''}Write in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments([opts.topic && `Topic and purpose: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`, opts.tone && `Tone: ${opts.tone}`].filter(Boolean).join('\n') + TAILOR(opts.context) + source, opts.attachments || []) },
-  ], { maxTokens: 3000, feature: 'outline', tier: 'advanced' });
+  ], { maxTokens: 1500, feature: 'outline', tier: 'medium' });
   const res = out, slides = (res.slides || []).filter(x => x && str(x.title).trim()).slice(0, 40)
     .map(x => ({ title: str(x.title).trim(), ...(KINDS.includes(x.kind) && (pictures(opts) || x.kind !== 'image') && { kind: x.kind }), ...(x.below === true && { below: true }), points: (Array.isArray(x.points) ? x.points : []).map(str).map(p => p.trim()).filter(Boolean).slice(0, 6) }));
   if (!slides.length) throw new Error('EMPTY');
