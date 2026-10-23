@@ -188,9 +188,16 @@ export async function findMedia(specs, { topic = '', language = '', onProgress =
     const cands = await modelCandidates(str(sp.model_search).slice(0, 100));
     const p = cands.length ? await pickPicture(sp, cands, { topic, language: lng, what: '3D model', want: sp.model_search }) : { n: 0 };
     log.push({ slide: str(sp.title), model: str(sp.model_search), found: cands.length, picked: p.n ? p.c.title : null });
-    if (!p.n) return;
-    sp.model = { ...(await modelOf(p.c)), alt: p.alt || p.c.title, caption: `${p.c.title} — ${credit(p.c)}`, credit: p.c.source || '' };
-    noted(sp, p);
+    if (p.n) { sp.model = { ...(await modelOf(p.c)), alt: p.alt || p.c.title, caption: `${p.c.title} — ${credit(p.c)}`, credit: p.c.source || '' }; noted(sp, p); return; }
+    // No 3D model found: fall back to a photo of the same thing (image_search), so the slide still shows it, not a list.
+    if (!str(sp.image_search)) return;
+    const ic = (await candidates(str(sp.image_search).slice(0, 100))).filter(c => !used.has(c.url));
+    const q = ic.length ? await pickPicture(sp, ic, { topic, language: lng }) : { n: 0 };
+    log.push({ slide: str(sp.title), search: str(sp.image_search), found: ic.length, picked: q.n ? q.c.title : null, after: '3D' });
+    if (!q.n) return;
+    const src = await fetchPicture(q.c), k = Math.min(1, 1600 / Math.max(q.c.width || 1, q.c.height || 1)); used.add(q.c.url);
+    sp.picture = { src, w: Math.round((q.c.width || 1200) * k), h: Math.round((q.c.height || 900) * k), alt: q.alt || q.c.title, caption: credit(q.c), credit: q.c.source || '' };
+    noted(sp, q);
   });
   const vm = await videoJob;
   for (const { sp, i } of vids) await guard(sp, 'video', str(sp.video_search), async () => {
