@@ -622,10 +622,11 @@ export async function handleAdmin(req, env, url) {
   // their own «Sesiones abiertas». Returns a one-time link that installs the session in the admin's browser.
   if (POST && path === '/impersonate') {
     const reason = clip(body.reason, 500).trim(), minutes = Math.min(120, Math.max(5, Math.round(+body.minutes || 30)));
-    if (!reason) return json({ error: 'bad request' }, 400);
-    if (!(await account(body.sub))) return json({ error: 'not found' }, 404);
     const to = /^[\w-]{6,80}$/.test(String(body.doc || '')) ? String(body.doc) : null;   // una presentación concreta, opcional
     const edit = !!body.edit;                                                             // visor por defecto; editor sólo si lo piden
+    // Ver una presentación concreta en modo visor (solo lectura) no exige motivo; editar o impersonar la cuenta entera sí.
+    if (!reason && (edit || !to)) return json({ error: 'bad request' }, 400);
+    if (!(await account(body.sub))) return json({ error: 'not found' }, 404);
     const r = await call(acct(env, body.sub), 'impersonate', { by, minutes });
     if (r.error) return json({ error: r.error }, 400);
     await audit(env, { by, action: 'impersonate', target: body.sub, reason, after: { email: r.email, until: r.until, minutes, readOnly: true, ...(to && { doc: to, mode: edit ? 'editor' : 'visor' }) } });

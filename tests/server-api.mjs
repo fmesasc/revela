@@ -1259,6 +1259,10 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   // «Ver como este usuario» (solo lectura, solo auditoría): acuñar → enlace de un solo uso → qué puede y qué no.
   {
     ok((await A('POST', '/impersonate', { body: { sub: '1414' } })).status === 400, 'ver como usuario: sin motivo → 400');
+    // Ver una presentación concreta en modo visor (solo lectura) NO exige motivo; editar sí.
+    const vis = await A('POST', '/impersonate', { body: { sub: '1414', doc: 'deck-abc123' } });
+    ok(vis.status === 200 && /&to=deck-abc123$/.test(vis.j.url), 'ver una presentación en visor: sin motivo → 200 y enlace al visor: ' + JSON.stringify(vis.j));
+    ok((await A('POST', '/impersonate', { body: { sub: '1414', doc: 'deck-abc123', edit: true } })).status === 400, 'abrir una presentación en el EDITOR: sin motivo → 400');
     ok((await A('POST', '/impersonate', { body: { sub: 'noexiste', reason: 'x' } })).status === 404, 'ver como usuario: cuenta que no existe → 404');
     const im = await A('POST', '/impersonate', { body: { sub: '1414', reason: 'soporte: dice que no le carga el panel', minutes: 30 } });
     ok(im.status === 200 && /\/api\/impersonate\/consume\?sub=1414&code=[\w-]+$/.test(im.j.url) && im.j.email === 'pia@example.com' && im.j.until > Date.now(), 'ver como usuario: enlace de un solo uso: ' + JSON.stringify(im.j));
