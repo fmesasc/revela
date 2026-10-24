@@ -24,9 +24,10 @@ const write = v => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch
 // basic) without naming a model. The person may set which model is each level (empty = Revela chooses); with the account's
 // cloud AI the server resolves the level (AI_MODEL_BASIC/MEDIUM/ADVANCED), so nothing here decides a cloud model.
 export const TIERS = ['basic', 'medium', 'advanced'];
-// Defaults match the server's (api.js settings tiers): «advanced» stays on flash so nothing changes by default — a
-// better model (gemini-2.5-pro, a Claude…) is opted into here or, for the cloud AI, with AI_MODEL_ADVANCED.
-export const TIER_DEFAULTS = { basic: 'google/gemini-2.5-flash-lite', medium: 'google/gemini-2.5-flash', advanced: 'google/gemini-2.5-flash' };
+// Defaults match the server's (api.js settings tiers). «advanced» is the editor's pass over every deck made (authoring.js
+// polish) and «Mejorar»: measured on whole decks (2026-10), gemini-3.8-flash gave nearly gemini-2.5-pro's result for a
+// third of what it cost or less — a deck 11-17 credits, not 32-38 —, and fits the hold of a new account's 50 credits.
+export const TIER_DEFAULTS = { basic: 'google/gemini-2.5-flash-lite', medium: 'google/gemini-2.5-flash', advanced: 'google/gemini-3.8-flash' };
 export const aiSettings = () => ({ model: DEFAULT_MODEL, tiers: {}, ...read() });
 export const aiTiers = () => ({ ...read().tiers });
 export const setAiTier = (tier, model) => { if (!TIERS.includes(tier)) return; const tiers = { ...read().tiers }; const m = (model || '').trim(); if (m) tiers[tier] = m; else delete tiers[tier]; write({ ...read(), tiers }); };

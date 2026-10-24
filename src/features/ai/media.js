@@ -78,7 +78,7 @@ ${shots.length} candidate ${WHAT[what] || what} follow, numbered.` },
 None is better than a wrong one.
 Answer only JSON {"n":N (the best one, or 0),"score":0-10,"alt":"what the chosen ${what} shows, for someone who can't see it, max 125 characters, in ${language}","note":"one sentence for the speaker notes: what to point at or do with it, in ${language}"}.` },
     { role: 'user', content },
-  ], { json: true, maxTokens: 400, feature: 'create', prefer: PICK_MODEL });
+  ], { json: true, maxTokens: 400, feature: 'create', tier: 'medium', prefer: PICK_MODEL });
   const a = parseJSON(out) || {}, n = +a.score >= 7 ? Math.round(+a.n) || 0 : 0;
   return n >= 1 && n <= shots.length ? { n, c: shots[n - 1].c, alt: str(a.alt).slice(0, 180), note: str(a.note).slice(0, 300) } : { n: 0 };
 }
@@ -112,7 +112,7 @@ async function findVideos(list, { topic = '', language = lang() } = {}) {
   const out = await chat([
     { role: 'system', content: `Find on the web one real YouTube video for each item: short (ideally under 8 minutes), clear, from a reputable channel (a university, a museum, a science or education channel, the official one), in ${language} if a good one exists, else in English. Only addresses you found in the search results — never make one up. Answer only JSON {"videos":[{"i":N,"url":"https://www.youtube.com/watch?v=…","title":"…"}]}; leave out an item you found nothing good for.` },
     { role: 'user', content: `Presentation: ${str(topic).slice(0, 300)}\n${list.map(x => `${x.i}: ${str(x.sp.video_search)} (slide «${str(x.sp.title)}»)`).join('\n')}` },
-  ], { json: true, maxTokens: 1200, feature: 'create', prefer: PICK_MODEL, web: true }).catch(() => '');
+  ], { json: true, maxTokens: 1200, feature: 'create', tier: 'medium', prefer: PICK_MODEL, web: true }).catch(() => '');
   const found = new Map();
   for (const v of parseJSON(out)?.videos || []) {
     const it = list.find(x => x.i === +v.i); if (!it || found.has(it.i)) continue;

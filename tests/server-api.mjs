@@ -184,7 +184,7 @@ ok((await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { messag
   // unknown level falls back to the first model. (env.AI_MODELS here starts with openai/gpt-4o-mini.)
   aiCalls = [];
   await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { tier: 'advanced', max_tokens: 50, messages: [{ role: 'user', content: 'x' }] } });
-  ok(aiCalls.at(-1)?.body.model === 'google/gemini-2.5-flash', 'nivel avanzado → su modelo por defecto (sin configurar): ' + aiCalls.at(-1)?.body.model);
+  ok(aiCalls.at(-1)?.body.model === 'google/gemini-3.8-flash', 'nivel avanzado → su modelo por defecto (sin configurar): ' + aiCalls.at(-1)?.body.model);
   env.AI_MODEL_ADVANCED = 'google/gemini-2.5-pro';
   await req('POST', '/api/ai/chat', { headers: { Cookie: ana }, body: { tier: 'advanced', max_tokens: 50, messages: [{ role: 'user', content: 'x' }] } });
   ok(aiCalls.at(-1)?.body.model === 'google/gemini-2.5-pro', 'nivel avanzado → el modelo que pone el operador (AI_MODEL_ADVANCED)');

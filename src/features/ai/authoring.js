@@ -260,7 +260,7 @@ export async function research(opts = {}) {
   const brief = await chat([
     { role: 'system', content: `You research a topic for a presentation. Search the web and write a factual brief of 200-450 words: the key facts, figures with their year, definitions and examples a presenter needs, from reliable sources (official bodies, studies, encyclopedias, quality press). Mark each fact with the number of its source like [1]. No opinion, no filler. Write in ${opts.language || lang()}.` },
     { role: 'user', content: [opts.topic && `Topic: ${opts.topic}`, opts.audience && `Audience: ${opts.audience}`].filter(Boolean).join('\n') || String(opts.source || '').slice(0, 2000) },
-  ], { maxTokens: 1500, feature: 'research', web: true, onSources: s => { sources = s.slice(0, 10); } });
+  ], { maxTokens: 1500, feature: 'research', tier: 'medium', web: true, onSources: s => { sources = s.slice(0, 10); } });
   if (!brief.trim()) throw new Error('EMPTY');
   return { brief: brief.trim(), sources };
 }
@@ -294,9 +294,9 @@ export const RICH = `Use the richest kind that fits each slide — a list ("bull
 - Facts about the world (the climate, a market, history) are not the person's own case: use real, well-known figures with their source ("IPCC AR6", "AEMET", "INE 2023") rather than a slide of gaps. Gaps only for what only the person can know — and never more than two on a slide.
 - No forecasts, projections or estimates of your own: a figure for what hasn't happened yet (next quarter's sales, a growth to come) only when the person gave it; else a placeholder ("[previsión de ventas del T4]"). Figures worked out from theirs (a difference, a percentage) are fine.
 - Placeholders in plain words of the deck's language, with spaces — "[objetivo de crecimiento del sur]", never "[objetivo_crecimiento_sur]".
-- A "chart" only for a real series of numbers to compare — never to illustrate an idea. "code" only when the audience writes or reads code — never as decoration on another topic.`;
-// Writing decks and improving slides ask for the «advanced» level, speaker notes for «medium» (openrouter.js tiers):
-// a model fit for the job, not the cheapest, with the actual model set by the operator or the person.
+- A "chart" only for a real series of numbers to compare — never to illustrate an idea. "code" only when the audience writes or reads code — never as decoration on another topic.
+- Never point at a picture, video or 3D model a slide doesn't show ("observa esta imagen" on an exercise, "en el modelo"…). The text of a picture, video or 3D slide says what is seen in it ("el núcleo, en morado, guarda el ADN"), never what to do with it ("gira el modelo", "mira la foto"): if nothing is found it is shown alone, as a list.`;
+// Who does what (the writer, the editor, the chores): see polish, below.
 const withResearch = (source, r) => (r ? `${source ? source + '\n\n' : ''}Research brief from the web (current facts; keep their [n] marks in the notes when you use them):\n${r.brief}` : source);
 
 // Before the outline, a few questions about this very case — what a good speechwriter would ask before writing:
@@ -366,9 +366,9 @@ ${opts.media === 'search' ? SEARCHED : opts.images ? '- Use 1-3 "image" slides w
 ${profileFor(opts.dest).guide ? '- ' + profileFor(opts.dest).guide + '\n' : ''}Write everything in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments(brief + source + (pics.some(a => !a.figure)
       ? '\n\nThe attached pictures (notes, a whiteboard, slides, a document\'s pages, photos): base the deck on what they show — read their text and figures — together with the rest.' : ''), opts.attachments || []) },
-    // The base deck in the cheap tier (flash): most of the tokens of a creation. The strong model (advanced) is kept
-    // only for making the weak slides again (richer, below) and for the presenter's «Mejorar» — a draft then a polish,
-    // so a whole presentation fits in a handful of credits instead of costing a fortune.
+    // The draft in the writer's level (medium): most of the tokens of a creation. The editor's level (advanced) only
+    // makes again the slides that need it (polish, below) — a draft then a polish, so a whole presentation fits in a
+    // handful of credits instead of costing a fortune.
   ], { maxTokens: 16000, feature: 'create', tier: 'medium' });
   const res = out;
   // (Cleaned, and what is too much for one slide in two.)
@@ -408,10 +408,11 @@ ${profileFor(opts.dest).guide ? '- ' + profileFor(opts.dest).guide + '\n' : ''}W
   const how = { topic: opts.topic || str(res.title), sourced: !!(str(opts.source) || opts.research || /\d/.test(str(opts.context))), images: pictures(opts), given: (opts.attachments || []).length ? '' : [opts.context, opts.source, opts.research?.brief].map(str).join('\n').trim() };   // (the data as text — not when it came in a file the measure can't read)
   const belowAt = specs.map(sp => !!sp.below);                // (the fixes below replace some specs: their place is kept)
   let q = deckQuality(specs, how); specs.qualityFirst = q;
-  if (q.score < 80 || q.problems.some(p => ['invented-figures', 'off-code', 'no-picture', 'repeated', 'list-then-code'].includes(p.code))) {
-    // (Made again, but kept only if better: a second pass sometimes turned good cards into lists.)
+  {
+    // (The editor's pass, always — the measure's problems go to it as hints —, kept only if the deck isn't worse: a
+    // second pass sometimes turned good cards into lists.)
     const before = specs.slice(), was = q;
-    await richer(specs, weakSlides(q, specs), opts, q).catch(() => {}); q = deckQuality(specs, how);
+    await polish(specs, opts, q).catch(() => {}); q = deckQuality(specs, how);
     if (q.score < was.score) { specs.splice(0, specs.length, ...before); q = was; }
   }
   // The last net, not up to the model: figures still without anything behind them are never shown as facts — on cards,
@@ -495,25 +496,53 @@ export function varyLists(specs) {
   return specs;
 }
 const MID_KINDS = ['title', 'section', 'closing'];
-// The weak slides made again (one request for all): the same message and place, a richer kind, real content.
-async function richer(specs, idx, opts = {}, q = null) {
-  if (!idx.length) return;
-  // (Each with what's wrong with it, as the measure says.)
+// Who does what when a deck is made (openrouter.js tiers; the operator sets the model of each level):
+// - «medium», the writer: the research, the outline, the whole draft with its notes, and picking its pictures, videos
+//   and 3D models — most of the tokens, in a cheap, quick model;
+// - «advanced», the editor: one pass over the finished draft (polish), making again only what isn't up to it — and the
+//   presenter's «Mejorar» —: a strong model, but writing a handful of slides, not the deck;
+// - «basic», the short chores: the questions before the outline, a line translated.
+// The editor: it reads the whole draft as its audience would and makes again only the slides that aren't up to the
+// level of a good deck — a wrong or vague fact, a kind that doesn't fit (a Venn for what aren't overlapping sets, a
+// cycle for what isn't a loop, a list for what is a process…), thin or generic text, a slide saying again what another
+// says, one that should be SEEN (the thing itself, a 3D model, a video) — and those the measure found weak (quality.js,
+// as hints): at most a few, so what it costs stays small and known. With too few credits left for the strong model
+// (the server holds what a request may cost before it), the same pass in the writer's level rather than none.
+async function polish(specs, opts = {}, q = null) {
+  const weak = q ? weakSlides(q, specs) : [];
+  const most = Math.min(Math.max(4, weak.length), Math.ceil(specs.length / 2));
   const why = i => (q?.problems || []).filter(p => p.slides?.includes(i)).map(p => p.detail).join('; ');
-  const want = idx.map(i => ({ i, ...(why(i) && { problem: why(i) }), ...specs[i] }));
-  const out = await chat([
-    { role: 'system', content: `These slides of a presentation are weak (each one says why in "problem"): mostly lists, thin, without the code a technical topic needs, with invented figures, code where it doesn't belong, or saying again what another slide says (then it must say something new: the next step of the talk, an example worked out, a common mistake…), or one more list before its code, as the slides before (then another composition — a "key_idea", "features", "diagram" or "comparison" —, not code: its code follows). Make each one again — the same message (its title may be sharpened), in the richest kind that fits, with real, concrete content. Answer only JSON {"slides":[{"i":N,"kind":"…",…,"notes":"…"}]}, one per slide given, with its own i.
+  // (The draft without its notes — the editor judges the slides; the ones it makes again come with new notes.)
+  const deck = specs.map((sp, i) => { const { notes, ...rest } = sp; return { i, ...rest, ...(why(i) && { problem: why(i) }) }; });
+  const search = opts.media === 'search';
+  const msgs = [
+    { role: 'system', content: `You are the senior editor of a presentation drafted by a junior writer. Read the whole deck as its audience would and make again ONLY the slides that are not up to a top-quality deck (the level of a Gamma or a professional designer's deck), at most ${most}; leave the good ones alone. Fix, in this order:
+- A fact that is wrong, dubious or vague for THIS audience: make it right and concrete (real names, examples, figures they would understand).
+- A kind that doesn't fit its content: a "diagram" "venn" only for really overlapping sets, "cycle" only for a real loop, "hierarchy" only for real parent-child parts; a process as "steps", a before/after as "comparison", one central claim as "key_idea".
+- Thin, generic or repeated text: the slide must teach something specific and new in the talk.
+- The "problem" a slide comes with, from an automatic check.
+${search ? `- A slide where SEEING explains more than words (the thing itself, a labelled diagram, an organ, a machine, a place, a process in motion), when the deck has fewer than one such slide every three: make it an "image" slide (bullets 1-3) with "image_search", or "model_search" for an object understood by turning it around, or "video_search" for something better seen moving — following these rules:\n${SEARCHED}` : '- Do not use "image".'}
+Keep each slide's place and message (its title may be sharpened; the first slide's title is the presentation's, unchanged). Answer only JSON {"slides":[{"i":N,"kind":"…",…,"notes":"…"}]} — each one complete, with its own i and new speaker notes; {"slides":[]} if all are good.
 ${SPEC_DOC}
 ${RICH}
-Do not use "image". Write in ${opts.language || lang()}.` },
-    { role: 'user', content: `Presentation: ${str(opts.topic).slice(0, 400)}\nAll its titles, in order: ${JSON.stringify(specs.map(sp => sp.title || sp.statement || ''))}\n\nSlides to make again: ${JSON.stringify(want).slice(0, 30000)}` },
-  ], { json: true, maxTokens: 12000, feature: 'create', tier: 'advanced' });
+Write in ${opts.language || lang()}.` },
+    { role: 'user', content: `Presentation: ${str(opts.topic).slice(0, 400)}${opts.audience ? `\nAudience: ${str(opts.audience).slice(0, 200)}` : ''}\n\nThe draft, slide by slide: ${JSON.stringify(deck).slice(0, 40000)}` },
+  ];
+  const ask = tier => chat(msgs, { json: true, maxTokens: 2000 + 1100 * most, feature: 'create', tier });
+  const out = await ask('advanced').catch(e => (e.message === 'NO_CREDIT' ? ask('medium') : Promise.reject(e)));
+  let n = 0;
   for (const s of parseJSON(out)?.slides || []) {
-    const i = +s.i; if (!idx.includes(i) || !s || typeof s !== 'object') continue;
-    const [sp] = splitSpec(prepareSpec(s)); if (!sp || sp.kind === 'image' || !hasContent(sp)) continue;   // (one that came back empty: the old one stays)
+    const i = +s.i; if (!(i >= 0 && i < specs.length) || !s || typeof s !== 'object' || n >= most) continue;
+    const [sp] = splitSpec(prepareSpec(s));
+    // (One that came back empty, or a picture with nothing to search: the old one stays.)
+    if (!sp || !hasContent(sp) || (sp.kind === 'image' && !(search && (sp.image_search || sp.model_search || sp.video_search)))) continue;
     if (!str(sp.notes)) sp.notes = specs[i].notes;
     if (specs[i].below) sp.below = true; else delete sp.below;   // (made again in the same place)
-    specs[i] = sp;
+    // (The title slide's title is the presentation's: an editor once put a section's name there.)
+    if (i === 0 && specs[0].kind === 'title' && sp.kind === 'title' && str(specs[0].title)) sp.title = specs[0].title;
+    // (A 3D model asked for without a photo: the same words for the photo, which findMedia shows if no model is found.)
+    if (sp.model_search && !sp.image_search) sp.image_search = sp.model_search;
+    specs[i] = sp; n++;
   }
 }
 // Notes for the slides that have none: what the speaker says (one request for all of them).
@@ -675,7 +704,7 @@ const TO = { es: 'Spanish', en: 'English', fr: 'French', de: 'German', it: 'Ital
 export async function translateLine(text, to) {
   if (!TO[to] || !String(text || '').trim()) return null;
   const out = await chat([{ role: 'system', content: `Translate the user's text (spoken, live captions) into ${TO[to]}. Answer with the translation only.` },
-    { role: 'user', content: String(text).slice(0, 600) }], { maxTokens: 300, feature: 'translate' });
+    { role: 'user', content: String(text).slice(0, 600) }], { maxTokens: 300, feature: 'translate', tier: 'basic' });
   return String(out || '').trim().slice(0, 800) || null;
 }
 
@@ -685,7 +714,7 @@ export async function addAgenda() {
   const out = await chat([
     { role: 'system', content: `Write an agenda slide for a talk with these slide titles: group them into 3-6 agenda items. Answer only JSON {"kind":"agenda","title":…,"items":[…],"notes":…} in ${lang()}.` },
     { role: 'user', content: titles.join('\n') },
-  ], { json: true, maxTokens: 800, feature: 'agenda' });
+  ], { json: true, maxTokens: 800, feature: 'agenda', tier: 'basic' });
   const spec = parseJSON(out);
   commit(() => { state.deck.slides.splice(1, 0, slideFromSpec({ ...spec, kind: 'agenda' }, undefined, state.deck, { at: 1 })); state.ui.slideIndex = 1; });
 }

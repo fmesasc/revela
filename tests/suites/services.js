@@ -1009,9 +1009,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       // Creating one that comes out weak: its weak slides made again, once, before it's shown.
       seq = [{ title: 'Swift', slides: flat }, { slides: [1, 2, 3].map(i => ({ i, kind: 'code', title: flat[i].title, code: { language: 'swift', code: 'let x = ' + i + '\nprint(x)' } })) }];
       calls.length = 0; const sp4 = await A.createDeck({ topic: 'Lenguaje de programación Swift', count: 8 }); seq = null;
-      eq(calls.length, 2, 'una sola petición más'); assert(/These slides of a presentation are weak/.test(calls[1].body.messages[0].content), 'pidiendo rehacer las flojas');
+      eq(calls.length, 2, 'una sola petición más'); assert(/senior editor of a presentation/.test(calls[1].body.messages[0].content), 'el editor rehace las flojas');
       eq(sp4.slice(1, 4).map(x => x.kind + ':' + x.code?.language).join(), 'code:swift,code:swift,code:swift', 'las flojas, ahora con código');
       eq(sp4[1].notes, flat[1].notes, 'conservando sus notas');
+      // Who does what: the draft in the medium level, the editor's pass in the advanced one — and, with too few credits
+      // left for it (402), the same pass in the medium level rather than none.
+      R.ai.setAiTier('advanced', 'google/gemini-2.5-pro');
+      { const real = W.fetch, models = []; let k = 0;
+        W.fetch = async (url, opts) => { const b = JSON.parse(opts.body); models.push(b.model); k++;
+          if (b.model === 'google/gemini-2.5-pro') return new W.Response('{}', { status: 402 });
+          const a = k === 1 ? { title: 'T', slides: [{ kind: 'title', title: 'T', notes: 'n' }, { kind: 'closing', title: 'Fin', notes: 'n' }] } : { slides: [] };
+          return new W.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(a) } }] })); };
+        try { await A.createDeck({ topic: 'T', count: 2 }); } finally { W.fetch = real; R.ai.setAiTier('advanced', ''); }
+        eq(models.join(), 'google/gemini-2.5-flash,google/gemini-2.5-pro,google/gemini-2.5-flash', 'borrador (medio) → editor (avanzado) → sin créditos para él, editor en el medio'); }
       // Figures still invented after it: never shown as facts — gaps to fill in, a chart as a table of gaps.
       seq = [{ title: 'Ventas', slides: [{ kind: 'title', title: 'Ventas', notes: 'a' }, { kind: 'stats', title: 'Resultados', stats: [{ value: '€12.5M', label: 'Ventas' }, { value: '[X %]', label: 'Margen' }], source: 'Datos internos', notes: 'b' },
         { kind: 'chart', title: 'Por región', chart: { type: 'bar', labels: ['Norte', 'Sur'], values: [4, 3], series_name: 'M€' }, notes: 'c' }, { kind: 'closing', title: 'Gracias', notes: 'd' }] }, { slides: [] }];
@@ -1040,7 +1050,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       // A model's answer that isn't JSON: asked once more, not lost.
       seq = ['Lo siento, aquí tienes la presentación…', { title: 'Bien', slides: [{ kind: 'title', title: 'Bien', notes: 'a' }, { kind: 'closing', title: 'Fin', notes: 'b' }] }];
       calls.length = 0; const sp7 = await A.createDeck({ topic: 'Algo', count: 2 }); seq = null;
-      eq(calls.length + '|' + sp7.length, '2|2', 'pedida otra vez, y hecha');
+      eq(calls.filter(c => /PRESENT out loud/.test(c.body.messages[0].content)).length + '|' + sp7.length, '2|2', 'pedida otra vez, y hecha');
       eq(sp6[1].kind + ':' + sp6[1].steps.map(s => s.text).join('|'), 'steps:Múltiplos de 6: 6, 12, 18, 24|Múltiplos de 8: 8, 16, 24|MCM(6, 8) = 24', 'el código fuera de lugar, sus líneas como pasos');
       eq(Q.deckQuality([{ kind: 'title', title: 'x' }, { kind: 'chart', title: 'P', chart: { type: 'line', labels: ['a', 'b'], values: [1, 2] }, source: 'Fuente: IEA 2023' }], { topic: 'Energía' }).problems.filter(p => p.code === 'invented-figures').length, 0, 'un gráfico con su fuente no es inventado'); assert(sp4.quality.score > q1.score, 'y mejor nota (' + q1.score + ' → ' + sp4.quality.score + ')');
       // Research on the web first: the brief goes to the slides, its pages become a «Fuentes» slide.
