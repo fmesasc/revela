@@ -79,6 +79,32 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!D.getElementById('sc-modal'), 'se cierra');
   });
 
+  await test('tutorial interactivo: ilumina el botón real, se avanza probándolo y se puede repetir', async () => {
+    reset(); const W = frame.contentWindow, T = await W.eval("import('/src/ui/shell/tour.js')");
+    const closeAll = () => D.querySelectorAll('.modal-backdrop, #backstage').forEach(m => m.remove());
+    try {
+      for (const s of T.TOUR) if (s.at) assert(D.querySelector(s.at), 'cada paso apunta a algo que existe: ' + s.at);
+      D.querySelector('[data-action="tour"]').click(); await sleep(30);
+      const tour = D.getElementById('tour');
+      assert(tour && T.tourRunning() && /^1 \//.test(tour.querySelector('.tour-n').textContent), 'empieza (Ver ▸ Ayuda ▸ Tutorial) por la bienvenida');
+      tour.querySelector('[data-tour="next"]').click(); await sleep(30);
+      eq(R.state.ui.activeTab, 'ai', 'abre la pestaña del paso');
+      const ring = tour.querySelector('.tour-ring'), btn = [...D.querySelectorAll('[data-action="ai-deck"]')].find(e => e.getBoundingClientRect().width > 0);
+      const a = ring.getBoundingClientRect(), b = btn.getBoundingClientRect();
+      assert(!ring.hidden && a.left <= b.left && a.right >= b.right && a.top <= b.top && a.bottom >= b.bottom, 'la luz rodea el botón real');
+      assert(!tour.querySelector('[data-tour="next"]') && tour.querySelector('.tour-do'), 'sin «Siguiente»: se avanza haciendo clic en él');
+      btn.click(); await sleep(400);
+      if (D.querySelector('.modal-backdrop')) { assert(tour.hidden, 'mientras está abierto lo que abre, el tutorial espera detrás'); closeAll(); await sleep(400); }
+      assert(!tour.hidden && /^3 \//.test(tour.querySelector('.tour-n').textContent), 'cerrado, sigue en el paso siguiente');
+      tour.querySelector('[data-tour="back"]').click(); await sleep(30);
+      assert(/^2 \//.test(tour.querySelector('.tour-n').textContent), '«Atrás» vuelve');
+      D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(30);
+      assert(!D.getElementById('tour') && !T.tourRunning() && W.localStorage.getItem('revela.tour.v1'), 'Esc lo termina, y queda visto');
+      D.querySelector('[data-action="tour"]').click(); await sleep(30);
+      assert(T.tourRunning(), 'y se puede volver a empezar cuando se quiera');
+    } finally { T.stopTour(false); closeAll(); W.localStorage.removeItem('revela.tour.v1'); R.store.commit(() => (R.state.ui.activeTab = 'home'), { history: false }); }
+  });
+
   await test('informar de un problema: en la edición abierta, a GitHub', async () => {
     reset(); D.querySelector('[data-action="report-problem"]').click(); await sleep(10);
     const m = D.getElementById('report-modal');

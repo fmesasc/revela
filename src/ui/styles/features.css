@@ -1354,3 +1354,23 @@ body.presenting #stage .empty-hint{display:none}
 .gm-credit{margin:0!important}
 .map-blk{width:100%;height:100%;overflow:hidden}
 @media (max-width:760px){.modal.gm-modal{padding:14px 12px}.gm-grid{grid-template-columns:minmax(0,1fr);overflow:auto}.gm-main,.gm-side{min-width:0}.gm-look span{font-size:11px}.gm-main{order:-1;overflow:visible}.gm-side{overflow:visible}.gm-kinds{grid-template-columns:repeat(4,1fr)}}
+
+/* Guided tour (ui/shell/tour.js): a light around the real button to click, the rest dimmed; a card that says what it
+   is. Nothing is blocked: the light lets clicks through and the card is the only thing that takes them. */
+#tour{position:fixed;inset:0;z-index:2147483000;pointer-events:none}
+#tour[hidden]{display:none}
+#tour .tour-ring{position:fixed;border-radius:10px;box-shadow:0 0 0 3px var(--accent),0 0 0 9999px rgba(10,14,20,.45);transition:all .25s ease;animation:tourPulse 1.6s ease-in-out infinite}
+#tour .tour-ring[hidden]{display:none}
+#tour .tour-card{position:fixed;pointer-events:auto;box-sizing:border-box;width:360px;max-width:calc(100vw - 24px);padding:16px 18px 14px;border-radius:14px;
+  background:var(--panel);color:var(--txt);border:1px solid var(--line2);box-shadow:0 18px 50px rgba(0,0,0,.28);font-size:14px;line-height:1.45}
+#tour .tour-n{font-size:12px;font-weight:600;color:var(--txt2);letter-spacing:.04em}
+#tour h3{margin:4px 0 6px;font-size:18px;line-height:1.25;color:var(--txt)}
+#tour p{margin:0 0 10px;color:var(--txt)}
+#tour .tour-do{display:flex;align-items:center;gap:6px;font-weight:600;color:var(--accent)}
+#tour .tour-do .ms{font-size:20px}
+#tour .tour-btns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+#tour .tour-btns button{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid var(--line2);background:transparent;color:var(--txt);cursor:pointer}
+#tour .tour-btns button.go{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+#tour .tour-btns button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@keyframes tourPulse{50%{box-shadow:0 0 0 6px var(--accent),0 0 0 9999px rgba(10,14,20,.45)}}
+@media (prefers-reduced-motion:reduce){#tour .tour-ring{animation:none;transition:none}}

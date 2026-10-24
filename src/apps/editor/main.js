@@ -61,6 +61,7 @@ import { openFindPanel } from '../../ui/dialogs/find.js';
 // Namespaces exposed to the test harness (see tests/).
 import { initHome } from '../../ui/shell/home.js';
 import { initAudience } from '../../ui/shell/audience.js';
+import { initTour } from '../../ui/shell/tour.js';
 import { initCollabUI } from '../../ui/shell/collab.js';
 import * as store from '../../core/store.js';
 import { toast } from '../../ui/shell/toast.js';
@@ -318,6 +319,7 @@ if (!testing && !['collab', 'doc'].some(k => new URLSearchParams(location.search
 }
 initCollabUI();
 initHome();
+if (!testing) initTour();                                // (the guided tour, after a new account's first sign-in: ui/shell/tour.js)
 initAudience();                                             // (teaching, a company or both: core/audience.js)
 initFileDrop();
 initEditAids();                                         // (format painter, «/» in text, live previews, save state: ui/shell/editaids.js)
