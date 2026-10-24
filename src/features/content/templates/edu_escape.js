@@ -247,7 +247,7 @@ export default {
     return numbered(ink(build({ name: 'Laboratorio: células al microscopio', palette: 'forest', fonts: 'modern', title: { color: INK, size: 48 }, body: { color: INK } }, [
       { layout: 'blank', bg: PAPER, back: [glow(960, -120, 560, TE, PAPER, 16), glow(-120, 560, 520, GR, PAPER, 14)], extra: [
         text('BIOLOGÍA · PRÁCTICA DE LABORATORIO', 90, 150, 680, 36, { fontSize: 22, letterSpacing: 3, color: GR, fontWeight: 700 }),
-        text('Células al microscopio', 84, 198, 960, 150, { fontSize: 64, fontWeight: 800, color: INK, lineHeight: 1.03, fontFamily: S }),
+        text('Células al microscopio', 84, 198, 780, 150, { fontSize: 58, fontWeight: 800, color: INK, lineHeight: 1.03, fontFamily: S }),
         text('Vamos a ver de verdad las células de una cebolla y a dibujar lo que observamos.', 90, 340, 680, 90, { fontSize: 28, color: GREY }),
         after(img(micro(), 900, 180, 300, 360, 'Un microscopio óptico'), 'fade-left', { duration: 800 })],
         notes: 'Arranque: el microscopio nos deja ver lo invisible. Hoy, las células de la epidermis de la cebolla, que se ven muy bien.' },
@@ -363,7 +363,7 @@ export default {
     return numbered(ink(build({ name: 'Laboratorio: circuitos eléctricos', palette: 'ocean', fonts: 'tech', title: { color: INK, size: 48 }, body: { color: INK } }, [
       { layout: 'blank', bg: PAPER, back: [glow(960, -120, 560, OR, PAPER, 14), glow(-120, 560, 520, BL, PAPER, 14)], extra: [
         text('TECNOLOGÍA · PRÁCTICA DE LABORATORIO', 90, 150, 760, 36, { fontSize: 22, letterSpacing: 3, color: '#b45f1b', fontWeight: 700, fontFamily: M }),
-        text('Circuitos eléctricos', 84, 198, 820, 130, { fontSize: 80, fontWeight: 800, color: INK, lineHeight: 1.03, fontFamily: S }),
+        text('Circuitos eléctricos', 84, 198, 740, 130, { fontSize: 62, fontWeight: 800, color: INK, lineHeight: 1.03, fontFamily: S }),
         text('Montamos un circuito de verdad y comparamos dos formas de conectar bombillas: en serie y en paralelo.', 90, 342, 720, 150, { fontSize: 28, color: GREY }),
         after(img(ckt(true, 1), 860, 190, 340, 260, 'Un circuito con la bombilla encendida'), 'fade-left', { duration: 800 })],
         notes: 'Arranque: una pila, cables y bombillas. Hoy vemos qué cambia entre conectar en serie o en paralelo.' },

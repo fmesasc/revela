@@ -17,11 +17,21 @@ const quiz = (question, options, correct, props = {}) => pollBlock({ kind: 'quiz
 const FF = { mono: "'JetBrains Mono', monospace", space: "'Space Grotesk', sans-serif", caveat: "'Caveat', cursive", bebas: "'Bebas Neue', sans-serif", special: "'Special Elite', monospace" };
 const ink = (deck, color) => Object.assign(deck, { textColor: color });
 
-// A music staff (pentagrama) with a drawn G-clef and note heads. notes: [{ y, c, l }] placed left to right.
-const staff = (notes = [], line = '#8a8aa0') => svgURL(1040, 220,
+// A music staff (pentagrama) with a drawn G-clef and note heads. notes: [{ y, c, l }] placed left to right; `y` names
+// the pitch one step above where it is drawn (do = 176, re = 162 … the octave do = 78), and is drawn where it belongs:
+// lines at 50-162, mi on the bottom line, sol on the second (the line the clef curls around), the low do on its own
+// short ledger line; from si up, the stem goes down on the left, as music is written.
+const CLEF = 'M104 140 C92 144 84 132 92 124 C102 114 120 122 120 138 C120 158 96 166 80 156 C62 144 64 116 84 100 '
+  + 'C104 84 124 62 122 36 C120 16 104 10 98 26 C92 44 100 110 106 170 C110 196 96 208 84 200';
+const staff = (notes = [], line = '#8a8aa0') => svgURL(1040, 244,
   [0, 1, 2, 3, 4].map(i => `<line x1="40" y1="${50 + i * 28}" x2="1000" y2="${50 + i * 28}" stroke="${line}" stroke-width="2"/>`).join('')
-  + `<path d="M104 176 c-30 2 -42 -34 -14 -48 c34 -17 50 22 32 46 c-14 18 -42 20 -52 2 M118 40 c20 24 12 96 -8 128" fill="none" stroke="#6d4fb0" stroke-width="7" stroke-linecap="round"/>`
-  + notes.map((n, i) => { const x = 240 + i * 100; return `<ellipse cx="${x}" cy="${n.y}" rx="16" ry="12" fill="${n.c}" transform="rotate(-20 ${x} ${n.y})"/><line x1="${x + 15}" y1="${n.y - 4}" x2="${x + 15}" y2="${n.y - 72}" stroke="${n.c}" stroke-width="3"/><text x="${x}" y="206" font-family="sans-serif" font-size="22" fill="#55556a" text-anchor="middle">${n.l}</text>`; }).join(''));
+  + `<path d="${CLEF}" fill="none" stroke="#6d4fb0" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="86" cy="193" r="7" fill="#6d4fb0"/>`
+  + notes.map((n, i) => { const x = 240 + i * 100, y = n.y + 14, down = y <= 106;
+    return (y >= 190 ? `<line x1="${x - 26}" y1="${y}" x2="${x + 26}" y2="${y}" stroke="${line}" stroke-width="2"/>` : '')
+      + `<ellipse cx="${x}" cy="${y}" rx="16" ry="12" fill="${n.c}" transform="rotate(-20 ${x} ${y})"/>`
+      + (down ? `<line x1="${x - 15}" y1="${y + 4}" x2="${x - 15}" y2="${y + 72}" stroke="${n.c}" stroke-width="3"/>`
+        : `<line x1="${x + 15}" y1="${y - 4}" x2="${x + 15}" y2="${y - 72}" stroke="${n.c}" stroke-width="3"/>`)
+      + `<text x="${x}" y="232" font-family="sans-serif" font-size="22" fill="#55556a" text-anchor="middle">${n.l}</text>`; }).join(''));
 
 // A piano keyboard of `whites` white keys, with some highlighted (indices into the white keys).
 const piano = (whites = 14, hi = []) => { const W = 72; return svgURL(whites * W + 4, 210,
@@ -87,7 +97,7 @@ export default {
     return numbered(ink(build({ name: 'El ritmo y las figuras', palette: 'midnight', fonts: 'bold', title: { color: INK, size: 48 }, body: { color: INK } }, [
       { layout: 'blank', bg: BG, back: [glow(1000, -120, 620, AM, BG, 26), glow(-120, 560, 520, TE, BG, 20)], extra: [
         text('MÚSICA · RITMO', 90, 140, 640, 36, { fontSize: 22, letterSpacing: 4, color: AM, fontWeight: 700, fontFamily: FF.mono }),
-        text('El pulso de<br>la música', 84, 188, 760, 220, { fontSize: 80, fontWeight: 800, color: INK, lineHeight: 1.04, fontFamily: S }),
+        text('El pulso de<br>la música', 84, 188, 680, 220, { fontSize: 80, fontWeight: 800, color: INK, lineHeight: 1.04, fontFamily: S }),
         text('Las notas no solo suben y bajan: también duran. Eso es el ritmo.', 90, 452, 680, 90, { fontSize: 28, color: DIM }),
         ...['redonda', 'blanca', 'negra', 'corchea'].map((k, i) => after(img(figSVG(k, [RE, AM, TE, GR][i]), 820 + i * 95, 210, 110, 150, k), 'zoom-in', { duration: 400 }))],
         notes: 'Arranque: dar palmas a un pulso constante. El ritmo es cuánto dura cada sonido sobre ese pulso.' },
@@ -290,7 +300,7 @@ export default {
     return numbered(ink(build({ name: 'La banda sonora del cine', palette: 'midnight', fonts: 'bold', title: { color: INK, size: 48 }, body: { color: INK } }, [
       { layout: 'blank', bg: BG, back: [glow(1000, -120, 620, AM, BG, 22), glow(-120, 560, 520, RE, BG, 18)], extra: [
         text('MÚSICA · CINE', 90, 140, 640, 36, { fontSize: 22, letterSpacing: 4, color: AM, fontWeight: 700, fontFamily: FF.mono }),
-        text('La música que<br>cuenta la película', 84, 188, 900, 200, { fontSize: 66, fontWeight: 800, color: INK, lineHeight: 1.05, fontFamily: S }),
+        text('La música que<br>cuenta la película', 84, 188, 640, 200, { fontSize: 60, fontWeight: 800, color: INK, lineHeight: 1.05, fontFamily: S }),
         text('Quita la música de tu escena favorita y casi desaparece la emoción. ¿Cómo lo hace?', 90, 452, 720, 90, { fontSize: 28, color: DIM, lineHeight: 1.4 }),
         after(img(wave(AM, 'sine', 500, 220), 760, 210, 440, 200, 'Una onda de sonido'), 'fade-left', { duration: 800 })],
         notes: 'Arranque potente: imaginar una escena de miedo o de victoria sin música. La banda sonora es invisible pero decisiva.' },

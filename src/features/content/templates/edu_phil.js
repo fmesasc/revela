@@ -227,7 +227,7 @@ export default {
     return numbered(ink(build({ name: 'Dilemas morales: el tranvía', palette: 'midnight', fonts: 'clean', title: { color: CREAM, size: 48 }, body: { color: CREAM } }, [
       { layout: 'blank', bg: BG, back: [glow(1000, -120, 620, AC, BG, 22), glow(-120, 560, 520, RE, BG, 16)], extra: [
         text('FILOSOFÍA · DILEMAS', 90, 140, 680, 36, { fontSize: 22, letterSpacing: 4, color: AC, fontWeight: 700 }),
-        text('El dilema<br>del tranvía', 84, 188, 720, 220, { fontSize: 78, fontWeight: 800, color: CREAM, lineHeight: 1.04, fontFamily: SE }),
+        text('El dilema<br>del tranvía', 84, 188, 640, 220, { fontSize: 78, fontWeight: 800, color: CREAM, lineHeight: 1.04, fontFamily: SE }),
         text('Un experimento mental famoso: no tiene respuesta correcta, pero nos obliga a mirar cómo decidimos.', 90, 452, 640, 120, { fontSize: 26, color: DIM, lineHeight: 1.4 }),
         after(img(trolley(), 760, 210, 440, 260, 'Un tranvía en una vía que se bifurca'), 'fade-left', { duration: 800 })],
         notes: 'Arranque. Advertir: no hay respuesta «buena». Es para pensar y debatir con respeto.' },
@@ -268,7 +268,7 @@ export default {
     return numbered(ink(build({ name: '¿Qué podemos conocer?', palette: 'midnight', fonts: 'editorial', title: { color: CREAM, size: 48 }, body: { color: CREAM } }, [
       { layout: 'blank', bg: BG, back: [glow(1000, -120, 620, AC, BG, 22), glow(-120, 560, 520, TE, BG, 16)], extra: [
         text('FILOSOFÍA · CONOCIMIENTO', 90, 140, 700, 36, { fontSize: 22, letterSpacing: 4, color: AC, fontWeight: 700 }),
-        text('¿Qué podemos<br>conocer?', 84, 188, 760, 220, { fontSize: 72, fontWeight: 800, color: CREAM, lineHeight: 1.04, fontFamily: SE }),
+        text('¿Qué podemos<br>conocer?', 84, 188, 640, 220, { fontSize: 72, fontWeight: 800, color: CREAM, lineHeight: 1.04, fontFamily: SE }),
         text('¿Y si lo que llamas «real» fueran solo sombras? La teoría del conocimiento pregunta qué podemos saber de verdad.', 90, 452, 660, 120, { fontSize: 26, color: DIM, lineHeight: 1.4 }),
         after(img(cave(), 760, 200, 440, 290, 'La caverna de Platón: fuego, muro y sombras'), 'fade-left', { duration: 800 })],
         notes: 'Arranque con el gancho de la caverna. ¿Distinguimos la realidad de su apariencia?' },

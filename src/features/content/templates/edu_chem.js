@@ -120,8 +120,8 @@ export default {
     const BG = '#0b1222', PANEL = '#15203a', CY = '#39c0c8', AM = '#f2c14e', GR = '#5fd38a', RE = '#e07a5f', DIM = '#8ea0bd', CREAM = '#eaf2fb', M = FF.mono, S = FF.space;
     return numbered(ink(build({ name: 'El átomo por dentro', palette: 'midnight', fonts: 'tech', title: { color: CREAM, size: 48 }, body: { color: CREAM } }, [
       { layout: 'blank', bg: BG, back: [glow(1000, -120, 620, CY, BG, 26), glow(-120, 560, 520, AM, BG, 16)], extra: [
-        text('QUÍMICA · ESTRUCTURA DE LA MATERIA', 90, 140, 760, 36, { fontSize: 22, letterSpacing: 4, color: CY, fontWeight: 700, fontFamily: M }),
-        text('El átomo<br>por dentro', 84, 190, 700, 220, { fontSize: 80, fontWeight: 800, color: CREAM, lineHeight: 1.04, fontFamily: S }),
+        text('QUÍMICA · ESTRUCTURA DE LA MATERIA', 90, 140, 680, 36, { fontSize: 22, letterSpacing: 4, color: CY, fontWeight: 700, fontFamily: M }),
+        text('El átomo<br>por dentro', 84, 190, 680, 220, { fontSize: 80, fontWeight: 800, color: CREAM, lineHeight: 1.04, fontFamily: S }),
         text('Es la pieza más pequeña de un elemento. Y aún tiene partes dentro: un núcleo y una corteza de electrones.', 90, 450, 640, 120, { fontSize: 27, color: DIM, lineHeight: 1.4 }),
         after(img(atomSVG([2, 4], 'C', CY), 800, 150, 420, 420, 'Un átomo con su núcleo y dos órbitas de electrones'), 'zoom-in', { duration: 900 })],
         notes: 'Arranque: el átomo del carbono como ejemplo. Núcleo central y electrones girando alrededor.' },

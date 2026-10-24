@@ -108,7 +108,7 @@ export default {
     return numbered(ink(build({ name: 'Tu primer presupuesto', palette: 'ocean', fonts: 'modern', title: { color: INK, size: 48 }, body: { color: INK } }, [
       { layout: 'blank', bg: PAPER, back: [glow(1000, -120, 620, BL, PAPER, 16), glow(-140, 560, 520, TE, PAPER, 12)], extra: [
         text('FINANZAS PERSONALES', 90, 150, 680, 36, { fontSize: 22, letterSpacing: 3, color: BL, fontWeight: 700 }),
-        text('Tu primer<br>presupuesto', 84, 198, 760, 200, { fontSize: 78, fontWeight: 800, color: INK, lineHeight: 1.03, fontFamily: S }),
+        text('Tu primer<br>presupuesto', 84, 198, 660, 200, { fontSize: 78, fontWeight: 800, color: INK, lineHeight: 1.03, fontFamily: S }),
         text('Un presupuesto es un plan para tu dinero: decidir a dónde va antes de que se vaya solo.', 90, 438, 700, 110, { fontSize: 28, color: GREY, lineHeight: 1.4 }),
         after(text('<div style="font-size:84px;font-weight:800;color:' + BL + ';line-height:1">50/30/20</div>', 780, 280, 440, 140, { textAlign: 'center', fontFamily: S }), 'zoom-in', { duration: 700 })],
         notes: 'Arranque: planear el dinero antes de gastarlo. La regla 50/30/20 será el hilo.' },
@@ -250,7 +250,7 @@ export default {
         notes: 'La de crédito adelanta dinero; la de débito no. De ahí el riesgo de la de crédito.' },
       { layout: 'blank', bg: PAPER, back: [glow(1000, 420, 520, BL, PAPER, 14)], transition: 'zoom', extra: [
         text('Tu reto', 84, 150, 820, 90, { fontSize: 58, fontWeight: 800, color: INK, fontFamily: S }),
-        text('Busca dos cuentas para jóvenes de bancos distintos y compara: ¿cobran mantenimiento? ¿comisión por sacar dinero? ¿regalan algo? Decide cuál elegirías y por qué.', 84, 260, 820, 190, { fontSize: 28, color: GREY, lineHeight: 1.45 }),
+        text('Busca dos cuentas para jóvenes de bancos distintos y compara: ¿cobran mantenimiento? ¿comisión por sacar dinero? ¿regalan algo? Decide cuál elegirías y por qué.', 84, 260, 760, 230, { fontSize: 28, color: GREY, lineHeight: 1.45 }),
         after(img(bankCard(GR, 'JOVEN'), 880, 260, 320, 210, 'Una tarjeta para jóvenes'), 'fade-left', { duration: 700 })],
         notes: 'Reto de comparación real. Enseña a leer condiciones antes de firmar.' },
     ]), INK));
