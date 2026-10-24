@@ -21,7 +21,7 @@ import { t } from '../../i18n/index.js';
 import { htmlParts, partsBlob } from '../formats/html.js';
 import { loadScript } from '../../core/vendor.js';
 import { plainText } from '../../core/text.js';
-import { account as revelaAccount } from './account.js';
+import { account as revelaAccount, api as revelaApi } from './account.js';
 import { approxSize } from '../../core/model.js';
 import { packDeck } from '../../core/deckfile.js';
 import { packageBlob, readPackage, PACKAGE_TYPE } from '../formats/package.js';
@@ -231,6 +231,28 @@ export async function deletePresentation(id) {
   const r = await api(`/drive/v3/files/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) });
   if (!r.ok) throw new Error(t('No se pudo borrar el archivo de Drive.'));
   if (linkedFile()?.id === id) unlinkFile();
+  seen({ id }, 0, true);
+}
+
+// With a Revela account, the admin sees which presentations each person keeps in Drive: its name, how many slides,
+// its size and when it was saved — never what it says (it never leaves the person's Drive). Said after a save when
+// one of those changed, or every 10 minutes at most for the same file; and when it goes to the bin.
+// (Nothing that comes from Google goes to Revela's server — Google's «Limited Use» rule for its APIs' data —: the name
+// is the presentation's own, in Revela, and each file goes by a key made here, kept in this browser.)
+const told = new Map(), KEYS = 'revela.driveKeys';
+function keyOf(id, make = true) {
+  let m = {}; try { m = JSON.parse(localStorage.getItem(KEYS)) || {}; } catch {}
+  if (!m[id] && make) { m[id] = 'k' + Array.from(crypto.getRandomValues(new Uint8Array(12)), x => x.toString(16).padStart(2, '0')).join(''); try { localStorage.setItem(KEYS, JSON.stringify(m)); } catch {} }
+  return m[id] || null;
+}
+function seen(f, bytes, gone = false) {
+  if (!f?.id || !revelaAccount()) return;
+  const key = keyOf(f.id, !gone); if (!key) return;
+  const title = String(state.deck?.name || '').trim() || plainText(state.deck?.slides?.[0]?.blocks?.find(b => b.ph === 'title')?.html || '').trim().slice(0, 200);
+  const slides = state.deck?.slides?.length || 0, was = told.get(key), now = Date.now();
+  if (!gone && was && was.title === title && was.slides === slides && now - was.at < 600e3) return;
+  told.set(key, { title, slides, at: now });
+  revelaApi('drive/seen', gone ? { id: key, gone: true } : { id: key, title, slides, bytes }).catch(() => {});
 }
 
 // A small JPEG of the first slide, for the list (base64, without the prefix).
@@ -306,6 +328,7 @@ async function saveNow({ interactive = true, force = false, asNew = false, name,
       if (folder !== undefined) rememberFolder(folder);
     }
     lastSaved = savedVersion; setStatus('saved');
+    seen(linkedFile(), body.size);
     return true;
   } catch (e) {
     setStatus(e.message === 'NO_TOKEN' ? 'offline' : 'error');

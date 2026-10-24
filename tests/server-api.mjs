@@ -1856,6 +1856,20 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       await A('POST', '/promos/tours', { body: { on: true, perTour: { maps: 20, ai: 5 }, credits: 0, days: 30, monthlyPeople: 2 } });
       ok((await U(t2, 'POST', '/tours/done', { tour: 'ai' })).granted === 5, 'tutoriales: quien ya contó este mes sigue recibiendo lo suyo (no ocupa otra plaza)');
       await A('POST', '/promos/tours', { body: { on: false, credits: 150, days: 90 } }); }
+    // Google Drive: what the app says of each presentation saved there — name, slides, size, when; never its content —
+    // for the admin (the person's detail, and each month's people and saves in the summary).
+    { const tc = await login('tok-tour'), T = (p, body) => req('POST', '/api' + p, { headers: { Cookie: tc }, body }).then(r => r.status);
+      ok(await T('/drive/seen', { id: 'x' }) === 400 && (await req('POST', '/api/drive/seen', { body: { id: '1AbCdEfGhIjKlMn' } })).status === 401, 'Drive: un identificador válido, y con sesión');
+      const st0 = (await A('GET', '/stats')).j.drive?.[0] || { people: 0, saves: 0 };
+      await T('/drive/seen', { id: '1AbCdEfGhIjKlMn', title: 'Clase de <b>física</b>\n', slides: 12.4, bytes: 2048, html: '<p>secreto</p>', deck: { slides: [] } });
+      await T('/drive/seen', { id: '1ZyXwVuTsRqPoN', title: 'Otra', slides: 3, bytes: 10 });
+      await T('/drive/seen', { id: '1ZyXwVuTsRqPoN', gone: true });
+      const d = (await A('GET', '/users/2626')).j.drive;
+      ok(d?.length === 1 && d[0].id === '1AbCdEfGhIjKlMn' && d[0].title === 'Clase de <b>física</b>' && d[0].slides === 12 && d[0].bytes === 2048 && d[0].at > 0,
+        'Drive: en el detalle del usuario, nombre, diapositivas, tamaño y fecha (lo enviado a la papelera, fuera): ' + JSON.stringify(d));
+      ok(!JSON.stringify(d).includes('secreto') && !('html' in d[0]) && !('deck' in d[0]), 'Drive: nada más que eso, aunque la app mandara más');
+      const st = (await A('GET', '/stats')).j.drive[0];
+      ok(st.people === st0.people + 1 && st.saves === st0.saves + 2, 'Drive: en el resumen, la persona una vez al mes y cada guardado: ' + JSON.stringify([st0, st])); }
     // Who gets it: an account that never had Pro, yes; one with a paid Pro or with a plan from before, no.
     const bea = await login('tok-bea', 'en'), cid = await login('tok-cid'), BS = () => acc('1818').ctx.storage.m;
     me = await meOf(bea); ok(me.trialDays === 7, '/api/me: prueba de 7 días disponible para una cuenta nueva');

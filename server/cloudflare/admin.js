@@ -626,9 +626,11 @@ export async function handleAdmin(req, env, url) {
 
   if (GET && path === '/whoami') return json({ email: by });
   if (GET && path === '/stats') {
-    const [u, ai, tickets, errors, openrouter] = await Promise.all([call(D, 'stats'), env.BUDGET ? call(stub(env.BUDGET, 'global'), 'check', { usd: 0 }) : null, call(T, 'counts'),
-      env.VISITS ? visitsCall(env, 'err-summary').catch(() => null) : null, openRouterCredits(env).catch(() => ({ error: 'fail' }))]);
-    return json({ ...u, ai: ai && { month: new Date().toISOString().slice(0, 7), usd: ai.usd, limit: ai.limit }, tickets, errors, openrouter, health: healthOf(env) });
+    const [u, ai, tickets, errors, openrouter, drive] = await Promise.all([call(D, 'stats'), env.BUDGET ? call(stub(env.BUDGET, 'global'), 'check', { usd: 0 }) : null, call(T, 'counts'),
+      env.VISITS ? visitsCall(env, 'err-summary').catch(() => null) : null, openRouterCredits(env).catch(() => ({ error: 'fail' })),
+      env.BUDGET ? call(stub(env.BUDGET, 'global'), 'drive-stats').catch(() => null) : null]);
+    // (drive: per month, how many people saved in their Google Drive and how many saves — api.js /drive/seen.)
+    return json({ ...u, ai: ai && { month: new Date().toISOString().slice(0, 7), usd: ai.usd, limit: ai.limit }, tickets, errors, openrouter, health: healthOf(env), drive: drive?.months || [] });
   }
   if (GET && path === '/users') return json(await call(D, 'search', { q: clip(q.get('q'), 200), cursor: q.get('cursor') || null, limit: +q.get('limit') || 50, sort: q.get('sort') || null, dir: q.get('dir') || null, active: q.get('active') || null }));
   let m = path.match(/^\/users\/([\w.-]{1,100})$/);
@@ -636,7 +638,9 @@ export async function handleAdmin(req, env, url) {
     const v = await account(m[1]); if (!v) return json({ error: 'not found' }, 404);
     const team = v.team ? await teamStatus(env, v.team, v.profile.email).catch(() => null) : null;
     return json({ ...v, team: v.team ? { id: v.team, name: team?.name || null, role: team?.role || null, active: !!team?.active, test: !!team?.test } : null,
-      billingGlobalTest: String(env.STRIPE_MODE || '').trim().toLowerCase() === 'test', billingTestReady: !!(env.STRIPE_TEST_SECRET_KEY && env.STRIPE_TEST_WEBHOOK_SECRET), directory: (await call(D, 'get', { sub: m[1] })).user });
+      billingGlobalTest: String(env.STRIPE_MODE || '').trim().toLowerCase() === 'test', billingTestReady: !!(env.STRIPE_TEST_SECRET_KEY && env.STRIPE_TEST_WEBHOOK_SECRET), directory: (await call(D, 'get', { sub: m[1] })).user,
+      // (Their presentations in Google Drive: name, slides, size and when — never the content: api.js /drive/seen.)
+      drive: (await call(acct(env, m[1]), 'drive-list').catch(() => ({ files: [] }))).files });
   }
   if (POST && path === '/credits') {
     const delta = Math.round(+body.delta), reason = clip(body.reason, 500).trim(), days = Math.min(3650, Math.max(1, Math.round(+body.expiresDays || settings(env).packDays)));

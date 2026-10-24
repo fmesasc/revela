@@ -598,6 +598,19 @@ export class Account {
         else if (used) this.fin({ kind: 'credits', reason: a.reason || 'ai', delta: -used, sub: (await this.get('profile', {})).sub });
         return this.json({ ok: true, used });
       }
+      // The presentations this person saves in their Google Drive: only what the app says of each — its name, how many
+      // slides, its size and when —, never its content (Drive is the browser's alone: io/cloud/gdrive.js). For the admin.
+      case 'drive-seen': {                                 // { id, title, slides, bytes, gone? } → { fresh: first this month }
+        const drive = await this.get('drive', {}), now = Date.now(), month = new Date(now).toISOString().slice(0, 7);
+        if (a.gone) delete drive[a.id];
+        else drive[a.id] = { title: a.title, slides: a.slides, bytes: a.bytes, at: now, first: drive[a.id]?.first || now };
+        // (The last 300, by when they were saved.)
+        const keep = Object.entries(drive).sort((x, y) => y[1].at - x[1].at).slice(0, 300);
+        const fresh = !a.gone && (await this.get('driveMonth', null)) !== month;
+        await this.put({ drive: Object.fromEntries(keep), ...(fresh && { driveMonth: month }) });
+        return this.json({ fresh, month });
+      }
+      case 'drive-list': return this.json({ files: Object.entries(await this.get('drive', {})).map(([id, f]) => ({ id, ...f })).sort((x, y) => y.at - x.at) });
       case 'tours-get': return this.json({ done: await this.get('toursDone', []), paid: await this.get('toursPaid', []), rewarded: !!(await this.get('toursRewarded', null)), claimed: await this.get('toursClaimed', null) });
       case 'tour-done': {                                  // { tour, all, per?, bonus?, days?, dry? } — each tour's credits and the bonus once
         const all = a.all || [], tour = String(a.tour);
@@ -824,6 +837,12 @@ export class Budget {
     if (op === 'config-set') { await this.ctx.storage.put('trial', a.trial); return Response.json({ ok: true }); }
     // (And the credits for finishing the guided tours, toursConfig.)
     if (op === 'tours-get') return Response.json({ tours: (await this.ctx.storage.get('tours')) || null });
+    // (Google Drive, each month: how many people saved there and how many saves — for the admin's summary.)
+    if (op === 'drive-count') {
+      const k = 'drive:' + a.month, c = (await this.ctx.storage.get(k)) || { people: 0, saves: 0 };
+      c.saves++; if (a.fresh) c.people++; await this.ctx.storage.put(k, c); return Response.json({ ok: true });
+    }
+    if (op === 'drive-stats') { const months = []; for (let i = 0; i < 6; i++) { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - i); const m = d.toISOString().slice(0, 7); months.push({ month: m, ...((await this.ctx.storage.get('drive:' + m)) || { people: 0, saves: 0 }) }); } return Response.json({ months }); }
     if (op === 'tours-set') { await this.ctx.storage.put('tours', a.tours); return Response.json({ ok: true }); }
     // (The log of the tours finished for the first time — the last 1000, for the admin — and each month's count per tour.)
     if (op === 'tours-log-add') {
@@ -1179,6 +1198,16 @@ export async function handleApi(req, env, url) {
   if (path === '/3d' || path.startsWith('/3d/')) return handle3d(path, req, body, env, me, A, json);
   // The guided tours (the app's ui/shell/tour.js): which ones this person finished and — when the admin turned it on —
   // the credits for finishing them all, granted here once (the app only says which tour it finished).
+  // A presentation saved in (or sent to the bin of) the person's Google Drive: its name, slides, size — what the
+  // admin sees of it (Usuarios ▸ Google Drive). The content stays in their Drive.
+  if (path === '/drive/seen' && req.method === 'POST') {
+    const id = String(body?.id || '');
+    if (!/^[\w-]{10,100}$/.test(id)) return json({ error: 'bad request' }, 400);
+    const r = await call(A, 'drive-seen', body.gone ? { id, gone: true }
+      : { id, title: String(body.title ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 200), slides: Math.max(0, Math.min(5000, Math.round(+body.slides) || 0)), bytes: Math.max(0, Math.round(+body.bytes) || 0) });
+    if (!body.gone && env.BUDGET) await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'drive-count', { month: r.month, fresh: r.fresh }).catch(() => {});
+    return json({ ok: true });
+  }
   if (path === '/tours' && req.method === 'GET') {
     const cfg = await toursConfig(env), r = await call(A, 'tours-get');
     const left = !cfg.on ? 0 : !cfg.monthlyPeople || r.claimed === monthOf() ? Infinity
