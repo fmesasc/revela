@@ -2,7 +2,7 @@
 // (see kit.js for the builders).
 
 import { build, slide, text, card, shape, icon, anim, big, ul, model, nasa, A, withAnims, path, numbered, bar, glow, dg, timer, appScreen,
-  chartBlock, tableBlock, codeBlock, mathBlock, pollBlock, PALETTES, pairStacks, uid } from './kit.js';
+  chartBlock, tableBlock, codeBlock, mathBlock, pollBlock, PALETTES, pairStacks, uid, base, deep } from './kit.js';
 
 // ---- Small helpers of this file ------------------------------------------------------
 // A small uppercase label with wide spacing, above a title.
@@ -519,68 +519,155 @@ export default {
   // ---------------------------------------------------------------------------------------
   // 8 · A thesis defence (TFG): sober and academic — white, navy and burgundy, serif titles,
   // a running footer, method, results in charts and a table that adds itself up, references.
-  sci_thesis: { name: 'Defensa de TFG', cat: 'sci', summary: 'Académico sobrio: portada institucional, índice, metodología con ecuación, tabla con totales, resultados en gráficos, bibliografía y Q&A', make: () => {
-    const NAVY = '#1f3864', BURG = '#8b1e3f', INK = '#1f2733', GREY = '#5f6b7a', H = pairStacks('classic').heading;
-    const foot = [shape('rect', 60, 662, 1160, 1, '#c9ced6'), text('Universidad de Ejemplo · Facultad de Ciencias Agrarias · Trabajo de Fin de Grado 2026', 320, 670, 900, 30, { fontSize: 15, color: GREY, textAlign: 'right' })];
-    return numbered(build({ name: 'Defensa de TFG', palette: 'office', fonts: 'classic', title: { size: 44, color: NAVY }, body: { color: INK },
-      decor: () => [shape('rect', 60, 40, 60, 5, BURG), ...foot] }, [
-      { layout: 'blank', transition: 'fade', extra: [
-        shape('rect', 0, 0, 420, 720, NAVY), shape('rect', 420, 0, 8, 720, BURG),
-        shape('seal', 130, 170, 160, 160, 'none', { stroke: '#ffffff', strokeWidth: 3, opacity: 80 }), icon('star', 180, 220, 60, '#ffffff'),
-        text('UNIVERSIDAD<br>DE EJEMPLO', 60, 360, 300, 90, { fontSize: 24, letterSpacing: 4, textAlign: 'center', color: '#ffffff' }),
-        text('Facultad de Ciencias Agrarias', 60, 460, 300, 40, { fontSize: 18, textAlign: 'center', color: '#c9d3e6' }),
-        kicker('TRABAJO DE FIN DE GRADO · INGENIERÍA AGRÍCOLA', 490, 130, 730, BURG, { fontSize: 18, letterSpacing: 3 }),
-        text('Detección temprana del estrés hídrico en viñedo con imágenes multiespectrales de dron', 486, 170, 730, 250, { fontFamily: H, fontSize: 44, fontWeight: 700, color: NAVY, lineHeight: 1.15 }),
-        shape('rect', 490, 440, 100, 3, BURG),
-        text('<b>Autora:</b> Lucía Ferrer Montes<br><b>Tutor:</b> Dr. Andrés Beltrán Ruiz<br>Julio de 2026', 490, 470, 700, 130, { fontSize: 24, color: INK, lineHeight: 1.5 })],
-        notes: 'Portada institucional: banda de color con escudo hecho con formas. Nombres y universidad inventados. Saludar al tribunal y presentar el trabajo en una frase.' },
-      { title: 'Índice', layout: 'titleOnly', extra: [
-        dg('bullets', 'Introducción y objetivos\nMetodología\nDiseño experimental\nResultados\nConclusiones', 100, 180, 640, 450, { colors: 'accent' }),
-        model('kh-DiffuseTransmissionPlant', 800, 160, 380, 420, { autoRotate: true, spin: 12, view: 'three', edge: 'fade' })],
-        notes: 'Lista numerada (diagrama). La planta 3D gira despacio, con los bordes difuminados para que no se vea el corte del marco.' },
-      { title: 'Motivación y objetivos', layout: 'titleOnly', extra: [
-        text(`<div style="font-family:${H};font-size:72px;font-weight:700;color:${BURG};line-height:1.1">70 %</div><div>del agua dulce del mundo se usa para regar</div>`, 100, 170, 400, 170, { fontSize: 24, color: INK }),
-        text(`<div style="font-family:${H};font-size:72px;font-weight:700;color:${NAVY};line-height:1.1">10 días</div><div>antes de que la planta muestre síntomas visibles</div>`, 100, 380, 400, 170, { fontSize: 24, color: INK }),
-        shape('rect', 540, 180, 2, 450, '#c9ced6'),
-        text('<b>Objetivo general</b>', 580, 170, 600, 44, { fontSize: 28, color: NAVY }),
-        text('Detectar el estrés hídrico antes de que se vea a simple vista.', 580, 215, 600, 80, { fontSize: 24, color: INK }),
-        text('<b>Objetivos específicos</b>' + ul('Calcular índices de vegetación por cepa', ['NDVI y NDRE'], 'Comparar tres modelos de clasificación', 'Proponer un calendario de vuelos'), 580, 310, 600, 330, { fontSize: 24, color: INK })],
-        notes: 'Dos columnas: la motivación con cifras (aproximadas) y los objetivos con viñetas multinivel.' },
-      { title: 'Metodología', layout: 'titleOnly', extra: [
-        dg('chevrons', 'Vuelo\n  Dron con cámara multiespectral\nProcesado\n  Ortomosaico y corrección\nÍndices\n  NDVI por cepa\nModelo\n  Clasificación\nValidación\n  Con medidas de campo', 100, 170, 1080, 280, { colors: 'accent', oneByOne: true }),
-        mathBlock({ x: 100, y: 480, w: 520, h: 120, fontSize: 40, color: INK, latex: '\\mathrm{NDVI} = \\frac{\\rho_{NIR} - \\rho_{R}}{\\rho_{NIR} + \\rho_{R}}' }),
-        text('Una planta sana refleja mucho infrarrojo cercano (NIR) y absorbe el rojo (R). El índice va de −1 a 1.', 660, 490, 520, 120, { fontSize: 22, color: GREY })],
-        notes: 'Galones uno a uno y la ecuación del NDVI en KaTeX. Explicar por qué el infrarrojo delata el estrés antes que el color.' },
-      { title: 'Diseño experimental', layout: 'titleOnly', extra: [
-        tableBlock({ x: 100, y: 180, w: 1080, h: 380, fontSize: 24, header: true, headBg: NAVY, headFg: '#ffffff', stroke: '#c9ced6', banded: true, band: '#1f3864',
-          rows: [['Parcela', 'Tratamiento de riego', 'Cepas', 'Sondas de suelo'], ['A', 'Riego completo (100 %)', '120', '4'], ['B', 'Déficit moderado (60 %)', '120', '4'], ['C', 'Déficit severo (30 %)', '120', '4'], ['<b>Total</b>', '', '=SUMA(ARRIBA)', '=SUMA(ARRIBA)']], colW: [2, 5, 2, 2] }),
-        text('Campaña de junio a septiembre · 14 vuelos semanales a mediodía solar · datos del ejemplo inventados', 100, 580, 1080, 40, { fontSize: 20, color: GREY, fontStyle: 'italic' })],
-        notes: 'La fila Total usa fórmulas (=SUMA(ARRIBA)): si se cambia el número de cepas, se recalcula.' },
-      { title: 'Resultados · evolución del NDVI', layout: 'titleOnly', transition: 'slide', extra: [
-        chartBlock({ x: 100, y: 170, w: 760, h: 460, chartType: 'line', color: NAVY, grid: true, xTitle: 'Semana de la campaña', seriesName: '100 %',
+  sci_thesis: { name: 'Defensa de TFG: Ingeniería Agrícola', cat: 'sci', summary: 'Presentación de defensa del trabajo de fin de grado de Ingeniería Agrícola: portada institucional, el problema en una cifra (FAO), pregunta de investigación y objetivos, estado de la cuestión, metodología dibujada con la ecuación del NDVI, resultados con gráficos y su conclusión, discusión, limitaciones, conclusiones, diapositivas de respaldo para las preguntas del tribunal y notas con los tiempos de una defensa de 15 minutos', make: () => {
+    const PAPER = '#f7f6f1', SOFT = '#eaf0e6', INK = '#1d2a22', GREY = '#5c665e', VINE = '#2f5d3a', LEAF = '#5b9a5f', GRAPE = '#6b2d5c', GOLD = '#c9a227', STRESS = '#d0662f';
+    const UNI = 'Universidad de Ejemplo · Escuela de Ingeniería Agraria · Trabajo de Fin de Grado 2026';
+    // (Helpers of this deck: drawings as data URLs, a picture, appearing on click or after the previous one.)
+    const svg = (w, h, body) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${body}</svg>`);
+    const pic = (src, x, y, w, h, alt) => ({ ...base(x, y, w, h), type: 'image', src, alt, fit: 'contain' });
+    const on = (b, effect = 'fade-up', p = {}) => withAnims(b, A(effect, p));
+    const next = (b, effect = 'fade-up', p = {}) => withAnims(b, A(effect, { start: 'afterPrev', ...p }));
+    const label = (t, x, y, w, col, bg = PAPER) => text(t, x, y, w, 34, { fontSize: 18, letterSpacing: 3, fontWeight: 700, color: deep(col, bg) });
+    const H = "'Playfair Display', Georgia, serif";
+    // The vineyard seen by the drone: rows of vines, the scanned strip, and three vines already stressed (in orange).
+    const vineyard = svg(360, 480, `<circle cx="300" cy="70" r="34" fill="${GOLD}" opacity=".85"/>`
+      + `<path d="M0 250 Q90 215 180 238 T360 228 V480 H0 Z" fill="#dfe8d5"/>`
+      + `<polygon points="180,118 40,470 320,470" fill="${VINE}" opacity=".10"/>`
+      + [0, 1, 2, 3, 4, 5].map(r => { const y = 280 + r * 36, n = 6 + r, step = 360 / n;
+        return Array.from({ length: n }, (_, i) => { const x = step / 2 + i * step, hot = (r === 3 && i === 4) || (r === 4 && i === 5) || (r === 5 && i === 6);
+          return `<ellipse cx="${x.toFixed(1)}" cy="${y}" rx="${(7 + r * 2.2).toFixed(1)}" ry="${(5 + r * 1.6).toFixed(1)}" fill="${hot ? STRESS : r % 2 ? LEAF : VINE}"/>`; }).join('')
+          + `<line x1="0" y1="${y + 8 + r}" x2="360" y2="${y + 8 + r}" stroke="#b9c7ae" stroke-width="1.2"/>`; }).join('')
+      + `<g transform="translate(180 92)"><rect x="-34" y="-11" width="68" height="22" rx="8" fill="${INK}"/>`
+      + `<line x1="-30" y1="-6" x2="-62" y2="-22" stroke="${INK}" stroke-width="4"/><line x1="30" y1="-6" x2="62" y2="-22" stroke="${INK}" stroke-width="4"/>`
+      + `<ellipse cx="-66" cy="-25" rx="26" ry="5" fill="${GREY}" opacity=".55"/><ellipse cx="66" cy="-25" rx="26" ry="5" fill="${GREY}" opacity=".55"/>`
+      + `<circle cx="0" cy="16" r="7" fill="${GRAPE}"/></g>`);
+    // A leaf's reflectance: a healthy vine reflects much more near-infrared than a stressed one.
+    const leaf = svg(300, 300, `<path d="M150 40 C240 70 270 170 150 270 C30 170 60 70 150 40 Z" fill="${LEAF}"/><path d="M150 60 V255" stroke="${SOFT}" stroke-width="4"/>`
+      + [90, 130, 170, 210].map(y => `<path d="M150 ${y} L${y < 150 ? 105 : 100} ${y - 22} M150 ${y} L${y < 150 ? 195 : 200} ${y - 22}" stroke="${SOFT}" stroke-width="3"/>`).join(''));
+    // A section divider: its number and name — the parts of the defence, in order.
+    const part = (n, name, sub, notes) => ({ layout: 'blank', bg: SOFT, transition: 'fade', extra: [
+      text(String(n), 90, 170, 260, 260, { fontFamily: H, fontSize: 220, fontWeight: 700, color: deep(VINE, SOFT), lineHeight: 1 }),
+      shape('rect', 380, 200, 6, 230, GOLD),
+      text(name, 420, 210, 760, 110, { fontFamily: H, fontSize: 64, fontWeight: 700, color: INK, lineHeight: 1.05 }),
+      text(sub, 424, 330, 720, 100, { fontSize: 26, color: GREY, lineHeight: 1.4 })], notes });
+    const foot = [shape('rect', 84, 668, 1112, 1, '#cfd6c9'), text(UNI, 380, 674, 816, 28, { fontSize: 14, color: GREY, textAlign: 'right' })];
+    return numbered(build({ name: 'Defensa de TFG: Ingeniería Agrícola', palette: 'forest', fonts: 'classic', title: { size: 42, color: VINE }, body: { color: INK }, decor: () => foot }, [
+      // ---- 1 · Cover
+      { layout: 'blank', bg: PAPER, transition: 'fade', back: [glow(1040, -160, 620, LEAF, PAPER, 14)], extra: [
+        shape('seal', 84, 46, 58, 58, VINE), icon('graduation-cap', 98, 60, 30, '#ffffff'),
+        text('UNIVERSIDAD DE EJEMPLO · Escuela de Ingeniería Agraria', 156, 60, 640, 34, { fontSize: 18, color: GREY }),
+        label('TRABAJO DE FIN DE GRADO · GRADO EN INGENIERÍA AGRÍCOLA', 90, 150, 720, GRAPE),
+        text('Detección temprana del estrés hídrico en viñedo con imágenes multiespectrales de dron', 84, 194, 720, 230, { fontFamily: H, fontSize: 48, fontWeight: 700, color: INK, lineHeight: 1.12 }),
+        shape('rect', 90, 440, 120, 4, GOLD),
+        text('<b>Autora:</b> Lucía Ferrer Montes<br><b>Tutor:</b> Dr. Andrés Beltrán Ruiz<br>Tribunal · julio de 2026', 90, 466, 700, 140, { fontSize: 24, color: INK, lineHeight: 1.55 }),
+        next(pic(vineyard, 850, 110, 360, 480, 'Un dron sobrevuela las filas de un viñedo; tres cepas aparecen en naranja: estrés hídrico detectado'), 'fade-left', { duration: 900 })],
+        notes: '≈ 30 s. Saluda al tribunal, di tu nombre y el título en una frase: «Mi trabajo detecta la falta de agua en la viña antes de que se vea». No leas la diapositiva. (Nombres y universidad de ejemplo: cámbialos por los tuyos.)' },
+      // ---- 2 · Roadmap (the four parts, with their minutes)
+      { title: 'En 15 minutos', layout: 'titleOnly', bg: PAPER, extra: [
+        dg('chevrons', 'Planteamiento\n  problema, pregunta y objetivos · 4 min\nMetodología\n  vuelos, NDVI y modelos · 4 min\nResultados\n  qué detectamos y cuándo · 4 min\nConclusiones\n  aportación y límites · 3 min', 90, 200, 1100, 300, { colors: 'colorful' }),
+        text('Después, el turno de preguntas del tribunal.', 90, 540, 1100, 40, { fontSize: 22, color: GREY, textAlign: 'center' })],
+        notes: '≈ 30 s. El mapa de la defensa: el tribunal sabe dónde está en cada momento. Si el tiempo es otro, ajusta los minutos.' },
+      // ---- 3 · The problem in one figure
+      { layout: 'blank', bg: PAPER, extra: [
+        label('EL PROBLEMA', 90, 120, 600, STRESS),
+        on(text('70 %', 84, 160, 520, 200, { fontFamily: H, fontSize: 180, fontWeight: 700, color: deep(VINE), lineHeight: 1 }), 'zoom-in', { duration: 800 }),
+        text('del agua dulce que se extrae en el mundo se destina a la agricultura.', 90, 380, 520, 110, { fontSize: 30, color: INK, lineHeight: 1.35 }),
+        text('Fuente: FAO, AQUASTAT.', 90, 500, 520, 34, { fontSize: 18, color: GREY }),
+        shape('rect', 660, 150, 2, 420, '#cfd6c9'),
+        next(card('<b style="font-size:28px">Regar a ciegas sale caro</b><br>Cuando la cepa muestra el estrés —hojas lacias, racimos pequeños—, la cosecha ya se ha resentido. Hace falta verlo <b>antes</b>.', 700, 170, 490, 250, '#ffffff', { fontSize: 23, color: INK, radius: 16, borderColor: STRESS, lineHeight: 1.45 })),
+        next(card('<b style="font-size:28px">Mi pregunta</b><br>¿Puede un dron detectarlo días antes de que se vea?', 700, 440, 490, 140, '#ffffff', { fontSize: 23, color: INK, radius: 16, borderColor: VINE }))],
+        notes: '≈ 1 min. La cifra engancha: casi tres cuartas partes del agua dulce extraída van al campo (FAO, AQUASTAT). En el viñedo, el estrés se ve tarde. De ahí la pregunta del trabajo.' },
+      // ---- 4 · Research question and objectives
+      { title: 'Pregunta, hipótesis y objetivos', layout: 'titleOnly', bg: PAPER, extra: [
+        card(`<b style="color:${deep(GRAPE, '#ffffff')}">Hipótesis</b><br>El índice NDVI medido con dron cae antes de que el estrés hídrico se vea a simple vista.`, 90, 190, 1100, 130, '#ffffff', { fontSize: 25, color: INK, radius: 16, borderColor: GRAPE }),
+        ...[['Objetivo 1', 'Calcular índices de vegetación por cepa (NDVI y NDRE).', VINE], ['Objetivo 2', 'Comparar tres modelos para clasificar el estado hídrico.', LEAF], ['Objetivo 3', 'Proponer un calendario de vuelos útil para el viticultor.', GOLD]]
+          .map(([t, d, c], i) => on(card(`<b style="font-size:24px;color:${deep(c, '#ffffff')}">${t}</b><br>${d}`, 90 + i * 375, 350, 350, 220, '#ffffff', { fontSize: 22, color: INK, radius: 16, borderColor: c, pad: [20, 22, 18, 22] })))],
+        notes: '≈ 1 min 30 s. Una hipótesis que se pueda refutar y tres objetivos medibles. El tribunal valorará que cada objetivo tenga su resultado más adelante.' },
+      // ---- 5 · State of the art (real milestones; the gap is this project's claim)
+      { title: 'Estado de la cuestión', layout: 'titleOnly', bg: PAPER, extra: [
+        dg('timeline', '1972\n  Landsat 1: primeras imágenes multiespectrales desde satélite\n1974\n  Rouse y colaboradores proponen el NDVI\nAños 2010\n  Drones con cámaras multiespectrales ligeras\nHoy\n  Aprendizaje profundo para clasificar cultivos', 90, 190, 1100, 290, { colors: 'colorful' }),
+        card(`<b style="color:${deep(STRESS, '#ffffff')}">El hueco que cubre este trabajo:</b> casi no hay estudios en viñedo de secano a escala de cepa y con validación en campo.`, 90, 510, 1100, 100, '#ffffff', { fontSize: 22, color: INK, radius: 14, borderColor: STRESS })],
+        notes: '≈ 1 min 30 s. De dónde viene la técnica y qué faltaba. Hitos reales: Landsat 1 (1972) y el NDVI de Rouse y colaboradores (1974). El «hueco» es la aportación del trabajo: dilo con tus referencias.' },
+      // ---- 6 · Part 2
+      part(2, 'Metodología', 'Cómo se midió: vuelos, índices de vegetación y modelos, validados con medidas en campo.', '≈ 10 s. Transición.'),
+      // ---- 7 · The method, drawn
+      { title: 'De la imagen al diagnóstico', layout: 'titleOnly', bg: PAPER, extra: [
+        dg('process', 'Vuelo\n  14 vuelos semanales a mediodía solar\nProcesado\n  ortomosaico y corrección radiométrica\nÍndices\n  NDVI y NDRE por cepa\nModelo\n  umbral, bosque aleatorio y red CNN\nValidación\n  potencial hídrico medido en hoja', 90, 190, 1100, 320, { colors: 'colorful' }),
+        text('Cada fase alimenta la siguiente: si falla la calibración, fallan los índices.', 90, 540, 1100, 40, { fontSize: 22, color: GREY, textAlign: 'center' })],
+        notes: '≈ 1 min 30 s. Recorre las cinco fases de izquierda a derecha. La validación con el potencial hídrico medido en hoja es lo que da credibilidad al trabajo: menciónala.' },
+      // ---- 8 · Why the NDVI works
+      { title: 'Por qué el NDVI delata el estrés', layout: 'titleOnly', bg: PAPER, extra: [
+        pic(leaf, 90, 190, 260, 260, 'Una hoja de vid'),
+        mathBlock({ x: 390, y: 200, w: 800, h: 130, fontSize: 44, color: INK, latex: '\\mathrm{NDVI} = \\frac{\\rho_{NIR} - \\rho_{R}}{\\rho_{NIR} + \\rho_{R}}' }),
+        text('Una hoja sana <b>refleja mucho infrarrojo cercano</b> (NIR) y absorbe el rojo (R). Con estrés hídrico, la hoja refleja menos NIR y el índice baja, aunque todavía se vea verde.', 390, 350, 800, 150, { fontSize: 24, color: INK, lineHeight: 1.45 }),
+        text('El NDVI va de −1 a 1: cuanto más alto, más vigor.', 390, 510, 800, 40, { fontSize: 21, color: GREY })],
+        notes: '≈ 1 min 30 s. La idea física, sin perderse en la fórmula: el infrarrojo «ve» la estructura interna de la hoja antes de que cambie el color.' },
+      // ---- 9 · Experimental design
+      { title: 'Diseño experimental', layout: 'titleOnly', bg: PAPER, extra: [
+        tableBlock({ x: 90, y: 190, w: 1100, h: 320, fontSize: 23, header: true, headBg: VINE, headFg: '#ffffff', stroke: '#cfd6c9', banded: true, band: VINE,
+          rows: [['Parcela', 'Riego', 'Cepas', 'Sondas de suelo'], ['A', 'Completo (100 %)', '120', '4'], ['B', 'Déficit moderado (60 %)', '120', '4'], ['C', 'Déficit severo (30 %)', '120', '4'], ['<b>Total</b>', '', '<b>360</b>', '<b>12</b>']] }),
+        text('Campaña de junio a septiembre · Tempranillo en espaldera · Datos de ejemplo', 90, 530, 1100, 40, { fontSize: 20, color: GREY, textAlign: 'center' })],
+        notes: '≈ 1 min. Tres tratamientos de riego con el mismo número de cepas: así cualquier diferencia se debe al agua, no a la parcela.' },
+      // ---- 10 · Part 3
+      part(3, 'Resultados', 'Qué detectamos, cuándo y con qué precisión.', '≈ 10 s. Transición.'),
+      // ---- 11 · NDVI over the season, with its conclusion
+      { title: 'El NDVI cae antes de que se vea', layout: 'titleOnly', bg: PAPER, transition: 'slide', extra: [
+        chartBlock({ x: 90, y: 180, w: 760, h: 430, chartType: 'line', color: VINE, grid: true, xTitle: 'Semana de la campaña', yTitle: 'NDVI medio', seriesName: 'Riego 100 %',
           data: [1, 3, 5, 7, 9, 11, 13].map((w, i) => ({ label: 'S' + w, value: [0.71, 0.74, 0.76, 0.77, 0.76, 0.75, 0.74][i] })),
-          series: [{ name: '60 %', color: '#2e75b6', values: [0.7, 0.72, 0.71, 0.68, 0.65, 0.63, 0.61] }, { name: '30 %', color: BURG, values: [0.7, 0.69, 0.64, 0.57, 0.52, 0.48, 0.45] }] }),
-        text('Series: riego al 100, 60 y 30 %. El NDVI de la parcela C cae ya en la <b>semana 5</b>, unos 10 días antes de los primeros síntomas visibles.', 900, 220, 280, 260, { fontSize: 24, color: INK }),
-        anim(text('Diferencias significativas desde la semana 5 (p &lt; 0,01).', 900, 500, 280, 110, { fontSize: 20, color: BURG }), 1, 'fade-in')],
-        notes: 'Gráfico de líneas con tres series. Valores inventados pero coherentes con la literatura.' },
-      { title: 'Resultados · comparación de modelos', layout: 'titleOnly', extra: [
-        chartBlock({ x: 100, y: 170, w: 760, h: 460, chartType: 'bar', color: NAVY, dataLabels: true, grid: true, seriesName: 'Precisión',
-          data: [{ label: 'Umbral', value: 71 }, { label: 'Bosque', value: 86 }, { label: 'Red CNN', value: 91 }],
-          series: [{ name: 'Exhaustividad', color: BURG, values: [64, 83, 88] }] }),
-        text(`<div style="font-family:${H};font-size:64px;font-weight:700;color:${NAVY}">91 %</div><div>de precisión con la red convolucional, con solo 14 vuelos</div>`, 900, 220, 280, 220, { fontSize: 22, color: INK })],
-        notes: 'Barras agrupadas con dos series y etiquetas de datos.' },
-      { title: 'Conclusiones', layout: 'twoContent', body: '<b>Conclusiones</b>' + ul('El NDVI detecta el estrés unos 10 días antes', 'La red convolucional es el mejor modelo', 'Basta un vuelo por semana'),
-        body2: '<b>Trabajo futuro</b>' + ul('Probar en otras variedades', 'Añadir una cámara térmica', 'Una aplicación para el viticultor'),
-        notes: 'Diseño «Dos contenidos» del patrón, con los títulos de columna en negrita.' },
-      { title: 'Referencias', layout: 'titleOnly', extra: [
-        text(['Álvarez, M. y Soto, P. (2023). Índices espectrales para el riego de precisión. <i>Revista de Agronomía Aplicada</i>, 41(2), 112–130.',
-          'García-León, R. <i>et al.</i> (2024). Drones multiespectrales en viñedo: una revisión. <i>Cuadernos de Viticultura</i>, 18, 45–71.',
-          'Martín, L. (2022). <i>Teledetección agrícola</i>. Editorial Universitaria de Ejemplo.',
-          'Pérez, A. y Ruiz, C. (2025). Redes convolucionales para clasificar el estado hídrico de cultivos leñosos. <i>Agricultura Digital</i>, 7(1), 1–19.']
-          .map(r => `<p style="padding-left:40px;text-indent:-40px;margin:0 0 18px">${r}</p>`).join(''), 100, 170, 1080, 460, { fontSize: 22, color: INK })],
-        notes: 'Referencias con sangría francesa (estilo APA). Son referencias de ejemplo, inventadas: sustitúyelas por las reales.' },
-      { layout: 'blank', extra: [pollBlock({ kind: 'qa', question: 'Preguntas del tribunal y del público', options: [], fontSize: 34, x: 60, y: 60, w: 1160, h: 580 })],
-        notes: 'Preguntas desde el móvil (Q&A): el público las envía y vota las más interesantes. Agradecer al tribunal y al tutor.' },
+          series: [{ name: 'Riego 60 %', color: GOLD, values: [0.7, 0.72, 0.71, 0.68, 0.65, 0.63, 0.61] }, { name: 'Riego 30 %', color: STRESS, values: [0.7, 0.69, 0.64, 0.57, 0.52, 0.48, 0.45] }] }),
+        on(card(`<b style="font-size:46px;font-family:${H};color:${deep(STRESS, '#ffffff')}">≈ 10 días</b><br>antes de los primeros síntomas visibles, el NDVI de la parcela al 30 % ya había caído (semana 5).`, 880, 200, 310, 280, '#ffffff', { fontSize: 22, color: INK, radius: 16, borderColor: STRESS, lineHeight: 1.4 }), 'fade-left'),
+        text('Diferencias significativas desde la semana 5 (p &lt; 0,01). Datos de ejemplo.', 880, 500, 310, 90, { fontSize: 18, color: GREY })],
+        notes: '≈ 2 min. El resultado principal. Señala la línea naranja: cae en la semana 5, cuando a simple vista la viña aún parece sana. Esto responde a la hipótesis.' },
+      { title: 'Respaldo · ¿Cómo se fijó el umbral?', layout: 'titleOnly', bg: PAPER, vertical: true, extra: [
+        text('Un NDVI por debajo de <b>0,62</b> durante dos vuelos seguidos se marcó como estrés. Se eligió con la curva ROC sobre las medidas de potencial hídrico en hoja (−1,2 MPa).', 90, 190, 1100, 130, { fontSize: 25, color: INK, lineHeight: 1.45 }),
+        tableBlock({ x: 90, y: 340, w: 1100, h: 200, fontSize: 22, header: true, headBg: GRAPE, headFg: '#ffffff', stroke: '#cfd6c9', banded: true, band: GRAPE,
+          rows: [['Umbral NDVI', 'Sensibilidad', 'Especificidad'], ['0,58', '61 %', '94 %'], ['<b>0,62</b>', '<b>83 %</b>', '<b>89 %</b>'], ['0,66', '92 %', '71 %']] }),
+        text('Datos de ejemplo.', 90, 560, 1100, 34, { fontSize: 18, color: GREY })],
+        notes: 'Diapositiva de respaldo: solo si el tribunal pregunta por el umbral. 0,62 equilibra no perder cepas estresadas y no dar falsas alarmas.' },
+      // ---- 12 · Models compared, with its conclusion
+      { title: 'La red convolucional acierta más', layout: 'titleOnly', bg: PAPER, extra: [
+        chartBlock({ x: 90, y: 180, w: 760, h: 430, chartType: 'bar', color: VINE, dataLabels: true, grid: true, seriesName: 'Precisión (%)',
+          data: [{ label: 'Umbral NDVI', value: 71 }, { label: 'Bosque aleatorio', value: 86 }, { label: 'Red CNN', value: 91 }],
+          series: [{ name: 'Exhaustividad (%)', color: GRAPE, values: [64, 83, 88] }] }),
+        on(card(`<b style="font-size:46px;font-family:${H};color:${deep(VINE, '#ffffff')}">91 %</b><br>de precisión con la red convolucional, con solo 14 vuelos.`, 880, 200, 310, 230, '#ffffff', { fontSize: 22, color: INK, radius: 16, borderColor: VINE }), 'fade-left'),
+        text('El bosque aleatorio, casi igual y mucho más ligero: una opción para el campo. Datos de ejemplo.', 880, 450, 310, 150, { fontSize: 19, color: GREY, lineHeight: 1.4 })],
+        notes: '≈ 2 min. Compara los tres modelos. Matiz importante para el tribunal: el bosque aleatorio se queda cerca y es más fácil de usar en una explotación.' },
+      { title: 'Respaldo · Matriz de confusión de la CNN', layout: 'titleOnly', bg: PAPER, vertical: true, extra: [
+        tableBlock({ x: 240, y: 200, w: 800, h: 260, fontSize: 24, header: true, headBg: VINE, headFg: '#ffffff', stroke: '#cfd6c9',
+          rows: [['', 'Predicho: sin estrés', 'Predicho: con estrés'], ['<b>Real: sin estrés</b>', '208', '17'], ['<b>Real: con estrés</b>', '16', '119']] }),
+        text('360 cepas del conjunto de prueba · precisión 0,88 en la clase «con estrés» · Datos de ejemplo.', 90, 490, 1100, 40, { fontSize: 20, color: GREY, textAlign: 'center' })],
+        notes: 'Respaldo: si preguntan cómo se validó el modelo o cuántos errores comete. Validación cruzada por parcelas para no mezclar cepas vecinas.' },
+      // ---- 13 · Discussion
+      { title: 'Discusión: lo que aporta frente a lo anterior', layout: 'titleOnly', bg: PAPER, extra: [
+        ...[['Estudios previos', 'Satélite o avión: un píxel abarca varias cepas.\nUna o dos fechas por campaña.\nValidación con pocas medidas.', GREY], ['Este trabajo', 'Dron: resolución de cepa.\n14 vuelos, uno por semana.\nValidación con potencial hídrico en hoja.', VINE]]
+          .map(([t, d, c], i) => on(card(`<b style="font-size:28px;color:${deep(c, '#ffffff')}">${t}</b><br>${d.split('\n').map(l => '· ' + l).join('<br>')}`, 90 + i * 565, 200, 535, 300, '#ffffff', { fontSize: 23, color: INK, radius: 16, borderColor: c, lineHeight: 1.6, pad: [22, 26, 20, 26] }))),
+        text('Los resultados coinciden con la literatura en el orden de magnitud del adelanto y lo afinan a escala de cepa.', 90, 530, 1100, 70, { fontSize: 22, color: GREY, textAlign: 'center' })],
+        notes: '≈ 1 min. No digas «es mejor que todo»: di qué añade (resolución y frecuencia) y en qué coincide con lo publicado. Cita aquí tus dos referencias clave.' },
+      // ---- 14 · Limitations and future work
+      { title: 'Limitaciones y líneas futuras', layout: 'titleOnly', bg: PAPER, extra: [
+        card(`<b style="font-size:26px;color:${deep(STRESS, '#ffffff')}">Limitaciones</b><br>· Una sola variedad y una campaña.<br>· Vuelos solo con buen tiempo.<br>· Coste del sensor multiespectral.`, 90, 190, 535, 300, '#ffffff', { fontSize: 23, color: INK, radius: 16, borderColor: STRESS, lineHeight: 1.6 }),
+        card(`<b style="font-size:26px;color:${deep(VINE, '#ffffff')}">Líneas futuras</b><br>· Otras variedades y años secos.<br>· Añadir una cámara térmica.<br>· Una aplicación para el viticultor.`, 655, 190, 535, 300, '#ffffff', { fontSize: 23, color: INK, radius: 16, borderColor: VINE, lineHeight: 1.6 })],
+        notes: '≈ 1 min. Reconocer los límites antes de que los diga el tribunal da solidez. Cada limitación tiene su línea futura.' },
+      // ---- 15 · Conclusions, with the key idea
+      { layout: 'blank', bg: SOFT, extra: [
+        label('CONCLUSIONES', 90, 110, 600, VINE, SOFT),
+        text('Un dron multiespectral detecta el estrés hídrico del viñedo unos <b>10 días antes</b> de que se vea.', 84, 150, 1110, 170, { fontFamily: H, fontSize: 46, fontWeight: 700, color: INK, lineHeight: 1.18 }),
+        ...[['El NDVI cae desde la semana 5 con riego al 30 %.', 'droplet'], ['La red CNN alcanza un 91 % de precisión.', 'target'], ['Basta un vuelo por semana en la campaña.', 'plane']]
+          .map(([t, ic], i) => on(card(`${t}`, 90 + i * 375, 380, 350, 160, '#ffffff', { fontSize: 23, color: INK, radius: 16, borderColor: LEAF, pad: [64, 22, 18, 22] })))
+          .flatMap((c, i) => [c, on(icon(['droplet', 'target', 'plane'][i], 110 + i * 375, 398, 36, deep(VINE)))])],
+        notes: '≈ 1 min. Una frase para recordar y tres conclusiones, una por objetivo. Respira y mira al tribunal.' },
+      // ---- 16 · Thanks and questions
+      { layout: 'blank', bg: PAPER, transition: 'zoom', back: [glow(1040, 440, 560, LEAF, PAPER, 14)], extra: [
+        text('Gracias', 84, 150, 800, 110, { fontFamily: H, fontSize: 84, fontWeight: 700, color: VINE }),
+        text('A mi tutor, a la bodega que cedió las parcelas y al laboratorio de teledetección.', 90, 280, 760, 90, { fontSize: 26, color: GREY, lineHeight: 1.4 }),
+        text('¿Preguntas?', 90, 400, 760, 80, { fontFamily: H, fontSize: 54, fontWeight: 700, color: INK }),
+        timer(900, 930, 200, 280, { color: VINE, endText: '¡Tiempo!' })],
+        notes: '≈ 30 s. Agradece y abre el turno de preguntas. El cronómetro marca 15 minutos: úsalo al ensayar. Debajo tienes una diapositiva de respaldo sobre por qué el NDVI.' },
+      { title: 'Respaldo · ¿Por qué el NDVI y no otro índice?', layout: 'titleOnly', bg: PAPER, vertical: true, extra: [
+        tableBlock({ x: 90, y: 190, w: 1100, h: 330, fontSize: 22, header: true, headBg: VINE, headFg: '#ffffff', stroke: '#cfd6c9', banded: true, band: VINE,
+          rows: [['Índice', 'Qué mide', 'Ventaja', 'Inconveniente'], ['NDVI', 'Vigor (rojo e infrarrojo)', 'Sencillo y muy estudiado', 'Se satura con mucha vegetación'], ['NDRE', 'Clorofila (borde rojo)', 'No se satura tanto', 'Más sensible a la luz'], ['Temperatura', 'Transpiración (térmica)', 'Respuesta inmediata', 'Necesita otra cámara']] }),
+        text('El NDVI se eligió por sencillez y por poder comparar con la literatura; el NDRE se calculó como apoyo.', 90, 540, 1100, 60, { fontSize: 21, color: GREY, textAlign: 'center' })],
+        notes: 'Respaldo: la pregunta más habitual del tribunal en un trabajo con índices de vegetación.' },
     ]));
   } },
 
