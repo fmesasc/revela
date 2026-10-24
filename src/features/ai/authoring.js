@@ -366,7 +366,10 @@ ${opts.media === 'search' ? SEARCHED : opts.images ? '- Use 1-3 "image" slides w
 ${profileFor(opts.dest).guide ? '- ' + profileFor(opts.dest).guide + '\n' : ''}Write everything in ${opts.language || lang()}.` },
     { role: 'user', content: withAttachments(brief + source + (pics.some(a => !a.figure)
       ? '\n\nThe attached pictures (notes, a whiteboard, slides, a document\'s pages, photos): base the deck on what they show — read their text and figures — together with the rest.' : ''), opts.attachments || []) },
-  ], { maxTokens: 16000, feature: 'create', tier: 'advanced' });
+    // The base deck in the cheap tier (flash): most of the tokens of a creation. The strong model (advanced) is kept
+    // only for making the weak slides again (richer, below) and for the presenter's «Mejorar» — a draft then a polish,
+    // so a whole presentation fits in a handful of credits instead of costing a fortune.
+  ], { maxTokens: 16000, feature: 'create', tier: 'medium' });
   const res = out;
   // (Cleaned, and what is too much for one slide in two.)
   const specs = (res.slides || []).filter(s => s && typeof s === 'object').slice(0, 40).flatMap(s => splitSpec(prepareSpec(s), opts.dest));
