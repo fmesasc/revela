@@ -14,6 +14,7 @@ import { canvasDesign } from '../../design/canvasdesigns.js';
 import { LIBRARY_3D } from '../library3d.js';
 import { NASA_3D } from '../nasa3d.js';
 import { normalizeAnim } from '../../animation/transitions.js';
+import { contrast } from '../../design/theme.js';
 
 // ---- Small builders ------------------------------------------------------------
 // ul('a', ['a1', 'a2'], 'b'): an array right after an item nests under it.
@@ -92,3 +93,13 @@ export { emptyDeck, uid, chartBlock, tableBlock, codeBlock, mathBlock, PALETTES,
 export const nasa = (id, x, y, w, h, props = {}) => { const m = NASA_3D.find(n => n.id === id);
   if (!m) throw new Error('NASA model not found: ' + id);
   return { ...base(x, y, w, h), type: 'model', src: m.src, poster: m.thumb, alt: m.name, caption: `${m.name} — NASA`, autoRotate: true, view: 'three', ...props }; };
+
+// A colour for words on a light ground (a card's title on white, a label on the paper): the same hue, darker, until it
+// reads — at least 3.2 : 1. A deck's amber, orange or green accent is often too light for that as it is.
+export function deep(col, back = '#ffffff', min = 3.2) {
+  if (!/^#[0-9a-f]{6}$/i.test(col) || !/^#[0-9a-f]{6}$/i.test(back)) return col;
+  let c = [1, 3, 5].map(i => parseInt(col.slice(i, i + 2), 16));
+  const hex = v => '#' + v.map(x => Math.round(x).toString(16).padStart(2, '0')).join('');
+  for (let k = 0; k < 20 && contrast(hex(c), back) < min; k++) c = c.map(x => x * 0.9);
+  return hex(c);
+}
