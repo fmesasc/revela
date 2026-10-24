@@ -377,7 +377,7 @@ export const fileSig = b => [b.display, b.poster?.length, b.page, b.name].join('
 export function paintFile(d, b) {
   d.dataset.sig = fileSig(b);
   d.innerHTML = b.display !== 'icon' && b.poster
-    ? `<img src="${b.poster}" draggable="false" alt=""><span class="file-badge"><i class="ms">${b.display === 'viewer' ? 'menu_book' : 'picture_as_pdf'}</i>${b.pages > 1 ? ` ${b.page || 1}/${b.pages}` : ''}</span>`
+    ? `<img src="${esc(b.poster)}" draggable="false" alt=""><span class="file-badge"><i class="ms">${b.display === 'viewer' ? 'menu_book' : 'picture_as_pdf'}</i>${b.pages > 1 ? ` ${+b.page || 1}/${+b.pages}` : ''}</span>`
     : fileIconHTML(b, sizeText(b.bytes || 0, currentLang()));
 }
 export const tableSig = b => b.rows.length + 'x' + (b.rows[0]?.length || 0) + '|' + JSON.stringify([b.merges || [], b.colW, b.rowH, b.cellBg]);

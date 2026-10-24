@@ -151,8 +151,8 @@ function quizResult(d) {
   clearInterval(quizTimer); $('#answers').querySelectorAll('button').forEach(x => { x.disabled = true; }); $('#answers .rv-game')?.rvLock();
   const part = poll?.pub && d.answered && !d.ok && d.pts > 0;       // (activities: some right)
   box.className = 'quiz-res'; box.style.background = !d.answered ? '#555' : d.ok ? '#26890c' : part ? '#b07d00' : '#b3261e';
-  box.innerHTML = `<b>${!d.answered ? 'Sin respuesta' : d.ok ? (poll?.pub ? '¡Todo correcto!' : '¡Correcto!') : part ? `${Math.round(d.pts / 10)} % de aciertos` : 'Fallaste'}</b>+${d.pts} puntos · ${d.total} en total`
-    + (d.rank ? `<br>Vas ${d.rank}.º de ${d.of}` : '');
+  box.innerHTML = `<b>${!d.answered ? 'Sin respuesta' : d.ok ? (poll?.pub ? '¡Todo correcto!' : '¡Correcto!') : part ? `${Math.round(+d.pts / 10)} % de aciertos` : 'Fallaste'}</b>+${+d.pts || 0} puntos · ${+d.total || 0} en total`
+    + (d.rank ? `<br>Vas ${+d.rank || 0}.º de ${+d.of || 0}` : '');
 }
 // Classroom: the presenter's current slide, drawn here without its scripts (sandboxed).
 let styles = '', lastSlide = null;

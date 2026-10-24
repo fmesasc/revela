@@ -18,7 +18,7 @@ import { api } from './account.js';
 import { OFFICIAL_SITE, EDITION } from '../../core/config.js';
 import { state, subscribe, snapshot, applyRemote, adoptDeck, replaceDeck, setPersist, mutate, onBeforeReplace } from '../../core/store.js';
 import { diff, applyOps } from '../../features/live/collabsync.js';
-import { cleanValue } from '../../features/document/sanitize.js';
+import { cleanAt, cleanValue } from '../../features/document/sanitize.js';
 import { approxSize } from '../../core/model.js';
 import { portable, liveBytes } from '../../core/mediastore.js';
 
@@ -134,7 +134,7 @@ export const restoreVersion = deck => replaceDeck(deck);
 const setStatus = s => { if (cur && cur.status !== s) { cur.status = s; emit('status', s); } };
 
 // Values from others can't run code (as in live collaboration).
-const clean = ops => ops.map(op => (op && 'v' in op ? { ...op, v: cleanValue(op.v, String(op.p?.at(-1) ?? '')) } : op));
+const clean = ops => ops.map(op => (op && 'v' in op ? { ...op, v: cleanAt(op.v, op.p) } : op));
 
 // Open one (replacing the document in the editor), with the role the server gives.
 // io: the transport (the tests pass a fake); pollMs: how often to look for others' changes.

@@ -14,6 +14,8 @@ import { author, setAuthor } from '../../features/collab/comments.js';
 import * as slides from '../../features/document/slides.js';
 import { t } from '../../i18n/index.js';
 import { alertDialog, confirmDialog, promptDialog } from '../dialogs/dialog.js';
+// (A person's colour comes from whoever hosts the session: only a real colour goes into a style.)
+const hue = c => (/^#[0-9a-f]{3,8}$/i.test(String(c ?? '')) ? c : '#8a8f98');
 
 const ROLE_NAME = { view: 'Ver', comment: 'Comentar', edit: 'Editar' };
 const initials = n => (String(n || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2) || '?').toUpperCase();
@@ -63,7 +65,7 @@ export async function openCollab() {
     body.innerHTML = (host ? `<p class="host-help">${t('Envía el enlace según lo que quieras permitir:')}</p>`
       + ROLES.slice().reverse().map(r => `<label class="fr-l">${t(ROLE_NAME[r])}<span class="sh-row"><input readonly class="cb-link" data-role="${r}" value="${esc(collabLink(session.code, session.tokens[r], session.server))}"><button type="button" class="mini2 cb-copy">${t('Copiar')}</button></span></label>`).join('')
       : `<p class="host-help">${t('Estás en la presentación de otra persona. Tu permiso:')} <b>${t(ROLE_NAME[session.role])}</b>.</p>`)
-      + `<h4>${t('Personas')}</h4><div class="cb-people">${[session.me, ...session.peers()].map(p => `<div class="cb-person"><span class="cb-av" style="background:${p.color}">${esc(initials(p.name))}</span>
+      + `<h4>${t('Personas')}</h4><div class="cb-people">${[session.me, ...session.peers()].map(p => `<div class="cb-person"><span class="cb-av" style="background:${hue(p.color)}">${esc(initials(p.name))}</span>
           <span>${esc(p.name)}${p.id === session.me.id ? ` (${t('tú')})` : ''}</span>
           ${host && !(p.id === 'host' || p.owner) && p.id !== session.me.id ? `<select data-peer="${p.id}">${ROLES.map(r => `<option value="${r}"${p.role === r ? ' selected' : ''}>${t(ROLE_NAME[r])}</option>`).join('')}</select>` : `<span class="host-help">${p.id === 'host' || p.owner ? t('Anfitrión') : t(ROLE_NAME[p.role] || '')}</span>`}</div>`).join('')}</div>
       <div class="fr-actions"><button class="mini2 cb-stop">${host ? t('Terminar la sesión') : t('Salir de la sesión')}</button></div>`;
@@ -85,7 +87,7 @@ export function initCollabUI() {
     const peers = session.peers();
     bar.querySelector('.collab-peers').innerHTML = peers.map(p => {
       const i = state.deck.slides.findIndex(s => s.id === p.slide);
-      return `<button type="button" class="cb-av" data-goto="${esc(p.slide || '')}" style="background:${p.color}" title="${esc(p.name)}${i >= 0 ? ` · ${t('diapositiva')} ${i + 1}` : ''}">${esc(initials(p.name))}</button>`;
+      return `<button type="button" class="cb-av" data-goto="${esc(p.slide || '')}" style="background:${hue(p.color)}" title="${esc(p.name)}${i >= 0 ? ` · ${t('diapositiva')} ${i + 1}` : ''}">${esc(initials(p.name))}</button>`;
     }).join('');
     bar.querySelector('.collab-role').textContent = session.role === 'edit' ? '' : `${t('Solo')} ${t(ROLE_NAME[session.role]).toLowerCase()}`;
     const badge = bar.querySelector('.collab-unread'); badge.textContent = unread || ''; badge.hidden = !unread;
@@ -140,7 +142,7 @@ function toggleChat() {
 }
 function paintChat() {
   const box = document.querySelector('#collab-chat .cc-msgs'); if (!box || !session) return;
-  box.innerHTML = session.chat.map(m => `<div class="cc-msg${m.id === session.me.id ? ' mine' : ''}"><span class="cc-name" style="color:${m.color}">${esc(m.name)}</span>
+  box.innerHTML = session.chat.map(m => `<div class="cc-msg${m.id === session.me.id ? ' mine' : ''}"><span class="cc-name" style="color:${hue(m.color)}">${esc(m.name)}</span>
     <span class="cc-time">${new Date(m.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><div>${esc(m.text)}</div></div>`).join('');
   box.scrollTop = box.scrollHeight;
 }

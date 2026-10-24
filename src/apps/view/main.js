@@ -14,6 +14,7 @@ import { t, currentLang } from '../../i18n/index.js';
 import { docIdFrom, publicDeck } from '../../io/cloud/clouddocs.js';
 import { adoptDeck, state } from '../../core/store.js';
 import { buildHTML } from '../../io/formats/html.js';
+import { jsData } from '../../core/text.js';
 import { pickLang, deckIn, allLangs, isMultilingual, i18nOf, langName } from '../../features/document/languages.js';
 import { scormPage } from '../../io/export/scorm.js';
 
@@ -127,7 +128,7 @@ async function openCloud(id) {
     if (lang && !i18nOf(state.deck).force) { const at = html.toLowerCase().lastIndexOf('</body>'); html = html.slice(0, at) + langMenu(lang, allLangs(state.deck)) + html.slice(at); }
     if (scorm || self) {
       const at = html.toLowerCase().lastIndexOf('</body>');
-      const report = self ? `<script>(function(){var U=${JSON.stringify(`/api/docs/${encodeURIComponent(id)}/progress`)},W=${JSON.stringify(who)};
+      const report = self ? `<script>(function(){var U=${JSON.stringify(`/api/docs/${encodeURIComponent(id)}/progress`)},W=${jsData(who)};
 window.__revelaScormSend=function(m){var b={voter:W.voter,name:W.name};if(m.t==='init'){b.graded=m.graded;b.of=Reveal.getTotalSlides();}else if(m.t==='slide')b.slide=m.i+1;else if(m.t==='score')b.score={id:m.id,s:m.s};else return;
 try{fetch(U,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(b),keepalive:true});}catch(e){}};})();</script>` : '';
       html = html.slice(0, at) + report + `<script>${scormPage}</script>` + html.slice(at);

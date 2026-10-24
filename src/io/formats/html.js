@@ -214,7 +214,7 @@ Reveal.on('slidechanged',go);Reveal.on('ready',go);if(Reveal.isReady())go();})()
 const pdfStep = a => ({ page: Math.max(1, Math.round(+a.page || 1)), x: +(+(a.zx ?? 0.5)).toFixed(4), y: +(+(a.zy ?? 0.5)).toFixed(4), s: Math.min(8, Math.max(1, +a.zs || 1)) });
 function animAttrs(b, slide, a = b.animation, key = b.id) {
   // An object that triggers animations of others gets an id to be clicked.
-  const src = slide && slide.blocks.some(x => animsOf(x).some(y => y.trigger === b.id)) ? ` data-bid="${b.id}"` : '';
+  const src = slide && slide.blocks.some(x => animsOf(x).some(y => y.trigger === b.id)) ? ` data-bid="${esc(b.id)}"` : '';
   if (!a) return src;
   const { effect, order, trigger, duration, delay } = a;
   const clip = (effect === 'clip3d' ? ` data-clip="${esc(a.clip || '*')}"${a.once ? ' data-clip-once' : ''}` : '')
@@ -223,8 +223,8 @@ function animAttrs(b, slide, a = b.animation, key = b.id) {
     + (MEDIA_FX.includes(effect) ? ` data-mfx="${effect}"` : '')
     + (a.sound ? ` data-sound="${esc(a.sound)}"${a.sound === 'custom' && a.soundSrc && (/^(data:audio\/|blob:)/.test(a.soundSrc) || isLive(a.soundSrc)) ? ` data-sound-src="${esc(a.soundSrc)}"` : ''}` : '');
   if (trigger && slide?.blocks.some(x => x.id === trigger))       // played on click of another object
-    return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}${isFx(effect) ? ' ' + effect : ''}"${FX_REV(effect) ? ' data-rev' : ''} data-trig="${trigger}" data-kf="${effect === 'path' ? 'rvP' + cssKey(key) : effect === 'pdfview' || effect === 'mapfly' || MEDIA_FX.includes(effect) ? 'none' : EFFECT_KF[effect] || 'rvIn'}"`
-      + ` data-dur="${duration ?? 500}" data-del="${delay ?? 0}"` + clip;
+    return src + ` class="rv-trig${isEntrance(effect) ? ' rv-in' : ''}${isFx(effect) ? ' ' + effect : ''}"${FX_REV(effect) ? ' data-rev' : ''} data-trig="${esc(trigger)}" data-kf="${effect === 'path' ? 'rvP' + cssKey(key) : effect === 'pdfview' || effect === 'mapfly' || MEDIA_FX.includes(effect) ? 'none' : EFFECT_KF[effect] || 'rvIn'}"`
+      + ` data-dur="${esc(duration ?? 500)}" data-del="${esc(delay ?? 0)}"` + clip;
   const cls = effect === 'path' ? ((a.pathShape && a.pathShape !== 'line') || customPath(a) || (pathTurns(a) && b.type !== 'model') ? 'rv-pathc' : 'rv-path') : effect;
   // (An emphasis on some paragraphs only: its rule finds them by this key — fxParagraphCSS.)
   const fxp = isFx(effect) && Array.isArray(a.paras) && a.paras.length ? ` data-fxp="${cssKey(key)}"` : '';
@@ -414,7 +414,7 @@ function blockHTMLRaw(b, slide) {
       // (Its shadow after its look, else the picture's own filter would replace box()'s: a cut-out's follows its figure.)
       + `filter:${imgFilter(b)}${b.shadow ? ' ' + shadowCSS(b) : ''};clip-path:${imgClip(b)};${deviceCSS(b)}">`;
   if (b.type === 'video')
-    return `<video${a} data-vid="${b.id}" src="${esc(b.src || '')}"${b.poster && (/^(data:image\/|https:|blob:)/.test(b.poster) || isLive(b.poster)) ? ` poster="${esc(b.poster)}"` : ''} controls preload="metadata" style="${box(b)}object-fit:contain"></video>`;
+    return `<video${a} data-vid="${esc(b.id)}" src="${esc(b.src || '')}"${b.poster && (/^(data:image\/|https:|blob:)/.test(b.poster) || isLive(b.poster)) ? ` poster="${esc(b.poster)}"` : ''} controls preload="metadata" style="${box(b)}object-fit:contain"></video>`;
   if (b.type === 'poll')     // live poll: question, live results and the QR to vote
     return `<div${a} class="rv-poll" data-poll="${esc(JSON.stringify({ pollId: b.pollId, kind: b.kind, display: b.display, question: b.question, options: b.options, ...(b.kind === 'quiz' && { correct: b.correct || [0], time: b.time || 20, ...(b.mode && b.mode !== 'speed' && { mode: b.mode }) }), ...(ACTIVITIES.includes(b.kind) && { text: b.text, points: b.points, image: b.image }), ...(b.kind === 'wheel' && { time: b.time ?? 150 }),
       ...(b.kind === 'number' && { min: b.min, max: b.max, step: b.step, unit: b.unit, answer: b.answer }), ...(b.kind === 'image' && { images: b.images }), ...((b.kind === 'point' || b.kind === 'draw') && { image: b.image }), ...(b.kind === 'open' && b.rubric && { rubric: b.rubric }), ...(b.kind === 'qa' && b.moderate && { moderate: true }), ...(['qa', 'word', 'open'].includes(b.kind) && b.clean && { clean: true }), ...(b.login && { login: true }) }))}" `
@@ -556,7 +556,7 @@ function mapHTML(b, a = '') {
   const { w: W, h: H } = theDeck().size, tx = W * 0.02, ty = H * 0.02;
   // (Not one whose edges fade or are rounded: it stays in its box, as drawn.)
   const whole = !b.edge && !b.rotation && !b.flipH && !b.flipV && b.x <= tx && b.y <= ty && b.x + b.w >= W - tx && b.y + b.h >= H - ty;
-  return `<div${a.replace(/ (role|aria-label|aria-hidden)="[^"]*"/g, '')}${stops.length ? ` data-geomap="${esc(JSON.stringify(mapConfig(b, lang)))}" data-prevent-swipe` : ''}${whole ? ' data-bleed' : ''}${b.edge ? ` data-edge="${b.edge}"` : ''}${label} style="${box(b)}overflow:hidden;${mapEdgeCSS(b)}background:${isClear(b) || fadesOut(b) ? 'transparent' : b.look === 'map' ? '#e8e8e0' : '#0b1d33'}">${shots}${mapFrameHTML(b)}</div>`;
+  return `<div${a.replace(/ (role|aria-label|aria-hidden)="[^"]*"/g, '')}${stops.length ? ` data-geomap="${esc(JSON.stringify(mapConfig(b, lang)))}" data-prevent-swipe` : ''}${whole ? ' data-bleed' : ''}${b.edge ? ` data-edge="${esc(b.edge)}"` : ''}${label} style="${box(b)}overflow:hidden;${mapEdgeCSS(b)}background:${isClear(b) || fadesOut(b) ? 'transparent' : b.look === 'map' ? '#e8e8e0' : '#0b1d33'}">${shots}${mapFrameHTML(b)}</div>`;
 }
 
 // A magnifier: the lines and the area's frame over the slide, under its box;
@@ -715,13 +715,13 @@ function slideHTML(s0, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck)
   const speed = s.transitionSpeed ? ` data-transition-speed="${s.transitionSpeed}"` : '';
   // (An exact duration from PowerPoint, applied by BD_JS to this slide and the one it replaces.)
   const exact = +s.transitionDur > 0 && s.transition && !s.transitionSpeed ? ` data-rv-dur="${Math.round(Math.min(10000, +s.transitionDur))}"` : '';
-  const auto = s.autoSlide ? ` data-autoslide="${s.autoSlide}"` : '';
+  const auto = s.autoSlide ? ` data-autoslide="${esc(s.autoSlide)}"` : '';
   const solid = /^(#|rgb)/.test(s.background || '');
   // Media backgrounds (reveal.js): video, web page, plus the background's own transition.
   const bg = (solid ? ` data-background-color="${s.background}"` : '')
     + (s.bgVideo ? ` data-background-video="${esc(s.bgVideo)}"${s.bgVideoLoop !== false ? ' data-background-video-loop' : ''}${s.bgVideoMuted !== false ? ' data-background-video-muted' : ''}` : '')
     + (s.bgIframe ? ` data-background-iframe="${esc(s.bgIframe)}"${s.bgInteractive ? ' data-background-interactive' : ''}` : '')
-    + (s.bgTransition ? ` data-background-transition="${s.bgTransition}"` : '')
+    + (s.bgTransition ? ` data-background-transition="${esc(s.bgTransition)}"` : '')
     + (s.uncounted ? ' data-visibility="uncounted"' : '')
     + fillAttrs(s, fit);
   const tl = animTimeline(s);

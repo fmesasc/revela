@@ -100,7 +100,7 @@ function renderList(panel, list) {
   const rows = list.map(({ b, a, i, key }, n) => {
     const x = tl.get(key), first = x && (n === 0 || list[n - 1] && tl.get(list[n - 1].key)?.step !== x.step), start = a.start || 'click';
     return [key, n, a.effect, start, a.trigger || '', a.delay, a.duration, picked.includes(a), b.id === state.ui.selection && i === trans.animEditIndex(b), objLabel(b), count.get(b.id),
-      `<li class="an-row${picked.includes(a) ? ' on' : ''}${b.id === state.ui.selection && i === trans.animEditIndex(b) ? ' cur' : ''}" draggable="true" tabindex="0" role="option" aria-selected="${picked.includes(a)}" data-id="${b.id}" data-i="${i}">
+      `<li class="an-row${picked.includes(a) ? ' on' : ''}${b.id === state.ui.selection && i === trans.animEditIndex(b) ? ' cur' : ''}" draggable="true" tabindex="0" role="option" aria-selected="${picked.includes(a)}" data-id="${esc(b.id)}" data-i="${i}">
         <span class="an-n">${a.trigger ? '<i class="ms" title="' + t('Con disparador') + '">touch_app</i>' : first ? x.step : ''}</span>
         <i class="ms an-start" title="${t(START_NAME[start] || start)}">${START_ICON[start] || 'ads_click'}</i>
         <i class="ms an-kind k-${trans.effectKind(a.effect)}" aria-hidden="true">${a.effect === 'path' ? 'route' : 'star'}</i>

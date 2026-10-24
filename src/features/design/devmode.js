@@ -7,7 +7,8 @@
 export const CSS_MAX = 100000;
 // The CSS, inside `scope` (a selector list), or '' when it would escape it.
 export function scopedCSS(css, scope) {
-  const s = String(css || '').slice(0, CSS_MAX).replace(/<\/?style/gi, '').replace(/@import[^;]*;?/gi, '').replace(/@charset[^;]*;?/gi, '');
+  // (No «<» at all, as the CSS escape: removing «</style» once let «</sty</stylele>» become it again.)
+  const s = String(css || '').slice(0, CSS_MAX).replace(/</g, '\\3c ').replace(/@import[^;]*;?/gi, '').replace(/@charset[^;]*;?/gi, '');
   if (!s.trim()) return '';
   let depth = 0;
   for (const ch of s.replace(/\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, '')) {

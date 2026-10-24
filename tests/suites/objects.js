@@ -1194,6 +1194,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const Sz = await W.eval("import('/src/features/document/sanitize.js')");
     const bad = Sz.sanitizeDeck({ slides: [{ blocks: [{ type: 'shape', href: 'javascript:alert(1)', goto: 'x" onclick="y' }] }] }).slides[0].blocks[0];
     assert(!bad.href && !bad.goto, 'vínculos limpios al abrir presentaciones ajenas');
+    // A deck made to attack whoever opens it (security review, 2026-10): nothing of it can run, here or presented.
+    const evil = 'x"><img src=x onerror=alert(1)>';
+    const atk = Sz.sanitizeDeck({ css: '</sty</stylele><img src=x onerror=alert(1)>', slides: [{ id: 's' + evil, layoutId: evil, autoSlide: evil, bgTransition: evil, blocks: [
+      { id: 'b' + evil, type: 'text', x: 0, y: 0, w: 100, h: 50, html: '<img src="x"/onerror=alert(1)><a href="jav&#x61;script:alert(1)">a</a><b>ok</b>',
+        animation: { effect: 'fade-in', trigger: 't' + evil, duration: evil, delay: evil } },
+      { id: 'v1', type: 'video', src: 'https://ejemplo.org/v.mp4', poster: 'https://ejemplo.org/p.jpg"><img src=x onerror=alert(1)>', x: 0, y: 0, w: 10, h: 10 },
+      { id: 't1', type: 'table', rows: [['<b>a</b>']], cellBg: { '0,0': 'red;background:url(javascript:x)' }, x: 0, y: 0, w: 10, h: 10 }] }] });
+    const [tb, vb, tab] = atk.slides[0].blocks;
+    // (Judged as the browser reads it: no attribute on…, no javascript: link — not by the words in the text.)
+    const risky = h => { const tp = W.document.createElement('template'); tp.innerHTML = h; return [...tp.content.querySelectorAll('*')].some(e => [...e.attributes].some(x => /^on/i.test(x.name) || /^\s*javascript:/i.test(x.value))); };
+    assert(risky('<img src="x"/onerror=alert(1)>') && !risky(tb.html) && /<b>ok<\/b>/.test(tb.html), 'texto: fuera los manejadores pegados con barra y los enlaces con entidades; lo demás, igual: ' + tb.html);
+    assert([tb.id, atk.slides[0].id, atk.slides[0].layoutId, tb.animation.trigger].every(x => /^[\w:.-]*$/.test(x)), 'ids: solo letras, números y _:.-');
+    assert(!tb.animation.duration && !tb.animation.delay && !atk.slides[0].autoSlide && !atk.slides[0].bgTransition, 'tiempos y transiciones con marcas, fuera');
+    assert(!/["<>]/.test(vb.poster) && vb.poster.startsWith('https://ejemplo.org/p.jpg'), 'direcciones sin comillas ni etiquetas (codificadas)');
+    assert(!atk.css.includes('<') && !tab.cellBg['0,0'], 'el CSS propio no cierra su <style>; el sombreado de una celda, solo un color');
+    eq(Sz.cleanHTML('<b style="color:red">Hola</b> y <i>adiós</i>'), '<b style="color:red">Hola</b> y <i>adiós</i>', 'lo que no lleva nada que quitar, idéntico');
+    const row = Sz.cleanAt(['<img src="x"/onerror=alert(1)>ok'], ['slides', 0, 'blocks', 2, 'rows', '<x>']);
+    assert(!risky(row[0]) && /ok/.test(row[0]), 'coedición: una fila nueva, con el nombre que sea, se limpia como celdas');
     // PowerPoint, both ways.
     const blob = await R.pptx.buildPptxBlob(), back = await R.pptxImport.importPPTX(new W.File([blob], 'v.pptx'));
     const bs = back.slides[0].blocks;

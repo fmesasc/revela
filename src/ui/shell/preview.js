@@ -3,6 +3,7 @@
 import { blobURL, needsSmall, smallImage } from '../../io/formats/blobmedia.js';
 import { diagramHTML } from '../../render/diagrams.js';
 import { opacityOf } from '../../core/model.js';
+import { esc } from '../../core/text.js';
 import { wordartSize } from '../../render/textfit.js';
 import { diagramOpts } from '../../features/document/blocks.js';
 import { fileIconHTML, imgFocus } from '../../render/svg.js';
@@ -96,7 +97,7 @@ export function blockPreview(b, slide, { small = false } = {}) {
   } else if (b.type === 'diagram') {
     el.innerHTML = diagramHTML(b, diagramOpts(undefined, slide));
   } else if (b.type === 'file') {
-    el.innerHTML = b.display !== 'icon' && b.poster ? `<img src="${b.poster}" style="width:100%;height:100%;object-fit:contain">` : fileIconHTML(b);
+    el.innerHTML = b.display !== 'icon' && b.poster ? `<img src="${esc(b.poster)}" style="width:100%;height:100%;object-fit:contain">` : fileIconHTML(b);
   } else if (b.type === 'table') {
     ensurePreviewCSS();
     el.innerHTML = `<div class="pv" style="width:100%;height:100%"><table class="${tableClass(b)}" style="${tableVars(b)}">`

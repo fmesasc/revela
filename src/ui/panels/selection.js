@@ -27,7 +27,7 @@ export function renderSelectionPane() {
   panel.innerHTML = `<div class="cm-head"><b>${t('Selección')}</b><button type="button" class="cm-close" title="${t('Cerrar')}">✕</button></div>
     <div class="sp-tools"><button type="button" data-all="show">${t('Mostrar todo')}</button><button type="button" data-all="hide">${t('Ocultar todo')}</button>
       <button type="button" data-z="1" title="${t('Traer adelante')}"><i class="ms">arrow_upward</i></button><button type="button" data-z="-1" title="${t('Enviar atrás')}"><i class="ms">arrow_downward</i></button></div>
-    <ul class="sp-rows" role="listbox" aria-multiselectable="true">${list.map(b => `<li class="sp-row${isSelected(b.id) ? ' on' : ''}${b.hidden ? ' off' : ''}" draggable="true" data-id="${b.id}" role="option" aria-selected="${isSelected(b.id)}">
+    <ul class="sp-rows" role="listbox" aria-multiselectable="true">${list.map(b => `<li class="sp-row${isSelected(b.id) ? ' on' : ''}${b.hidden ? ' off' : ''}" draggable="true" data-id="${esc(b.id)}" role="option" aria-selected="${isSelected(b.id)}">
         <i class="ms sp-kind">${ICON[b.type] || 'crop_square'}</i><span class="sp-name" title="${t('Doble clic para cambiar el nombre')}">${esc(blockLabel(b, t))}</span>
         <button type="button" class="sp-lock${b.locked ? ' on' : ''}" title="${t(b.locked ? 'Desbloquear' : 'Bloquear')}"><i class="ms">${b.locked ? 'lock' : 'lock_open'}</i></button>
         <button type="button" class="sp-eye" title="${t(b.hidden ? 'Mostrar' : 'Ocultar')}"><i class="ms">${b.hidden ? 'visibility_off' : 'visibility'}</i></button></li>`).join('')}</ul>

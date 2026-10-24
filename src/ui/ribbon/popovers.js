@@ -43,7 +43,7 @@ export const POPS = {
     + (on && b.wordart ? `<label class="wa-tint">${t('Color del efecto')} <input type="color" data-wa-tint value="${b.wordartColor || '#3f6497'}"></label>` : ''); },
   layout: () => `<h4>${t('Diseño')}</h4><div class="layout-grid">`
     + allMasters().map((m, i, ms) => (ms.length > 1 ? `<div class="layout-master">${esc(m.name || (i ? `${t('Patrón')} ${i + 1}` : t('Patrón')))}</div>` : '')
-      + ensureLayouts().filter(l => masterOf(l) === m).map(l => `<button data-layout="${l.id}" type="button" class="${currentSlide()?.layoutId === l.id ? 'on' : ''}">${t(l.name)}</button>`).join('')).join('')
+      + ensureLayouts().filter(l => masterOf(l) === m).map(l => `<button data-layout="${esc(l.id)}" type="button" class="${currentSlide()?.layoutId === l.id ? 'on' : ''}">${esc(t(l.name))}</button>`).join('')).join('')
     + `</div>${savedTemplates()}`
     + `<div class="fr-actions"><button type="button" class="mini2" data-reset-slide>${t('Restablecer')}</button>`
     + `<button type="button" class="mini2" data-edit-layouts>${t('Editar diseños…')}</button></div>`,
@@ -57,7 +57,7 @@ export const POPS = {
   // "New slide ▾": the layouts, as in PowerPoint.
   newslide: () => `<h4>${t('Nueva diapositiva')}</h4><div class="layout-grid">`
     + allMasters().map((m, i, ms) => (ms.length > 1 ? `<div class="layout-master">${esc(m.name || (i ? `${t('Patrón')} ${i + 1}` : t('Patrón')))}</div>` : '')
-      + ensureLayouts().filter(l => masterOf(l) === m).map(l => `<button data-newslide="${l.id}" type="button">${t(l.name)}</button>`).join('')).join('') + `</div>`,
+      + ensureLayouts().filter(l => masterOf(l) === m).map(l => `<button data-newslide="${esc(l.id)}" type="button">${esc(t(l.name))}</button>`).join('')).join('') + `</div>`,
   // The imported theme's colours (an Office, Google Slides or LibreOffice theme) come first, by its name.
   palettes: () => { const own = officeTheme.themeColours(), cur = palettes.currentPalette();
     const sw = p => `<span class="pal-sw" style="background:${p.bg};color:${p.fg}">Aa${p.accents.map(c => `<i style="background:${c}"></i>`).join('')}</span>`;

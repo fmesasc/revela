@@ -13,7 +13,7 @@
 
 import { state, subscribe, snapshot, applyRemote, adoptDeck, setPersist, currentSlide } from '../../core/store.js';
 import { diff, applyOps, allowed, ROLES } from './collabsync.js';
-import { cleanValue } from '../document/sanitize.js';
+import { cleanAt } from '../document/sanitize.js';
 import { PEERJS, loadScript } from '../../core/vendor.js';
 import { peerOptions } from '../../core/ice.js';
 import { portable, hasLive } from '../../core/mediastore.js';
@@ -50,7 +50,7 @@ const presenceOf = () => ({ slide: currentSlide()?.id || null, sel: state.ui.sel
 // has. (Without it, two people changing the same thing at once could each be left seeing a different value.)
 function applyIncoming(ops, watcher, mine = []) {
   watcher.applyToLast(ops); if (mine.length) watcher.applyToLast(mine);
-  for (const op of ops) if (op && 'v' in op) op.v = cleanValue(op.v, String(op.p?.at(-1) ?? ''));   // (a co-editor's changes can't run code)
+  for (const op of ops) if (op && 'v' in op) op.v = cleanAt(op.v, op.p);   // (a co-editor's changes can't run code)
   applyRemote(root => { applyOps(root, ops); if (mine.length) applyOps(root, mine); });
 }
 
