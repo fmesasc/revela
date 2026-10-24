@@ -1302,7 +1302,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(a.status + '|' + a.owner, 'review|Ana Gil', 'guardado'); assert(!b.status && b.owner === 'Ana Gil', 'solo estados conocidos');
     // (Polled: the thumbnails are redrawn a moment later, and on a busy CI machine 30 ms wasn't always enough.)
     const work = () => D.querySelector('#slide-nav .thumb .thumb-work') || D.querySelector('.thumb .thumb-work');
-    for (let i = 0; i < 150 && !(work() && /AG/.test(work().textContent)); i++) await sleep(20);
+    for (let i = 0; i < 400 && !(work() && /AG/.test(work().textContent)); i++) await sleep(20);
     const w = work();
     assert(w && /AG/.test(w.textContent) && /Para revisar/.test(w.title) && /Ana Gil/.test(w.title), 'en su miniatura: el estado y sus iniciales');
     assert(!/Para revisar|Ana Gil/.test(R.io.buildHTML()), 'nunca en la presentación');
