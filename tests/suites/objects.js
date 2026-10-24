@@ -1220,6 +1220,38 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(bs.some(b => b.href === 'https://ejemplo.org/clase'), 'la imagen, a la web');
   });
 
+  await test('animación con IA: comprobada fase a fase en su caja, y al presentar un clic por fase como un vídeo por tramos', async () => {
+    reset(); const W = frame.contentWindow;
+    const AA = await W.eval("import('/src/features/content/aianim.js')");
+    const scene = `RevelaAnim.define({ background: '#ffffff', accent: '#2f6df0',
+      stages: [{ name: 'Uno', caption: 'Primero', duration: 4 }, { name: 'Dos', caption: 'Después', duration: 4 }, { name: 'Tres', caption: 'Al final', duration: 4 }],
+      setup() { return { r: 40 }; },
+      draw({ ctx, stage, p, data }) { ctx.fillStyle = '#2f6df0'; ctx.beginPath(); ctx.arc(200 + stage * 300 + p * 300, 300, data.r, 0, 7); ctx.fill(); } });`;
+    const r = await AA.checkAiAnim(scene);
+    assert(r.ok && r.stages.length === 3 && r.stages[1].caption === 'Después', 'recorrida en su caja, con sus fases: ' + JSON.stringify(r));
+    const bad = await AA.checkAiAnim(`RevelaAnim.define({ stages: [{ name: 'x', caption: 'y', duration: 4 }], draw({ data }) { data.nope.x; } });`);
+    assert(!bad.ok && bad.error, 'una escena que falla: su error, para devolvérselo a la IA: ' + bad.error);
+    const b = AA.aiAnimBlock({ topic: 'Prueba', scene, stages: r.stages, mode: 'steps' });
+    assert(b.type === 'embed' && /default-src 'none'/.test(b.srcdoc) && /RevelaAnim/.test(b.srcdoc) && b.aiAnim.durations.length === 3, 'un objeto HTML que no puede conectarse a nada');
+    assert(!/<\/script><script>alert/.test(AA.aiAnimSrcdoc({ scene: 'x</script><script>alert(1)</script>' })), 'una escena no puede cerrar su script');
+    R.store.commit(() => slide().blocks.push(b));
+    let html = R.io.buildHTML();
+    eq((html.match(/class="fragment rv-aseg"/g) || []).length, 3, 'por pasos: un clic por fase');
+    assert(new RegExp(`data-rv-anim="${b.id}"`).test(html) && /data-aseg-of=/.test(html) && /rvAnim: 'stage'/.test(html), 'y quien los reproduce al presentar');
+    R.store.commit(() => { const s = slide(), i = s.blocks.findIndex(x => x.id === b.id); s.blocks[i] = AA.withAiAnim(s.blocks[i], { mode: 'loop' }); });
+    html = R.io.buildHTML();
+    eq((html.match(/class="fragment rv-aseg"/g) || []).length, 0, 'en bucle: sin clics, se reproduce sola');
+    // The dialog (a fake AI): what it is about, then the preview with its controls, and into the slide.
+    reset();
+    const DA = await W.eval("import('/src/ui/dialogs/aianim.js')");
+    const m = await DA.openAiAnimation(null, { create: async () => ({ scene, stages: r.stages }) });
+    m.querySelector('.aian-topic').value = 'Prueba de animación'; m.querySelector('.aian-go').click(); await sleep(60);
+    assert(!m.querySelector('.aian-result').hidden && m.querySelectorAll('.aian-dur input').length === 3 && m.querySelector('[data-mode="steps"]').getAttribute('aria-pressed') === 'true', 'vista previa por pasos, con la duración de cada fase');
+    m.querySelector('.aian-ok').click(); await sleep(20);
+    const got = slide().blocks.find(x => x.aiAnim?.topic === 'Prueba de animación');
+    assert(got && got.aiAnim.mode === 'steps' && got.w / got.h > 1.7 && !D.getElementById('aian-modal'), 'en la diapositiva, a 16:9');
+  });
+
   await test('SCORM: paquete para plataformas, con la nota de sus actividades y dónde se quedó', async () => {
     reset(); const W = frame.contentWindow;
     const P = await W.eval("import('/src/features/live/poll.js')"), SC = await W.eval("import('/src/io/export/scorm.js')");

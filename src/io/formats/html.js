@@ -31,6 +31,8 @@ import { slideTitle } from '../../features/document/a11y.js';
 import { deckTag, langAttr } from '../../features/document/proofing.js';
 import { blobMedia } from './blobmedia.js';
 import { createMediaPlayer, revelaMediaRuntime, askInVideo } from '../runtime/media.js';
+import { aiAnimRuntime } from '../runtime/aianim.js';
+import { aiAnimSteps } from '../../features/content/aianim.js';
 import { needsPlayer, mediaConfig, cameraSegment, cameraBoxCSS, cameraInnerHTML } from '../../features/live/media.js';
 import { createCameraEngine, revelaCameraRuntime } from '../runtime/camera.js';
 import { modelAttrsHTML, bleedBox, edgeCSS } from '../../features/content/model3d.js';
@@ -436,8 +438,12 @@ function blockHTMLRaw(b, slide) {
     return `<a${a} class="rv-webcard" href="${esc(b.src || '')}" target="_blank" rel="noopener" style="${box(b)}display:block;text-decoration:none">${webCardHTML(b, t('Abrir la web'))}</a>`;
   // (An HTML object — developer mode, ui/dialogs/devmode.js —: its own page in a sandbox with no origin: its scripts
   // run, but can't reach the presentation, its storage or the viewer's cookies.)
-  if (b.type === 'embed' && b.srcdoc != null)
-    return `<iframe${a} srcdoc="${esc(b.srcdoc)}" sandbox="allow-scripts allow-popups" style="${box(b)}border:0;background:${b.transparent ? 'transparent' : '#fff'}"${b.transparent ? ' allowtransparency="true"' : ''}></iframe>`;
+  // (An AI animation — features/content/aianim.js — is one too; in steps, one click per stage, like a video's segments:
+  // io/runtime/aianim.js plays each and stops at its end.)
+  if (b.type === 'embed' && b.srcdoc != null) {
+    const clicks = Array.from({ length: aiAnimSteps(b) }, (_, k) => `<span class="fragment rv-aseg" data-aseg-of="${esc(b.id)}" data-aseg="${k}"${b.animation && !b.animation.trigger ? ` data-fragment-index="${b.animation.order + k + 1}"` : ''} style="display:none"></span>`).join('');
+    return `<iframe${a}${b.aiAnim ? ` data-rv-anim="${esc(b.id)}"` : ''} srcdoc="${esc(b.srcdoc)}" sandbox="allow-scripts allow-popups" style="${box(b)}border:0;background:${b.transparent ? 'transparent' : '#fff'}"${b.transparent ? ' allowtransparency="true"' : ''}></iframe>${clicks}`;
+  }
   if (b.type === 'embed')
     return `<iframe${a} src="${esc(b.src || '')}" referrerpolicy="strict-origin-when-cross-origin"${b.refreshMin ? ` data-refresh-min="${+b.refreshMin}"` : ''} `
       + `sandbox="${embedSandbox(b.src)}" `
@@ -517,6 +523,7 @@ function extraClicks(b, slide) {
   if (b.type === 'diagram' && b.oneByOne) return Math.max(0, ...diagramLayout(b).map(p => +p.i || 0));
   if (b.type === 'code' && b.lineSteps) return String(b.lineSteps).split('|').length - 1;
   if (needsPlayer(b)) return mediaSegs(b, slide).segs.length;
+  if (aiAnimSteps(b)) return aiAnimSteps(b);
   return 0;
 }
 // The slide with its steps renumbered so those clicks are the object's own: the animations after it wait for them.
@@ -1044,6 +1051,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${canvas ? '' : `(${screenFitRuntime})(${jsData(fit)}, ${w}, ${h}, ${fitSize}, ${adaptLayout}, ${connectorPath});`}
  ${/ data-sound="/.test(slides) ? `(${soundRuntime.toString()})();` : ''}
  ${/ data-tabs="/.test(slides) ? `(${tabRuntime.toString()})();` : ''}
+ ${/ data-rv-anim="/.test(slides) ? `(${aiAnimRuntime.toString()})();` : ''}
  ${/ data-pdf[ >]/.test(slides) ? `(${pdfRuntime.toString()})(${JSON.stringify(PDFJS)});` : ''}
  ${/ data-geomap="/.test(slides) ? `(${geoMapRuntime.toString()})(${JSON.stringify(MAPLIBRE)}, ${JSON.stringify(MAPLIBRE_RTL)}, ${jsData({ offline: t('Sin conexión: imagen guardada del mapa') })});` : ''}
  ${bgmHTML ? BGM_JS : ''}

@@ -10,6 +10,7 @@
 import { styled } from '../document/master.js';
 import { linesAt } from '../../render/textfit.js';
 import { isSheetFormula } from '../../core/formulas.js';
+import { aiAnimSrcdoc } from './aianim.js';
 
 export const TEMPLATE_LANGS = ['en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'];
 export const templateLang = lang => (TEMPLATE_LANGS.includes(lang) ? lang : null);
@@ -120,6 +121,8 @@ export function translateDeck(deck, dict, { rtl = false } = {}) {
   walk(deck);
   // (Right to left: tables too — the first column on the right.)
   if (rtl) for (const slide of deck.slides || []) for (const b of slide.blocks || []) if (b.type === 'table') b.dir = 'rtl';
+  // (An AI animation: its page again, with its words in this language — features/content/aianim.js.)
+  for (const slide of deck.slides || []) for (const b of slide.blocks || []) if (b.aiAnim && Array.isArray(b.aiAnim.words)) b.srcdoc = aiAnimSrcdoc(b.aiAnim);
   for (const slide of deck.slides || []) for (const b of slide.blocks || []) if (was.has(b)) {
     ORIGINAL.set(b, was.get(b)); keepLines(b, was.get(b), slide, deck);
     if (rtl && b.type === 'text' && !b.vertical) {

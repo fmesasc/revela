@@ -83,8 +83,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); const W = frame.contentWindow, T = await W.eval("import('/src/ui/shell/tour.js')");
     const closeAll = () => D.querySelectorAll('.modal-backdrop, #backstage').forEach(m => m.remove());
     try {
-      for (const s of T.TOUR) if (s.at) assert(D.querySelector(s.at), 'cada paso apunta a algo que existe: ' + s.at);
-      for (const [k, v] of Object.entries(T.TOURS)) for (const s of v.steps) if (s.at) assert(D.querySelector(s.at), `tutorial ${k}: apunta a algo que existe: ${s.at}`);
+      for (const s of T.TOUR) if (typeof s.at === 'string' && !s.inside) assert(D.querySelector(s.at), 'cada paso apunta a algo que existe: ' + s.at);
+      for (const [k, v] of Object.entries(T.TOURS)) for (const s of v.steps) if (typeof s.at === 'string' && !s.inside) assert(D.querySelector(s.at), `tutorial ${k}: apunta a algo que existe: ${s.at}`);
       assert(T.TOURS.main.steps.some(s => /insert-map/.test(s.at || '')), 'el principal enseña el mapa que vuela');
       R.store.commit(() => (R.state.ui.activeTab = 'view'), { history: false }); await sleep(20);
       D.querySelector('[data-action="tour"]').click(); await sleep(30);
@@ -100,12 +100,39 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(!ring.hidden && a.left <= b.left && a.right >= b.right && a.top <= b.top && a.bottom >= b.bottom, 'la luz rodea el botón real');
       assert(!tour.querySelector('[data-tour="next"]') && tour.querySelector('.tour-do'), 'sin «Siguiente»: se avanza haciendo clic en él');
       btn.click(); await sleep(400);
-      if (D.querySelector('.modal-backdrop')) { assert(tour.hidden, 'mientras está abierto lo que abre, el tutorial espera detrás'); closeAll(); await sleep(400); }
-      assert(!tour.hidden && / 3 \//.test(tour.querySelector('.tour-n').textContent), 'cerrado, sigue en el paso siguiente');
+      // (Inside the AI's window: the box lit, with an example written; closing it skips what was left of it.)
+      if (D.querySelector('#ai-modal .ad-topic')) {
+        assert(!tour.hidden && D.querySelector('#ai-modal .ad-topic').value.length > 5, 'dentro de la ventana sigue, con un ejemplo ya escrito');
+        assert(!tour.querySelector('.tour-ring').hidden, 'e ilumina dónde escribir');
+      }
+      closeAll(); await sleep(3000);
+      const after = T.TOUR.findIndex(s => s.at === '[data-tab="file"]') + 1;
+      assert(!tour.hidden && new RegExp(` ${after} /`).test(tour.querySelector('.tour-n').textContent), 'cerrada la ventana, sigue en el paso que viene después de ella');
       tour.querySelector('[data-tour="back"]').click(); await sleep(30);
-      assert(/ 2 \//.test(tour.querySelector('.tour-n').textContent), '«Atrás» vuelve');
+      assert(/ 2 \//.test(tour.querySelector('.tour-n').textContent), '«Atrás» vuelve a lo que abre la ventana');
       D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(30);
       assert(!D.getElementById('tour') && !T.tourRunning() && W.localStorage.getItem('revela.tour.v1'), 'Esc lo termina, y queda visto');
+      // Doing it inside the 3D gallery: the search written, the lupa pressed, then a result to pick.
+      T.startTour('threed'); T.showStep(1); await sleep(30);
+      [...D.querySelectorAll('[data-action="resources-3d"]')].find(e => e.getBoundingClientRect().width > 0).click();
+      await sleep(600);
+      const t3 = D.getElementById('tour');
+      // (An example written — or what they searched last time there, which is kept.)
+      assert(D.querySelector('#elements-panel .sk-q')?.value.trim(), '3D: la búsqueda ya escrita');
+      assert(/Escribe qué buscas/.test(t3.querySelector('h3').textContent) && !t3.hidden, '3D: el paso de buscar, dentro del panel');
+      D.querySelector('#elements-panel .sk-go').click(); await sleep(900);
+      assert(/Elige uno/.test(t3.querySelector('h3').textContent), '3D: buscado, toca elegir uno');
+      T.stopTour(false); D.querySelector('#elements-panel .cm-close')?.click();
+      // The first sign-in: where they are, and which one to start with.
+      T.startTour('welcome'); await sleep(30);
+      const tw = D.getElementById('tour');
+      assert(tw.querySelector('[data-tour="pick:basics"]') && tw.querySelector('[data-tour="pick:main"]') && tw.querySelector('[data-tour="others"]'), 'bienvenida: elegir por cuál empezar o verlos todos');
+      eq(R.state.ui.activeTab, 'view', 'bienvenida: en la pestaña donde están');
+      const tb = D.querySelector('.ribbon-page[data-page="view"] [data-action="tour"]').getBoundingClientRect();
+      if (tb.right < W.innerWidth && tb.width > 4) assert(!tw.querySelector('.tour-ring').hidden, 'bienvenida: ilumina el botón de los tutoriales');
+      tw.querySelector('[data-tour="pick:basics"]').click(); await sleep(30);
+      eq(T.tourName(), 'basics', 'bienvenida: empieza el elegido');
+      T.stopTour(false);
       // The last step: repeat it, or another one (a tour of its own: maps).
       T.startTour('maps'); T.showStep(T.TOURS.maps.steps.length - 1); await sleep(30);
       const tm = D.getElementById('tour');
