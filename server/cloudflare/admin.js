@@ -223,21 +223,39 @@ export class Directory {
     }
     if (op === 'search') {                                // { q, cursor, limit } → { users, cursor }
       const limit = Math.min(100, Math.max(1, +a.limit || 50)), q = fold(a.q);
-      let keys;
-      if (q) {
-        // Any field: every word must be somewhere in the account (email, name, sub, plan, team, dates, state), without
-        // caring about accents or case. A scan of every record, like stats: fine for thousands of accounts. Those whose
-        // email or name starts with what's searched first, then the most recently seen; the cursor is where to go on.
-        const words = q.split(/\s+/), found = [];
-        for (const [, r] of await st.list({ prefix: 'u:' })) { const text = haystack(r); if (words.every(w => text.includes(w))) found.push(r); }
+      // Column to sort by and direction (the admin's clickable headers); 'recent' = most recently seen (the default).
+      let sort = a.sort || 'recent'; if (sort === 'recent') sort = 'lastSeen';
+      const dir = a.dir === 'asc' ? 1 : a.dir === 'desc' ? -1 : sort === 'lastSeen' ? -1 : 1;
+      // Filter by the last-use day (lastSeen, 'YYYY-MM-DD'): today, yesterday, the last 7 or 30 days.
+      const active = a.active || '', today = new Date().toISOString().slice(0, 10), dayAgo = n => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+      const windows = { today: s => s === today, yesterday: s => s === dayAgo(1), '7d': s => s >= dayAgo(6), '30d': s => s >= dayAgo(29) };
+      const inWindow = windows[active] || (() => true);
+      // Fast path: the default order (most recent first), no search and no filter — the s: index, paged by its cursor.
+      if (!q && !active && (!a.sort || a.sort === 'recent') && a.dir !== 'asc') {
+        const m = await st.list({ prefix: 's:', reverse: true, limit: limit + 1, ...(a.cursor && { end: a.cursor }) });
+        const keys = [...m], users = await getMany(st, keys.slice(0, limit).map(([, v]) => 'u:' + v));
+        return Response.json({ users, cursor: keys.length > limit ? keys[limit - 1][0] : null });
+      }
+      // Otherwise one pass over the directory (fine for thousands): word search, day filter and the chosen column.
+      const words = q ? q.split(/\s+/) : [], found = [];
+      for (const [, r] of await st.list({ prefix: 'u:' })) {
+        if (!inWindow(r.lastSeen || '')) continue;
+        if (words.length) { const text = haystack(r); if (!words.every(w => text.includes(w))) continue; }
+        found.push(r);
+      }
+      const cmps = { lastSeen: (x, y) => String(x.lastSeen || '').localeCompare(String(y.lastSeen || '')), email: (x, y) => fold(x.email).localeCompare(fold(y.email)),
+        name: (x, y) => fold(x.name).localeCompare(fold(y.name)), credits: (x, y) => (x.credits || 0) - (y.credits || 0), created: (x, y) => (x.created || 0) - (y.created || 0),
+        plan: (x, y) => String(x.plan).localeCompare(String(y.plan)) || (x.until || 0) - (y.until || 0), team: (x, y) => (x.team ? 1 : 0) - (y.team ? 1 : 0) };
+      if (q && !a.sort) {
+        // A search with no explicit sort: the best matches first (email or name starting with it), then most recent.
         const first = r => (r.sub === q ? 0 : fold(r.email).startsWith(q) || fold(r.name).startsWith(q) ? 1 : 2);
         found.sort((x, y) => first(x) - first(y) || String(y.lastSeen || '').localeCompare(String(x.lastSeen || '')) || x.sub.localeCompare(y.sub));
-        const from = Math.max(0, parseInt(a.cursor, 10) || 0);
-        return Response.json({ users: found.slice(from, from + limit), cursor: found.length > from + limit ? String(from + limit) : null, total: found.length });
+      } else {
+        const base = cmps[sort] || cmps.lastSeen;
+        found.sort((x, y) => dir * base(x, y) || x.sub.localeCompare(y.sub));
       }
-      const m = await st.list({ prefix: 's:', reverse: true, limit: limit + 1, ...(a.cursor && { end: a.cursor }) });
-      keys = [...m]; const users = await getMany(st, keys.slice(0, limit).map(([, v]) => 'u:' + v));
-      return Response.json({ users, cursor: keys.length > limit ? keys[limit - 1][0] : null });
+      const from = Math.max(0, parseInt(a.cursor, 10) || 0);
+      return Response.json({ users: found.slice(from, from + limit), cursor: found.length > from + limit ? String(from + limit) : null, total: found.length });
     }
     if (op === 'stats') {                                 // (a scan of every record: fine for thousands of accounts)
       const now = Date.now(), d1 = new Date(now).toISOString().slice(0, 10), d30 = new Date(now - 29 * 864e5).toISOString().slice(0, 10);
@@ -610,7 +628,7 @@ export async function handleAdmin(req, env, url) {
       env.VISITS ? visitsCall(env, 'err-summary').catch(() => null) : null, openRouterCredits(env).catch(() => ({ error: 'fail' }))]);
     return json({ ...u, ai: ai && { month: new Date().toISOString().slice(0, 7), usd: ai.usd, limit: ai.limit }, tickets, errors, openrouter, health: healthOf(env) });
   }
-  if (GET && path === '/users') return json(await call(D, 'search', { q: clip(q.get('q'), 200), cursor: q.get('cursor') || null, limit: +q.get('limit') || 50 }));
+  if (GET && path === '/users') return json(await call(D, 'search', { q: clip(q.get('q'), 200), cursor: q.get('cursor') || null, limit: +q.get('limit') || 50, sort: q.get('sort') || null, dir: q.get('dir') || null, active: q.get('active') || null }));
   let m = path.match(/^\/users\/([\w.-]{1,100})$/);
   if (GET && m) {
     const v = await account(m[1]); if (!v) return json({ error: 'not found' }, 404);

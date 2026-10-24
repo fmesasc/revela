@@ -138,12 +138,42 @@ export function model3dRuntime() {
       (function step(now) { mv.style.marginTop = (Math.sin((now - t0) / 700) * 14).toFixed(1) + 'px'; t.raf = requestAnimationFrame(step); })(t0);
     }
   }
+  // Phones and low-memory devices: each 3D model holds a live WebGL context, and iOS Safari kills the tab
+  // ("this webpage was reloaded…") after a few at once. So there we load fewer around the current slide and
+  // release the rest (they fall back to their poster until the slide is near again).
+  var LEAN = (function () {
+    try {
+      return (navigator.deviceMemory && navigator.deviceMemory <= 4)
+        || /iP(hone|od|ad)/.test(navigator.userAgent)
+        || (/\bMac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)      // iPadOS pretends to be a Mac
+        || (window.matchMedia && matchMedia('(pointer: coarse)').matches && Math.min(screen.width || 9999, screen.height || 9999) <= 820);
+    } catch (e) { return false; }
+  })();
   // The models of this slide and the next ones load now, not when they come into
   // view (model-viewer waits for that): else a slide arrives with an empty box.
+  // On lean devices, only the current slide and the next (not the one before too).
   function preload(slide) {
     var all = window.Reveal ? Reveal.getSlides() : [], i = all.indexOf(slide);
-    all.slice(Math.max(0, i - 1), i + 3).concat(slide ? [slide] : []).forEach(function (s) {
+    var win = LEAN ? all.slice(i, i + 2) : all.slice(Math.max(0, i - 1), i + 3);
+    win.concat(slide ? [slide] : []).forEach(function (s) {
       s.querySelectorAll('model-viewer:not([loading="eager"])').forEach(function (mv) { mv.setAttribute('loading', 'eager'); });
+    });
+  }
+  // Keep only the slides next to the current one with their models loaded; the rest give up their WebGL
+  // context (src removed → the poster shows). When a slide comes back within reach, its models load again.
+  function trim(slide) {
+    if (!LEAN || !window.Reveal) return;
+    var all = Reveal.getSlides(), i = all.indexOf(slide);
+    all.forEach(function (s, k) {
+      var near = Math.abs(k - i) <= 1;
+      s.querySelectorAll('model-viewer').forEach(function (mv) {
+        if (near) {
+          if (mv.__src3d && !mv.getAttribute('src')) { mv.setAttribute('loading', 'eager'); mv.setAttribute('src', mv.__src3d); mv.__src3d = null; }
+        } else {
+          var cur = mv.getAttribute('src');
+          if (cur) { mv.__src3d = cur; try { mv.src = null; } catch (e) {} mv.removeAttribute('src'); }
+        }
+      });
     });
   }
   // handed: models that came from the slide before → how long until they arrive.
@@ -173,6 +203,7 @@ export function model3dRuntime() {
       }
       var t = { iv: setTimeout(function () { start(mv, true); }, wait) }; timers.set(mv, t);
     });
+    trim(slide);
   }
   // With room around it, only the model's own box (the middle of the view) takes the
   // pointer to turn it; around, clicks reach what is under (a link, a button).

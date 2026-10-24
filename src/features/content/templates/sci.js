@@ -608,13 +608,13 @@ export default {
       { title: 'La temperatura media sube', layout: 'titleOnly', extra: [
         chartBlock({ x: 90, y: 170, w: 780, h: 470, chartType: 'line', color: RED, grid: true, dataLabels: false, xTitle: 'Década', yTitle: '°C respecto a 1951-1980', seriesName: 'Anomalía',
           data: decades.map((d, i) => ({ label: i % 2 ? '' : d, value: temps[i] })) }),
-        text(`<div style="font-family:${H};font-size:80px;font-weight:800;color:${RED};line-height:1.05">+1,2 °C</div><div>desde la época preindustrial</div>`, 910, 210, 290, 190, { fontSize: 24, color: INK }),
+        text(`<div style="font-family:${H};font-size:80px;font-weight:800;color:${RED};line-height:1.05">+1,3 °C</div><div>desde la época preindustrial</div>`, 910, 210, 290, 190, { fontSize: 24, color: INK }),
         anim(text('La última década es la más cálida desde que hay registros.', 910, 440, 290, 150, { fontSize: 24, color: GREY }), 1, 'fade-up')],
         notes: 'Gráfico de líneas con cuadrícula y títulos en los dos ejes. Valores por década redondeados de las series públicas.' },
       { title: 'El CO₂ no deja de crecer', layout: 'titleOnly', transition: 'wipe', extra: [
         chartBlock({ x: 90, y: 170, w: 780, h: 470, chartType: 'area', color: '#8d6e63', grid: true, dataLabels: true, yTitle: 'ppm por encima de 280',
-          data: [[1960, 317], [1970, 326], [1980, 339], [1990, 354], [2000, 370], [2010, 390], [2020, 414], [2025, 426]].map(([y, v]) => ({ label: String(y), value: v - 280 })) }),
-        text(`<div style="font-family:${H};font-size:80px;font-weight:800;color:#8d6e63;line-height:1.05">426</div><div>partes por millón en 2025</div>`, 910, 210, 290, 190, { fontSize: 24, color: INK }),
+          data: [[1960, 317], [1970, 326], [1980, 339], [1990, 354], [2000, 370], [2010, 390], [2020, 414], [2025, 427]].map(([y, v]) => ({ label: String(y), value: v - 280 })) }),
+        text(`<div style="font-family:${H};font-size:80px;font-weight:800;color:#8d6e63;line-height:1.05">427</div><div>partes por millón en 2025</div>`, 910, 210, 290, 190, { fontSize: 24, color: INK }),
         text('El gráfico muestra lo que sobra sobre las 280 ppm de antes de la revolución industrial.', 910, 440, 290, 150, { fontSize: 24, color: GREY })],
         notes: 'Gráfico de área: concentración de CO₂ medida en observatorios de montaña (valores redondeados). Transición «Barrido».' },
       { title: 'El efecto invernadero, paso a paso', layout: 'titleOnly', bg: '#eef5ea', extra: [
