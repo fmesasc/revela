@@ -173,6 +173,31 @@ export function cleanTrial(b) {
   if (!Number.isInteger(days) || days < 0 || days > 90 || !Number.isInteger(cr) || cr < 0 || cr > 10000 || typeof b.trialOncePerAccount !== 'boolean') return null;
   return { trialDays: days, trialCredits: cr, trialOncePerAccount: b.trialOncePerAccount };
 }
+// Credits for finishing the guided tours (the app's ui/shell/tour.js), set from the admin (admin.js «Promociones»; kept
+// in the Budget object): on; perTour, the credits for finishing each one (0: none); credits, a bonus for finishing them
+// all; days they last; monthlyPeople, how many accounts can get any of it in a calendar month (0: no limit — reached,
+// nothing more until the next month: no boom can run away with it). Off unless turned on. Each tour's credits and the
+// bonus once per account; the account object keeps which ones (op 'tour-done') and grants them itself.
+export const TOUR_KEYS = ['basics', 'main', 'maps', 'anim', 'threed', 'live', 'ai', 'present', 'collab', 'design', 'io', 'data'];
+export const TOURS_DEFAULT = { on: false, perTour: {}, credits: 150, days: 90, monthlyPeople: 0 };
+let toursCache = { at: 0, v: null };
+export const resetToursCache = () => { toursCache = { at: 0, v: null }; };
+export async function toursConfig(env, fresh) {
+  if (!env.BUDGET) return { ...TOURS_DEFAULT };
+  if (!fresh && toursCache.v && Date.now() - toursCache.at < 30e3) return toursCache.v;
+  const r = await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'tours-get').catch(() => null);
+  const v = { ...TOURS_DEFAULT, ...(r?.tours || {}) }; toursCache = { at: Date.now(), v }; return v;
+}
+// The admin's settings for it, checked (null: not valid). At most 1000 credits — a Pro month's.
+export function cleanTours(b) {
+  const cr = +b?.credits, days = +b?.days, max = +(b?.monthlyPeople ?? 0), per = b?.perTour ?? {};
+  if (typeof b?.on !== 'boolean' || !Number.isInteger(cr) || cr < 0 || cr > 1000 || !Number.isInteger(days) || days < 1 || days > 365
+    || !Number.isInteger(max) || max < 0 || max > 1e6 || !per || typeof per !== 'object' || Array.isArray(per)) return null;
+  const perTour = {};
+  for (const [k, v] of Object.entries(per)) { if (!TOUR_KEYS.includes(k) || !Number.isInteger(+v) || +v < 0 || +v > 200) return null; if (+v) perTour[k] = +v; }
+  return { on: b.on, perTour, credits: cr, days, monthlyPeople: max };
+}
+const monthOf = (t = Date.now()) => new Date(t).toISOString().slice(0, 7);
 // The notices (notices.js), read again at most once a minute per Worker instance (the admin's changes reset it here).
 let noticeCache = { at: 0, list: null };
 export const resetNoticeCache = () => { noticeCache = { at: 0, list: null }; };
@@ -573,6 +598,20 @@ export class Account {
         else if (used) this.fin({ kind: 'credits', reason: a.reason || 'ai', delta: -used, sub: (await this.get('profile', {})).sub });
         return this.json({ ok: true, used });
       }
+      case 'tours-get': return this.json({ done: await this.get('toursDone', []), paid: await this.get('toursPaid', []), rewarded: !!(await this.get('toursRewarded', null)), claimed: await this.get('toursClaimed', null) });
+      case 'tour-done': {                                  // { tour, all, per?, bonus?, days?, dry? } — each tour's credits and the bonus once
+        const all = a.all || [], tour = String(a.tour);
+        const before = await this.get('toursDone', []), fresh = all.includes(tour) && !before.includes(tour);
+        const done = [...new Set([...before, tour])].filter(k => all.includes(k)), paid = await this.get('toursPaid', []);
+        const g1 = +a.per > 0 && !paid.includes(tour) ? Math.round(+a.per) : 0;
+        const g2 = +a.bonus > 0 && all.every(k => done.includes(k)) && !(await this.get('toursRewarded', null)) ? Math.round(+a.bonus) : 0;
+        if (a.dry) return this.json({ would: g1 + g2 });   // (what it would give: the route checks the month's cap first)
+        await this.put({ toursDone: done, ...(a.claim && (g1 || g2) && { toursClaimed: a.claim }) });   // (the month this account was counted in)
+        if (g1) { await this.put({ toursPaid: [...paid, tour] }); await this.entry(g1, 'tours', 'tour:' + tour, +a.days || 90); }
+        if (g2) { await this.put({ toursRewarded: Date.now() }); await this.entry(g2, 'tours', 'tours:all', +a.days || 90); }
+        if (g1 || g2) await this.dirSync();
+        return this.json({ done, fresh, granted: g1 + g2, all: !!g2, rewarded: !!(await this.get('toursRewarded', null)), credits: await this.get('credits', 0) });
+      }
       case 'grant': {                                      // { credits, reason, ref } — once per ref (payments)
         const done = await this.get('refs', []);
         if (a.ref && done.includes(a.ref)) return this.json({ ok: true, duplicate: true });
@@ -783,6 +822,24 @@ export class Budget {
     // (Also the settings the admin changes without a deploy: Pro's free trial, trialConfig.)
     if (op === 'config-get') return Response.json({ trial: (await this.ctx.storage.get('trial')) || null });
     if (op === 'config-set') { await this.ctx.storage.put('trial', a.trial); return Response.json({ ok: true }); }
+    // (And the credits for finishing the guided tours, toursConfig.)
+    if (op === 'tours-get') return Response.json({ tours: (await this.ctx.storage.get('tours')) || null });
+    if (op === 'tours-set') { await this.ctx.storage.put('tours', a.tours); return Response.json({ ok: true }); }
+    // (The log of the tours finished for the first time — the last 1000, for the admin — and each month's count per tour.)
+    if (op === 'tours-log-add') {
+      const log = (await this.ctx.storage.get('toursLog')) || [], k = 'toursCount:' + String(a.at ? new Date(a.at).toISOString().slice(0, 7) : ''), c = (await this.ctx.storage.get(k)) || {};
+      log.push({ at: +a.at || Date.now(), sub: String(a.sub || ''), email: String(a.email || '').slice(0, 200), tour: String(a.tour || ''), granted: +a.granted || 0 });
+      c[a.tour] = (c[a.tour] || 0) + 1;
+      await this.ctx.storage.put({ toursLog: log.slice(-1000), [k]: c }); return Response.json({ ok: true });
+    }
+    if (op === 'tours-log') return Response.json({ log: ((await this.ctx.storage.get('toursLog')) || []).slice(-(+a.limit || 200)).reverse(), byTour: (await this.ctx.storage.get('toursCount:' + a.month)) || {} });
+    // (How many accounts got the tours' credits this month, and one more within the month's limit.)
+    if (op === 'tours-month') return Response.json({ month: a.month, people: (await this.ctx.storage.get('toursPeople:' + a.month)) || 0 });
+    if (op === 'tours-claim') {
+      const k = 'toursPeople:' + a.month, people = (await this.ctx.storage.get(k)) || 0;
+      if (+a.max > 0 && people >= +a.max) return Response.json({ ok: false, people });
+      await this.ctx.storage.put(k, people + 1); return Response.json({ ok: true, people: people + 1 });
+    }
     // (And the cloud's quotas, storage.js.)
     if (op === 'storage-get') return Response.json({ storage: (await this.ctx.storage.get('storage')) || null });
     if (op === 'storage-set') { await this.ctx.storage.put('storage', a.storage); return Response.json({ ok: true }); }
@@ -1120,6 +1177,29 @@ export async function handleApi(req, env, url) {
   const A = acct(env, me.sub);
   if (path.startsWith('/call/') && req.method === 'POST') { const prof = await call(A, 'me'); return handleCalls(path, body, env, { sub: me.sub, email: prof.email, features: prof.features }, A, call, json); }
   if (path === '/3d' || path.startsWith('/3d/')) return handle3d(path, req, body, env, me, A, json);
+  // The guided tours (the app's ui/shell/tour.js): which ones this person finished and — when the admin turned it on —
+  // the credits for finishing them all, granted here once (the app only says which tour it finished).
+  if (path === '/tours' && req.method === 'GET') {
+    const cfg = await toursConfig(env), r = await call(A, 'tours-get');
+    const left = !cfg.on ? 0 : !cfg.monthlyPeople || r.claimed === monthOf() ? Infinity
+      : cfg.monthlyPeople - (await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'tours-month', { month: monthOf() })).people;
+    const perTour = Object.fromEntries(Object.entries(cfg.perTour || {}).filter(([k]) => !r.paid.includes(k)));
+    return json({ done: r.done, reward: cfg.on && left > 0 && (Object.keys(perTour).length || (cfg.credits && !r.rewarded)) ? { perTour, credits: r.rewarded ? 0 : cfg.credits } : null });
+  }
+  if (path === '/tours/done' && req.method === 'POST') {
+    if (!TOUR_KEYS.includes(body?.tour)) return json({ error: 'bad request' }, 400);
+    const cfg = await toursConfig(env), ask = { tour: body.tour, all: TOUR_KEYS, days: cfg.days };
+    const offer = cfg.on ? { per: cfg.perTour?.[body.tour] || 0, bonus: cfg.credits } : {};
+    // (Within the month's limit of people — an account counted once a month —; over it, the tour is marked done and
+    // nothing is given.)
+    const month = monthOf(), would = cfg.on ? (await call(A, 'tour-done', { ...ask, ...offer, dry: true })).would : 0;
+    const counted = would && (await call(A, 'tours-get')).claimed === month;
+    const ok = !would || counted || (await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'tours-claim', { month, max: cfg.monthlyPeople })).ok;
+    const res = await call(A, 'tour-done', { ...ask, ...(ok && offer), ...(ok && would && { claim: month }) });
+    // (The first time this person finishes this tour: in the admin's log, with what it gave.)
+    if (res.fresh) await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'tours-log-add', { at: Date.now(), sub: me.sub, email: (await call(A, 'me')).email, tour: body.tour, granted: res.granted }).catch(() => {});
+    return json(res);
+  }
   // «Desarrolladores»: my API keys, and saying yes to an app that asks to connect (publicapi.js).
   if (path === '/keys' || path.startsWith('/keys/')) return handleKeys(path, req, body, me, A, json);
   if (path === '/hooks' || path.startsWith('/hooks/')) return handleHooks(path, req, body, me, A, env, json);

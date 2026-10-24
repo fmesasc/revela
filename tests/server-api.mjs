@@ -2,6 +2,7 @@
 // payments and the desktop sign-in — above all, that nothing can be skipped
 // from outside. In-memory Durable Objects; the AI provider, Google and Stripe
 // are simulated. Run by tests/run.sh when Node.js is available.
+import { readFileSync } from 'node:fs';
 import worker, { edgeKept, Account, Budget, DesktopLink, ShareBox, Limits, CloudDoc, Team, CallRoom, Schedule, ModelJob, Directory, Tickets, Audit, Finance, Crm, Community, Broadcast } from '../server/cloudflare/worker.js';
 import { summarize, bump, toCsv, cleanEntry, featureOf } from '../server/cloudflare/finance.js';
 import { verifyAccess, resetAccessCerts, resetPromoCache, ticketsDue } from '../server/cloudflare/admin.js';
@@ -41,7 +42,7 @@ env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
     const t = new URL(u).searchParams.get('access_token');
-    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' }, 'tok-lia': { sub: '2323', email: 'lia@example.com' }, 'tok-sto': { sub: '2424', email: 'sto@example.com' }, 'tok-una': { sub: '2525', email: 'una@example.com' } }[t];
+    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' }, 'tok-lia': { sub: '2323', email: 'lia@example.com' }, 'tok-sto': { sub: '2424', email: 'sto@example.com' }, 'tok-una': { sub: '2525', email: 'una@example.com' }, 'tok-tour': { sub: '2626', email: 'tour@example.com' }, 'tok-tour2': { sub: '2727', email: 'tour2@example.com' }, 'tok-tour3': { sub: '2828', email: 'tour3@example.com' } }[t];
     if (t === 'tok-otraapp') return Response.json({ aud: 'otra-app', sub: '333', email: 'x@example.com', email_verified: 'true' });
     return who ? Response.json({ aud: CID, ...who, email_verified: 'true', expires_in: 3000 }) : new Response('bad', { status: 400 });
   }
@@ -1817,6 +1818,44 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok((await A('POST', '/promos/trial', { body: { trialDays: -1, trialCredits: 100, trialOncePerAccount: true } })).status === 400 && (await A('POST', '/promos/trial', { body: { trialDays: 7, trialCredits: 100 } })).status === 400, 'prueba gratis: ajustes inválidos → 400');
     x = await A('POST', '/promos/trial', { body: { trialDays: 7, trialCredits: 100, trialOncePerAccount: true, reason: 'Probar la prueba' } });
     ok(x.status === 200 && x.j.after.trialDays === 7 && x.j.before.trialDays === 0 && (await A('GET', '/audit?target=config:trial')).j.entries[0]?.action === 'trial-config', 'prueba gratis: activada (auditado)');
+    // Credits for finishing the guided tours: off by default; on, once, for finishing all of them (granted by the server).
+    { const tc = await login('tok-tour'), T = (m, p, body) => req(m, '/api' + p, { headers: { Cookie: tc }, ...(body && { body }) }).then(async r => ({ status: r.status, j: await r.json().catch(() => null) }));
+      const base = (await meOf(tc)).credits;
+      ok((await A('GET', '/promos/tours')).j.config.on === false && (await T('GET', '/tours')).j.reward === null, 'tutoriales: premio apagado por defecto');
+      ok((await A('POST', '/promos/tours', { body: { on: true, credits: 5000, days: 90 } })).status === 400 && (await A('POST', '/promos/tours', { body: { on: 'sí', credits: 100, days: 90 } })).status === 400, 'tutoriales: ajustes no válidos, no');
+      x = await A('POST', '/promos/tours', { body: { on: true, credits: 150, days: 90, reason: 'Que aprendan a usarlo' } });
+      ok(x.status === 200 && x.j.after.credits === 150 && (await A('GET', '/audit?target=config:tours')).j.entries[0]?.action === 'tours-config', 'tutoriales: premio activado (auditado)');
+      ok((await T('GET', '/tours')).j.reward?.credits === 150, 'tutoriales: la app sabe que hay premio');
+      ok((await T('POST', '/tours/done', { tour: 'inventado' })).status === 400 && (await req('POST', '/api/tours/done', { body: { tour: 'main' } })).status === 401, 'tutoriales: solo los que existen, y con sesión');
+      const keys = ['basics', 'main', 'maps', 'anim', 'threed', 'live', 'ai', 'present', 'collab', 'design', 'io', 'data'];
+      { const app = [...readFileSync(new URL('../src/ui/shell/tour.js', import.meta.url), 'utf8').matchAll(/^  (\w+): \{ name:/gm)].map(m => m[1]);
+        ok(JSON.stringify(app) === JSON.stringify(keys), 'tutoriales: la app y el servidor tienen los mismos (si no, «todos» no se podría completar nunca): ' + app.join()); }
+      for (const k of keys.slice(0, -1)) x = await T('POST', '/tours/done', { tour: k });
+      ok(x.j.granted === 0 && x.j.done.length === 11 && (await meOf(tc)).credits === base, 'tutoriales: con 11 de 12, nada todavía');
+      x = await T('POST', '/tours/done', { tour: 'data' });
+      ok(x.j.granted === 150 && (await meOf(tc)).credits === base + 150, 'tutoriales: los 12 → 150 créditos');
+      x = await T('POST', '/tours/done', { tour: 'main' });
+      ok(x.j.granted === 0 && (await meOf(tc)).credits === base + 150 && (await T('GET', '/tours')).j.reward === null, 'tutoriales: el premio, una sola vez');
+      { const lg = (await A('GET', '/promos/tours')).j;
+        ok(lg.log.filter(e => e.email === 'tour@example.com').length === 12 && lg.log.find(e => e.email === 'tour@example.com' && e.tour === 'data').granted === 150 && lg.byTour.data >= 1,
+          'tutoriales: registro para el panel — cada uno la primera vez (no al repetirlo), con lo que dio, y el recuento del mes'); }
+      // Each tour its own credits, and a limit of people a month (an account counted once a month).
+      ok((await A('POST', '/promos/tours', { body: { on: true, perTour: { inventado: 5 }, credits: 0, days: 90 } })).status === 400
+        && (await A('POST', '/promos/tours', { body: { on: true, perTour: { maps: 500 }, credits: 0, days: 90 } })).status === 400, 'tutoriales: créditos por tutorial solo de los que existen, hasta 200');
+      x = await A('POST', '/promos/tours', { body: { on: true, perTour: { maps: 20 }, credits: 0, days: 30, monthlyPeople: 2 } });
+      ok(x.status === 200 && x.j.after.perTour.maps === 20 && x.j.after.monthlyPeople === 2, 'tutoriales: por tutorial y personas al mes, guardados');
+      ok((await A('POST', '/promos/tours', { body: { on: true, credits: 0, days: 30, monthlyPeople: -1 } })).status === 400, 'tutoriales: un límite de personas no válido, no');
+      const t2 = await login('tok-tour2'), t3 = await login('tok-tour3');
+      const U = (c, m, p, body) => req(m, '/api' + p, { headers: { Cookie: c }, ...(body && { body }) }).then(r => r.json());
+      { const g = await U(t2, 'GET', '/tours'); ok(g.reward?.perTour?.maps === 20, 'tutoriales: la app ve cuánto da cada uno: ' + JSON.stringify(g)); }
+      ok((await U(t2, 'POST', '/tours/done', { tour: 'maps' })).granted === 20 && (await U(t2, 'POST', '/tours/done', { tour: 'maps' })).granted === 0, 'tutoriales: el de mapas da 20, una vez');
+      ok((await U(t2, 'POST', '/tours/done', { tour: 'ai' })).granted === 0, 'tutoriales: uno sin créditos asignados, nada');
+      x = await U(t3, 'POST', '/tours/done', { tour: 'maps' });
+      ok(x.granted === 0 && x.done.includes('maps') && (await A('GET', '/promos/tours')).j.month.people === 2, 'tutoriales: con 2 personas este mes ya premiadas, la tercera no recibe nada (queda hecho igualmente)');
+      ok((await U(t3, 'GET', '/tours')).reward === null, 'tutoriales: con el límite alcanzado, la app no promete nada que no daría');
+      await A('POST', '/promos/tours', { body: { on: true, perTour: { maps: 20, ai: 5 }, credits: 0, days: 30, monthlyPeople: 2 } });
+      ok((await U(t2, 'POST', '/tours/done', { tour: 'ai' })).granted === 5, 'tutoriales: quien ya contó este mes sigue recibiendo lo suyo (no ocupa otra plaza)');
+      await A('POST', '/promos/tours', { body: { on: false, credits: 150, days: 90 } }); }
     // Who gets it: an account that never had Pro, yes; one with a paid Pro or with a plan from before, no.
     const bea = await login('tok-bea', 'en'), cid = await login('tok-cid'), BS = () => acc('1818').ctx.storage.m;
     me = await meOf(bea); ok(me.trialDays === 7, '/api/me: prueba de 7 días disponible para una cuenta nueva');

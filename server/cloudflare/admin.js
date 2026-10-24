@@ -77,6 +77,8 @@
 //                                          firstTime?, perCustomer?, reason? }   (a coupon + its promotion code, in Stripe)
 //   POST /api/admin/promos/:id/active      { mode?, active, reason? }   (deactivate or reactivate a code)
 //   GET  /api/admin/promos/trial           → { config, stats: { live, test } }   (Pro's free trial: api.js trialConfig)
+//   GET  /api/admin/promos/tours[?limit=]  → { config, month: { month, people }, keys, log: [{ at, sub, email, tour, granted }], byTour }
+//                                            POST { on, perTour, credits, days, monthlyPeople, reason }
 //   POST /api/admin/promos/trial           { trialDays, trialCredits, trialOncePerAccount, reason? }
 //   (Stripe errors for want of permission: 502 { error: 'stripe permissions', message } naming what to add to the restricted key.)
 //   GET  /api/admin/notices                → { notices, stats }   (Revela's own notices: notices.js; stats per notice and day)
@@ -98,7 +100,7 @@
 // the admin (SUPPORT_NOTIFY, else the first of ADMIN_EMAILS). The daily cron reminds once and then
 // closes tickets left waiting for the person (ticketsDue: SUPPORT_REMIND_DAYS, SUPPORT_AUTOCLOSE_DAYS).
 
-import { acct, call, settings, trialConfig, cleanTrial, resetTrialCache, resetNoticeCache } from './api.js';
+import { acct, call, settings, trialConfig, cleanTrial, resetTrialCache, resetNoticeCache, toursConfig, cleanTours, resetToursCache, TOUR_KEYS } from './api.js';
 import { stripeConf } from './billing.js';
 import { priceOf } from './ai.js';
 import { storageConfig, cleanStorage, resetStorageCache, storageBackfill } from './storage.js';
@@ -972,6 +974,22 @@ export function cleanPromo(b, now = Date.now()) {
   return out;
 }
 async function promosApi(env, path, q, body, { GET, POST, by, json }) {
+  // Credits for finishing the guided tours: the settings (audited). Off unless turned on.
+  if (path === '/promos/tours') {
+    if (GET) {
+      const month = new Date().toISOString().slice(0, 7);
+      const lg = await call(stub(env.BUDGET, 'global'), 'tours-log', { month, limit: Math.min(1000, +q.get('limit') || 200) });
+      return json({ config: await toursConfig(env, true), month: await call(stub(env.BUDGET, 'global'), 'tours-month', { month }), keys: TOUR_KEYS, log: lg.log, byTour: lg.byTour });
+    }
+    if (POST) {
+      const after = cleanTours(body); if (!after) return json({ error: 'bad request' }, 400);
+      const before = await toursConfig(env, true), reason = clip(body.reason, 500).trim();
+      await audit(env, { by, action: 'tours-config', target: 'config:tours', reason, before, after });
+      await call(stub(env.BUDGET, 'global'), 'tours-set', { tours: after }); resetToursCache();
+      return json({ ok: true, before, after });
+    }
+    return json({ error: 'method' }, 405);
+  }
   // Pro's free trial: the settings (audited) and how trials went (finance.js).
   if (path === '/promos/trial') {
     if (GET) {

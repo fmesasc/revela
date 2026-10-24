@@ -27,7 +27,7 @@ import { exportPDF } from '../../io/export/print.js';
 import { present, openCallPresent } from '../shell/present.js';
 import { sorterOn, setSorter } from '../shell/sorter.js';
 import { startCoach } from '../shell/coach.js';
-import { startTour } from '../shell/tour.js';
+import { openTourMenu } from '../shell/tour.js';
 import { openCollab } from '../shell/collab.js';
 import { openHome } from '../shell/home.js';
 import { openElements } from '../shell/elements.js';
@@ -316,7 +316,7 @@ export const ACTIONS = {
   'connect-mobile': () => openHostPanel(),
   'shortcuts': () => openShortcuts(),
   'report-problem': () => openReport(),
-  'tour': () => startTour(),
+  'tour': () => { const all = [...document.querySelectorAll('[data-action="tour"]')]; openTourMenu(all.find(b => b.getBoundingClientRect().width > 0) || all[0]); },
   'insert-hf': () => openHeaderFooter(),
   'anim-panel': () => toggleAnimPane(),
   'anim-play': () => playAnimations(),
