@@ -5168,5 +5168,7 @@ export default {
   "Hay tutoriales cortos en los que lo pruebas todo tú, haciendo clic. Están siempre aquí: Ver ▸ Ayuda ▸ Tutorial interactivo. ¿Empiezas por uno?": "هناك أدلة قصيرة تجرّب فيها كل شيء بنفسك بالنقر. تجدها دائمًا هنا: عرض ▸ تعليمات ▸ دليل تفاعلي. هل تبدأ بأحدها؟",
   "Ver todos": "عرض الكل",
   "Hazlo tú: seguimos cuando esté": "افعلها بنفسك: نتابع عندما تنتهي",
-  "Empezar un tutorial": "ابدأ دليلًا"
+  "Empezar un tutorial": "ابدأ دليلًا",
+  "Quiero recibir las novedades de Revela por correo (puedo darme de baja cuando quiera).": "أرغب في تلقي أخبار Revela عبر البريد الإلكتروني (يمكنني إلغاء الاشتراك في أي وقت).",
+  "Quiero recibir las novedades de Revela por correo": "أرغب في تلقي أخبار Revela عبر البريد الإلكتروني"
 };

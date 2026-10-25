@@ -5168,5 +5168,7 @@ export default {
   "Hay tutoriales cortos en los que lo pruebas todo tú, haciendo clic. Están siempre aquí: Ver ▸ Ayuda ▸ Tutorial interactivo. ¿Empiezas por uno?": "Er zijn korte rondleidingen waarin je alles zelf probeert, door te klikken. Ze staan altijd hier: Beeld ▸ Help ▸ Interactieve rondleiding. Begin je met een?",
   "Ver todos": "Alles bekijken",
   "Hazlo tú: seguimos cuando esté": "Doe het zelf: we gaan verder als het klaar is",
-  "Empezar un tutorial": "Een rondleiding starten"
+  "Empezar un tutorial": "Een rondleiding starten",
+  "Quiero recibir las novedades de Revela por correo (puedo darme de baja cuando quiera).": "Ik wil het nieuws van Revela per e-mail ontvangen (ik kan me altijd afmelden).",
+  "Quiero recibir las novedades de Revela por correo": "Ik wil het nieuws van Revela per e-mail ontvangen"
 };

@@ -5168,5 +5168,7 @@ export default {
   "Hay tutoriales cortos en los que lo pruebas todo tú, haciendo clic. Están siempre aquí: Ver ▸ Ayuda ▸ Tutorial interactivo. ¿Empiezas por uno?": "Tutorial laburrak daude, dena zuk zeuk probatzen duzunak, klik eginez. Beti hemen daude: Ikusi ▸ Laguntza ▸ Tutorial interaktiboa. Batekin hasiko zara?",
   "Ver todos": "Ikusi denak",
   "Hazlo tú: seguimos cuando esté": "Egin zuk: amaitutakoan jarraituko dugu",
-  "Empezar un tutorial": "Hasi tutorial bat"
+  "Empezar un tutorial": "Hasi tutorial bat",
+  "Quiero recibir las novedades de Revela por correo (puedo darme de baja cuando quiera).": "Revelaren berriak posta elektronikoz jaso nahi ditut (nahi dudanean baja eman dezaket).",
+  "Quiero recibir las novedades de Revela por correo": "Revelaren berriak posta elektronikoz jaso nahi ditut"
 };

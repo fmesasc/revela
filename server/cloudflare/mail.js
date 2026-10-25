@@ -21,7 +21,7 @@
 import { record, financeSettings } from './finance.js';
 import { enc, b64url, unb64, escHtml, hmac } from './util.js';
 
-export const OPTIONAL = ['credits', 'trialEnding', 'opened'];        // (kinds one can stop receiving)
+export const OPTIONAL = ['credits', 'trialEnding', 'opened', 'welcome', 'news'];        // (kinds one can stop receiving; 'news' is also opt-IN: only to who asked — news.js)
 
 // The person's language, among those with texts (the others: Spanish, or English for most).
 export const mailLang = l => (['es', 'en', 'ca'].includes(l) ? l : ['gl', 'eu'].includes(l) ? 'es' : l && /^[a-z]{2}$/.test(l) ? 'en' : 'es');
@@ -92,6 +92,8 @@ const T = {
   es: {
     foot: 'Revela · un proyecto de FM Lab', why: 'Recibes este correo porque tienes una cuenta de Revela o alguien te ha invitado a usarla.',
     unsub: 'No quiero más avisos de este tipo', open: 'Abrir Revela',
+    // (The welcome the admin wrote — api.js welcomeConfig —: its title and text.)
+    welcome: v => ({ subject: v.title || 'Te damos la bienvenida a Revela', title: v.title || 'Te damos la bienvenida a Revela', paras: String(v.text || '').split(/\n+/).filter(Boolean), cta: ['Abrir Revela', v.url] }),
     opened: v => ({ subject: `${v.label || v.who || 'Alguien'} ha abierto «${v.name}»`, title: 'Han abierto tu presentación',
       paras: [`${v.label ? `El enlace para «${v.label}»` : 'Uno de tus enlaces con seguimiento'} de «${v.name}» se acaba de abrir${v.who ? ` (${v.who})` : ''}.`, 'En Compartir ▸ Estadísticas verás cuánto tiempo ha estado y hasta dónde ha llegado.'], cta: ['Ver la presentación', v.url] }),
     share: v => ({ subject: `${v.by} ha compartido «${v.name}» contigo`, title: 'Te han compartido una presentación',
@@ -140,6 +142,7 @@ const T = {
   en: {
     foot: 'Revela · a project by FM Lab', why: 'You are receiving this email because you have a Revela account or someone invited you to use it.',
     unsub: 'Stop these notices', open: 'Open Revela',
+    welcome: v => ({ subject: v.title || 'Welcome to Revela', title: v.title || 'Welcome to Revela', paras: String(v.text || '').split(/\n+/).filter(Boolean), cta: ['Open Revela', v.url] }),
     opened: v => ({ subject: `${v.label || v.who || 'Someone'} opened “${v.name}”`, title: 'Your presentation was opened',
       paras: [`${v.label ? `The link for “${v.label}”` : 'One of your tracked links'} to “${v.name}” has just been opened${v.who ? ` (${v.who})` : ''}.`, 'In Share ▸ Statistics you’ll see how long they stayed and how far they got.'], cta: ['See the presentation', v.url] }),
     share: v => ({ subject: `${v.by} shared “${v.name}” with you`, title: 'A presentation was shared with you',
@@ -186,6 +189,7 @@ const T = {
   ca: {
     foot: 'Revela · un projecte d’FM Lab', why: 'Reps aquest correu perquè tens un compte de Revela o algú t’ha convidat a fer-lo servir.',
     unsub: 'No vull més avisos d’aquest tipus', open: 'Obre Revela',
+    welcome: v => ({ subject: v.title || 'Et donem la benvinguda a Revela', title: v.title || 'Et donem la benvinguda a Revela', paras: String(v.text || '').split(/\n+/).filter(Boolean), cta: ['Obre Revela', v.url] }),
     opened: v => ({ subject: `${v.label || v.who || 'Algú'} ha obert «${v.name}»`, title: 'Han obert la teva presentació',
       paras: [`${v.label ? `L’enllaç per a «${v.label}»` : 'Un dels teus enllaços amb seguiment'} de «${v.name}» s’acaba d’obrir${v.who ? ` (${v.who})` : ''}.`, 'A Compartir ▸ Estadístiques veuràs quant de temps hi ha estat i fins on ha arribat.'], cta: ['Veure la presentació', v.url] }),
     share: v => ({ subject: `${v.by} ha compartit «${v.name}» amb tu`, title: 'T’han compartit una presentació',
@@ -243,21 +247,59 @@ const proAfter = {
 };
 export const fmtDate = (ts, lang) => { try { return new Date(ts).toLocaleDateString(mailLang(lang), { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); } catch { return new Date(ts).toISOString().slice(0, 10); } };
 
+// ---- The look of every email: revelaslides.com's — warm paper, ink, the serif for titles (words between *asterisks* in the
+// accent colour, in italics), small uppercase labels in the warm colour, ink pill buttons and «arrow» links, the app's icon
+// beside the name; dark for those whose mail app asks for it (a <style> that Gmail, Apple Mail and others obey).
+export const LOOK = { PAPER: '#faf8f4', INK: '#17181c', INK2: '#4d4f56', LINE: '#e3ded4', ACCENT: '#2f5a8f', WARM: '#b4532f',
+  SERIF: "Newsreader,Georgia,'Times New Roman',serif", SANS: "system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif" };
+const { PAPER, INK, INK2, LINE, ACCENT, WARM, SERIF, SANS } = LOOK;
+export const em = s => escHtml(s).replace(/\*([^*\n]{1,80})\*/g, `<em class="ac" style="font-style:italic;color:${ACCENT}">$1</em>`);
+export const plain = s => String(s || '').replace(/\*([^*\n]{1,80})\*/g, '$1');
+export const paras = (s, style) => String(s || '').split(/\n{2,}/).filter(Boolean).map(p => `<p class="ink" style="${style}">${escHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
+export const pill = (label, href) => `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 0"><tr><td class="pill" style="border-radius:999px;background:${INK}"><a class="pilla" href="${escHtml(href)}" style="display:inline-block;padding:15px 28px;font:600 17px/1 ${SANS};color:${PAPER};text-decoration:none">${escHtml(label)}</a></td></tr></table>`;
+export const arrow = (label, href) => `<p style="margin:6px 0 0"><a class="ac" href="${escHtml(href)}" style="font:600 17px/1.4 ${SANS};color:${ACCENT};text-decoration:none">${escHtml(label)} →</a></p>`;
+// rows: the card's <tr>s; foot: the lines under it (HTML).
+export function emailFrame({ lang, subject, preheader = '', rows, foot, site = 'https://revelaslides.com' }) {
+  return `<!doctype html><html lang="${mailLang(lang)}" dir="${lang === 'ar' ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>${escHtml(subject)}</title>
+<style>:root{color-scheme:light dark;supported-color-schemes:light dark}@media (prefers-color-scheme:dark){.bg{background:#121316!important}.card{background:#1d1f24!important;border-color:#2b2d32!important}.ink{color:#ecebe6!important}.mut{color:#a9a8a3!important}.ac{color:#93b6e8!important}.warm{color:#e3906f!important}.top{border-color:#2b2d32!important}.pill{background:#ecebe6!important}.pilla{color:#121316!important}img{border-color:#2b2d32!important}}</style></head>
+<body class="bg" style="margin:0;padding:0;background:${PAPER}">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${escHtml(preheader)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="bg" style="background:${PAPER}"><tr><td align="center" style="padding:28px 12px 36px">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px">
+<tr><td style="padding:0 6px 18px"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="padding-inline-end:10px;vertical-align:middle"><img src="${escHtml(site)}/app/icons/icon-192.png?v=2" width="34" height="34" alt="" style="display:block;border-radius:9px;border:0"></td>
+<td style="vertical-align:middle"><span class="ink" style="font:500 30px/1 ${SERIF};letter-spacing:-.01em;color:${INK}">Revela</span></td></tr></table></td></tr>
+<tr><td class="card" style="background:#ffffff;border:1px solid ${LINE};border-radius:20px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+${rows}
+</table></td></tr>
+<tr><td class="mut" style="padding:24px 12px 0;text-align:center;font:14px/1.65 ${SANS};color:${INK2}">${foot}</td></tr>
+</table></td></tr></table></body></html>`;
+}
+// The fixed words of the newsletter's frame, in the person's language (news.js): the footer, why they get it, the way out, the
+// button, the small label over the title. (Every language of the app: the other emails have texts in Spanish, English and
+// Catalan only.)
+const NEWS_WORDS = {
+  es: ['Revela · un proyecto de FM Lab', 'Recibes este correo porque pediste recibir las novedades de Revela.', 'Dejar de recibir novedades', 'Abrir Revela', 'Novedades'],
+  en: ['Revela · a project by FM Lab', 'You are receiving this email because you asked to get Revela news.', 'Stop receiving news', 'Open Revela', 'News'],
+  ca: ['Revela · un projecte d’FM Lab', 'Reps aquest correu perquè vas demanar rebre les novetats de Revela.', 'Deixar de rebre novetats', 'Obre Revela', 'Novetats'],
+  fr: ['Revela · un projet de FM Lab', 'Vous recevez cet e-mail parce que vous avez demandé à recevoir les nouveautés de Revela.', 'Ne plus recevoir les nouveautés', 'Ouvrir Revela', 'Nouveautés'],
+  de: ['Revela · ein Projekt von FM Lab', 'Sie erhalten diese E-Mail, weil Sie die Neuigkeiten von Revela angefordert haben.', 'Keine Neuigkeiten mehr erhalten', 'Revela öffnen', 'Neuigkeiten'],
+  it: ['Revela · un progetto di FM Lab', 'Ricevi questa e-mail perché hai chiesto di ricevere le novità di Revela.', 'Non ricevere più le novità', 'Apri Revela', 'Novità'],
+  pt: ['Revela · um projeto da FM Lab', 'Recebes este e-mail porque pediste para receber as novidades do Revela.', 'Deixar de receber novidades', 'Abrir o Revela', 'Novidades'],
+  gl: ['Revela · un proxecto de FM Lab', 'Recibes este correo porque pediches recibir as novidades de Revela.', 'Deixar de recibir novidades', 'Abrir Revela', 'Novidades'],
+  nl: ['Revela · een project van FM Lab', 'Je ontvangt deze e-mail omdat je het nieuws van Revela hebt aangevraagd.', 'Geen nieuws meer ontvangen', 'Revela openen', 'Nieuws'],
+  eu: ['Revela · FM Laben proiektu bat', 'Mezu hau jaso duzu Revelaren berriak jasotzea eskatu zenuelako.', 'Berriak jasotzeari utzi', 'Ireki Revela', 'Berriak'],
+  ar: ['Revela · مشروع من FM Lab', 'تصلك هذه الرسالة لأنك طلبت تلقي أخبار Revela.', 'إيقاف تلقي الأخبار', 'افتح Revela', 'الجديد'],
+};
+export const mailWords = lang => { const [foot, why, unsub, open, eyebrow] = NEWS_WORDS[lang] || NEWS_WORDS.en; return { foot, why, unsub, open, eyebrow }; };
 // The email of one kind: { subject, html, text } (vars: the values to fill in; unsub: the link to stop them).
 export function render(kind, lang, vars, unsub) {
   const L = T[mailLang(lang)], v = { ...vars, ...(vars.role && { role: L.roles[vars.role] || vars.role }) };
   const m = (L[kind] || T.es[kind])(v), cta = m.cta;               // (admin-only kinds: Spanish)
-  const P = 'margin:0 0 16px';
-  const html = `<!doctype html><html lang="${mailLang(lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escHtml(m.subject)}</title></head>
-<body style="margin:0;padding:0;background:#faf8f4;color:#17181c;font:16px/1.6 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif">
-<div style="max-width:560px;margin:0 auto;padding:32px 24px">
-<p style="margin:0 0 28px;font:500 22px/1 Georgia,'Times New Roman',serif">Revela</p>
-<h1 style="margin:0 0 18px;font:normal 28px/1.2 Georgia,'Times New Roman',serif">${escHtml(m.title)}</h1>
-${m.paras.map(p => `<p style="${P}">${escHtml(p)}</p>`).join('\n')}
-${cta ? `<p style="margin:24px 0"><a href="${escHtml(cta[1])}" style="display:inline-block;background:#2f5a8f;color:#ffffff;text-decoration:none;padding:11px 20px;border-radius:8px">${escHtml(cta[0])}</a></p>` : ''}
-<hr style="border:0;border-top:1px solid #e3ded4;margin:32px 0 16px">
-<p style="margin:0;font-size:13px;color:#5d5f66">${escHtml(L.foot)}<br>${escHtml(L.why)}${unsub ? `<br><a href="${escHtml(unsub)}" style="color:#5d5f66">${escHtml(L.unsub)}</a>` : ''}</p>
-</div></body></html>`;
+  const P = `margin:0 0 18px;font:17px/1.65 ${SANS};color:${INK2}`;
+  const rows = `<tr><td style="padding:38px 36px 14px"><h1 class="ink" style="margin:0 0 18px;font:450 34px/1.15 ${SERIF};letter-spacing:-.015em;color:${INK}">${em(m.title)}</h1>
+${m.paras.map(p => `<p class="ink" style="${P}">${escHtml(p)}</p>`).join('\n')}${cta ? pill(cta[0], cta[1]) : ''}</td></tr><tr><td style="padding:0 0 24px"></td></tr>`;
+  const foot = `${escHtml(L.foot)}<br>${escHtml(L.why)}${unsub ? `<br><a class="mut" href="${escHtml(unsub)}" style="color:${INK2}">${escHtml(L.unsub)}</a>` : ''}`;
+  const html = emailFrame({ lang, subject: m.subject, rows, foot, site: vars.site || 'https://revelaslides.com' });
   const text = [m.title, '', ...m.paras.flatMap(p => [p, '']), ...(cta ? [`${cta[0]}: ${cta[1]}`, ''] : []), '—', L.foot, L.why, ...(unsub ? [`${L.unsub}: ${unsub}`] : [])].join('\n');
   return { subject: m.subject, html, text };
 }

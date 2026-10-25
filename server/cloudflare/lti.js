@@ -144,7 +144,7 @@ async function params(req, url) {
 const page = (title, body, status = 200) => new Response(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>
 <style>body{font:16px system-ui,sans-serif;max-width:560px;margin:40px auto;padding:0 16px;color:#223}h1{font-size:22px;color:#3f6497}input{width:100%;padding:10px;font-size:15px;border:1px solid #ccd;border-radius:8px;box-sizing:border-box;margin:6px 0 12px}
 button{background:#3f6497;color:#fff;border:0;border-radius:8px;padding:10px 18px;font-size:15px;cursor:pointer}.err{color:#b3261e}small{color:#667}</style></head><body>${body}</body></html>`,
-  { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+  { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex', 'Content-Security-Policy': "base-uri 'none'; object-src 'none'; form-action 'self' https:" } });
 const autopost = (action, fields) => page('Revela', `<form id="f" method="post" action="${esc(action)}">${Object.entries(fields).map(([k, v]) => `<input type="hidden" name="${esc(k)}" value="${esc(v)}">`).join('')}
   <noscript><button>Continuar</button></noscript></form><script>document.getElementById('f').submit()</script>`);
 
@@ -203,6 +203,10 @@ export async function handleLti(req, env, url, site) {
     const type = c[LTI + 'message_type'];
     if (type === 'LtiDeepLinkingRequest') {
       const t = random(24), set = c[DL + 'deep_linking_settings'] || {};
+      // (The platform's own address to answer to: https, on one of the hosts it registered with — not whatever the message says.)
+      const host = u => { try { const x = new URL(u); return x.protocol === 'https:' ? x.host : null; } catch { return null; } };
+      const ok = host(set.deep_link_return_url) && [pl.issuer, pl.auth, pl.token, pl.jwks].map(host).filter(Boolean).includes(host(set.deep_link_return_url));
+      if (!ok) return page('Revela', '<h1>Revela</h1><p class="err">La dirección de vuelta de la plataforma no es válida.</p>', 400);
       await kvDo(env, 'pick:' + t, 'put', { value: { issuer: pl.issuer, clientId: pl.clientId, dep, returnUrl: set.deep_link_return_url, data: set.data ?? null }, ttl: 60 * 60e3 });
       return Response.redirect(base + '/pick?t=' + t, 302);
     }

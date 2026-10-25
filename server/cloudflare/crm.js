@@ -160,7 +160,9 @@ export class Crm {
         // (Filled where empty; a consent given now is kept — it is newer.)
         for (const [k, v] of Object.entries(fields)) if (v && (c[k] == null || c[k] === '' || (Array.isArray(c[k]) && !c[k].length))) c[k] = v;
         if (consent && !c.unsub) c.consent = consent;
-        if (consent && c.unsub && consent.how === 'form') { c.consent = consent; c.unsub = null; }   // (asked again, by themselves)
+        // (Someone who unsubscribed stays so: a public form can't tell their own request from somebody else typing their address —
+        // it is kept in the file, for the admin to see —; coming back needs a confirmation they can give from their own mailbox.)
+        if (consent && c.unsub && consent.how === 'form') c.history.push({ at: now, by, what: 'resubscribe-request' });
         if (history) c.history.push({ at: now, by, ...history });
         await this.save(c); await this.keys(c);
         return { id: c.id, created: false };

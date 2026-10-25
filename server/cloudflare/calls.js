@@ -45,7 +45,7 @@ export async function handleCalls(path, body, env, me, A, call, json) {
   const pass = async r => { const d = await r.json().catch(() => ({})); return json(d, r.ok ? 200 : 502); };
 
   if (path === '/call/room') {
-    const pid = String(body.pid || '').slice(0, 40); if (!/^[\w-]{6,40}$/.test(pid)) return json({ error: 'bad request' }, 400);
+    const pid = String(body.pid || '').slice(0, 40); if (!/^[\w-]{6,40}$/.test(pid) || pid in Object.prototype) return json({ error: 'bad request' }, 400);   // («constructor», «__proto__»: names of every object)
     if (body.leave) return json(await roomDo('leave', { pid }));
     if (body.sessionId && !(await mine(body.sessionId))) return json({ error: 'forbidden' }, 403);
     const r = await room.fetch('https://call/join', { method: 'POST', body: JSON.stringify({ pid, sub: me.sub, name: body.name, sessionId: body.sessionId, tracks: body.tracks }) });

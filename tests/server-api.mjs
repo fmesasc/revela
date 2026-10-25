@@ -42,7 +42,7 @@ env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
     const t = new URL(u).searchParams.get('access_token');
-    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' }, 'tok-lia': { sub: '2323', email: 'lia@example.com' }, 'tok-sto': { sub: '2424', email: 'sto@example.com' }, 'tok-una': { sub: '2525', email: 'una@example.com' }, 'tok-tour': { sub: '2626', email: 'tour@example.com' }, 'tok-tour2': { sub: '2727', email: 'tour2@example.com' }, 'tok-tour3': { sub: '2828', email: 'tour3@example.com' } }[t];
+    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' }, 'tok-lia': { sub: '2323', email: 'lia@example.com' }, 'tok-sto': { sub: '2424', email: 'sto@example.com' }, 'tok-una': { sub: '2525', email: 'una@example.com' }, 'tok-tour': { sub: '2626', email: 'tour@example.com' }, 'tok-tour2': { sub: '2727', email: 'tour2@example.com' }, 'tok-tour3': { sub: '2828', email: 'tour3@example.com' }, 'tok-nwa': { sub: '3001', email: 'nwa@example.com' }, 'tok-nwb': { sub: '3002', email: 'nwb@example.com' }, 'tok-nwc': { sub: '3003', email: 'nwc@example.com' }, 'tok-nwd': { sub: '3004', email: 'nwd@example.com' }, 'tok-nwe': { sub: '3005', email: 'nwe@example.com' } }[t];
     if (t === 'tok-otraapp') return Response.json({ aud: 'otra-app', sub: '333', email: 'x@example.com', email_verified: 'true' });
     return who ? Response.json({ aud: CID, ...who, email_verified: 'true', expires_in: 3000 }) : new Response('bad', { status: 400 });
   }
@@ -765,7 +765,7 @@ const ids = [];
   const m = sent.find(x => x.to === 'teo@example.com');
   ok(m && /Sol García \(sol@example\.com\) shared “Doc 1” with you/.test(m.subject) && m.html.includes(`https://revelaslides.com/app/?doc=${ids[0]}`) && m.text.includes(`/app/?doc=${ids[0]}`), 'correo al compartir: quién, cuál y el enlace (en inglés): ' + m?.subject);
   ok(m.from.email === 'avisos@revelaslides.com' && m.from.name === 'Revela' && !m.headers && /a project by FM Lab/.test(m.text) && !/<García>/.test(m.html), 'remitente de Revela, pie, sin baja (es del servicio) y sin HTML de nadie');
-  ok(/#2f5a8f/.test(m.html) && /Georgia/.test(m.html) && /#faf8f4/.test(m.html), 'plantilla sobria: papel, serif y un solo acento');
+  ok(/#17181c/.test(m.html) && /Georgia/.test(m.html) && /#faf8f4/.test(m.html) && /icon-192\.png/.test(m.html) && /prefers-color-scheme:dark/.test(m.html), 'plantilla de Revela: papel, serif, tinta, el icono y modo oscuro');
   sent = [];
   await req('POST', `/api/docs/${ids[0]}/share`, { headers: { Cookie: sol }, body: { people: { 'teo@example.com': 'edit' }, link: 'view' } });
   ok(!sent.length, 'cambiar otra cosa no vuelve a avisar');
@@ -1299,6 +1299,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok(m.email === 'pia@example.com' && m.impersonation?.by === 'jefe@example.com' && m.impersonation.until > Date.now(), 'ver como usuario: /me trae la marca para el banner del operador: ' + JSON.stringify(m.impersonation));
     ok((await req('GET', '/api/sessions', { headers: { Cookie: view } })).status === 200, 'ver como usuario: puede leer (GET)');
     ok((await req('POST', '/api/sessions', { headers: { Cookie: view }, body: { others: true } })).status === 403, 'ver como usuario: no puede cambiar nada (POST → 403, solo lectura)');
+    ok((await req('GET', '/api/account/export', { headers: { Cookie: view } })).status === 403, 'ver como usuario: tampoco puede bajarse todos los datos de la persona (el export es un GET, pero sensible)');
     const own = await (await req('GET', '/api/sessions', { headers: { Cookie: pia } })).json();
     ok(!own.sessions.some(z => z.kind === 'impersonation'), 'ver como usuario: NO sale en las sesiones del propio usuario (solo auditoría)');
     ok((await A('GET', '/users/1414')).j.sessions.list.some(z => z.kind === 'impersonation' && z.by === 'jefe@example.com'), 'ver como usuario: en la ficha del admin sí se ve, con quién');
@@ -1890,6 +1891,79 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       { const w = (await W('de')).welcome; ok(w.title === 'Hola' && w.text.length === 800 && !w.text.includes('\u0000'), 'bienvenida: el texto se limpia y se recorta'); }
       await A('POST', '/promos/welcome', { body: { on: false, texts: { es: { title: 'Hola', text: 'x' } } } });
       ok((await W('es')).welcome === null, 'bienvenida: apagada otra vez'); }
+    // The news by email (news.js): only to accounts that asked, each with its way out; written and sent from the admin.
+    { const lg = (tok, extra = {}) => req('POST', '/api/login', { body: { accessToken: tok, terms: TERMS, ...extra } }).then(cookieFrom);
+      const mp = (c, body) => req(body ? 'POST' : 'GET', '/api/mail/prefs', { headers: { Cookie: c }, ...(body && { body }) }).then(r => r.json());
+      sent = [];
+      const na = await lg('tok-nwa', { news: true }), nb = await lg('tok-nwb'), nc = await lg('tok-nwc');
+      ok((await meOf(na)).news === true && !(await meOf(nb)).news, 'novedades: se piden al registrarse (casilla), y por defecto no');
+      await lg('tok-nwb', { news: true });
+      ok(!(await meOf(nb)).news, 'novedades: volver a iniciar sesión no apunta a una cuenta que ya existía');
+      ok((await mp(nb)).news === false && (await mp(nc, { news: true })).news === true && (await meOf(nc)).news === true, 'novedades: se piden también desde «Mi cuenta»');
+      ok(!(await mp(nc)).optional.includes('news') && !(await mp(nc, { off: ['news', 'credits'] })).off.includes('news'), 'novedades: no se apagan como un aviso más (se piden, no se «quitan» aquí)');
+      const issue = { name: 'Octubre', audience: { langs: [], plan: 'all' }, texts: {
+        es: { subject: 'Novedades de octubre', preheader: 'Animaciones con IA y más', title: 'Lo nuevo de Revela', intro: 'Hola.\n\nEsto es lo que hemos hecho.', outro: 'Gracias por usar Revela',
+          blocks: [{ title: 'Animación con <b>IA</b>', text: 'Cada clic, una fase', image: 'https://revelaslides.com/img/a.png', cta: 'Probarlo', url: '/app/' }, { title: 'Plantillas', text: 'Más de 450', cta: 'Ver', url: '/templates' }] },
+        en: { subject: 'October news', title: 'What is new', intro: 'Hi.', blocks: [{ title: 'Templates', text: 'Over 450', cta: 'See', url: '/templates' }] } } };
+      const bad = async (mut, code = 400) => (await A('POST', '/news', { body: { issue: mut(JSON.parse(JSON.stringify(issue))) } })).status === code;
+      ok(await bad(i => { i.texts = {}; return i; }) && await bad(i => { i.texts.es.blocks[0].image = 'http://x.example/a.png'; return i; }) && await bad(i => { i.texts.es.blocks[0].url = ''; return i; })
+        && await bad(i => { i.texts.fr = { subject: 'x', title: 'y' }; i.texts.zz = { subject: 'x', title: 'y' }; return i; }) && await bad(i => { i.audience.plan = 'todos'; return i; }) && await bad(i => { i.texts.es.subject = ''; return i; }), 'novedades: lo no válido (sin texto, imagen sin https, botón sin dirección, idioma o público inventado, sin asunto) no se guarda');
+      const made = await A('POST', '/news', { body: { issue } }), id = made.j.issue.id;
+      ok(made.status === 200 && made.j.issue.status === 'draft' && (await A('GET', '/audit?target=news:' + id)).j.entries[0]?.action === 'news-create', 'novedades: un borrador guardado (auditado)');
+      const pv = (await A('GET', `/news/${id}/preview?lang=es`)).j;
+      ok(pv.subject === 'Novedades de octubre' && pv.html.includes('Lo nuevo de Revela') && pv.html.includes('Animación con &lt;b&gt;IA&lt;/b&gt;') && !pv.html.includes('<b>IA</b>') && /https:\/\/revelaslides\.com\/app\//.test(pv.html), 'novedades: la vista previa, con el texto escapado y los botones completos');
+      ok((await A('GET', `/news/${id}/preview?lang=fr`)).j.subject === 'October news', 'novedades: un idioma sin texto lee el inglés');
+      { const fr = (await A('GET', `/news/${id}/preview?lang=es`)).j.html, de = (await A('GET', `/news/${id}/preview?lang=de`)).j.html, c = id.toLowerCase().replace(/[^a-z0-9_.-]/g, '');
+        ok(fr.includes('https://revelaslides.com/templates?utm_source=news&amp;utm_medium=email&amp;utm_campaign=' + c) && de.includes('https://revelaslides.com/de/templates?utm_source=news') && !de.includes('/de/app/') && de.includes('revelaslides.com/app/?utm_source=news'),
+          'novedades: los enlaces a la web llevan su etiqueta (de dónde vino la visita) y van a la web en el idioma de cada persona; la app, sin prefijo '); }
+      { const ph = (await A('POST', '/news', { body: { issue: { ...issue, texts: { es: { ...issue.texts.es, subject: 'Novedades de {mes}' } } } } })).j.issue;
+        x = await A('POST', `/news/${ph.id}/send`, { body: { confirm: true } });
+        ok(x.status === 400 && x.j.error === 'placeholders' && x.j.langs[0] === 'es', 'novedades: con un {marcador} sin rellenar, no se envía'); }
+      // The ready-made texts: six, in the 11 languages, each valid as a draft; only the first (no {braces}) could go out as it is.
+      { const st = (await A('GET', '/news/starters')).j.starters, keys = Object.keys(st), LANGS = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'];
+        ok(keys.length === 6 && keys.every(k => LANGS.every(l => st[k].texts[l]?.subject && st[k].texts[l].title)), 'novedades: seis textos hechos, en los 11 idiomas: ' + keys.join());
+        let all = true, bad = '';
+        for (const k of keys) { const r = await A('POST', '/news', { body: { issue: { name: st[k].name, audience: { langs: [], plan: 'all' }, texts: st[k].texts } } }); if (r.status !== 200) { all = false; bad += k + ':' + JSON.stringify(r.j); } else await A('POST', `/news/${r.j.issue.id}/delete`, { body: {} }); }
+        ok(all, 'novedades: cada texto hecho es un borrador válido (límites y direcciones): ' + bad);
+        ok(keys.every(k => LANGS.every(l => { const t = st[k].texts[l], b = st[k].texts.es.blocks; return t.blocks.length === b.length && t.blocks.every((x, i) => x.url === b[i].url && x.cta.length > 0 === b[i].cta.length > 0)
+          && (/\{[^{}"\\]{1,60}\}/.test(JSON.stringify(t)) === /\{[^{}"\\]{1,60}\}/.test(JSON.stringify(st[k].texts.es))); })), 'novedades: en todos los idiomas, mismas direcciones y botones, y con {marcadores} donde el español los lleva');
+        ok(!/\{[^{}"\\]{1,60}\}/.test(JSON.stringify(st.first.texts)) && keys.filter(k => k !== 'first').every(k => /\{[^{}"\\]{1,60}\}/.test(JSON.stringify(st[k].texts.es))), 'novedades: solo «Primer boletín» está listo para enviar tal cual'); }
+      sent = []; x = await A('POST', `/news/${id}/test`, { body: { lang: 'es' } });
+      ok(x.status === 200 && sent.length === 1 && sent[0].to === 'jefe@example.com' && /^\[PRUEBA\] /.test(sent[0].subject) && !sent[0].headers, 'novedades: la prueba llega a quien administra, marcada, sin enlace de baja');
+      ok((await A('POST', `/news/${id}/send`, { body: {} })).status === 400, 'novedades: enviar pide confirmación');
+      const edited = JSON.parse(JSON.stringify(made.j.issue)); edited.texts.es.subject = 'Novedades de octubre (2)';
+      ok((await A('POST', '/news', { body: { issue: edited } })).j.issue.texts.es.subject.endsWith('(2)'), 'novedades: un borrador se puede cambiar');
+      sent = []; x = await A('POST', `/news/${id}/send`, { body: { confirm: true, reason: 'Primer envío' } });
+      const got = sent.filter(m => m.kind === 'news' || /octubre/.test(m.subject)).map(m => m.to).sort();
+      ok(x.status === 200 && x.j.issue.status === 'sent' && x.j.issue.sent.n === got.length && got.includes('nwa@example.com') && got.includes('nwc@example.com') && !got.includes('nwb@example.com'), 'novedades: solo a quien las pidió: ' + JSON.stringify(got) + ' ' + JSON.stringify(x.j.issue.sent));
+      { const m = sent.find(y => y.to === 'nwa@example.com'); ok(m.subject === 'Novedades de octubre (2)' && /List-Unsubscribe/.test(Object.keys(m.headers || {}).join()) && /\/api\/mail\/unsubscribe\?t=/.test(m.html) && /Dejar de recibir novedades/.test(m.html), 'novedades: cada correo lleva su baja (en el cuerpo y en la cabecera)'); }
+      ok((await A('POST', `/news/${id}/send`, { body: { confirm: true } })).status === 409 && (await A('POST', '/news', { body: { issue: { ...edited, id } } })).status === 409 && (await A('POST', `/news/${id}/delete`, { body: {} })).status === 409, 'novedades: lo enviado no se cambia, borra ni reenvía');
+      ok((await A('GET', '/news')).j.issues.some(i => i.id === id && i.status === 'sent' && i.sent.n === 2), 'novedades: en la lista, enviada a 2');
+      // Stopping them: the link in the email.
+      { const link = sent.find(y => y.to === 'nwa@example.com').html.match(/href="([^"]*unsubscribe[^"]*)"/)[1].replace(/&amp;/g, '&');
+        ok((await worker.fetch(new Request(link), env)).status === 200 && !(await meOf(na)).news, 'novedades: con el enlace de baja, no más');
+        const i2 = (await A('POST', '/news', { body: { issue } })).j.issue; sent = [];
+        await A('POST', `/news/${i2.id}/send`, { body: { confirm: true } });
+        ok(!sent.some(y => y.to === 'nwa@example.com') && sent.some(y => y.to === 'nwc@example.com'), 'novedades: quien se dio de baja no recibe la siguiente'); }
+      // The account is asked again just before: one who stops them between the list and the email gets nothing.
+      { const i3 = (await A('POST', '/news', { body: { issue: { ...issue, audience: { langs: ['en'], plan: 'all' } } } })).j.issue; sent = [];
+        await A('POST', `/news/${i3.id}/send`, { body: { confirm: true } });
+        ok(!sent.some(y => /octubre/.test(y.subject)), 'novedades: el público por idioma se respeta (nadie tiene «en»)'); }
+      ok((await A('POST', '/news/zzzzzzzz/send', { body: { confirm: true } })).status === 404 && (await adm('POST', '/news', { token: null, body: { issue } })).status === 403, 'novedades: sin sesión de administración, no; una inexistente, 404');
+      // The welcome by email: off unless the admin turned «mail» on; once; the admin's text.
+      await A('POST', '/promos/welcome', { body: { on: false, mail: false, texts: { es: { title: 'Te damos la bienvenida', text: 'Hay tutoriales interactivos.\nEn Ver ▸ Ayuda.' }, en: { title: 'Welcome', text: 'There are interactive tutorials.' } } } });
+      sent = []; const nd = await lg('tok-nwd');
+      ok(!sent.some(y => y.to === 'nwd@example.com'), 'bienvenida por correo: apagada por defecto');
+      await A('POST', '/promos/welcome', { body: { on: false, mail: true, texts: { es: { title: 'Te damos la bienvenida', text: 'Hay tutoriales interactivos.\nEn Ver ▸ Ayuda.' }, en: { title: 'Welcome', text: 'There are interactive tutorials.' } } } });
+      sent = []; await lg('tok-nwd'); ok(!sent.some(y => y.to === 'nwd@example.com'), 'bienvenida por correo: solo a cuentas nuevas');
+      // The test of the welcome email, to the admin: what is saved, in the language chosen (a [PRUEBA] subject; no way out needed).
+      sent = []; x = await A('POST', '/promos/welcome-test', { body: { lang: 'en' } });
+      ok(x.status === 200 && x.j.ok && x.j.to === 'jefe@example.com' && sent.length === 1 && sent[0].to === 'jefe@example.com' && sent[0].subject === '[PRUEBA] Welcome' && sent[0].text.includes('There are interactive tutorials.'), 'bienvenida por correo: «Enviarme una prueba» llega a quien administra, marcada, en el idioma elegido: ' + JSON.stringify(sent.map(y => y.subject)));
+      ok((await A('POST', '/promos/welcome-test', { body: { lang: 'fr' } })).j.ok === true && (await adm('POST', '/promos/welcome-test', { token: null, body: {} })).status === 403, 'bienvenida por correo: un idioma sin texto lee el inglés; sin sesión de administración, no');
+      sent = []; await lg('tok-nwe', { lang: 'en' }); await lg('tok-nwe', { lang: 'en' });
+      { const w = sent.filter(y => y.to === 'nwe@example.com');
+        ok(w.length === 1 && w[0].subject === 'Welcome' && w[0].text.includes('There are interactive tutorials.') && /unsubscribe/.test(w[0].html), 'bienvenida por correo: una vez, en su idioma, con su baja: ' + JSON.stringify(w.map(y => y.subject))); }
+      await A('POST', '/promos/welcome', { body: { on: false, mail: false, texts: {} } }); }
     // Who gets it: an account that never had Pro, yes; one with a paid Pro or with a plan from before, no.
     const bea = await login('tok-bea', 'en'), cid = await login('tok-cid'), BS = () => acc('1818').ctx.storage.m;
     me = await meOf(bea); ok(me.trialDays === 7, '/api/me: prueba de 7 días disponible para una cuenta nueva');
@@ -2060,6 +2134,12 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     x = await C('GET', `/contacts/${luis.id}`);
     ok(x.j.contact.unsub && !x.j.contact.seq && x.j.contact.history.some(h => h.what === 'unsub'), 'captación: la baja queda en su ficha');
     ok((await C('POST', `/contacts/${luis.id}/consent`, { body: { how: 'Me lo pidió por teléfono' } })).status === 409, 'captación: tras una baja, solo la propia persona puede volver a pedirlo');
+    // (Typing the address again in the public form does not undo it: it could be somebody else's address.)
+    await lead({ name: 'Academia Luna', person: 'Luis', email: 'luis@luna.example', kind: 'academy', marketing: true });
+    x = await C('GET', `/contacts/${luis.id}`);
+    ok(x.j.contact.unsub && !x.j.contact.seq && x.j.contact.history.some(h => h.what === 'resubscribe-request'), 'captación: quien se dio de baja sigue de baja aunque alguien escriba su correo en el formulario (queda anotado)');
+    sent = []; { const w = Date.now; Date.now = () => w() + 4 * DAYms; await runCron(Date.now()); Date.now = w; }
+    ok(!sent.some(m => m.to === 'luis@luna.example'), 'captación: y no recibe nada');
     // Consent written down by the admin (when and how): then a sequence may write.
     ok((await C('POST', `/contacts/${olivos.id}/consent`, { body: { how: 'Lo pidió la jefa de estudios en la feria Didacta' } })).status === 200, 'captación: consentimiento anotado');
     ok((await C('POST', `/contacts/${olivos.id}/enroll`, { body: { seq: seqId } })).status === 200, 'captación: ahora sí entra en la secuencia');
@@ -2497,6 +2577,13 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok(x.status === 200 && today.views === 3 && today.uniques === 3 && today.nf === 2, 'visitas: 3 vistas de 3 visitantes y 2 páginas que no existen: ' + JSON.stringify(today));
     ok(x.j.pages.find(p => p.k === '/pricing')?.n === 2 && x.j.refs.some(r => r.k === 'www.google.com') && !JSON.stringify(x.j).includes('q=revela'), 'visitas: páginas y de dónde vienen (sin la búsqueda ni otros parámetros)');
     ok(x.j.langs.find(l => l.k === 'es')?.n === 2, 'visitas: idiomas');
+    // A link tagged by whoever shared it (utm_source[:campaign]) says where the visit came from, referrer or not.
+    await hit({ path: '/en/', ref: '', lang: 'en', src: 'telegram' }, { ip: '10.9.0.4' });
+    await hit({ path: '/', ref: 'https://otra.example/x', src: 'news:oct2026a' }, { ip: '10.9.0.5' });
+    await hit({ path: '/', ref: '', src: '<script>' }, { ip: '10.9.0.6' });
+    { const y = (await A('GET', '/web?days=7')).j;
+      ok(y.refs.some(r => r.k === 'utm:telegram') && y.refs.some(r => r.k === 'utm:news:oct2026a') && !y.refs.some(r => r.k === 'otra.example') && !JSON.stringify(y.refs).includes('script'),
+        'visitas: la etiqueta del enlace (utm_source) dice de dónde vino; una etiqueta rara no se guarda: ' + JSON.stringify(y.refs.map(r => r.k))); }
     const nf = x.j.notfound.find(n => n.path === '/precios-viejos');
     ok(nf && nf.n === 2 && nf.refs['blog.example/post'] === 1 && nf.refs['internal:/guides'] === 1, 'visitas: la página que no existe, con desde dónde (otra web, o una página nuestra con el enlace roto)');
     const raw = JSON.stringify([...env.VISITS.inst.get('visits').ctx.storage.m.entries()]);
@@ -3101,7 +3188,10 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     let r = await start('Ana@' + DOM), loc = new URL(r.headers.get('Location'));
     ok(r.status === 302 && loc.origin + loc.pathname === ISS + '/authorize' && loc.searchParams.get('client_id') === 'cli' && loc.searchParams.get('code_challenge_method') === 'S256' && loc.searchParams.get('login_hint') === 'ana@' + DOM, 'SSO: lleva al proveedor (PKCE, con su correo)');
     const state = loc.searchParams.get('state'), nonce = loc.searchParams.get('nonce'), challenge = loc.searchParams.get('code_challenge');
-    const cb = (st = state) => worker.fetch(new Request(`${SITE}/api/sso/callback?` + new URLSearchParams({ code: 'c0de', state: st })), env);
+    const bound = (r.headers.get('Set-Cookie') || '').split(';')[0];            // (the cookie that ties the sign-in to the browser that started it)
+    ok(/^rv_sso=[\w-]{10,}$/.test(bound) && /HttpOnly/.test(r.headers.get('Set-Cookie')), 'SSO: el inicio deja una cookie que ata la vuelta a ese navegador');
+    const cb = (st = state, cookie = bound) => worker.fetch(new Request(`${SITE}/api/sso/callback?` + new URLSearchParams({ code: 'c0de', state: st }), { headers: cookie ? { Cookie: cookie } : {} }), env);
+    ok((await cb(state, '')).headers.get('Location') === SITE + '/app/?sso=expired' && (await cb(state, 'rv_sso=otra-cosa-distinta')).headers.get('Location') === SITE + '/app/?sso=expired', 'SSO: la respuesta traída por otro navegador (sin la cookie o con otra), no');
     claims = { iss: ISS, aud: 'otra', sub: 'u-1', email: 'ana@' + DOM, nonce, exp: Math.floor(Date.now() / 1000) + 600 };
     ok((await cb()).headers.get('Location') === SITE + '/app/?sso=token', 'SSO: un token para otra aplicación, no');
     claims = { ...claims, aud: 'cli', nonce: 'otro' };
@@ -3116,9 +3206,9 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     // «Inicia sesión para votar» (vote.html): back to that poll; never to anywhere else.
     for (const [next, want] of [['/app/vote?r=abcdefghijklmnopq', SITE + '/app/vote?r=abcdefghijklmnopq'], ['/app/vote.html?doc=abcdefghijklmnop&poll=p1', SITE + '/app/vote.html?doc=abcdefghijklmnop&poll=p1'],
       ['https://malo.example/app/vote?r=x', SITE + '/app/?sso=ok'], ['//malo.example/app/vote?r=x', SITE + '/app/?sso=ok'], ['/app/?x=1', SITE + '/app/?sso=ok']]) {
-      const l1 = new URL((await worker.fetch(new Request(`${SITE}/api/sso/start?` + new URLSearchParams({ email: 'ana@' + DOM, terms: TERMS, lang: 'es', next })), env)).headers.get('Location'));
+      const r1 = await worker.fetch(new Request(`${SITE}/api/sso/start?` + new URLSearchParams({ email: 'ana@' + DOM, terms: TERMS, lang: 'es', next })), env), l1 = new URL(r1.headers.get('Location'));
       claims = { ...claims, nonce: l1.searchParams.get('nonce') };
-      ok((await cb(l1.searchParams.get('state'))).headers.get('Location') === want, 'SSO: después vuelve a ' + want + ' (pedido: ' + next + ')');
+      ok((await cb(l1.searchParams.get('state'), (r1.headers.get('Set-Cookie') || '').split(';')[0])).headers.get('Location') === want, 'SSO: después vuelve a ' + want + ' (pedido: ' + next + ')');
     }
     const ck = (r.headers.get('Set-Cookie') || '').split(';')[0];
     const me = await (await req('GET', '/api/me', { headers: { Cookie: ck } })).json();

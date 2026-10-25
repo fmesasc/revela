@@ -107,6 +107,8 @@ export async function handleVisit(req, env, body, json) {
   const site = env.SITE_URL || 'https://revelaslides.com', kind = body.kind === '404' ? '404' : 'view';
   const who = await sha256((req.headers.get('CF-Connecting-IP') || '') + '|' + (req.headers.get('User-Agent') || ''));
   const lang = /^[a-z]{2}$/.test(body.lang || '') ? body.lang : '';
-  await visitsCall(env, 'hit', { who, path: cleanPath(body.path), ref: cleanRef(body.ref, site), lang, kind });
+  // (A link tagged by whoever shared it — utm_source[:campaign], read by the page —: that says where from, better than a missing referrer.)
+  const src = typeof body.src === 'string' && /^[a-z0-9_.-]{1,30}(:[a-z0-9_.-]{1,30})?$/.test(body.src) ? 'utm:' + body.src : '';
+  await visitsCall(env, 'hit', { who, path: cleanPath(body.path), ref: src || cleanRef(body.ref, site), lang, kind });
   return json({ ok: true });
 }

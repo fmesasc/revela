@@ -64,7 +64,8 @@ import { handleTeams, teamStatus } from './teams.js';
 import { handleLti } from './lti.js';
 import { handleCalls } from './calls.js';
 import { docsSettings, TRASH_DAYS, FOLDERS } from './docs.js';
-import { mail, sendMail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL } from './mail.js';
+import { mail, sendMail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL, unsubToken } from './mail.js';
+import { renderNews } from './news.js';
 import { scheduleItem, scheduleAll, dayOf } from './schedule.js';
 import { handle3d, configured3d } from './model3d.js';
 import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES, emails as adminEmails } from './admin.js';
@@ -202,7 +203,7 @@ export function cleanTours(b) {
 // text — it explains what Revela is and that the interactive tutorials are there. A language without its text reads the
 // English one, then the Spanish. Plain text only (the app writes it as text); no addresses are made of it.
 export const WELCOME_LANGS = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'];
-export const WELCOME_DEFAULT = { on: false, texts: {} };
+export const WELCOME_DEFAULT = { on: false, mail: false, texts: {} };
 let welcomeCache = { at: 0, v: null };
 export const resetWelcomeCache = () => { welcomeCache = { at: 0, v: null }; };
 export async function welcomeConfig(env, fresh) {
@@ -213,21 +214,28 @@ export async function welcomeConfig(env, fresh) {
 }
 const wstr = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, ' ').replace(/\r/g, '').trim().slice(0, n);
 export function cleanWelcome(b) {
-  if (typeof b?.on !== 'boolean' || !b.texts || typeof b.texts !== 'object' || Array.isArray(b.texts)) return null;
+  if (typeof b?.on !== 'boolean' || (b.mail !== undefined && typeof b.mail !== 'boolean') || !b.texts || typeof b.texts !== 'object' || Array.isArray(b.texts)) return null;
   const texts = {};
   for (const [k, v] of Object.entries(b.texts)) {
     if (!WELCOME_LANGS.includes(k) || !v || typeof v !== 'object') return null;
     const title = wstr(v.title, 80), text = wstr(v.text, 800);
     if (title || text) texts[k] = { title, text };
   }
-  if (b.on && !texts.es?.text && !texts.en?.text) return null;      // (on, with something to say in Spanish or English)
-  return { on: b.on, texts };
+  if ((b.on || b.mail) && !texts.es?.text && !texts.en?.text) return null;      // (on, with something to say in Spanish or English)
+  return { on: b.on, mail: !!b.mail, texts };
 }
 // What a person in this language reads: theirs, else English, else Spanish; null when off or empty.
-export function welcomeFor(cfg, lang) {
-  if (!cfg?.on) return null;
+export function welcomeFor(cfg, lang, key = 'on') {
+  if (!cfg?.[key]) return null;
   const t = [lang, 'en', 'es'].map(k => cfg.texts?.[k]).find(x => x && x.text);
   return t ? { title: t.title || '', text: t.text } : null;
+}
+// The same welcome as an email to a new account, when the admin turned «mail» on (once: the account remembers it sent it).
+async function welcomeMail(env, sub, lang) {
+  try {
+    const cfg = await welcomeConfig(env), w = welcomeFor(cfg, lang, 'mail'); if (!w || !mailConfigured(env)) return;
+    await call(acct(env, sub), 'mail-welcome', { title: w.title, text: w.text, ref: 'welcome' });
+  } catch (e) { console.log('welcome mail', e?.message); }
 }
 const monthOf = (t = Date.now()) => new Date(t).toISOString().slice(0, 7);
 // The notices (notices.js), read again at most once a minute per Worker instance (the admin's changes reset it here).
@@ -255,7 +263,7 @@ export class Account {
     if (!this.env.DIRECTORY) return;
     const prof = await this.get('profile', null); if (!prof?.sub) return;
     const own = await this.plan(), rec = { sub: prof.sub, email: prof.email, name: prof.name || null, plan: own, until: own === 'pro' ? await this.proUntil() : 0, credits: await this.get('credits', 0),
-      created: prof.created || null, lastSeen: await this.get('lastSeen', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)), bytes: (await this.storage()).used,
+      created: prof.created || null, lang: prof.lang || null, news: !!(await this.get('newsOn', null)), lastSeen: await this.get('lastSeen', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)), bytes: (await this.storage()).used,
       // (Test mode, apart: the flag, a Pro only from test mode, and the test credits — kept out of the real counts.)
       billingTest: !!(await this.get('billingTest', null)), test: own === 'pro' && !!(await this.get('plan', null))?.test && !((await this.get('proGift', null))?.until > Date.now()),
       testCredits: (await this.lots()).filter(l => l.test && l.exp > Date.now()).reduce((t, l) => t + l.n, 0) };
@@ -461,7 +469,9 @@ export class Account {
           const next = { ...prof, email: a.email, ...(a.name && { name: a.name }), ...(a.lang && { lang: a.lang }), ...(terms && prof.terms?.version !== s.termsVersion && { terms }) };
           if (JSON.stringify(next) !== JSON.stringify(prof)) await this.put({ profile: next });
         }
-        await this.seen(); await this.dirSync();
+        // (The news by email: only when the person ticked it — signing up here, or later in «Mi cuenta» — never by default.)
+        if (fresh && a.news === true) await this.put({ newsOn: { at: Date.now(), how: 'signup' } });
+        await this.seen(); await this.dirSync(fresh);
         const secret = random(32), sessions = await this.get('sessions', {});
         const days = a.kind === 'desktop' ? 90 : 30;
         // (At most 20 sessions: the oldest go.)
@@ -534,7 +544,7 @@ export class Account {
         await this.expire(); await this.monthly(plan === 'pro', s);
         const ds = await this.docState(plan === 'pro'); await this.dirSync();
         return this.json({ email: prof.email, name: prof.name || null, plan, until: own === 'pro' ? await this.proUntil() : null, ...((await this.get('blocked', null)) && { blocked: true }), credits: await this.get('credits', 0), expiring: await this.soon(), features: FEATURES[plan] || FEATURES.free,
-          terms: prof.terms?.version === s.termsVersion, docs: { n: ds.docs.length, limit: ds.limit, readOnly: ds.locked.length }, ...((await this.get('billingTest', null)) && { billingTest: true }),
+          terms: prof.terms?.version === s.termsVersion, docs: { n: ds.docs.length, limit: ds.limit, readOnly: ds.locked.length }, ...((await this.get('newsOn', null)) && { news: true }), ...((await this.get('billingTest', null)) && { billingTest: true }),
           ...(p?.trial && p.until > Date.now() && own === 'pro' && !((await this.get('proGift', null))?.until > Date.now()) && { trial: { until: p.until } }),
           ...(team?.member && { team: { name: team.name, role: team.role, active: team.active } }) });
       }
@@ -549,15 +559,30 @@ export class Account {
         const ok = await this.mailMe('test', { url: (this.env.SITE_URL || 'https://revelaslides.com') + '/app/' });
         return this.json({ ok: !!ok }, ok ? 200 : 502);
       }
+      case 'mail-welcome': {                               // { title, text, ref }: the welcome, once
+        return this.json({ ok: await this.mailMe('welcome', { title: String(a.title || '').slice(0, 80), text: String(a.text || '').slice(0, 800) }, a.ref || 'welcome') });
+      }
       case 'mail-opened': {                                // { vars }: one of my tracked links was opened (docs.js; I can stop these)
         return this.json({ ok: await this.mailMe('opened', a.vars || {}) });
       }
+      case 'mail-news': {                                  // { issue: { id, texts }, ref }: one newsletter to this account — only if it asked for them
+        const prof = await this.get('profile', null), sent = await this.get('mailed', []);
+        if (!prof?.email || !(await this.get('newsOn', null)) || (await this.get('blocked', null))) return this.json({ ok: false, skipped: true });
+        if (a.ref && sent.includes(a.ref)) return this.json({ ok: false, skipped: true });
+        const tok = await unsubToken(this.env, prof.sub, 'news'); if (!tok) return this.json({ ok: false });     // (no way out: none sent)
+        const site = this.env.SITE_URL || 'https://revelaslides.com', unsub = `${site}/api/mail/unsubscribe?t=${encodeURIComponent(tok)}`;
+        const ok = await sendMail(this.env, { to: prof.email, kind: 'news', ...renderNews(a.issue, prof.lang || 'es', { unsub, site }), unsubscribe: unsub });
+        if (ok && a.ref) await this.put({ mailed: [...sent, a.ref].slice(-200) });
+        return this.json({ ok });
+      }
       case 'mail-prefs': {                                 // { off?: [kinds] } → the optional kinds stopped
-        if (Array.isArray(a.off)) await this.put({ mailOff: a.off.filter(k => OPTIONAL.includes(k)) });
-        return this.json({ off: await this.get('mailOff', []), optional: OPTIONAL });
+        if (Array.isArray(a.off)) await this.put({ mailOff: a.off.filter(k => OPTIONAL.includes(k) && k !== 'news') });   // ('news' is asked for, not stopped here)
+        if (typeof a.news === 'boolean') { await this.put({ newsOn: a.news ? ((await this.get('newsOn', null)) || { at: Date.now(), how: 'account' }) : null }); await this.dirSync(true); }
+        return this.json({ off: await this.get('mailOff', []), optional: OPTIONAL.filter(k => k !== 'news' && k !== 'welcome'), news: !!(await this.get('newsOn', null)) });
       }
       case 'mail-off': {                                   // { kind }: no more of these (the signed link in an email)
         const prof = await this.get('profile', null); if (!prof) return this.json({ ok: false });
+        if (a.kind === 'news') { await this.put({ newsOn: null }); await this.dirSync(true); return this.json({ ok: true, lang: prof.lang }); }   // (the link in a newsletter: no more)
         const off = await this.get('mailOff', []); if (!off.includes(a.kind)) await this.put({ mailOff: [...off, a.kind] });
         return this.json({ ok: true, lang: prof.lang });
       }
@@ -876,6 +901,11 @@ export class Budget {
     }
     if (op === 'drive-stats') { const months = []; for (let i = 0; i < 6; i++) { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - i); const m = d.toISOString().slice(0, 7); months.push({ month: m, ...((await this.ctx.storage.get('drive:' + m)) || { people: 0, saves: 0 }) }); } return Response.json({ months }); }
     if (op === 'tours-set') { await this.ctx.storage.put('tours', a.tours); return Response.json({ ok: true }); }
+    // (The newsletters' issues — news.js: kept whole, they are small.)
+    if (op === 'news-index') return Response.json({ issues: [...(await this.ctx.storage.list({ prefix: 'issue:' })).values()] });
+    if (op === 'news-get') return Response.json({ issue: (await this.ctx.storage.get('issue:' + String(a.id))) || null });
+    if (op === 'news-put') { await this.ctx.storage.put('issue:' + String(a.issue.id), a.issue); return Response.json({ ok: true }); }
+    if (op === 'news-del') { await this.ctx.storage.delete('issue:' + String(a.id)); return Response.json({ ok: true }); }
     if (op === 'welcome-get') return Response.json({ welcome: (await this.ctx.storage.get('welcome')) || null });
     if (op === 'welcome-set') { await this.ctx.storage.put('welcome', a.welcome); return Response.json({ ok: true }); }
     // (The log of the tours finished for the first time — the last 1000, for the admin — and each month's count per tour.)
@@ -1021,11 +1051,13 @@ export async function handleApi(req, env, url) {
   // Single sign-on with a team's own identity provider (sso.js): no session yet, the browser goes and comes back.
   if (path === '/sso/start' && req.method === 'GET') return ssoStart(env, url);
   if (path === '/sso/callback' && req.method === 'GET') {
-    const who = await ssoCallback(env, url), back = q => Response.redirect(`${s.site}/app/?sso=${q}`, 302);
+    const bound = (req.headers.get('Cookie') || '').split(/;\s*/).map(c => c.split('=')).find(([k]) => k === 'rv_sso')?.[1] || '';
+    const who = await ssoCallback(env, url, bound), back = q => Response.redirect(`${s.site}/app/?sso=${q}`, 302);
     if (who.error) return back(who.error);
     if (!(await testerOK(env, who.email))) return back('tester');
     const r = await call(acct(env, who.sub), 'login', { sub: who.sub, email: who.email, name: who.name, kind: 'web', lang: langOf(who.lang), terms: who.terms, ...sessionClient(req) });
     if (r.error === 'terms') return back('terms');
+    if (r.fresh) await welcomeMail(env, who.sub, langOf(who.lang));
     if (langOf(who.lang)) await call(acct(env, 'e:' + who.email), 'set-lang', { lang: langOf(who.lang) });
     // (Into the team when its admin chose so and there are seats; already in one: as it was.)
     if (who.autoJoin && !(await call(acct(env, who.sub), 'team-id')).id && (await ssoJoin(env, who.team, who.email, who.sub)).data.ok) await call(acct(env, who.sub), 'team-set', { id: who.team });
@@ -1131,8 +1163,9 @@ export async function handleApi(req, env, url) {
     if (!who) return json({ error: 'not signed in with Google' }, 401);
     if (!(await testerOK(env, who.email))) return json({ error: 'not a tester' }, 403);   // (the test site: invited people only)
     const kind = body.kind === 'desktop' && !webOrigin ? 'desktop' : 'web', lang = langOf(body.lang);
-    const r = await call(acct(env, who.sub), 'login', { sub: who.sub, email: who.email, name: who.name, kind, lang, terms: body.terms, ...sessionClient(req) });
+    const r = await call(acct(env, who.sub), 'login', { sub: who.sub, email: who.email, name: who.name, kind, lang, terms: body.terms, news: body.news === true, ...sessionClient(req) });
     if (r.error === 'terms') return json(r, 400);
+    if (r.fresh) await welcomeMail(env, who.sub, lang);
     if (r.fresh && body.campaign) await campaignSignup(env, who.sub, String(body.campaign));   // (the campaign that brought a new account: crm.js)
     if (lang) await call(acct(env, 'e:' + who.email), 'set-lang', { lang });   // (for emails to this address: shares, invitations)
     const token = tokenOf(who.sub, r.secret);
@@ -1179,7 +1212,7 @@ export async function handleApi(req, env, url) {
   // An admin «view as user» session is READ-ONLY: only GET (and /logout, to leave it). Nothing in the account can be
   // changed from it — the guard is here, on the server, not only in the app. (The app also shows a banner and hides the
   // controls, but a hand-made POST wouldn't get past this.)
-  if (me?.impersonation && req.method !== 'GET' && path !== '/logout')
+  if (me?.impersonation && path !== '/logout' && (req.method !== 'GET' || ['/billing/portal', '/account/export'].includes(path)))
     return json({ error: 'read-only', message: 'Visualización de administración: la sesión es de solo lectura.' }, 403);
   // Votes through the server (broadcast.js): a phone's way in — with its account when it has a session here (a poll
   // that asks to sign in counts one vote per account) — and the 5 letters of a room typed on vote.html.
@@ -1299,7 +1332,7 @@ export async function handleApi(req, env, url) {
       const r = await call(A, 'mail-test'); return json(r, r.error === 'too soon' ? 429 : r.error ? 503 : r.ok ? 200 : 502);
     }
     case '/mail/prefs': {                                 // GET → { off, optional }; POST { off: [kinds] }
-      return json(await call(A, 'mail-prefs', req.method === 'POST' ? { off: body.off } : {}));
+      return json(await call(A, 'mail-prefs', req.method === 'POST' ? { off: body.off, news: body.news } : {}));
     }
     case '/terms': {
       if (req.method !== 'POST') return json({ error: 'method' }, 405);

@@ -48,6 +48,7 @@ import { Team } from './teams.js';
 import { LtiStore } from './lti.js';
 import { CallRoom } from './calls.js';
 import { Schedule, runSchedule } from './schedule.js';
+import { newsRun } from './news.js';
 import { ModelJob } from './model3d.js';
 import { handleAdmin, adminHost, Directory, Tickets, Audit, ticketsDue, emails as adminEmails } from './admin.js';
 import { Crm, runCrm } from './crm.js';
@@ -136,6 +137,7 @@ export default {
       tickets: () => ticketsDue(env, now),
       crm: () => runCrm(env, { sendMail, mailConfigured, adminEmails: adminEmails(env) }, now),
       releases: () => releasesAuto(env, now),
+      news: () => newsRun(env, now, 10),                 // (a newsletter still being sent: up to 10 batches; the admin's page goes on faster while open)
       storage: async st => { await storageBackfillDaily(env, st.marks, now); return storageWatch(env, { sendMail, adminEmails: adminEmails(env) }); },
       openrouter: () => openRouterWatch(env, now),
     }).catch(e => console.log('cron', e?.message)));

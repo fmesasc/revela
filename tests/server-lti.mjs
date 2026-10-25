@@ -94,6 +94,11 @@ let L = await launch({ 'https://purl.imsglobal.org/spec/lti/claim/message_type':
 ok(L.to.origin + L.to.pathname === ISS + '/mod/lti/auth.php' && L.to.searchParams.get('response_mode') === 'form_post' && L.to.searchParams.get('client_id') === CID, 'inicio: a la autorización de Moodle');
 ok(L.res.status === 302 && /\/api\/lti\/pick\?t=/.test(loc(L.res)), 'el profesor añade una actividad: a elegir la presentación');
 ok((await call('POST', '/api/lti/launch', { id_token: 'x', state: L.state })).status === 400, 'el mismo inicio no se puede repetir');
+// The address to answer a deep-link request to is the platform's own (https, a host it registered with): not whatever the message says.
+for (const [bad, why] of [['https://malo.example/return', 'otro sitio'], ['http://moodle.example/mod/lti/contentitem_return.php', 'sin https'], ['javascript:alert(1)', 'javascript:'], ['https://moodle.example.malo.example/x', 'un host que solo empieza igual']]) {
+  const d = await launch({ 'https://purl.imsglobal.org/spec/lti/claim/message_type': 'LtiDeepLinkingRequest', 'https://purl.imsglobal.org/spec/lti-dl/claim/deep_linking_settings': { deep_link_return_url: bad } });
+  ok(d.res.status === 400, 'enlace profundo: una dirección de vuelta de ' + why + ' no se acepta');
+}
 ok((await launch({ 'https://purl.imsglobal.org/spec/lti/claim/message_type': 'LtiResourceLinkRequest' }, { tamper: true })).res.status === 401, 'un token manipulado: no');
 const impostor = await keys();
 ok((await launch({ 'https://purl.imsglobal.org/spec/lti/claim/message_type': 'LtiResourceLinkRequest' }, { key: impostor.privateKey })).res.status === 401, 'un token firmado por otro: no');

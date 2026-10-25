@@ -151,17 +151,19 @@ export async function ssoStart(env, url) {
   const d = await discover(env, s.issuer); if (!d) return back(env, 'provider');
   const verifier = random(32), nonce = random(16);
   const next = String(url.searchParams.get('next') || ''), back2 = NEXT.test(next) ? next : '';
-  const state = await sign(env, { team, v: verifier, n: nonce, ...(back2 && { next: back2 }), terms: String(url.searchParams.get('terms') || '').slice(0, 20), lang: String(url.searchParams.get('lang') || '').slice(0, 5), x: Date.now() + STATE_MINUTES * 6e4 });
+  // (The state is also tied to THIS browser by a cookie: an answer brought by another one — a link sent to somebody — is not accepted.)
+  const bind = random(16);
+  const state = await sign(env, { team, v: verifier, n: nonce, b: bind, ...(back2 && { next: back2 }), terms: String(url.searchParams.get('terms') || '').slice(0, 20), lang: String(url.searchParams.get('lang') || '').slice(0, 5), x: Date.now() + STATE_MINUTES * 6e4 });
   const u = new URL(d.authorization_endpoint);
   for (const [k, v] of Object.entries({ response_type: 'code', client_id: s.clientId, redirect_uri: ssoRedirect(env), scope: 'openid email profile', state, nonce,
     code_challenge: b64url(await crypto.subtle.digest('SHA-256', enc.encode(verifier))), code_challenge_method: 'S256', login_hint: email })) u.searchParams.set(k, v);
-  return Response.redirect(u.href, 302);
+  return new Response(null, { status: 302, headers: { Location: u.href, 'Set-Cookie': `rv_sso=${bind}; Path=/api; HttpOnly; Secure; SameSite=Lax; Max-Age=600`, 'Cache-Control': 'no-store' } });
 }
 
 // The provider's answer → { sub, email, name, team, autoJoin, terms, lang } or { error }.
-export async function ssoCallback(env, url) {
+export async function ssoCallback(env, url, bound = '') {
   const st = await unsign(env, url.searchParams.get('state'));
-  if (!st || st.x < Date.now()) return { error: 'expired' };
+  if (!st || st.x < Date.now() || !st.b || st.b !== bound) return { error: 'expired' };
   if (url.searchParams.get('error')) return { error: 'denied' };
   const c = await ask(teamOf(env, st.team), 'sso-config', {}); const s = c.data.sso; if (!s) return { error: 'none' };
   const d = await discover(env, s.issuer); if (!d) return { error: 'provider' };

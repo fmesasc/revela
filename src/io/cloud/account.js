@@ -78,6 +78,11 @@ export const TERMS_URL = OFFICIAL_SITE + '/terms.html', PRIVACY_URL = OFFICIAL_S
 const TERMS_KEY = 'revela.terms';
 export const termsAccepted = () => { try { return localStorage.getItem(TERMS_KEY) === TERMS_VERSION; } catch { return false; } };
 export const rememberTerms = () => { try { localStorage.setItem(TERMS_KEY, TERMS_VERSION); } catch {} };
+// The box «I want Revela's news by email» of the sign-in dialog (never ticked for them): kept for the one sign-in that
+// follows — a new account then starts with them; one that existed is not changed by it (the server decides: «Mi cuenta»).
+const NEWS_KEY = 'revela.news.ask';
+export const askNews = on => { try { on ? localStorage.setItem(NEWS_KEY, '1') : localStorage.removeItem(NEWS_KEY); } catch {} };
+const newsAsked = () => { try { return localStorage.getItem(NEWS_KEY) === '1'; } catch { return false; } };
 // An account from before (the server says terms: false): accepted once.
 export async function acceptTerms() { await api('terms', { version: TERMS_VERSION, lang: currentLang() }); rememberTerms(); return refreshAccount(); }
 
@@ -93,7 +98,7 @@ export const campaign = () => rv;
 export async function signIn() {
   if (EDITION === 'desktop') return desktopSignIn();
   if (!window.google?.accounts?.oauth2) await loadScript(GIS);
-  try { await api('login', { accessToken: await googleToken(), lang: currentLang(), ...(termsAccepted() && { terms: TERMS_VERSION }), ...(campaign() && { campaign: campaign() }) }); }
+  try { await api('login', { accessToken: await googleToken(), lang: currentLang(), ...(termsAccepted() && { terms: TERMS_VERSION }), ...(newsAsked() && { news: true }), ...(campaign() && { campaign: campaign() }) }); }
   catch (e) { if (e.status === 400 && e.data?.error === 'terms') throw new Error('TERMS'); if (e.status === 403 && e.data?.error === 'not a tester') throw new Error('NOT_TESTER'); throw e; }
   return refreshAccount();
 }

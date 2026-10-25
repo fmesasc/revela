@@ -39,6 +39,8 @@ const termsText = () => t('Al continuar aceptas las {terms} y la {privacy}, y co
   .replace('{terms}', `<a href="${acc.TERMS_URL}" target="_blank" rel="noopener">${t('condiciones del servicio')}</a>`)
   .replace('{privacy}', `<a href="${acc.PRIVACY_URL}" target="_blank" rel="noopener">${t('política de privacidad')}</a>`);
 const termsBox = () => `<label class="acc-terms" style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:10px 0"><input type="checkbox" class="acc-terms-ok"${acc.termsAccepted() ? ' checked' : ''} style="margin-top:3px"><span>${termsText()}</span></label>`;
+// «I want Revela's news by email»: a box of its own, never ticked for them (consent is asked, not assumed).
+const newsBox = () => `<label class="acc-newsask" style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:0 0 10px"><input type="checkbox" class="acc-news-ok" style="margin-top:3px"><span>${t('Quiero recibir las novedades de Revela por correo (puedo darme de baja cuando quiera).')}</span></label>`;
 // A dialog asking for them: resolves true once accepted (the box ticked), false if closed.
 export function askTerms() {
   return new Promise(resolve => {
@@ -85,7 +87,7 @@ export function openAccount({ buy } = {}) {
     if (!me) {
       modalEl.classList.remove('dk'); modalEl.style.width = 'min(440px,94vw)';
       body.innerHTML = `<p class="host-help">${t('Inicia sesión para usar la IA incluida, sin claves. Las cuentas nuevas reciben créditos de regalo para probarla.')}</p>
-        ${termsBox()}
+        ${termsBox()}${newsBox()}
         <div class="acc-code" hidden></div>
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="fr-do acc-login">${t(EDITION === 'desktop' ? 'Iniciar sesión en el navegador' : 'Iniciar sesión con Google')}</button>
           ${EDITION === 'cloud' ? `<button type="button" class="mini2 acc-sso" title="${t('Si tu centro o empresa entra con su propio proveedor (Microsoft, Okta…)')}">${t('Entrar con SSO')}</button>` : ''}</div>
@@ -105,7 +107,7 @@ export function openAccount({ buy } = {}) {
           if (!box.querySelector('.acc-need')) box.querySelector('span').insertAdjacentHTML('beforeend', `<small class="acc-need">${t('Marca la casilla para continuar.')}</small>`);
           return;
         }
-        e.target.disabled = true; acc.rememberTerms();
+        e.target.disabled = true; acc.rememberTerms(); acc.askNews(!!body.querySelector('.acc-news-ok')?.checked);
         try {
           if (EDITION === 'desktop') {
             abort = new AbortController();
@@ -157,6 +159,7 @@ export function openAccount({ buy } = {}) {
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="credits"> ${t('Avisarme cuando mis créditos estén a punto de caducar')}</label>
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="trialEnding"> ${t('Avisarme antes de que acabe mi prueba de Pro')}</label>
         <label class="fr-chk"><input type="checkbox" class="acc-mail-opt" data-kind="opened"> ${t('Avisarme cuando alguien abra uno de mis enlaces con seguimiento')}</label>
+        <label class="fr-chk"><input type="checkbox" class="acc-news-opt"> ${t('Quiero recibir las novedades de Revela por correo')}</label>
         <div class="fr-actions" style="justify-content:flex-start"><button type="button" class="mini2 acc-mail-test">${t('Enviarme un correo de prueba')}</button></div></details>` },
       { id: 'dev', icon: 'code', label: t('Desarrolladores e IA'), html: developersBox().replace('class="acc-dev"', 'class="acc-dev dk-section"') },
       { id: 'sess', icon: 'devices', label: t('Sesiones abiertas'), html: `<details class="acc-sess dk-section"><summary>${t('Sesiones abiertas')}</summary>
@@ -219,7 +222,11 @@ export function openAccount({ buy } = {}) {
     const optBoxes = [...body.querySelectorAll('.acc-mail-opt')];
     body.querySelector('.acc-mail').addEventListener('toggle', async e => {
       if (!e.target.open || body.querySelector('.acc-mail').dataset.loaded) return;
-      try { const p = await acc.api('mail/prefs'); for (const b of optBoxes) b.checked = !p.off.includes(b.dataset.kind); body.querySelector('.acc-mail').dataset.loaded = '1'; } catch {}
+      try { const p = await acc.api('mail/prefs'); for (const b of optBoxes) b.checked = !p.off.includes(b.dataset.kind); body.querySelector('.acc-news-opt').checked = !!p.news; body.querySelector('.acc-mail').dataset.loaded = '1'; } catch {}
+    });
+    body.querySelector('.acc-news-opt').addEventListener('change', async e => {
+      const box = e.target;
+      try { const p = await acc.api('mail/prefs', { news: box.checked }); box.checked = !!p.news; } catch (err) { box.checked = !box.checked; alertDialog(errorText(err)); }
     });
     for (const box of optBoxes) box.addEventListener('change', async () => {
       const k = box.dataset.kind;

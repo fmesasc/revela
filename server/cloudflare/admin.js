@@ -109,7 +109,7 @@ import { APP_VERSION } from '../../src/core/config.js';
 import { visitsCall, cleanPath } from './visits.js';
 import { communityPage } from './community.js';
 import { cleanNotice } from './notices.js';
-import { mail, mailConfigured, ticketLink, readTicketToken, ticketPage, fmtDate, TICKET_LINK_DAYS } from './mail.js';
+import { mail, mailConfigured, ticketLink, readTicketToken, ticketPage, fmtDate, TICKET_LINK_DAYS, render as renderMail, sendMail as sendMailTo } from './mail.js';
 import { fromB64url } from './util.js';
 import { takeQuota, writeText, readParts } from './store.js';
 import { teamStatus } from './teams.js';
@@ -121,6 +121,7 @@ import { enc, dec, EMAIL, DAY } from './util.js';
 import { ALARMS, MIN_ALARM_MS, PAUSE_DEFER_MS, resetBrakesCache } from './brakes.js';
 import { quotaUsage, quotaConfigured, FREE_DAILY, QUOTA_ALERTS } from './quota.js';
 import { openRouterCredits } from './openrouterwatch.js';
+import { newsAdmin } from './news.js';
 
 const pad = n => String(n).padStart(10, '0');
 export const STATUSES = ['open', 'waiting', 'closed'];   // (see Tickets)
@@ -207,7 +208,7 @@ export class Directory {
       if (!a.sub) return Response.json({ error: 'bad request' }, { status: 400 });
       const old = await st.get('u:' + a.sub), rec = { sub: String(a.sub), email: String(a.email || '').toLowerCase(), name: a.name || null, plan: a.plan || 'free', until: +a.until || 0,
         credits: +a.credits || 0, created: +a.created || null, lastSeen: a.lastSeen || null, team: a.team || null, blocked: !!a.blocked,
-        billingTest: !!a.billingTest, test: !!a.test, testCredits: Math.max(0, +a.testCredits || 0), bytes: Math.max(0, +a.bytes || 0), updated: Date.now() };
+        lang: a.lang ? String(a.lang).slice(0, 5) : null, news: !!a.news, billingTest: !!a.billingTest, test: !!a.test, testCredits: Math.max(0, +a.testCredits || 0), bytes: Math.max(0, +a.bytes || 0), updated: Date.now() };
       const gone = old ? [emailKey(old), seenKey(old)].filter(k => k !== emailKey(rec) && k !== seenKey(rec)) : [];
       if (gone.length) await st.delete(gone);
       await st.put({ ['u:' + rec.sub]: rec, [emailKey(rec)]: rec.sub, [seenKey(rec)]: rec.sub });
@@ -218,6 +219,17 @@ export class Directory {
       return Response.json({ ok: true });
     }
     if (op === 'get') return Response.json({ user: (await st.get('u:' + a.sub)) || null });
+    // The accounts that asked for the news (news.js): a page after a cursor (the last key seen), and the count by language.
+    if (op === 'news-list') {
+      const limit = Math.min(100, Math.max(1, +a.limit || 30)), recs = []; let cursor = null;
+      for (const [k, r] of await st.list({ prefix: 'u:', ...(a.cursor && { startAfter: a.cursor }) })) {
+        if (recs.length >= limit) break; cursor = k; if (r.news && !r.blocked) recs.push({ sub: r.sub, email: r.email, lang: r.lang, plan: r.plan, until: r.until, test: r.test, news: true, blocked: false });
+      }
+      // (More after the last one read? the cursor stays; none: null.)
+      const more = cursor ? (await st.list({ prefix: 'u:', startAfter: cursor, limit: 1 })).size > 0 : false;
+      return Response.json({ recs, cursor: more ? cursor : null });
+    }
+    if (op === 'news-count') { let total = 0; const byLang = {}; for (const [, r] of await st.list({ prefix: 'u:' })) if (r.news && !r.blocked) { total++; byLang[r.lang || 'es'] = (byLang[r.lang || 'es'] || 0) + 1; } return Response.json({ total, byLang }); }
     if (op === 'subs') {                                  // { emails } → { subs: { email: sub } } (teams.js: a team's members)
       const subs = {};
       for (const e of (Array.isArray(a.emails) ? a.emails : []).slice(0, 1000)) { const m = await st.list({ prefix: `e:${String(e).toLowerCase()}|`, limit: 1 }); for (const [, sub] of m) subs[e] = sub; }
@@ -844,6 +856,7 @@ export async function handleAdmin(req, env, url) {
       return json({ ...(await call(T, 'reply', { id, text, by, status, mailed })), mailed });
     }
   }
+  if (path === '/news' || path.startsWith('/news/')) return newsAdmin(env, path, q, body, { GET, POST, by, json, audit: e => audit(env, { by, ...e }) });
   if (path === '/promos' || path.startsWith('/promos/')) return promosApi(env, path, q, body, { GET, POST, by, json });
   if (path === '/notices' || path.startsWith('/notices/')) return noticesApi(env, path, body, { GET, POST, by, json });
   if (path === '/lti' || path.startsWith('/lti/')) return ltiAdmin(env, path, body, { GET, POST, json, audit: e => audit(env, { by, ...e }), site: env.SITE_URL || 'https://revelaslides.com' });
@@ -965,7 +978,7 @@ export function cleanPromo(b, now = Date.now()) {
   out.coupon.push(['duration', b.duration]);
   if (b.duration === 'repeating') { const m = Math.round(+b.months); if (!(m >= 1 && m <= 36)) return { error: 'months' }; out.coupon.push(['duration_in_months', String(m)]); out.months = m; }
   const groups = Array.isArray(b.appliesTo) ? [...new Set(b.appliesTo)] : [];
-  if (groups.some(g => !PROMO_GROUPS[g])) return { error: 'appliesTo' };
+  if (groups.some(g => typeof g !== 'string' || !Object.hasOwn(PROMO_GROUPS, g))) return { error: 'appliesTo' };
   out.groups = groups.length === Object.keys(PROMO_GROUPS).length ? [] : groups;   // (all three: everything)
   if (b.maxRedemptions != null && b.maxRedemptions !== '') { const n = Math.round(+b.maxRedemptions); if (!(n >= 1 && n <= 1e6)) return { error: 'maxRedemptions' }; out.promo.push(['max_redemptions', String(n)]); }
   if (b.expires) {
@@ -980,6 +993,15 @@ export function cleanPromo(b, now = Date.now()) {
 async function promosApi(env, path, q, body, { GET, POST, by, json }) {
   // Credits for finishing the guided tours: the settings (audited). Off unless turned on.
   // The welcome message for new accounts (api.js welcomeConfig): off until written and turned on; audited.
+  // A test of the welcome email, to the admin: what a new account would receive, in the chosen language (what is saved).
+  if (path === '/promos/welcome-test' && POST) {
+    if (!mailConfigured(env)) return json({ error: 'mail not configured' }, 503);
+    const lang = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'].includes(body?.lang) ? body.lang : 'es', cfg = await welcomeConfig(env, true);
+    const w = [lang, 'en', 'es'].map(k => cfg.texts?.[k]).find(x => x?.text);
+    if (!w) return json({ error: 'no text' }, 400);
+    const site = env.SITE_URL || 'https://revelaslides.com', r = renderMail('welcome', lang, { title: w.title, text: w.text, url: site + '/app/' }, '#');
+    return json({ ok: await sendMailTo(env, { to: by, kind: 'welcome-test', ...r, subject: '[PRUEBA] ' + r.subject }), to: by });
+  }
   if (path === '/promos/welcome') {
     if (GET) return json({ config: await welcomeConfig(env, true), langs: WELCOME_LANGS });
     if (POST) {
