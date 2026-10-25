@@ -3,6 +3,7 @@
 // guides, resize from the corners, edit text on double‑click.
 
 import { blobURL, withBlobs, pruneBlobs } from '../../io/formats/blobmedia.js';
+import { pageOf } from '../../features/content/aianim.js';
 import { diagramHTML, diagramSig, readableOn } from '../../render/diagrams.js';
 import { sectionBarHTML, barRoom } from '../../render/sectionbar.js';
 import { slideNumberHTML } from '../../render/slidenumber.js';
@@ -361,7 +362,7 @@ function reconcile(b) {
   } else if (b.type === 'embed') {
     const card = el.querySelector('.webcard'); if (card) paintWebCard(card, b);
     const f = el.querySelector('iframe');
-    if (f && b.srcdoc != null) { if (f._srcdoc !== b.srcdoc) { f.srcdoc = b.srcdoc; f._srcdoc = b.srcdoc; } f.style.background = b.transparent ? 'transparent' : '#fff'; }
+    if (f && b.srcdoc != null) { if (f._srcdoc !== b.srcdoc) { f.srcdoc = pageOf(b); f._srcdoc = b.srcdoc; } f.style.background = b.transparent ? 'transparent' : '#fff'; }
     else if (f && f.getAttribute('src') !== b.src) f.src = b.src;
     const u = el.querySelector('.embed-url'); if (u) u.textContent = hostOf(b.src);
     const o = el.querySelector('.embed-open'); if (o && o.getAttribute('href') !== b.src) o.href = b.src;

@@ -32,7 +32,7 @@ import { deckTag, langAttr } from '../../features/document/proofing.js';
 import { blobMedia } from './blobmedia.js';
 import { createMediaPlayer, revelaMediaRuntime, askInVideo } from '../runtime/media.js';
 import { aiAnimRuntime } from '../runtime/aianim.js';
-import { aiAnimSteps } from '../../features/content/aianim.js';
+import { aiAnimSteps, pageOf } from '../../features/content/aianim.js';
 import { needsPlayer, mediaConfig, cameraSegment, cameraBoxCSS, cameraInnerHTML } from '../../features/live/media.js';
 import { createCameraEngine, revelaCameraRuntime } from '../runtime/camera.js';
 import { modelAttrsHTML, bleedBox, edgeCSS } from '../../features/content/model3d.js';
@@ -442,7 +442,7 @@ function blockHTMLRaw(b, slide) {
   // io/runtime/aianim.js plays each and stops at its end.)
   if (b.type === 'embed' && b.srcdoc != null) {
     const clicks = Array.from({ length: aiAnimSteps(b) }, (_, k) => `<span class="fragment rv-aseg" data-aseg-of="${esc(b.id)}" data-aseg="${k}"${b.animation && !b.animation.trigger ? ` data-fragment-index="${b.animation.order + k + 1}"` : ''} style="display:none"></span>`).join('');
-    return `<iframe${a}${b.aiAnim ? ` data-rv-anim="${esc(b.id)}"` : ''} srcdoc="${esc(b.srcdoc)}" sandbox="allow-scripts allow-popups" style="${box(b)}border:0;background:${b.transparent ? 'transparent' : '#fff'}"${b.transparent ? ' allowtransparency="true"' : ''}></iframe>${clicks}`;
+    return `<iframe${a}${b.aiAnim ? ` data-rv-anim="${esc(b.id)}"` : ''} srcdoc="${esc(pageOf(b))}" sandbox="allow-scripts allow-popups" style="${box(b)}border:0;background:${b.transparent ? 'transparent' : '#fff'}"${b.transparent ? ' allowtransparency="true"' : ''}></iframe>${clicks}`;
   }
   if (b.type === 'embed')
     return `<iframe${a} src="${esc(b.src || '')}" referrerpolicy="strict-origin-when-cross-origin"${b.refreshMin ? ` data-refresh-min="${+b.refreshMin}"` : ''} `

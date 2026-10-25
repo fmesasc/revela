@@ -45,7 +45,9 @@ export function aiAnimPlayer(cfg) {
   const esc = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const fail = msg => { post({ type: 'error', message: String(msg).slice(0, 300) }); const e = document.getElementById('rv-err'); if (e) { e.style.display = 'grid'; e.textContent = '⚠'; } };
   addEventListener('error', e => fail(e.message || 'error'));
+  let sw = 0, sh = 0;
   function size() {
+    sw = innerWidth; sh = innerHeight;
     const k = Math.min(innerWidth / 16, innerHeight / 9); dpr = Math.min(2.5, devicePixelRatio || 1);
     W = Math.max(16, Math.round(16 * k)); H = Math.max(9, Math.round(9 * k));
     cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
@@ -58,6 +60,10 @@ export function aiAnimPlayer(cfg) {
   }
   function frame(now) {
     const dt = now - last; last = now;
+    // (The frame's size is looked at every time, not only when the browser says it changed: an editor that lays the page out
+    // after it started — or a browser that doesn't tell — left the picture a few pixels wide, in the middle, for good.)
+    if (innerWidth < 40 || innerHeight < 24) { requestAnimationFrame(frame); return; }
+    if (innerWidth !== sw || innerHeight !== sh) size();
     if (playing && !waiting) {
       p = Math.min(1, p + (reduced ? 1 : dt / dur(stage)));
       if (p >= 1) {
@@ -81,6 +87,7 @@ export function aiAnimPlayer(cfg) {
     else if (c === 'at') at(+d.n || 0);
     else if (c === 'reset') { stage = 0; p = 0; waiting = mode === 'steps'; playing = true; }
     else if (c === 'play') playing = true; else if (c === 'pause') playing = false;
+    else if (c === 'probe') post({ type: 'probe', w: cv.width, h: cv.height, iw: innerWidth, ih: innerHeight });   // (the tests: how big the picture is)
     else if (c === 'config') { if (d.mode) mode = d.mode === 'steps' ? 'steps' : 'loop'; if (Array.isArray(d.durations)) durations = d.durations; if (mode === 'loop') waiting = false; }
   }
   addEventListener('message', e => { const d = e.data || {}; if (d && d.rvAnim) command(d.rvAnim, d); });
@@ -131,6 +138,9 @@ export function sceneAnim(def, topic) {
   const keys = [...new Set([...def.stages.flatMap(s => [s.name, s.caption]), ...(def.words || [])])];   // (each stage's name too: the player shows it over the caption)
   return { topic, lang: 'es', scene, stages: def.stages, mode: 'steps', durations: def.stages.map(s => s.duration), words: keys.map(k => ({ key: k, text: k })) };
 }
+// The page an HTML object shows: an AI animation's is always made from its own data with the player of NOW — one saved
+// in a presentation with an older player (and its faults) plays with the new one —; any other object's is its own.
+export const pageOf = b => (b?.aiAnim ? aiAnimSrcdoc(b.aiAnim) : b?.srcdoc);
 export const withAiAnim = (b, changes) => { const a = { ...b.aiAnim, ...changes }; return { ...b, aiAnim: a, srcdoc: aiAnimSrcdoc(a) }; };
 
 // Run a scene in a hidden sandbox, as the presentation will, through every stage quickly: its stages (from its

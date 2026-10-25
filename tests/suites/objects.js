@@ -1247,9 +1247,25 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const m = await DA.openAiAnimation(null, { create: async () => ({ scene, stages: r.stages }) });
     m.querySelector('.aian-topic').value = 'Prueba de animación'; m.querySelector('.aian-go').click(); await sleep(60);
     assert(!m.querySelector('.aian-result').hidden && m.querySelectorAll('.aian-dur input').length === 3 && m.querySelector('[data-mode="steps"]').getAttribute('aria-pressed') === 'true', 'vista previa por pasos, con la duración de cada fase');
+    // (Its preview — the same player, in the dialog's own frame — fills the frame too, not a few pixels in the middle.)
+    { const pv = m.querySelector('.aian-view'); await sleep(900);
+      const ans = new Promise(res => { const on = e => { if (e.source === pv.contentWindow && e.data?.rvAnim === 'probe') { W.removeEventListener('message', on); res(e.data); } }; W.addEventListener('message', on); setTimeout(() => res(null), 3000); });
+      const t = setInterval(() => pv.contentWindow?.postMessage({ rvAnim: 'probe' }, '*'), 200); const p = await ans; clearInterval(t);
+      assert(p && p.w >= 300 && p.w >= p.iw * 0.9, 'la vista previa al crearla llena su marco: ' + JSON.stringify(p)); }
     m.querySelector('.aian-ok').click(); await sleep(20);
     const got = slide().blocks.find(x => x.aiAnim?.topic === 'Prueba de animación');
     assert(got && got.aiAnim.mode === 'steps' && got.w / got.h > 1.7 && !D.getElementById('aian-modal'), 'en la diapositiva, a 16:9');
+    // An animation saved with an older player plays with the current one: its page is made again from its own data.
+    reset(); { const old = { ...AA.aiAnimBlock({ topic: 'Vieja', scene, stages: r.stages, mode: 'steps' }), srcdoc: '<!doctype html><p>VIEJA</p>' }; R.store.commit(() => slide().blocks.push(old)); R.render(); await sleep(50);
+      const fr = D.querySelector('.embed-html'); assert(fr && /RevelaAnim/.test(fr.srcdoc) && !/VIEJA/.test(fr.srcdoc), 'en el editor, una animación guardada con un reproductor viejo usa el actual'); }
+    // The picture fills its frame even if the frame is laid out AFTER the page started (hidden at first, then shown): it looks at
+    // its size by itself — it stayed a few pixels wide, in the middle, when the editor laid it out late.
+    { const f = D.createElement('iframe'); f.setAttribute('sandbox', 'allow-scripts'); f.style.cssText = 'display:none;position:fixed;left:0;top:0;width:640px;height:360px;border:0;opacity:.01;pointer-events:none';
+      const ans = new Promise(res => { const on = e => { if (e.source === f.contentWindow && e.data?.rvAnim === 'probe') { W.removeEventListener('message', on); res(e.data); } }; W.addEventListener('message', on); setTimeout(() => res(null), 4000); });
+      f.srcdoc = AA.aiAnimSrcdoc({ scene, lang: 'es', mode: 'loop', durations: [4, 4, 4] }); D.body.appendChild(f); await sleep(600);
+      f.style.display = 'block'; await sleep(700);
+      const t = setInterval(() => f.contentWindow.postMessage({ rvAnim: 'probe' }, '*'), 200); const p = await ans; clearInterval(t); f.remove();
+      assert(p && p.w >= 600 && p.iw >= 600, 'el dibujo llena su caja aunque ésta se coloque tarde: ' + JSON.stringify(p)); }
   });
 
   await test('SCORM: paquete para plataformas, con la nota de sus actividades y dónde se quedó', async () => {

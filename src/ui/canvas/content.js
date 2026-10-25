@@ -6,6 +6,7 @@ import { diagramHTML, diagramSig } from '../../render/diagrams.js';
 import { registerCodeLangs } from '../../render/codelangs.js';
 import { wordartSize } from '../../render/textfit.js';
 import { diagramOpts } from '../../features/document/blocks.js';
+import { pageOf } from '../../features/content/aianim.js';
 import { showTextRuler, hideTextRuler } from './textruler.js';
 import { tabRuntime } from '../../io/runtime/tabs.js';
 import { sizeText } from '../../features/content/files.js';
@@ -307,7 +308,7 @@ export function embedContent(b) {
   }
   if (b.srcdoc != null) {                                   // an HTML object (developer mode): its page, in a sandbox with no origin
     const f = document.createElement('iframe'); f.className = 'embed-html';
-    f.setAttribute('sandbox', 'allow-scripts allow-popups'); f.srcdoc = b.srcdoc; f._srcdoc = b.srcdoc;
+    f.setAttribute('sandbox', 'allow-scripts allow-popups'); f.srcdoc = pageOf(b); f._srcdoc = b.srcdoc;
     f.style.cssText = `width:100%;height:100%;border:0;pointer-events:none;background:${b.transparent ? 'transparent' : '#fff'}`;
     const wrap = document.createElement('div'); wrap.className = 'embed'; wrap.appendChild(f);
     return wrap;
