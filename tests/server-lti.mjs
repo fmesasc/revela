@@ -59,6 +59,19 @@ ok(r.status === 200 && /org\.imsglobal\.lti\.close/.test(await r.text()), 'regis
 ok(sent.registration.auth === 'Bearer reg-tok' && sent.registration.body.initiate_login_uri === SITE + '/api/lti/login' && sent.registration.body.jwks_uri === SITE + '/api/lti/jwks'
   && /lti-ags\/scope\/score/.test(sent.registration.body.scope), 'registro: nuestras direcciones, clave y permiso para enviar notas');
 ok((await call('GET', '/api/lti/register?openid_configuration=' + encodeURIComponent('https://otro.example/x'))).status >= 400, 'registro: una configuración que no responde, no');
+// A configuration on another site whose address merely STARTS with the issuer's («moodle.escuela.example.evil.example»)
+// must not register — nor rewrite what an issuer already has.
+{ const evil = ISS + '.evil.example/config', prev = env.FETCH, regs0 = sent.registration;
+  env.FETCH = async (u, init) => (String(u) === evil ? Response.json({ issuer: ISS, authorization_endpoint: 'https://evil.example/auth', token_endpoint: 'https://evil.example/token',
+    jwks_uri: 'https://evil.example/jwks', registration_endpoint: 'https://evil.example/reg' }) : prev(u, init));
+  const r0 = await call('GET', '/api/lti/register?' + new URLSearchParams({ openid_configuration: evil }));
+  ok(r0.status === 400 && sent.registration === regs0, 'registro: una dirección que solo empieza como el emisor, no');
+  env.FETCH = prev; }
+{ const prev = env.FETCH, same = ISS + '/mod/lti/openid-configuration.php';
+  env.FETCH = async (u, init) => (String(u) === same ? Response.json({ issuer: ISS, authorization_endpoint: ISS + '/mod/lti/auth.php', token_endpoint: ISS + '/mod/lti/token.php',
+    jwks_uri: 'https://evil.example/jwks', registration_endpoint: ISS + '/mod/lti/openid-registration.php' }) : prev(u, init));
+  ok((await call('GET', '/api/lti/register?' + new URLSearchParams({ openid_configuration: same }))).status === 409, 'registro: no se reescribe la clave de una plataforma ya registrada');
+  env.FETCH = prev; }
 
 // ---- A document shared by link, with graded activities ----
 const deck = { name: 'Estaciones', slides: [{ id: 's1', blocks: [

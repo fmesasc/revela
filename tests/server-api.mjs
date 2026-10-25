@@ -93,6 +93,7 @@ ok((await req('GET', '/api/me')).status === 401, 'sin sesión: nada');
   delete env.TURN_KEY_ID; delete env.TURN_KEY_API_TOKEN; }
 ok((await req('POST', '/api/login', { body: { accessToken: 'inventado' } })).status === 401, 'un token que Google no reconoce: no');
 ok((await req('POST', '/api/login', { body: { accessToken: 'tok-otraapp' } })).status === 401, 'un token de otra aplicación: no');
+ok((await req('POST', '/api/login', { body: { accessToken: 'tok-ana' }, origin: 'https://otro.example' })).status === 403 && (await req('POST', '/api/login', { body: { accessToken: 'tok-ana' }, origin: null })).status === 403, 'iniciar sesión: solo desde las páginas de Revela (no desde otro sitio ni sin origen)');
 // Accepting the terms (and being 14 or older) when the account is created
 r0 = await req('POST', '/api/login', { body: { accessToken: 'tok-ana' } });
 ok(r0.status === 400 && (await r0.json()).error === 'terms' && !acc('111')?.ctx.storage.m.get('profile'), 'cuenta nueva sin aceptar las condiciones: 400 y no se crea');
@@ -559,6 +560,11 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
     j = await (await open(tk)).json();
     ok(j.role === 'present' && j.deck?.slides.length >= 1 && !JSON.stringify(j).includes('NOTA-SECRETA'), 'seguimiento: el enlace la abre presentada (sin notas) aunque no sea pública: ' + JSON.stringify(j).slice(0, 200));
     ok((await open('noexiste12345678')).status === 401, 'seguimiento: un enlace inventado, no');
+    // (Names every object has fit the link's pattern: «constructor», «__proto__», «hasOwnProperty» were a link.)
+    for (const bad of ['constructor', '__proto__', 'hasOwnProperty', 'toLocaleString']) ok((await open(bad)).status === 401, 'seguimiento: «' + bad + '» no es un enlace');
+    ok((await req('POST', `/api/docs/${id}/view`, { body: { visitor: '__proto__', slide: 's1', ms: 5, enter: true, r: tk } })).status === 200 && ({}).ms === undefined && ({}).views === undefined && ({}).first === undefined, 'seguimiento: un visitante «__proto__» no escribe en Object');
+    await req('POST', `/api/docs/${id}/view`, { body: { visitor: 'visitante-888', slide: '__proto__', ms: 5, enter: true, r: tk } });
+    ok(({}).views === undefined && ({}).ms === undefined, 'seguimiento: una diapositiva «__proto__» tampoco');
     j = await (await open(tk2)).json(); ok(j.ask === true && !j.deck, 'seguimiento: el que pide correo no da la presentación sin él');
     ok((await (await open(tk2, '&e=no-es-correo')).json()).ask === true, 'seguimiento: ni con un correo que no lo es');
     j = await (await open(tk2, '&e=Leo@Cliente.com&n=Leo')).json(); ok(j.deck && j.role === 'present', 'seguimiento: con su correo, sí');
@@ -1870,6 +1876,20 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       ok(!JSON.stringify(d).includes('secreto') && !('html' in d[0]) && !('deck' in d[0]), 'Drive: nada más que eso, aunque la app mandara más');
       const st = (await A('GET', '/stats')).j.drive[0];
       ok(st.people === st0.people + 1 && st.saves === st0.saves + 2, 'Drive: en el resumen, la persona una vez al mes y cada guardado: ' + JSON.stringify([st0, st])); }
+    // The welcome message for new accounts (admin ▸ Promociones ▸ Bienvenida): off by default; plain text per language.
+    { const W = lang => req('GET', '/api/welcome' + (lang ? '?lang=' + lang : '')).then(r => r.json());
+      ok((await W('es')).welcome === null && (await A('GET', '/promos/welcome')).j.config.on === false, 'bienvenida: apagada por defecto');
+      ok((await A('POST', '/promos/welcome', { body: { on: true, texts: {} } })).status === 400 && (await A('POST', '/promos/welcome', { body: { on: true, texts: { zz: { text: 'x' } } } })).status === 400
+        && (await A('POST', '/promos/welcome', { body: { on: 'sí', texts: { es: { text: 'x' } } } })).status === 400, 'bienvenida: encendida sin texto, idioma inventado o ajustes mal, no');
+      ok((await W('es')).welcome === null, 'bienvenida: lo no válido no la enciende');
+      x = await A('POST', '/promos/welcome', { body: { on: true, reason: 'Presentar los tutoriales', texts: { es: { title: 'Te damos la bienvenida', text: 'Revela hace presentaciones.\nHay tutoriales interactivos en Ver ▸ Ayuda.' }, en: { title: 'Welcome', text: 'Revela makes presentations.' } } } });
+      ok(x.status === 200 && (await A('GET', '/audit?target=config:welcome')).j.entries[0]?.action === 'welcome-config', 'bienvenida: encendida (auditado)');
+      ok((await W('es')).welcome?.title === 'Te damos la bienvenida' && (await W('en')).welcome?.text === 'Revela makes presentations.', 'bienvenida: cada idioma, el suyo');
+      ok((await W('fr')).welcome?.title === 'Welcome' && (await W()).welcome?.title === 'Welcome', 'bienvenida: sin su idioma, el inglés');
+      await A('POST', '/promos/welcome', { body: { on: true, texts: { es: { title: 'Hola', text: 'x\u0000y' + 'z'.repeat(2000) } } } });
+      { const w = (await W('de')).welcome; ok(w.title === 'Hola' && w.text.length === 800 && !w.text.includes('\u0000'), 'bienvenida: el texto se limpia y se recorta'); }
+      await A('POST', '/promos/welcome', { body: { on: false, texts: { es: { title: 'Hola', text: 'x' } } } });
+      ok((await W('es')).welcome === null, 'bienvenida: apagada otra vez'); }
     // Who gets it: an account that never had Pro, yes; one with a paid Pro or with a plan from before, no.
     const bea = await login('tok-bea', 'en'), cid = await login('tok-cid'), BS = () => acc('1818').ctx.storage.m;
     me = await meOf(bea); ok(me.trialDays === 7, '/api/me: prueba de 7 días disponible para una cuenta nueva');

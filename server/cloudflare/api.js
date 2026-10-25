@@ -197,6 +197,38 @@ export function cleanTours(b) {
   for (const [k, v] of Object.entries(per)) { if (!TOUR_KEYS.includes(k) || !Number.isInteger(+v) || +v < 0 || +v > 200) return null; if (+v) perTour[k] = +v; }
   return { on: b.on, perTour, credits: cr, days, monthlyPeople: max };
 }
+// The welcome message for a new account (the app's ui/shell/tour.js, after the first sign-in), written in the admin
+// («Promociones ▸ Bienvenida»; kept in the Budget object): on (off unless turned on) and, per language, a title and a
+// text — it explains what Revela is and that the interactive tutorials are there. A language without its text reads the
+// English one, then the Spanish. Plain text only (the app writes it as text); no addresses are made of it.
+export const WELCOME_LANGS = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'];
+export const WELCOME_DEFAULT = { on: false, texts: {} };
+let welcomeCache = { at: 0, v: null };
+export const resetWelcomeCache = () => { welcomeCache = { at: 0, v: null }; };
+export async function welcomeConfig(env, fresh) {
+  if (!env.BUDGET) return { ...WELCOME_DEFAULT };
+  if (!fresh && welcomeCache.v && Date.now() - welcomeCache.at < 30e3) return welcomeCache.v;
+  const r = await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'welcome-get').catch(() => null);
+  const v = { ...WELCOME_DEFAULT, ...(r?.welcome || {}) }; welcomeCache = { at: Date.now(), v }; return v;
+}
+const wstr = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, ' ').replace(/\r/g, '').trim().slice(0, n);
+export function cleanWelcome(b) {
+  if (typeof b?.on !== 'boolean' || !b.texts || typeof b.texts !== 'object' || Array.isArray(b.texts)) return null;
+  const texts = {};
+  for (const [k, v] of Object.entries(b.texts)) {
+    if (!WELCOME_LANGS.includes(k) || !v || typeof v !== 'object') return null;
+    const title = wstr(v.title, 80), text = wstr(v.text, 800);
+    if (title || text) texts[k] = { title, text };
+  }
+  if (b.on && !texts.es?.text && !texts.en?.text) return null;      // (on, with something to say in Spanish or English)
+  return { on: b.on, texts };
+}
+// What a person in this language reads: theirs, else English, else Spanish; null when off or empty.
+export function welcomeFor(cfg, lang) {
+  if (!cfg?.on) return null;
+  const t = [lang, 'en', 'es'].map(k => cfg.texts?.[k]).find(x => x && x.text);
+  return t ? { title: t.title || '', text: t.text } : null;
+}
 const monthOf = (t = Date.now()) => new Date(t).toISOString().slice(0, 7);
 // The notices (notices.js), read again at most once a minute per Worker instance (the admin's changes reset it here).
 let noticeCache = { at: 0, list: null };
@@ -844,6 +876,8 @@ export class Budget {
     }
     if (op === 'drive-stats') { const months = []; for (let i = 0; i < 6; i++) { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - i); const m = d.toISOString().slice(0, 7); months.push({ month: m, ...((await this.ctx.storage.get('drive:' + m)) || { people: 0, saves: 0 }) }); } return Response.json({ months }); }
     if (op === 'tours-set') { await this.ctx.storage.put('tours', a.tours); return Response.json({ ok: true }); }
+    if (op === 'welcome-get') return Response.json({ welcome: (await this.ctx.storage.get('welcome')) || null });
+    if (op === 'welcome-set') { await this.ctx.storage.put('welcome', a.welcome); return Response.json({ ok: true }); }
     // (The log of the tours finished for the first time — the last 1000, for the admin — and each month's count per tour.)
     if (op === 'tours-log-add') {
       const log = (await this.ctx.storage.get('toursLog')) || [], k = 'toursCount:' + String(a.at ? new Date(a.at).toISOString().slice(0, 7) : ''), c = (await this.ctx.storage.get(k)) || {};
@@ -1090,6 +1124,9 @@ export async function handleApi(req, env, url) {
     return json({ ok: list.includes(email) || adminEmails(env).includes(email) });
   }
   if (path === '/login' && req.method === 'POST') {
+    // (Only from Revela's own pages or the desktop app: a page of another site could otherwise sign someone into the
+    // attacker's account — «login CSRF» —; the cookie is SameSite=Strict, but the check costs nothing.)
+    if (!webOrigin && !desktopOrigin) return json({ error: 'origin' }, 403);
     const who = await googleUser(body.accessToken, body.idToken, s.clientId, env.FETCH || fetch);
     if (!who) return json({ error: 'not signed in with Google' }, 401);
     if (!(await testerOK(env, who.email))) return json({ error: 'not a tester' }, 403);   // (the test site: invited people only)
@@ -1181,6 +1218,8 @@ export async function handleApi(req, env, url) {
     const team = tid && (await teamStatus(env, tid, who.email))?.member ? tid : null;
     return handleDocs(path, req, body, url, env, who && { sub: me.sub, email: who.email, name: who.name, plan: who.plan, features: who.features, ...(team && { team }) }, json);
   }
+  // The welcome message of a new account (set in the admin; off by default): no session needed.
+  if (path === '/welcome' && req.method === 'GET') return json({ welcome: welcomeFor(await welcomeConfig(env), langOf(url.searchParams.get('lang'))) });
   // Notices (notices.js): no session needed; with one, chosen by its plan.
   if (path === '/notices' && req.method === 'GET') {
     const where = url.searchParams.get('where');

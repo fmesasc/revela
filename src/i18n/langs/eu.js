@@ -5167,5 +5167,6 @@ export default {
   "Bienvenida": "Ongi etorri",
   "Hay tutoriales cortos en los que lo pruebas todo tú, haciendo clic. Están siempre aquí: Ver ▸ Ayuda ▸ Tutorial interactivo. ¿Empiezas por uno?": "Tutorial laburrak daude, dena zuk zeuk probatzen duzunak, klik eginez. Beti hemen daude: Ikusi ▸ Laguntza ▸ Tutorial interaktiboa. Batekin hasiko zara?",
   "Ver todos": "Ikusi denak",
-  "Hazlo tú: seguimos cuando esté": "Egin zuk: amaitutakoan jarraituko dugu"
+  "Hazlo tú: seguimos cuando esté": "Egin zuk: amaitutakoan jarraituko dugu",
+  "Empezar un tutorial": "Hasi tutorial bat"
 };

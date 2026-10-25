@@ -49,7 +49,10 @@ export class Visits {
       if (!seen) d.uniques++;
       if (a.kind === '404') {
         d.nf++;
-        const k = 'nf:' + a.path, n = (await st.get(k)) || { path: a.path, n: 0, first: now, refs: {}, status: 'new' };
+        const k = 'nf:' + a.path, was = await st.get(k);
+        // (At most 500 different addresses kept: anyone can ask for any number of them, and each would be a row for good.)
+        if (!was && (await st.list({ prefix: 'nf:', limit: 500 })).size >= 500) return Response.json({ ok: true });
+        const n = was || { path: a.path, n: 0, first: now, refs: {}, status: 'new' };
         n.n++; n.last = now; if (a.ref) bump(n.refs, a.ref); if (Object.keys(n.refs).length > 10) n.refs = Object.fromEntries(Object.entries(n.refs).sort((x, y) => y[1] - x[1]).slice(0, 10));
         await st.put(k, n);
       } else { d.views++; bump(d.pages, a.path); if (a.ref && !a.ref.startsWith('internal:')) bump(d.refs, a.ref.split('/')[0]); bump(d.langs, a.lang); }

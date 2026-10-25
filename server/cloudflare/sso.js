@@ -172,6 +172,10 @@ export async function ssoCallback(env, url) {
   if (!claims?.sub) return { error: 'token' };
   const email = String(claims.email || claims.preferred_username || claims.upn || '').trim().toLowerCase(), domain = email.split('@')[1] || '';
   if (claims.email_verified === false || !s.domains?.[domain]?.verified) return { error: 'domain' };
+  // (A multi-tenant issuer — Microsoft's «common», with {tenantid} — signs in people from any tenant, and a tenant's own
+  // admin can write any address in «email», «preferred_username» or «upn»: it only counts when the provider says the
+  // domain is verified — email_verified or Microsoft's xms_edov —; else somebody could claim an address of this team's domain.)
+  if (String(s.issuer).includes('{tenantid}') && claims.email_verified !== true && claims.xms_edov !== true && claims.xms_edov !== '1' && claims.xms_edov !== 1) return { error: 'domain' };
   return { sub: 'sso:' + (await sha256(claims.iss + '|' + claims.sub)).slice(0, 32), email, name: typeof claims.name === 'string' ? claims.name.replace(/[<>\r\n]/g, '').slice(0, 80) : null,
     team: st.team, autoJoin: !!s.autoJoin, terms: st.terms, lang: st.lang, next: NEXT.test(st.next || '') ? st.next : null };
 }

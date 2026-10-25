@@ -133,6 +133,21 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       tw.querySelector('[data-tour="pick:basics"]').click(); await sleep(30);
       eq(T.tourName(), 'basics', 'bienvenida: empieza el elegido');
       T.stopTour(false);
+      // The welcome the admin wrote (off by default: nothing asked → straight to the tutorial's own welcome).
+      await T.welcome({ ask: async () => ({ welcome: null }) }); await sleep(30);
+      assert(!D.getElementById('welcome-modal') && T.tourName() === 'welcome', 'sin mensaje del admin: directo a la bienvenida del tutorial');
+      T.stopTour(false);
+      await T.welcome({ ask: async () => ({ welcome: { title: 'Hola <i>Ana</i>', text: 'Revela hace presentaciones.\nHay tutoriales <b>interactivos</b>.' } }) }); await sleep(30);
+      const wm = D.getElementById('welcome-modal');
+      assert(wm && wm.querySelector('h3').textContent === 'Hola <i>Ana</i>' && !wm.querySelector('i,b') && /Hay tutoriales <b>interactivos<\/b>/.test(wm.querySelector('.welcome-text').textContent), 'el mensaje del admin: se lee como texto, nunca como página');
+      assert(!T.tourRunning(), 'con su mensaje, el tutorial espera a que se elija');
+      wm.querySelector('[data-w="go"]').click(); await sleep(30);
+      assert(!D.getElementById('welcome-modal') && T.tourName() === 'welcome', '«Empezar un tutorial» abre la bienvenida del tutorial');
+      T.stopTour(false); W.localStorage.removeItem('revela.tour.v1');
+      await T.welcome({ ask: async () => ({ welcome: { title: '', text: 'Solo texto' } }) }); await sleep(30);
+      D.getElementById('welcome-modal').querySelector('[data-w="later"]').click(); await sleep(30);
+      assert(!T.tourRunning() && W.localStorage.getItem('revela.tour.v1'), '«Ahora no»: no empieza nada y no vuelve a salir');
+      W.localStorage.removeItem('revela.tour.v1');
       // The last step: repeat it, or another one (a tour of its own: maps).
       T.startTour('maps'); T.showStep(T.TOURS.maps.steps.length - 1); await sleep(30);
       const tm = D.getElementById('tour');

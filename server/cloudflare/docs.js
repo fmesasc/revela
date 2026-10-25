@@ -150,7 +150,8 @@ export class CloudDoc {
     return Object.entries(meta.track || {}).sort((x, y) => y[1].created - x[1].created).map(([token, t]) => { const e = all[token] || {};
       return { token, label: t.label, ask: !!t.ask, created: t.created, opens: e.opens || 0, first: e.first || null, last: e.last || null, ms: e.ms || 0, reached: e.reached || 0, people: e.people || [] }; });
   }
-  tracked(meta, r) { return typeof r === 'string' && /^[\w-]{8,40}$/.test(r) && !!meta.track?.[r] ? meta.track[r] : null; }
+  // (Its own keys only: «constructor» and «__proto__» fit the pattern and are in every plain object, so they were a tracked link.)
+  tracked(meta, r) { return typeof r === 'string' && /^[\w-]{8,40}$/.test(r) && meta.track && Object.hasOwn(meta.track, r) ? meta.track[r] : null; }
   // The slides { sub, email } may see: null for all; else the ids (all the ways they have in — as a person, by the
   // link — put together; any of them without a choice: all).
   scopeOf(meta, who, role, r) {
@@ -457,7 +458,7 @@ export class CloudDoc {
       // The class at its own pace (as Pear Deck's teacher dashboard): where each one is and their marks.
       case 'progress': {
         const st2 = (await st.get('sp')) || {}, voter = String(a.voter || '').slice(0, 40);
-        if (!/^[\w-]{8,40}$/.test(voter)) return this.json({ error: 'bad request' }, 400);
+        if (!/^[\w-]{8,40}$/.test(voter) || voter in Object.prototype) return this.json({ error: 'bad request' }, 400);   // (a name of every object, no)
         if (!(voter in st2) && Object.keys(st2).length >= PROGRESS_MAX) return this.json({ error: 'full' }, 409);
         const me2 = st2[voter] || { name: '', slide: 0, of: 0, graded: 0, scores: {}, first: Date.now() };
         if (a.name != null) me2.name = String(a.name).trim().slice(0, 40);
@@ -480,7 +481,8 @@ export class CloudDoc {
       }
       case 'view': {                                         // a viewer's beacon: slide seen, for how long
         const slide = String(a.slide || '').slice(0, 40), ms = Math.max(0, Math.min(30 * 60e3, +a.ms || 0)), visitor = String(a.visitor || '').slice(0, 40);
-        if (role === 'owner' || !slide || !/^[\w-]{8,40}$/.test(visitor)) return this.json({ ok: true });
+        // (Not a name every object has — «__proto__», «constructor»: they would write on Object itself.)
+        if (role === 'owner' || !slide || slide in Object.prototype || !/^[\w-]{8,40}$/.test(visitor) || visitor in Object.prototype) return this.json({ ok: true });
         const s = (await st.get('stats')) || { visitors: {}, slides: {}, first: Date.now() };
         const v = s.visitors[visitor] ||= { first: Date.now(), last: 0, ms: 0, slides: 0 };
         const sl = s.slides[slide] ||= { views: 0, ms: 0 };

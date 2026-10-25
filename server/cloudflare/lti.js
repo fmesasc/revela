@@ -84,6 +84,11 @@ async function verifyPlatformJwt(token, platform, fetchImpl) {
 
 // ---- Platforms --------------------------------------------------------------------------------------------------
 const platformName = (issuer, clientId) => `platform:${issuer}|${clientId}`;
+// The configuration's address belongs to the issuer's own site: same origin, and under its path. (A plain «starts with»
+// took «https://moodle.school.es.evil.example/…» for «https://moodle.school.es».)
+function sameSite(cfgUrl, issuer) {
+  try { const a = new URL(cfgUrl), b = new URL(issuer); return a.origin === b.origin && a.pathname.startsWith(b.pathname.replace(/\/$/, '')); } catch { return false; }
+}
 async function findPlatform(env, issuer, clientId) {
   if (clientId) return kvDo(env, platformName(issuer, clientId), 'get');
   const ids = (await kvDo(env, 'issuer:' + issuer, 'get')) || []; return ids.length === 1 ? kvDo(env, platformName(issuer, ids[0]), 'get') : null;
@@ -155,7 +160,7 @@ export async function handleLti(req, env, url, site) {
     const p = await params(req, url), cfgUrl = p.openid_configuration;
     if (!/^https:\/\//.test(cfgUrl || '')) return page('Revela', '<h1>Revela</h1><p class="err">Falta la configuración de la plataforma.</p>', 400);
     const cfg = await (await fetchImpl(cfgUrl).catch(() => null))?.json().catch(() => null);
-    if (!cfg?.issuer || !cfg.registration_endpoint || !cfg.jwks_uri || !cfg.authorization_endpoint || !cfg.token_endpoint || !new URL(cfgUrl).href.startsWith(cfg.issuer.replace(/\/?$/, '')))
+    if (!cfg?.issuer || !cfg.registration_endpoint || !cfg.jwks_uri || !cfg.authorization_endpoint || !cfg.token_endpoint || !sameSite(cfgUrl, cfg.issuer) || ![cfg.registration_endpoint, cfg.jwks_uri, cfg.authorization_endpoint, cfg.token_endpoint].every(u => /^https:\/\//.test(String(u))))
       return page('Revela', '<h1>Revela</h1><p class="err">La configuración de la plataforma no es válida.</p>', 400);
     const reg = { application_type: 'web', response_types: ['id_token'], grant_types: ['implicit', 'client_credentials'],
       initiate_login_uri: base + '/login', redirect_uris: [base + '/launch'], client_name: 'Revela', jwks_uri: base + '/jwks', logo_uri: site + '/app/icons/icon-192.png',
@@ -165,6 +170,11 @@ export async function handleLti(req, env, url, site) {
     const r = await fetchImpl(cfg.registration_endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(p.registration_token && { Authorization: 'Bearer ' + p.registration_token }) }, body: JSON.stringify(reg) }).catch(() => null);
     const got = r && r.ok ? await r.json().catch(() => null) : null;
     if (!got?.client_id) return page('Revela', '<h1>Revela</h1><p class="err">La plataforma no aceptó el registro.</p>', 502);
+    // (An issuer + client already registered is not rewritten from here — it would swap the keys a platform's launches are
+    // checked with —: the same platform registering again is fine; otherwise it is the admin's to change.)
+    const known = await findPlatform(env, cfg.issuer, got.client_id);
+    if (known && (known.jwks !== cfg.jwks_uri || known.token !== cfg.token_endpoint || known.auth !== cfg.authorization_endpoint))
+      return page('Revela', '<h1>Revela</h1><p class="err">Esa plataforma ya está registrada con otra configuración. Si ha cambiado, pídelo desde la administración de Revela.</p>', 409);
     await savePlatform(env, { issuer: cfg.issuer, clientId: got.client_id, auth: cfg.authorization_endpoint, token: cfg.token_endpoint, jwks: cfg.jwks_uri,
       deployments: [got['https://purl.imsglobal.org/spec/lti-tool-configuration']?.deployment_id].filter(Boolean), registered: Date.now() });
     return page('Revela', `<h1>Revela está instalado</h1><p>Ya se puede añadir como actividad externa.</p><script>(window.opener||window.parent).postMessage({subject:'org.imsglobal.lti.close'},'*')</script>`);

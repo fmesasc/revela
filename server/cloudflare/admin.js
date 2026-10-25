@@ -100,7 +100,7 @@
 // the admin (SUPPORT_NOTIFY, else the first of ADMIN_EMAILS). The daily cron reminds once and then
 // closes tickets left waiting for the person (ticketsDue: SUPPORT_REMIND_DAYS, SUPPORT_AUTOCLOSE_DAYS).
 
-import { acct, call, settings, trialConfig, cleanTrial, resetTrialCache, resetNoticeCache, toursConfig, cleanTours, resetToursCache, TOUR_KEYS } from './api.js';
+import { acct, call, settings, trialConfig, cleanTrial, resetTrialCache, resetNoticeCache, toursConfig, cleanTours, resetToursCache, TOUR_KEYS, welcomeConfig, cleanWelcome, resetWelcomeCache, WELCOME_LANGS } from './api.js';
 import { stripeConf } from './billing.js';
 import { priceOf } from './ai.js';
 import { storageConfig, cleanStorage, resetStorageCache, storageBackfill } from './storage.js';
@@ -979,6 +979,18 @@ export function cleanPromo(b, now = Date.now()) {
 }
 async function promosApi(env, path, q, body, { GET, POST, by, json }) {
   // Credits for finishing the guided tours: the settings (audited). Off unless turned on.
+  // The welcome message for new accounts (api.js welcomeConfig): off until written and turned on; audited.
+  if (path === '/promos/welcome') {
+    if (GET) return json({ config: await welcomeConfig(env, true), langs: WELCOME_LANGS });
+    if (POST) {
+      const after = cleanWelcome(body); if (!after) return json({ error: 'bad request' }, 400);
+      const before = await welcomeConfig(env, true), reason = clip(body.reason, 500).trim();
+      await audit(env, { by, action: 'welcome-config', target: 'config:welcome', reason, before, after });
+      await call(stub(env.BUDGET, 'global'), 'welcome-set', { welcome: after }); resetWelcomeCache();
+      return json({ ok: true, before, after });
+    }
+    return json({ error: 'method' }, 405);
+  }
   if (path === '/promos/tours') {
     if (GET) {
       const month = new Date().toISOString().slice(0, 7);

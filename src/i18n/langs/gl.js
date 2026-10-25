@@ -5167,5 +5167,6 @@ export default {
   "Bienvenida": "Benvida",
   "Hay tutoriales cortos en los que lo pruebas todo tú, haciendo clic. Están siempre aquí: Ver ▸ Ayuda ▸ Tutorial interactivo. ¿Empiezas por uno?": "Hai titoriais curtos nos que o probas todo ti, facendo clic. Están sempre aquí: Ver ▸ Axuda ▸ Titorial interactivo. Comezas por un?",
   "Ver todos": "Ver todos",
-  "Hazlo tú: seguimos cuando esté": "Faino ti: seguimos cando estea"
+  "Hazlo tú: seguimos cuando esté": "Faino ti: seguimos cando estea",
+  "Empezar un tutorial": "Comezar un titorial"
 };

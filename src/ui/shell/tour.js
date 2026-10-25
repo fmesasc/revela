@@ -13,7 +13,7 @@
 
 import { state, commit } from '../../core/store.js';
 import { esc } from '../../core/text.js';
-import { t } from '../../i18n/index.js';
+import { t, currentLang } from '../../i18n/index.js';
 import { account, onAccount, api, refreshAccount } from '../../io/cloud/account.js';
 import { popupMenu } from './menu.js';
 import { toast } from './toast.js';
@@ -328,6 +328,26 @@ const isNew = a => +a?.created > 0 && Date.now() - +a.created < NEW_DAYS * 864e5
 const seen = () => { try { return !!localStorage.getItem(SEEN); } catch { return true; } };
 export function initTour() {
   let asked = false;
-  const check = a => { if (asked || !a || !isNew(a) || seen() || tourRunning()) return; asked = true; setTimeout(() => startTour('welcome'), 900); };
+  const check = a => { if (asked || !a || !isNew(a) || seen() || tourRunning()) return; asked = true; setTimeout(() => welcome(), 900); };
   onAccount(check); check(account());
+}
+
+// The first sign-in: the welcome the admin wrote (Promociones ▸ Bienvenida; off by default) — what Revela is, and that the
+// interactive tutorials are there — and then the tutorial's own welcome. Nothing written, or it can't be asked: straight
+// to the tutorial's. Plain text (what the admin wrote is never read as a page).
+export async function welcome({ ask = () => api('welcome?lang=' + encodeURIComponent(currentLang())) } = {}) {   // (ask: the tests)
+  let w = null; try { w = (await ask())?.welcome || null; } catch {}
+  if (!w?.text || tourRunning()) return startTour('welcome');
+  document.getElementById('welcome-modal')?.remove();
+  const back = document.createElement('div'); back.id = 'welcome-modal'; back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal welcome" role="dialog" aria-modal="true" style="text-align:start;max-width:min(520px,94vw)">
+    ${w.title ? `<h3></h3>` : ''}<p class="welcome-text" style="white-space:pre-line"></p>
+    <div class="fr-actions"><button type="button" class="mini2" data-w="later">${esc(t('Ahora no'))}</button><button type="button" class="fr-do" data-w="go">${esc(t('Empezar un tutorial'))}</button></div></div>`;
+  if (w.title) back.querySelector('h3').textContent = w.title;
+  back.querySelector('.welcome-text').textContent = w.text;
+  document.body.appendChild(back);
+  const close = go => { back.remove(); if (go) startTour('welcome'); else try { localStorage.setItem(SEEN, '1'); } catch {} };
+  back.addEventListener('click', e => { const b = e.target.closest('[data-w]'); if (b) close(b.dataset.w === 'go'); else if (e.target === back) close(false); });
+  back.addEventListener('keydown', e => { if (e.key === 'Escape') close(false); });
+  back.querySelector('[data-w="go"]').focus();
 }
