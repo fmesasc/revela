@@ -3,7 +3,8 @@
 /* ---------- Ribbon ---------- */
 #ribbon{background:var(--panel);border-bottom:1px solid var(--line2);flex:0 0 auto;user-select:none}
 .titlebar{display:flex;align-items:center;gap:10px;padding:5px 12px;border-bottom:1px solid var(--line)}
-.brand{font-weight:800;color:var(--accent);font-size:16px}
+.brand{font-weight:800;color:var(--accent);font-size:16px;display:inline-flex;align-items:center;gap:8px}
+.brand img{width:22px;height:22px;border-radius:6px;flex:none}
 .qat{display:flex;align-items:center;gap:2px;padding-left:6px;border-left:1px solid var(--line)}
 .doc-name{color:var(--txt);padding:2px 10px;border-radius:6px;border:1px solid transparent;
   max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text;outline:none}
