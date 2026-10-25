@@ -1,0 +1,347 @@
+{
+ "key": "month",
+ "name": "Novedades del mes",
+ "texts": {
+  "es": {
+   "subject": "Novedades de Revela: {mes}",
+   "preheader": "Lo que hemos preparado este mes",
+   "eyebrow": "Novedades · {mes}",
+   "title": "Lo *nuevo* de Revela este mes",
+   "intro": "Hola:\n\nEstas son las novedades de {mes}, para que hacer presentaciones sea más fácil y más vistoso.",
+   "blocks": [
+    {
+     "title": "{Novedad principal}",
+     "text": "{Cuenta en dos o tres frases qué es y para qué sirve.}",
+     "image": "",
+     "cta": "Probarlo",
+     "url": "/app/"
+    },
+    {
+     "title": "{Segunda novedad}",
+     "text": "{Cuenta en dos o tres frases qué es y para qué sirve.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Plantillas nuevas",
+     "text": "{Qué colecciones se han añadido este mes.}",
+     "image": "",
+     "cta": "Ver las plantillas",
+     "url": "/templates"
+    }
+   ],
+   "outro": "Gracias por usar Revela. Si algo no te funciona, usa «Informar de un problema» dentro de la app."
+  },
+  "en": {
+   "subject": "Revela news: {month}",
+   "preheader": "What we have prepared this month",
+   "eyebrow": "News · {month}",
+   "title": "What is *new* in Revela this month",
+   "intro": "Hi:\n\nHere is the news for {month}, to make presentations easier and more striking.",
+   "blocks": [
+    {
+     "title": "{Main news}",
+     "text": "{Say in two or three sentences what it is and what it is for.}",
+     "image": "",
+     "cta": "Try it",
+     "url": "/app/"
+    },
+    {
+     "title": "{Second news}",
+     "text": "{Say in two or three sentences what it is and what it is for.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "New templates",
+     "text": "{Which collections were added this month.}",
+     "image": "",
+     "cta": "See the templates",
+     "url": "/templates"
+    }
+   ],
+   "outro": "Thanks for using Revela. If something does not work, use “Report a problem” inside the app."
+  },
+  "ar": {
+   "subject": "أخبار Revela: {الشهر}",
+   "preheader": "ما أعددناه هذا الشهر",
+   "eyebrow": "الجديد · {الشهر}",
+   "title": "ما *الجديد* في Revela هذا الشهر",
+   "intro": "مرحبًا:\n\nإليك أخبار {الشهر}، لنجعل إعداد العروض أسهل وأجمل.",
+   "blocks": [
+    {
+     "title": "{الميزة الجديدة الرئيسية}",
+     "text": "{اشرح في جملتين أو ثلاث ما هي وفيمَ تفيد.}",
+     "image": "",
+     "cta": "جرّبها",
+     "url": "/app/"
+    },
+    {
+     "title": "{الميزة الجديدة الثانية}",
+     "text": "{اشرح في جملتين أو ثلاث ما هي وفيمَ تفيد.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "قوالب جديدة",
+     "text": "{المجموعات التي أُضيفت هذا الشهر.}",
+     "image": "",
+     "cta": "شاهد القوالب",
+     "url": "/templates"
+    }
+   ],
+   "outro": "شكرًا لاستخدامك Revela. إن لم يعمل شيء كما ينبغي، استخدم «الإبلاغ عن مشكلة» داخل التطبيق."
+  },
+  "ca": {
+   "subject": "Novetats de Revela: {mes}",
+   "preheader": "El que hem preparat aquest mes",
+   "eyebrow": "Novetats · {mes}",
+   "title": "El que hi ha de *nou* a Revela aquest mes",
+   "intro": "Hola:\n\naquestes són les novetats de {mes}, perquè fer presentacions sigui més fàcil i més vistós.",
+   "blocks": [
+    {
+     "title": "{Novetat principal}",
+     "text": "{Explica en dues o tres frases què és i per a què serveix.}",
+     "image": "",
+     "cta": "Provar-ho",
+     "url": "/app/"
+    },
+    {
+     "title": "{Segona novetat}",
+     "text": "{Explica en dues o tres frases què és i per a què serveix.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Plantilles noves",
+     "text": "{Quines col·leccions s'han afegit aquest mes.}",
+     "image": "",
+     "cta": "Veure les plantilles",
+     "url": "/templates"
+    }
+   ],
+   "outro": "Gràcies per fer servir Revela. Si alguna cosa no et funciona, fes servir «Informa d'un problema» dins de l'app."
+  },
+  "de": {
+   "subject": "Neuigkeiten von Revela: {Monat}",
+   "preheader": "Was wir diesen Monat vorbereitet haben",
+   "eyebrow": "Neuigkeiten · {Monat}",
+   "title": "Das *Neue* bei Revela in diesem Monat",
+   "intro": "Guten Tag,\n\nhier sind die Neuigkeiten für {Monat}, damit Präsentationen einfacher und wirkungsvoller werden.",
+   "blocks": [
+    {
+     "title": "{Wichtigste Neuigkeit}",
+     "text": "{Sagen Sie in zwei oder drei Sätzen, was es ist und wofür es dient.}",
+     "image": "",
+     "cta": "Ausprobieren",
+     "url": "/app/"
+    },
+    {
+     "title": "{Zweite Neuigkeit}",
+     "text": "{Sagen Sie in zwei oder drei Sätzen, was es ist und wofür es dient.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Neue Vorlagen",
+     "text": "{Welche Sammlungen diesen Monat hinzugekommen sind.}",
+     "image": "",
+     "cta": "Vorlagen ansehen",
+     "url": "/templates"
+    }
+   ],
+   "outro": "Danke, dass Sie Revela nutzen. Wenn etwas nicht funktioniert, nutzen Sie „Problem melden“ in der App."
+  },
+  "eu": {
+   "subject": "Revelaren berriak: {hilabetea}",
+   "preheader": "Hilabete honetan prestatu duguna",
+   "eyebrow": "Berriak · {hilabetea}",
+   "title": "Revelaren *berria* hilabete honetan",
+   "intro": "Kaixo:\n\nHona hemen hilabete honetako berriak ({hilabetea}), aurkezpenak egitea errazago eta ikusgarriago izan dadin.",
+   "blocks": [
+    {
+     "title": "{Berri nagusia}",
+     "text": "{Esan bi edo hiru esalditan zer den eta zertarako balio duen.}",
+     "image": "",
+     "cta": "Probatu",
+     "url": "/app/"
+    },
+    {
+     "title": "{Bigarren berria}",
+     "text": "{Esan bi edo hiru esalditan zer den eta zertarako balio duen.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Txantiloi berriak",
+     "text": "{Zer bilduma gehitu diren hilabete honetan.}",
+     "image": "",
+     "cta": "Txantiloiak ikusi",
+     "url": "/templates"
+    }
+   ],
+   "outro": "Eskerrik asko Revela erabiltzeagatik. Zerbait ez bazaizu ibiltzen, erabili aplikazioaren barruko «Arazo baten berri eman»."
+  },
+  "fr": {
+   "subject": "Nouveautés de Revela : {mois}",
+   "preheader": "Ce que nous avons préparé ce mois-ci",
+   "eyebrow": "Nouveautés · {mois}",
+   "title": "Les *nouveautés* de Revela ce mois-ci",
+   "intro": "Bonjour,\n\nVoici les nouveautés de {mois}, pour que créer des présentations soit plus simple et plus percutant.",
+   "blocks": [
+    {
+     "title": "{Nouveauté principale}",
+     "text": "{Dites en deux ou trois phrases ce que c'est et à quoi ça sert.}",
+     "image": "",
+     "cta": "L'essayer",
+     "url": "/app/"
+    },
+    {
+     "title": "{Deuxième nouveauté}",
+     "text": "{Dites en deux ou trois phrases ce que c'est et à quoi ça sert.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Nouveaux modèles",
+     "text": "{Quelles collections ont été ajoutées ce mois-ci.}",
+     "image": "",
+     "cta": "Voir les modèles",
+     "url": "/templates"
+    }
+   ],
+   "outro": "Merci d'utiliser Revela. Si quelque chose ne fonctionne pas, utilisez « Signaler un problème » dans l'application."
+  },
+  "gl": {
+   "subject": "Novidades de Revela: {mes}",
+   "preheader": "O que preparamos este mes",
+   "eyebrow": "Novidades · {mes}",
+   "title": "O *novo* de Revela este mes",
+   "intro": "Ola:\n\nEstas son as novidades de {mes}, para que facer presentacións sexa máis fácil e máis vistoso.",
+   "blocks": [
+    {
+     "title": "{Novidade principal}",
+     "text": "{Conta en dúas ou tres frases que é e para que serve.}",
+     "image": "",
+     "cta": "Probalo",
+     "url": "/app/"
+    },
+    {
+     "title": "{Segunda novidade}",
+     "text": "{Conta en dúas ou tres frases que é e para que serve.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Modelos novos",
+     "text": "{Que coleccións se engadiron este mes.}",
+     "image": "",
+     "cta": "Ver os modelos",
+     "url": "/templates"
+    }
+   ],
+   "outro": "Grazas por usar Revela. Se algo non che funciona, usa «Informar dun problema» dentro da app."
+  },
+  "it": {
+   "subject": "Novità di Revela: {mese}",
+   "preheader": "Cosa abbiamo preparato questo mese",
+   "eyebrow": "Novità · {mese}",
+   "title": "Le *novità* di Revela questo mese",
+   "intro": "Ciao,\n\necco le novità di {mese}, per rendere le presentazioni più semplici e più d'effetto.",
+   "blocks": [
+    {
+     "title": "{Novità principale}",
+     "text": "{Racconta in due o tre frasi cos'è e a cosa serve.}",
+     "image": "",
+     "cta": "Provala",
+     "url": "/app/"
+    },
+    {
+     "title": "{Seconda novità}",
+     "text": "{Racconta in due o tre frasi cos'è e a cosa serve.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Nuovi modelli",
+     "text": "{Quali raccolte sono state aggiunte questo mese.}",
+     "image": "",
+     "cta": "Vedi i modelli",
+     "url": "/templates"
+    }
+   ],
+   "outro": "Grazie per usare Revela. Se qualcosa non funziona, usa «Segnala un problema» nell'app."
+  },
+  "nl": {
+   "subject": "Nieuws van Revela: {maand}",
+   "preheader": "Wat we deze maand hebben voorbereid",
+   "eyebrow": "Nieuws · {maand}",
+   "title": "Wat is er *nieuw* in Revela deze maand",
+   "intro": "Hoi:\n\nHier is het nieuws van {maand}, om presentaties maken makkelijker en mooier te maken.",
+   "blocks": [
+    {
+     "title": "{Belangrijkste nieuwtje}",
+     "text": "{Vertel in twee of drie zinnen wat het is en waarvoor het dient.}",
+     "image": "",
+     "cta": "Proberen",
+     "url": "/app/"
+    },
+    {
+     "title": "{Tweede nieuwtje}",
+     "text": "{Vertel in twee of drie zinnen wat het is en waarvoor het dient.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Nieuwe sjablonen",
+     "text": "{Welke collecties deze maand zijn toegevoegd.}",
+     "image": "",
+     "cta": "De sjablonen bekijken",
+     "url": "/templates"
+    }
+   ],
+   "outro": "Bedankt dat je Revela gebruikt. Werkt er iets niet, gebruik dan «Een probleem melden» in de app."
+  },
+  "pt": {
+   "subject": "Novidades do Revela: {mês}",
+   "preheader": "O que preparámos este mês",
+   "eyebrow": "Novidades · {mês}",
+   "title": "O que há de *novo* no Revela este mês",
+   "intro": "Olá,\n\naqui estão as novidades de {mês}, para tornar as apresentações mais fáceis e mais vistosas.",
+   "blocks": [
+    {
+     "title": "{Novidade principal}",
+     "text": "{Conta em duas ou três frases o que é e para que serve.}",
+     "image": "",
+     "cta": "Experimentar",
+     "url": "/app/"
+    },
+    {
+     "title": "{Segunda novidade}",
+     "text": "{Conta em duas ou três frases o que é e para que serve.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Modelos novos",
+     "text": "{Que coleções foram acrescentadas este mês.}",
+     "image": "",
+     "cta": "Ver os modelos",
+     "url": "/templates"
+    }
+   ],
+   "outro": "Obrigado por usares o Revela. Se algo não funcionar, usa «Comunicar um problema» dentro da app."
+  }
+ }
+}

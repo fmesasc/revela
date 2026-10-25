@@ -18,6 +18,7 @@
 // Admin routes (admin.js, behind Cloudflare Access; audited):
 //   GET  /news                      → { issues: [summary], audience: { total, byLang }, mail: bool }
 //   GET  /news/starters             → { starters } (starting points in 11 languages: news-starters.js)
+//   GET  /news/images               → { images } (the website's pictures for newsletters: site/img/news/index.json)
 //   GET  /news/<id>                 → { issue }
 //   POST /news { issue }            → { issue }  (new, or a draft changed)
 //   POST /news/<id>/delete          (drafts only)
@@ -97,7 +98,7 @@ export function renderNews(issue, lang, { unsub = null, test = false, site = 'ht
   const href = u => tag(u.startsWith('/') ? site + (lang && lang !== 'es' && !/^\/(app|api)(\/|$)/.test(u) ? '/' + lang : '') + u : u), subject = (test ? '[PRUEBA] ' : '') + plain(tx.subject), eyebrow = tx.eyebrow || W.eyebrow;
   const P = `margin:0 0 16px;font:17px/1.65 ${SANS};color:${INK2}`, head = !!(tx.title || tx.intro);
   const blocks = (tx.blocks || []).map((b, i) => `<tr><td style="padding:${i ? 6 : 0}px 36px 6px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"${i || head ? ` class="top" style="border-top:1px solid ${LINE}"` : ''}><tr><td style="padding-top:${i || head ? 26 : 0}px">
-${b.image ? `<img src="${escHtml(b.image)}" alt="" width="528" style="display:block;width:100%;max-width:528px;height:auto;border-radius:14px;margin:0 0 18px;border:1px solid ${LINE}">` : ''}
+${b.image ? `<img src="${escHtml(b.image)}" alt="${escHtml(plain(b.title))}" width="528" style="display:block;width:100%;max-width:528px;height:auto;border-radius:14px;margin:0 0 18px;border:1px solid ${LINE}">` : ''}
 ${b.title ? `<h2 class="ink" style="margin:0 0 10px;font:450 28px/1.2 ${SERIF};letter-spacing:-.01em;color:${INK}">${em(b.title)}</h2>` : ''}${paras(b.text, P)}${b.cta && b.url ? arrow(b.cta, href(b.url)) : ''}</td></tr></table></td></tr>`).join('\n');
   const rows = `${head ? `<tr><td style="padding:38px 36px 18px"><p class="warm" style="margin:0 0 16px;font:600 13px/1 ${SANS};${lang === 'ar' ? '' : 'letter-spacing:.14em;text-transform:uppercase;'}color:${WARM}">${escHtml(eyebrow)}</p>${tx.title ? `<h1 class="ink" style="margin:0 0 16px;font:450 40px/1.1 ${SERIF};letter-spacing:-.015em;color:${INK}">${em(tx.title)}</h1>` : ''}${paras(tx.intro, P)}</td></tr>` : ''}
 ${blocks}
@@ -167,6 +168,12 @@ export async function newsAdmin(env, path, q, body, { GET, POST, by, json, audit
     return json({ issue });
   }
   if (GET && path === '/news/starters') return json({ starters: STARTERS });
+  // The pictures the website offers for newsletters (site/img/news/index.json, made by site/tools/news-image.py): the editor's picker.
+  if (GET && path === '/news/images') {
+    const site = (env.SITE_URL || 'https://revelaslides.com').replace(/\/$/, '');
+    let list = []; try { const r = await (env.FETCH || fetch)(site + '/img/news/index.json'); const j = r.ok ? await r.json() : []; list = Array.isArray(j) ? j : []; } catch {}
+    return json({ images: list.filter(x => x && /^[\w-]{1,60}\.jpg$/.test(String(x.file))).map(x => ({ file: x.file, url: 'https://revelaslides.com/img/news/' + x.file, description: String(x.description || '').slice(0, 120), width: +x.width || 0, height: +x.height || 0 })) });
+  }
   const m = path.match(/^\/news\/([\w]{4,20})(?:\/(\w+))?$/); if (!m) return json({ error: 'not found' }, 404);
   const [, id, act] = m, issue = await get(id); if (!issue) return json({ error: 'not found' }, 404);
   if (GET && !act) return json({ issue });

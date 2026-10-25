@@ -1,0 +1,270 @@
+{
+ "key": "feature",
+ "name": "Una función nueva",
+ "texts": {
+  "es": {
+   "subject": "Nuevo en Revela: {nombre de la función}",
+   "preheader": "{Una frase que explique qué permite hacer}",
+   "eyebrow": "Nueva función",
+   "title": "{Nombre de la función}, *ya disponible*",
+   "intro": "Hola:\n\nHemos añadido {nombre de la función}: {qué permite hacer, en una frase}.",
+   "blocks": [
+    {
+     "title": "Cómo se usa",
+     "text": "1. Abre {dónde está}.\n\n2. {Segundo paso}.\n\n3. {Tercer paso}.",
+     "image": "",
+     "cta": "Probarlo ahora",
+     "url": "/app/"
+    },
+    {
+     "title": "Para qué te sirve",
+     "text": "{Un ejemplo concreto: una clase, una reunión, una defensa…}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Cuéntanos qué te parece con «Informar de un problema» dentro de la app."
+  },
+  "en": {
+   "subject": "New in Revela: {feature name}",
+   "preheader": "{One sentence on what it lets you do}",
+   "eyebrow": "New feature",
+   "title": "{Feature name}, *now available*",
+   "intro": "Hi:\n\nWe have added {feature name}: {what it lets you do, in one sentence}.",
+   "blocks": [
+    {
+     "title": "How to use it",
+     "text": "1. Open {where it is}.\n\n2. {Second step}.\n\n3. {Third step}.",
+     "image": "",
+     "cta": "Try it now",
+     "url": "/app/"
+    },
+    {
+     "title": "What it is for",
+     "text": "{A concrete example: a class, a meeting, a thesis defence…}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Tell us what you think with “Report a problem” inside the app."
+  },
+  "ar": {
+   "subject": "جديد في Revela: {اسم الميزة}",
+   "preheader": "{جملة واحدة عمّا تتيح لك فعله}",
+   "eyebrow": "ميزة جديدة",
+   "title": "{اسم الميزة}، *متاحة الآن*",
+   "intro": "مرحبًا:\n\nأضفنا {اسم الميزة}: {ما تتيح لك فعله، في جملة واحدة}.",
+   "blocks": [
+    {
+     "title": "طريقة الاستخدام",
+     "text": "1. افتح {مكانها}.\n\n2. {الخطوة الثانية}.\n\n3. {الخطوة الثالثة}.",
+     "image": "",
+     "cta": "جرّبها الآن",
+     "url": "/app/"
+    },
+    {
+     "title": "فيمَ تفيدك",
+     "text": "{مثال محدد: حصة دراسية، اجتماع، مناقشة…}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "أخبرنا برأيك عبر «الإبلاغ عن مشكلة» داخل التطبيق."
+  },
+  "ca": {
+   "subject": "Nou a Revela: {nom de la funció}",
+   "preheader": "{Una frase sobre què permet fer}",
+   "eyebrow": "Funció nova",
+   "title": "{Nom de la funció}, *ja disponible*",
+   "intro": "Hola:\n\nhem afegit {nom de la funció}: {què permet fer, en una frase}.",
+   "blocks": [
+    {
+     "title": "Com es fa servir",
+     "text": "1. Obre {on és}.\n\n2. {Segon pas}.\n\n3. {Tercer pas}.",
+     "image": "",
+     "cta": "Provar-ho ara",
+     "url": "/app/"
+    },
+    {
+     "title": "Per a què et serveix",
+     "text": "{Un exemple concret: una classe, una reunió, una defensa…}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Explica'ns què et sembla amb «Informa d'un problema» dins de l'app."
+  },
+  "de": {
+   "subject": "Neu in Revela: {Name der Funktion}",
+   "preheader": "{Ein Satz dazu, was sie möglich macht}",
+   "eyebrow": "Neue Funktion",
+   "title": "{Name der Funktion}, *jetzt verfügbar*",
+   "intro": "Guten Tag,\n\nwir haben {Name der Funktion} hinzugefügt: {was sie möglich macht, in einem Satz}.",
+   "blocks": [
+    {
+     "title": "So geht es",
+     "text": "1. Öffnen Sie {wo sie zu finden ist}.\n\n2. {Zweiter Schritt}.\n\n3. {Dritter Schritt}.",
+     "image": "",
+     "cta": "Jetzt ausprobieren",
+     "url": "/app/"
+    },
+    {
+     "title": "Wozu sie Ihnen nützt",
+     "text": "{Ein konkretes Beispiel: ein Unterricht, ein Meeting, eine Verteidigung…}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Sagen Sie uns, was Sie davon halten, über „Problem melden“ in der App."
+  },
+  "eu": {
+   "subject": "Berria Revelan: {funtzioaren izena}",
+   "preheader": "{Zer egiteko aukera ematen duen azaltzen duen esaldi bat}",
+   "eyebrow": "Funtzio berria",
+   "title": "{Funtzioaren izena}, *eskuragarri jada*",
+   "intro": "Kaixo:\n\n{funtzioaren izena} gehitu dugu: {zer egiteko aukera ematen duen, esaldi batean}.",
+   "blocks": [
+    {
+     "title": "Nola erabili",
+     "text": "1. Ireki {non dagoen}.\n\n2. {Bigarren urratsa}.\n\n3. {Hirugarren urratsa}.",
+     "image": "",
+     "cta": "Orain probatu",
+     "url": "/app/"
+    },
+    {
+     "title": "Zertarako balio dizu",
+     "text": "{Adibide zehatz bat: klase bat, bilera bat, defentsa bat…}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Esaiguzu zer iruditzen zaizun aplikazioaren barruko «Arazo baten berri eman» erabiliz."
+  },
+  "fr": {
+   "subject": "Nouveau dans Revela : {nom de la fonction}",
+   "preheader": "{Une phrase sur ce que cela permet de faire}",
+   "eyebrow": "Nouvelle fonction",
+   "title": "{Nom de la fonction}, *déjà disponible*",
+   "intro": "Bonjour,\n\nNous avons ajouté {nom de la fonction} : {ce qu'elle permet de faire, en une phrase}.",
+   "blocks": [
+    {
+     "title": "Comment l'utiliser",
+     "text": "1. Ouvrez {où elle se trouve}.\n\n2. {Deuxième étape}.\n\n3. {Troisième étape}.",
+     "image": "",
+     "cta": "L'essayer maintenant",
+     "url": "/app/"
+    },
+    {
+     "title": "À quoi elle vous sert",
+     "text": "{Un exemple concret : un cours, une réunion, une soutenance…}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Dites-nous ce que vous en pensez avec « Signaler un problème » dans l'application."
+  },
+  "gl": {
+   "subject": "Novo en Revela: {nome da función}",
+   "preheader": "{Unha frase que explique que permite facer}",
+   "eyebrow": "Nova función",
+   "title": "{Nome da función}, *xa dispoñible*",
+   "intro": "Ola:\n\nEngadimos {nome da función}: {que permite facer, nunha frase}.",
+   "blocks": [
+    {
+     "title": "Como se usa",
+     "text": "1. Abre {onde está}.\n\n2. {Segundo paso}.\n\n3. {Terceiro paso}.",
+     "image": "",
+     "cta": "Probalo agora",
+     "url": "/app/"
+    },
+    {
+     "title": "Para que che serve",
+     "text": "{Un exemplo concreto: unha clase, unha reunión, unha defensa…}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Cóntanos que che parece con «Informar dun problema» dentro da app."
+  },
+  "it": {
+   "subject": "Novità in Revela: {nome della funzione}",
+   "preheader": "{Una frase su cosa permette di fare}",
+   "eyebrow": "Nuova funzione",
+   "title": "{Nome della funzione}, *già disponibile*",
+   "intro": "Ciao,\n\nabbiamo aggiunto {nome della funzione}: {cosa permette di fare, in una frase}.",
+   "blocks": [
+    {
+     "title": "Come si usa",
+     "text": "1. Apri {dove si trova}.\n\n2. {Secondo passo}.\n\n3. {Terzo passo}.",
+     "image": "",
+     "cta": "Provala ora",
+     "url": "/app/"
+    },
+    {
+     "title": "A cosa ti serve",
+     "text": "{Un esempio concreto: una lezione, una riunione, una discussione di tesi…}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Dicci cosa ne pensi con «Segnala un problema» nell'app."
+  },
+  "nl": {
+   "subject": "Nieuw in Revela: {naam van de functie}",
+   "preheader": "{Eén zin over wat je ermee kunt doen}",
+   "eyebrow": "Nieuwe functie",
+   "title": "{Naam van de functie}, *nu beschikbaar*",
+   "intro": "Hoi:\n\nWe hebben {naam van de functie} toegevoegd: {wat je ermee kunt doen, in één zin}.",
+   "blocks": [
+    {
+     "title": "Zo gebruik je het",
+     "text": "1. Open {waar het zit}.\n\n2. {Tweede stap}.\n\n3. {Derde stap}.",
+     "image": "",
+     "cta": "Nu proberen",
+     "url": "/app/"
+    },
+    {
+     "title": "Waarvoor het dient",
+     "text": "{Een concreet voorbeeld: een les, een vergadering, een verdediging…}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Laat ons weten wat je ervan vindt via «Een probleem melden» in de app."
+  },
+  "pt": {
+   "subject": "Novo no Revela: {nome da funcionalidade}",
+   "preheader": "{Uma frase sobre o que permite fazer}",
+   "eyebrow": "Funcionalidade nova",
+   "title": "{Nome da funcionalidade}, *já disponível*",
+   "intro": "Olá,\n\nacrescentámos {nome da funcionalidade}: {o que permite fazer, numa frase}.",
+   "blocks": [
+    {
+     "title": "Como se usa",
+     "text": "1. Abre {onde está}.\n\n2. {Segundo passo}.\n\n3. {Terceiro passo}.",
+     "image": "",
+     "cta": "Experimentar agora",
+     "url": "/app/"
+    },
+    {
+     "title": "Para que te serve",
+     "text": "{Um exemplo concreto: uma aula, uma reunião, uma defesa…}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Diz-nos o que achas em «Comunicar um problema», dentro da app."
+  }
+ }
+}

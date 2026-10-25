@@ -1919,6 +1919,13 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       { const ph = (await A('POST', '/news', { body: { issue: { ...issue, texts: { es: { ...issue.texts.es, subject: 'Novedades de {mes}' } } } } })).j.issue;
         x = await A('POST', `/news/${ph.id}/send`, { body: { confirm: true } });
         ok(x.status === 400 && x.j.error === 'placeholders' && x.j.langs[0] === 'es', 'novedades: con un {marcador} sin rellenar, no se envía'); }
+      // The pictures for newsletters: the website's list (site/img/news/index.json), only well-named JPEGs, with their address.
+      { const prevF = env.FETCH; env.FETCH = async (u, init) => (String(u).endsWith('/img/news/index.json') ? Response.json([{ slug: 'a', file: 'a.jpg', description: 'Una', width: 1056, height: 594 }, { slug: 'x', file: '../../etc/x.jpg', description: 'Mala' }, { slug: 'p', file: 'p.png' }]) : prevF(u, init));
+        const im = (await A('GET', '/news/images')).j.images; env.FETCH = prevF;
+        ok(im.length === 1 && im[0].url === 'https://revelaslides.com/img/news/a.jpg' && im[0].description === 'Una', 'novedades: las imágenes que ofrece la web, solo .jpg con nombre limpio: ' + JSON.stringify(im));
+        const first = (await A('GET', '/news/starters')).j.starters.first;
+        ok(['es', 'en', 'de', 'ar'].every(l => first.texts[l].blocks.slice(0, 4).every(b => /^https:\/\/revelaslides\.com\/img\/news\/first-[\w-]+\.jpg$/.test(b.image))), 'novedades: el primer boletín lleva sus cuatro fotos, en todos los idiomas');
+        const pv = (await A('GET', `/news/${id}/preview?lang=es`)).j.html; ok(/<img src="https:\/\/revelaslides\.com\/img\/a\.png" alt="Animación con &lt;b&gt;IA&lt;\/b&gt;"/.test(pv), 'novedades: cada foto lleva su texto alternativo (el título de la sección, escapado)'); }
       // The ready-made texts: six, in the 11 languages, each valid as a draft; only the first (no {braces}) could go out as it is.
       { const st = (await A('GET', '/news/starters')).j.starters, keys = Object.keys(st), LANGS = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'];
         ok(keys.length === 6 && keys.every(k => LANGS.every(l => st[k].texts[l]?.subject && st[k].texts[l].title)), 'novedades: seis textos hechos, en los 11 idiomas: ' + keys.join());

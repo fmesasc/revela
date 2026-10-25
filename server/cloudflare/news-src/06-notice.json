@@ -1,0 +1,270 @@
+{
+ "key": "notice",
+ "name": "Aviso importante",
+ "texts": {
+  "es": {
+   "subject": "Un cambio en Revela: {qué cambia}",
+   "preheader": "Léelo si usas {función o plan}",
+   "eyebrow": "Aviso",
+   "title": "{Qué cambia} a partir del *{fecha}*",
+   "intro": "Hola:\n\nTe escribimos para avisarte de que {qué cambia y desde cuándo}.",
+   "blocks": [
+    {
+     "title": "Qué significa para ti",
+     "text": "{Qué tienes que hacer o, si es el caso, que no tienes que hacer nada.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Por qué lo hacemos",
+     "text": "{El motivo, en dos frases.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Si tienes dudas, usa «Informar de un problema» dentro de la app: te respondemos por correo."
+  },
+  "en": {
+   "subject": "A change in Revela: {what changes}",
+   "preheader": "Read it if you use {feature or plan}",
+   "eyebrow": "Notice",
+   "title": "{What changes} from *{date}*",
+   "intro": "Hi:\n\nWe are writing to let you know that {what changes and from when}.",
+   "blocks": [
+    {
+     "title": "What it means for you",
+     "text": "{What you need to do or, if so, that you need to do nothing.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Why we are doing it",
+     "text": "{The reason, in two sentences.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "If you have questions, use “Report a problem” inside the app: we will answer by email."
+  },
+  "ar": {
+   "subject": "تغيير في Revela: {ما الذي يتغير}",
+   "preheader": "اقرأه إن كنت تستخدم {الميزة أو الخطة}",
+   "eyebrow": "تنبيه",
+   "title": "{ما الذي يتغير} اعتبارًا من *{التاريخ}*",
+   "intro": "مرحبًا:\n\nنكتب إليك لنخبرك أن {ما الذي يتغير ومنذ متى}.",
+   "blocks": [
+    {
+     "title": "ماذا يعني لك",
+     "text": "{ما عليك فعله، أو، إن كان الأمر كذلك، أنه لا شيء عليك فعله.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "لماذا نفعل ذلك",
+     "text": "{السبب، في جملتين.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "إن كانت لديك أسئلة، استخدم «الإبلاغ عن مشكلة» داخل التطبيق: نجيبك بالبريد الإلكتروني."
+  },
+  "ca": {
+   "subject": "Un canvi a Revela: {què canvia}",
+   "preheader": "Llegeix-ho si fas servir {funció o pla}",
+   "eyebrow": "Avís",
+   "title": "{Què canvia} a partir del *{data}*",
+   "intro": "Hola:\n\nt'escrivim per avisar-te que {què canvia i des de quan}.",
+   "blocks": [
+    {
+     "title": "Què significa per a tu",
+     "text": "{Què has de fer o, si és el cas, que no has de fer res.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Per què ho fem",
+     "text": "{El motiu, en dues frases.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Si tens dubtes, fes servir «Informa d'un problema» dins de l'app: et responem per correu."
+  },
+  "de": {
+   "subject": "Eine Änderung bei Revela: {was sich ändert}",
+   "preheader": "Lesen Sie dies, wenn Sie {Funktion oder Tarif} nutzen",
+   "eyebrow": "Hinweis",
+   "title": "{Was sich ändert} ab dem *{Datum}*",
+   "intro": "Guten Tag,\n\nwir schreiben Ihnen, um Sie darüber zu informieren, dass {was sich ändert und ab wann}.",
+   "blocks": [
+    {
+     "title": "Was das für Sie bedeutet",
+     "text": "{Was Sie tun müssen oder gegebenenfalls, dass Sie nichts tun müssen.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Warum wir es tun",
+     "text": "{Der Grund, in zwei Sätzen.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Bei Fragen nutzen Sie „Problem melden“ in der App: Wir antworten per E-Mail."
+  },
+  "eu": {
+   "subject": "Aldaketa bat Revelan: {zer aldatzen den}",
+   "preheader": "Irakurri {funtzioa edo plana} erabiltzen baduzu",
+   "eyebrow": "Abisua",
+   "title": "Aldaketa: {zer aldatzen den}. Noiztik: *{data}*",
+   "intro": "Kaixo:\n\nHonen berri emateko idazten dizugu: {zer aldatzen den eta noiztik}.",
+   "blocks": [
+    {
+     "title": "Zer esan nahi dizun",
+     "text": "{Zer egin behar duzun edo, hala bada, ez duzula ezer egin behar.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Zergatik egiten dugun",
+     "text": "{Arrazoia, bi esalditan.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Zalantzarik baduzu, erabili aplikazioaren barruko «Arazo baten berri eman»: posta elektronikoz erantzungo dizugu."
+  },
+  "fr": {
+   "subject": "Un changement dans Revela : {ce qui change}",
+   "preheader": "À lire si vous utilisez {fonction ou formule}",
+   "eyebrow": "Avis",
+   "title": "{Ce qui change} à partir du *{date}*",
+   "intro": "Bonjour,\n\nNous vous écrivons pour vous prévenir que {ce qui change et à partir de quand}.",
+   "blocks": [
+    {
+     "title": "Ce que cela signifie pour vous",
+     "text": "{Ce que vous devez faire ou, le cas échéant, que vous n'avez rien à faire.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Pourquoi nous le faisons",
+     "text": "{La raison, en deux phrases.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Si vous avez des questions, utilisez « Signaler un problème » dans l'application : nous vous répondrons par e-mail."
+  },
+  "gl": {
+   "subject": "Un cambio en Revela: {que cambia}",
+   "preheader": "Léeo se usas {función ou plan}",
+   "eyebrow": "Aviso",
+   "title": "{Que cambia} a partir do *{data}*",
+   "intro": "Ola:\n\nEscribímosche para avisarte de que {que cambia e desde cando}.",
+   "blocks": [
+    {
+     "title": "Que significa para ti",
+     "text": "{Que tes que facer ou, se é o caso, que non tes que facer nada.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Por que o facemos",
+     "text": "{O motivo, en dúas frases.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Se tes dúbidas, usa «Informar dun problema» dentro da app: respondémosche por correo."
+  },
+  "it": {
+   "subject": "Un cambiamento in Revela: {cosa cambia}",
+   "preheader": "Leggilo se usi {funzione o piano}",
+   "eyebrow": "Avviso",
+   "title": "{Cosa cambia} a partire dal *{data}*",
+   "intro": "Ciao,\n\nti scriviamo per avvisarti che {cosa cambia e da quando}.",
+   "blocks": [
+    {
+     "title": "Cosa significa per te",
+     "text": "{Cosa devi fare o, se è il caso, che non devi fare nulla.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Perché lo facciamo",
+     "text": "{Il motivo, in due frasi.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Se hai dubbi, usa «Segnala un problema» nell'app: ti rispondiamo per e-mail."
+  },
+  "nl": {
+   "subject": "Een wijziging in Revela: {wat verandert}",
+   "preheader": "Lees het als je {functie of abonnement} gebruikt",
+   "eyebrow": "Mededeling",
+   "title": "{Wat verandert} vanaf *{datum}*",
+   "intro": "Hoi:\n\nWe schrijven je om te laten weten dat {wat verandert en vanaf wanneer}.",
+   "blocks": [
+    {
+     "title": "Wat het voor jou betekent",
+     "text": "{Wat je moet doen of, als dat zo is, dat je niets hoeft te doen.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Waarom we het doen",
+     "text": "{De reden, in twee zinnen.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Heb je vragen, gebruik dan «Een probleem melden» in de app: we antwoorden per e-mail."
+  },
+  "pt": {
+   "subject": "Uma mudança no Revela: {o que muda}",
+   "preheader": "Lê isto se usas {funcionalidade ou plano}",
+   "eyebrow": "Aviso",
+   "title": "{O que muda} a partir de *{data}*",
+   "intro": "Olá,\n\nescrevemos para te avisar de que {o que muda e desde quando}.",
+   "blocks": [
+    {
+     "title": "O que significa para ti",
+     "text": "{O que tens de fazer ou, se for o caso, que não tens de fazer nada.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Porque o fazemos",
+     "text": "{O motivo, em duas frases.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    }
+   ],
+   "outro": "Se tiveres dúvidas, usa «Comunicar um problema» dentro da app: respondemos por e-mail."
+  }
+ }
+}

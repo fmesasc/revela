@@ -1,0 +1,270 @@
+{
+ "key": "templates",
+ "name": "Colección de plantillas nueva",
+ "texts": {
+  "es": {
+   "subject": "{N} plantillas nuevas: {tema}",
+   "preheader": "Presentaciones listas para usar",
+   "eyebrow": "Plantillas nuevas",
+   "title": "{N} presentaciones *nuevas* para {tema}",
+   "intro": "Hola:\n\nHemos preparado una colección nueva: {tema}. Son presentaciones listas para usar, en 11 idiomas.",
+   "blocks": [
+    {
+     "title": "Qué incluye",
+     "text": "{Lista breve: portada, datos, actividades, diapositivas de respaldo…}",
+     "image": "",
+     "cta": "Ver la colección",
+     "url": "/templates"
+    },
+    {
+     "title": "Cómo empezar",
+     "text": "Elige la que más se parezca a lo que necesitas y cámbiale los textos, los colores y las imágenes. Todo se puede editar.",
+     "image": "",
+     "cta": "Abrir Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "¿Echas en falta alguna? Dinos qué tema te vendría bien con «Informar de un problema» dentro de la app."
+  },
+  "en": {
+   "subject": "{N} new templates: {topic}",
+   "preheader": "Presentations ready to use",
+   "eyebrow": "New templates",
+   "title": "{N} *new* presentations for {topic}",
+   "intro": "Hi:\n\nWe have prepared a new collection: {topic}. They are ready-to-use presentations, in 11 languages.",
+   "blocks": [
+    {
+     "title": "What is inside",
+     "text": "{Short list: cover, data, activities, backup slides…}",
+     "image": "",
+     "cta": "See the collection",
+     "url": "/templates"
+    },
+    {
+     "title": "How to start",
+     "text": "Pick the one closest to what you need and change its texts, colours and images. Everything can be edited.",
+     "image": "",
+     "cta": "Open Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Missing one? Tell us which topic would help with “Report a problem” inside the app."
+  },
+  "ar": {
+   "subject": "{N} قوالب جديدة: {الموضوع}",
+   "preheader": "عروض جاهزة للاستخدام",
+   "eyebrow": "قوالب جديدة",
+   "title": "{N} عروض *جديدة* عن {الموضوع}",
+   "intro": "مرحبًا:\n\nأعددنا مجموعة جديدة: {الموضوع}. هي عروض جاهزة للاستخدام بـ 11 لغة.",
+   "blocks": [
+    {
+     "title": "ما الذي تتضمنه",
+     "text": "{قائمة قصيرة: الغلاف، البيانات، الأنشطة، شرائح احتياطية…}",
+     "image": "",
+     "cta": "شاهد المجموعة",
+     "url": "/templates"
+    },
+    {
+     "title": "كيف تبدأ",
+     "text": "اختر الأقرب إلى ما تحتاجه وغيّر نصوصه وألوانه وصوره. كل شيء قابل للتعديل.",
+     "image": "",
+     "cta": "افتح Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "هل افتقدت قالبًا؟ أخبرنا بالموضوع الذي يلزمك عبر «الإبلاغ عن مشكلة» داخل التطبيق."
+  },
+  "ca": {
+   "subject": "{N} plantilles noves: {tema}",
+   "preheader": "Presentacions a punt per fer servir",
+   "eyebrow": "Plantilles noves",
+   "title": "{N} presentacions *noves* per a {tema}",
+   "intro": "Hola:\n\nhem preparat una col·lecció nova: {tema}. Són presentacions a punt per fer servir, en 11 idiomes.",
+   "blocks": [
+    {
+     "title": "Què inclou",
+     "text": "{Llista breu: portada, dades, activitats, diapositives de reserva…}",
+     "image": "",
+     "cta": "Veure la col·lecció",
+     "url": "/templates"
+    },
+    {
+     "title": "Com començar",
+     "text": "Tria la que s'assembli més al que necessites i canvia'n els textos, els colors i les imatges. Tot es pot editar.",
+     "image": "",
+     "cta": "Obre Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "En trobes a faltar alguna? Digue'ns quin tema et aniria bé amb «Informa d'un problema» dins de l'app."
+  },
+  "de": {
+   "subject": "{N} neue Vorlagen: {Thema}",
+   "preheader": "Fertige Präsentationen zum Loslegen",
+   "eyebrow": "Neue Vorlagen",
+   "title": "{N} *neue* Präsentationen für {Thema}",
+   "intro": "Guten Tag,\n\nwir haben eine neue Sammlung vorbereitet: {Thema}. Es sind fertige Präsentationen in 11 Sprachen.",
+   "blocks": [
+    {
+     "title": "Was enthalten ist",
+     "text": "{Kurze Liste: Titelfolie, Daten, Aktivitäten, Reservefolien…}",
+     "image": "",
+     "cta": "Sammlung ansehen",
+     "url": "/templates"
+    },
+    {
+     "title": "So fangen Sie an",
+     "text": "Wählen Sie die Vorlage, die am besten zu Ihrem Bedarf passt, und ändern Sie Texte, Farben und Bilder. Alles lässt sich bearbeiten.",
+     "image": "",
+     "cta": "Revela öffnen",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Fehlt Ihnen eine? Sagen Sie uns über „Problem melden“ in der App, welches Thema hilfreich wäre."
+  },
+  "eu": {
+   "subject": "{N} txantiloi berri: {gaia}",
+   "preheader": "Erabiltzeko prest dauden aurkezpenak",
+   "eyebrow": "Txantiloi berriak",
+   "title": "{N} aurkezpen *berri*: {gaia}",
+   "intro": "Kaixo:\n\nBilduma berri bat prestatu dugu: {gaia}. Erabiltzeko prest dauden aurkezpenak dira, 11 hizkuntzatan.",
+   "blocks": [
+    {
+     "title": "Zer dakar",
+     "text": "{Zerrenda laburra: azala, datuak, jarduerak, babes-diapositibak…}",
+     "image": "",
+     "cta": "Bilduma ikusi",
+     "url": "/templates"
+    },
+    {
+     "title": "Nola hasi",
+     "text": "Aukeratu behar duzunaren antzekoena eta aldatu testuak, koloreak eta irudiak. Dena editatu daiteke.",
+     "image": "",
+     "cta": "Revela ireki",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Baten bat falta zaizu? Esaiguzu zer gai etorriko litzaizukeen ondo aplikazioaren barruko «Arazo baten berri eman» erabiliz."
+  },
+  "fr": {
+   "subject": "{N} nouveaux modèles : {thème}",
+   "preheader": "Des présentations prêtes à l'emploi",
+   "eyebrow": "Nouveaux modèles",
+   "title": "{N} *nouvelles* présentations pour {thème}",
+   "intro": "Bonjour,\n\nNous avons préparé une nouvelle collection : {thème}. Ce sont des présentations prêtes à l'emploi, en 11 langues.",
+   "blocks": [
+    {
+     "title": "Ce qu'elle contient",
+     "text": "{Liste courte : couverture, données, activités, diapositives de secours…}",
+     "image": "",
+     "cta": "Voir la collection",
+     "url": "/templates"
+    },
+    {
+     "title": "Par où commencer",
+     "text": "Choisissez celle qui ressemble le plus à ce dont vous avez besoin et modifiez ses textes, ses couleurs et ses images. Tout est modifiable.",
+     "image": "",
+     "cta": "Ouvrir Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Il en manque une ? Dites-nous quel thème vous serait utile avec « Signaler un problème » dans l'application."
+  },
+  "gl": {
+   "subject": "{N} modelos novos: {tema}",
+   "preheader": "Presentacións listas para usar",
+   "eyebrow": "Modelos novos",
+   "title": "{N} presentacións *novas* para {tema}",
+   "intro": "Ola:\n\nPreparamos unha colección nova: {tema}. Son presentacións listas para usar, en 11 idiomas.",
+   "blocks": [
+    {
+     "title": "Que inclúe",
+     "text": "{Lista breve: portada, datos, actividades, diapositivas de apoio…}",
+     "image": "",
+     "cta": "Ver a colección",
+     "url": "/templates"
+    },
+    {
+     "title": "Como comezar",
+     "text": "Escolle a que máis se pareza ao que precisas e cambia os textos, as cores e as imaxes. Todo se pode editar.",
+     "image": "",
+     "cta": "Abrir Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Botas algunha en falta? Dinos que tema che virían ben con «Informar dun problema» dentro da app."
+  },
+  "it": {
+   "subject": "{N} nuovi modelli: {argomento}",
+   "preheader": "Presentazioni pronte all'uso",
+   "eyebrow": "Nuovi modelli",
+   "title": "{N} *nuove* presentazioni per {argomento}",
+   "intro": "Ciao,\n\nabbiamo preparato una nuova raccolta: {argomento}. Sono presentazioni pronte all'uso, in 11 lingue.",
+   "blocks": [
+    {
+     "title": "Cosa include",
+     "text": "{Elenco breve: copertina, dati, attività, diapositive di riserva…}",
+     "image": "",
+     "cta": "Vedi la raccolta",
+     "url": "/templates"
+    },
+    {
+     "title": "Come iniziare",
+     "text": "Scegli quella più vicina a ciò che ti serve e cambia testi, colori e immagini. Tutto si può modificare.",
+     "image": "",
+     "cta": "Apri Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Ne manca una? Dicci quale argomento ti sarebbe utile con «Segnala un problema» nell'app."
+  },
+  "nl": {
+   "subject": "{N} nieuwe sjablonen: {onderwerp}",
+   "preheader": "Presentaties die klaar zijn voor gebruik",
+   "eyebrow": "Nieuwe sjablonen",
+   "title": "{N} *nieuwe* presentaties voor {onderwerp}",
+   "intro": "Hoi:\n\nWe hebben een nieuwe collectie voorbereid: {onderwerp}. Het zijn kant-en-klare presentaties, in 11 talen.",
+   "blocks": [
+    {
+     "title": "Wat zit erin",
+     "text": "{Korte lijst: omslag, gegevens, activiteiten, reserveslides…}",
+     "image": "",
+     "cta": "De collectie bekijken",
+     "url": "/templates"
+    },
+    {
+     "title": "Zo begin je",
+     "text": "Kies degene die het best past bij wat je nodig hebt en pas de teksten, kleuren en afbeeldingen aan. Alles is te bewerken.",
+     "image": "",
+     "cta": "Revela openen",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Mis je er een? Laat ons via «Een probleem melden» in de app weten welk onderwerp je zou helpen."
+  },
+  "pt": {
+   "subject": "{N} modelos novos: {tema}",
+   "preheader": "Apresentações prontas a usar",
+   "eyebrow": "Modelos novos",
+   "title": "{N} apresentações *novas* para {tema}",
+   "intro": "Olá,\n\npreparámos uma coleção nova: {tema}. São apresentações prontas a usar, em 11 idiomas.",
+   "blocks": [
+    {
+     "title": "O que inclui",
+     "text": "{Lista breve: capa, dados, atividades, diapositivos de reserva…}",
+     "image": "",
+     "cta": "Ver a coleção",
+     "url": "/templates"
+    },
+    {
+     "title": "Como começar",
+     "text": "Escolhe a que mais se parece com o que precisas e muda-lhe os textos, as cores e as imagens. Tudo se pode editar.",
+     "image": "",
+     "cta": "Abrir o Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Falta alguma? Diz-nos que tema te seria útil em «Comunicar um problema», dentro da app."
+  }
+ }
+}

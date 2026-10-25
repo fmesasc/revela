@@ -1,0 +1,270 @@
+{
+ "key": "tip",
+ "name": "Un consejo",
+ "texts": {
+  "es": {
+   "subject": "Un truco para presentar mejor: {título del truco}",
+   "preheader": "Se aprende en un minuto",
+   "eyebrow": "Consejo",
+   "title": "Un truco para *presentar* mejor",
+   "intro": "Hola:\n\n{Una frase que cuente por qué merece la pena este truco.}",
+   "blocks": [
+    {
+     "title": "El truco",
+     "text": "{Explica el truco en tres o cuatro frases.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Pruébalo en un minuto",
+     "text": "Abre una presentación y {haz esto}.",
+     "image": "",
+     "cta": "Abrir Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "¿Quieres aprender más? Hay tutoriales interactivos en Ver ▸ Ayuda ▸ Tutorial interactivo."
+  },
+  "en": {
+   "subject": "A trick to present better: {trick title}",
+   "preheader": "You learn it in a minute",
+   "eyebrow": "Tip",
+   "title": "A trick to *present* better",
+   "intro": "Hi:\n\n{One sentence on why this trick is worth it.}",
+   "blocks": [
+    {
+     "title": "The trick",
+     "text": "{Explain the trick in three or four sentences.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Try it in a minute",
+     "text": "Open a presentation and {do this}.",
+     "image": "",
+     "cta": "Open Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Want to learn more? There are interactive tutorials in View ▸ Help ▸ Interactive tutorial."
+  },
+  "ar": {
+   "subject": "حيلة لتقديم أفضل: {عنوان الحيلة}",
+   "preheader": "تتعلمها في دقيقة",
+   "eyebrow": "نصيحة",
+   "title": "حيلة *لتقدّم* بشكل أفضل",
+   "intro": "مرحبًا:\n\n{جملة واحدة عن سبب أهمية هذه الحيلة.}",
+   "blocks": [
+    {
+     "title": "الحيلة",
+     "text": "{اشرح الحيلة في ثلاث أو أربع جمل.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "جرّبها في دقيقة",
+     "text": "افتح عرضًا و{افعل هذا}.",
+     "image": "",
+     "cta": "افتح Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "هل تريد أن تتعلم أكثر؟ هناك أدلة تفاعلية في عرض ▸ تعليمات ▸ دليل تفاعلي."
+  },
+  "ca": {
+   "subject": "Un truc per presentar millor: {títol del truc}",
+   "preheader": "S'aprèn en un minut",
+   "eyebrow": "Consell",
+   "title": "Un truc per *presentar* millor",
+   "intro": "Hola:\n\n{Una frase que expliqui per què val la pena aquest truc.}",
+   "blocks": [
+    {
+     "title": "El truc",
+     "text": "{Explica el truc en tres o quatre frases.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Prova-ho en un minut",
+     "text": "Obre una presentació i {fes això}.",
+     "image": "",
+     "cta": "Obre Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Vols aprendre més? Hi ha tutorials interactius a Visualitza ▸ Ajuda ▸ Tutorial interactiu."
+  },
+  "de": {
+   "subject": "Ein Trick für bessere Präsentationen: {Titel des Tricks}",
+   "preheader": "In einer Minute gelernt",
+   "eyebrow": "Tipp",
+   "title": "Ein Trick, um besser zu *präsentieren*",
+   "intro": "Guten Tag,\n\n{Ein Satz dazu, warum sich dieser Trick lohnt.}",
+   "blocks": [
+    {
+     "title": "Der Trick",
+     "text": "{Erklären Sie den Trick in drei oder vier Sätzen.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "In einer Minute ausprobiert",
+     "text": "Öffnen Sie eine Präsentation und {tun Sie Folgendes}.",
+     "image": "",
+     "cta": "Revela öffnen",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Möchten Sie mehr lernen? Es gibt interaktive Tutorials unter Ansicht ▸ Hilfe ▸ Interaktives Tutorial."
+  },
+  "eu": {
+   "subject": "Hobeto aurkezteko trikimailu bat: {trikimailuaren izenburua}",
+   "preheader": "Minutu batean ikasten da",
+   "eyebrow": "Aholkua",
+   "title": "Hobeto *aurkezteko* trikimailu bat",
+   "intro": "Kaixo:\n\n{Trikimailu honek zergatik merezi duen azaltzen duen esaldi bat.}",
+   "blocks": [
+    {
+     "title": "Trikimailua",
+     "text": "{Azaldu trikimailua hiru edo lau esalditan.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Probatu minutu batean",
+     "text": "Ireki aurkezpen bat eta {egin hau}.",
+     "image": "",
+     "cta": "Revela ireki",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Gehiago ikasi nahi duzu? Tutorial interaktiboak daude Ikusi ▸ Laguntza ▸ Tutorial interaktiboa atalean."
+  },
+  "fr": {
+   "subject": "Une astuce pour mieux présenter : {titre de l'astuce}",
+   "preheader": "On l'apprend en une minute",
+   "eyebrow": "Astuce",
+   "title": "Une astuce pour mieux *présenter*",
+   "intro": "Bonjour,\n\n{Une phrase qui explique pourquoi cette astuce vaut la peine.}",
+   "blocks": [
+    {
+     "title": "L'astuce",
+     "text": "{Expliquez l'astuce en trois ou quatre phrases.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Essayez-la en une minute",
+     "text": "Ouvrez une présentation et {faites ceci}.",
+     "image": "",
+     "cta": "Ouvrir Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Envie d'en savoir plus ? Il y a des tutoriels interactifs dans Affichage ▸ Aide ▸ Tutoriel interactif."
+  },
+  "gl": {
+   "subject": "Un truco para presentar mellor: {título do truco}",
+   "preheader": "Apréndese nun minuto",
+   "eyebrow": "Consello",
+   "title": "Un truco para *presentar* mellor",
+   "intro": "Ola:\n\n{Unha frase que conte por que merece a pena este truco.}",
+   "blocks": [
+    {
+     "title": "O truco",
+     "text": "{Explica o truco en tres ou catro frases.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Próbao nun minuto",
+     "text": "Abre unha presentación e {fai isto}.",
+     "image": "",
+     "cta": "Abrir Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Queres aprender máis? Hai titoriais interactivos en Ver ▸ Axuda ▸ Titorial interactivo."
+  },
+  "it": {
+   "subject": "Un trucco per presentare meglio: {titolo del trucco}",
+   "preheader": "Si impara in un minuto",
+   "eyebrow": "Consiglio",
+   "title": "Un trucco per *presentare* meglio",
+   "intro": "Ciao,\n\n{Una frase che spieghi perché vale la pena questo trucco.}",
+   "blocks": [
+    {
+     "title": "Il trucco",
+     "text": "{Spiega il trucco in tre o quattro frasi.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Provalo in un minuto",
+     "text": "Apri una presentazione e {fai questo}.",
+     "image": "",
+     "cta": "Apri Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Vuoi imparare di più? Ci sono tutorial interattivi in Visualizza ▸ Aiuto ▸ Tutorial interattivo."
+  },
+  "nl": {
+   "subject": "Een trucje om beter te presenteren: {titel van het trucje}",
+   "preheader": "Je leert het in een minuut",
+   "eyebrow": "Tip",
+   "title": "Een trucje om beter te *presenteren*",
+   "intro": "Hoi:\n\n{Eén zin over waarom dit trucje de moeite waard is.}",
+   "blocks": [
+    {
+     "title": "Het trucje",
+     "text": "{Leg het trucje uit in drie of vier zinnen.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Probeer het in een minuut",
+     "text": "Open een presentatie en {doe dit}.",
+     "image": "",
+     "cta": "Revela openen",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Wil je meer leren? Er zijn interactieve rondleidingen onder Beeld ▸ Help ▸ Interactieve rondleiding."
+  },
+  "pt": {
+   "subject": "Um truque para apresentar melhor: {título do truque}",
+   "preheader": "Aprende-se num minuto",
+   "eyebrow": "Dica",
+   "title": "Um truque para *apresentar* melhor",
+   "intro": "Olá,\n\n{Uma frase a explicar por que vale a pena este truque.}",
+   "blocks": [
+    {
+     "title": "O truque",
+     "text": "{Explica o truque em três ou quatro frases.}",
+     "image": "",
+     "cta": "",
+     "url": ""
+    },
+    {
+     "title": "Experimenta num minuto",
+     "text": "Abre uma apresentação e {faz isto}.",
+     "image": "",
+     "cta": "Abrir o Revela",
+     "url": "/app/"
+    }
+   ],
+   "outro": "Queres aprender mais? Há tutoriais interativos em Ver ▸ Ajuda ▸ Tutorial interativo."
+  }
+ }
+}

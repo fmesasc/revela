@@ -1,6 +1,6 @@
 // Starting points for a newsletter (admin ▸ Novedades ▸ «Empezar desde…»): written in all 11 languages — the admin picks one and
 // changes it. Words between {braces} are for the admin to fill in (a draft that still has them is not sent: news.js);
-// *words* between asterisks are the title's italics. Made by hand (and translated), not by the AI at run time.
+// *words* between asterisks are the title's italics. MADE by tools/build-news-starters.mjs from news-src/*.json: change those, not this.
 // { key: { name (what the admin sees), texts: { <lang>: { subject, preheader, eyebrow, title, intro, blocks: [{ title, text, image, cta, url }], outro } } } }
 export const STARTERS = {
  "first": {
@@ -16,28 +16,28 @@ export const STARTERS = {
      {
       "title": "Animaciones *con IA*",
       "text": "Escribe un tema —el ciclo del agua, la mitosis, el motor de cuatro tiempos— y la IA dibuja una animación explicativa por fases. Al presentar, cada clic reproduce una fase y se para, como un vídeo por tramos. La encuentras en IA ▸ Animación con IA.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-animacion.jpg",
       "cta": "Probar la animación",
       "url": "/app/"
      },
      {
       "title": "Tutoriales que se hacen, *no solo se miran*",
       "text": "Doce recorridos cortos en los que lo pruebas todo tú: un modelo 3D, un mapa que vuela, una votación en directo, la IA… Están en Ver ▸ Ayuda ▸ Tutorial interactivo.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-tutorial.jpg",
       "cta": "Empezar un tutorial",
       "url": "/app/"
      },
      {
       "title": "Más de 450 plantillas",
       "text": "Presentaciones listas para clase y para la empresa: defensas de TFG, TFM y tesis, lecciones con animación, escape rooms, informes… Eliges una y la cambias a tu gusto.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-plantillas.jpg",
       "cta": "Ver las plantillas",
       "url": "/templates"
      },
      {
       "title": "Mapas, 3D y votaciones en directo",
       "text": "Un mapa que vuela de un lugar a otro con cada clic, modelos 3D que se giran con el ratón y votaciones que el público contesta con el móvil, sin instalar nada.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-mapas-3d.jpg",
       "cta": "Verlo en las guías",
       "url": "/guides"
      }
@@ -54,28 +54,28 @@ export const STARTERS = {
      {
       "title": "Animations *with AI*",
       "text": "Type a topic —the water cycle, mitosis, the four-stroke engine— and the AI draws an explainer animation in stages. When presenting, each click plays one stage and stops, like a video in segments. Find it in AI ▸ AI animation.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-animacion.jpg",
       "cta": "Try the animation",
       "url": "/app/"
      },
      {
       "title": "Tutorials you *do*, not just watch",
       "text": "Twelve short walk-throughs where you try everything yourself: a 3D model, a map that flies, a live vote, the AI… They are in View ▸ Help ▸ Interactive tutorial.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-tutorial.jpg",
       "cta": "Start a tutorial",
       "url": "/app/"
      },
      {
       "title": "Over 450 templates",
       "text": "Presentations ready for class and for business: thesis defences, lessons with animation, escape rooms, reports… Pick one and change it as you like.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-plantillas.jpg",
       "cta": "See the templates",
       "url": "/templates"
      },
      {
       "title": "Maps, 3D and live votes",
       "text": "A map that flies from place to place with each click, 3D models you turn with the mouse and votes the audience answers from their phones, with nothing to install.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-mapas-3d.jpg",
       "cta": "See it in the guides",
       "url": "/guides"
      }
@@ -92,28 +92,28 @@ export const STARTERS = {
      {
       "title": "رسوم متحركة *بالذكاء الاصطناعي*",
       "text": "اكتب موضوعًا —دورة الماء، الانقسام المتساوي، محرك الأشواط الأربعة— فيرسم الذكاء الاصطناعي رسمًا متحركًا توضيحيًا على مراحل. عند العرض، كل نقرة تشغّل مرحلة واحدة ثم يتوقف، مثل فيديو مقسّم إلى مقاطع. ستجده في الذكاء الاصطناعي ▸ رسم متحرك بالذكاء الاصطناعي.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-animacion.jpg",
       "cta": "جرّب الرسم المتحرك",
       "url": "/app/"
      },
      {
       "title": "أدلة *تجربها بنفسك* لا تكتفي بمشاهدتها",
       "text": "اثنا عشر مسارًا قصيرًا تجرّب فيها كل شيء بنفسك: نموذج ثلاثي الأبعاد، خريطة تطير، تصويت مباشر، الذكاء الاصطناعي… تجدها في عرض ▸ تعليمات ▸ دليل تفاعلي.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-tutorial.jpg",
       "cta": "ابدأ دليلًا",
       "url": "/app/"
      },
      {
       "title": "أكثر من 450 قالبًا",
       "text": "عروض جاهزة للصف وللشركة: مناقشات مشاريع التخرج والرسائل والأطروحات، دروس برسوم متحركة، غرف هروب، تقارير… اختر واحدًا وعدّله كما تشاء.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-plantillas.jpg",
       "cta": "شاهد القوالب",
       "url": "/templates"
      },
      {
       "title": "خرائط وثلاثي الأبعاد وتصويت مباشر",
       "text": "خريطة تطير من مكان إلى آخر مع كل نقرة، ونماذج ثلاثية الأبعاد تديرها بالفأرة، وتصويت يجيب عنه الجمهور من هواتفهم دون تثبيت أي شيء.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-mapas-3d.jpg",
       "cta": "شاهده في الأدلة",
       "url": "/guides"
      }
@@ -130,28 +130,28 @@ export const STARTERS = {
      {
       "title": "Animacions *amb IA*",
       "text": "Escriu un tema —el cicle de l'aigua, la mitosi, el motor de quatre temps— i la IA dibuixa una animació explicativa per fases. En presentar, cada clic reprodueix una fase i s'atura, com un vídeo per trams. La trobes a IA ▸ Animació amb IA.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-animacion.jpg",
       "cta": "Provar l'animació",
       "url": "/app/"
      },
      {
       "title": "Tutorials que *es fan*, no només es miren",
       "text": "Dotze recorreguts curts en què ho proves tot tu: un model 3D, un mapa que vola, una votació en directe, la IA… Són a Visualitza ▸ Ajuda ▸ Tutorial interactiu.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-tutorial.jpg",
       "cta": "Començar un tutorial",
       "url": "/app/"
      },
      {
       "title": "Més de 450 plantilles",
       "text": "Presentacions a punt per a classe i per a l'empresa: defenses de TFG, TFM i tesi, lliçons amb animació, escape rooms, informes… En tries una i la canvies al teu gust.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-plantillas.jpg",
       "cta": "Veure les plantilles",
       "url": "/templates"
      },
      {
       "title": "Mapes, 3D i votacions en directe",
       "text": "Un mapa que vola d'un lloc a un altre a cada clic, models 3D que es giren amb el ratolí i votacions que el públic contesta amb el mòbil, sense instal·lar res.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-mapas-3d.jpg",
       "cta": "Veure-ho a les guies",
       "url": "/guides"
      }
@@ -168,28 +168,28 @@ export const STARTERS = {
      {
       "title": "Animationen *mit KI*",
       "text": "Geben Sie ein Thema ein —den Wasserkreislauf, die Mitose, den Viertaktmotor— und die KI zeichnet eine erklärende Animation in Phasen. Beim Präsentieren spielt jeder Klick eine Phase ab und hält dann an, wie ein Video in Abschnitten. Sie finden sie unter KI ▸ KI-Animation.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-animacion.jpg",
       "cta": "Animation ausprobieren",
       "url": "/app/"
      },
      {
       "title": "Tutorials zum *Selbermachen*, nicht nur zum Zuschauen",
       "text": "Zwölf kurze Rundgänge, in denen Sie alles selbst ausprobieren: ein 3D-Modell, eine fliegende Karte, eine Live-Abstimmung, die KI… Sie finden sie unter Ansicht ▸ Hilfe ▸ Interaktives Tutorial.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-tutorial.jpg",
       "cta": "Ein Tutorial starten",
       "url": "/app/"
      },
      {
       "title": "Über 450 Vorlagen",
       "text": "Fertige Präsentationen für den Unterricht und fürs Unternehmen: Abschlussarbeit-Verteidigungen, Lektionen mit Animation, Escape Rooms, Berichte… Sie wählen eine aus und ändern sie nach Ihrem Geschmack.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-plantillas.jpg",
       "cta": "Vorlagen ansehen",
       "url": "/templates"
      },
      {
       "title": "Karten, 3D und Live-Abstimmungen",
       "text": "Eine Karte, die bei jedem Klick von Ort zu Ort fliegt, 3D-Modelle, die Sie mit der Maus drehen, und Abstimmungen, die das Publikum mit dem Handy beantwortet, ohne etwas zu installieren.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-mapas-3d.jpg",
       "cta": "In den Anleitungen ansehen",
       "url": "/guides"
      }
@@ -206,28 +206,28 @@ export const STARTERS = {
      {
       "title": "Animazioak *AArekin*",
       "text": "Idatzi gai bat —uraren zikloa, mitosia, lau aldiko motorra— eta AAk azalpen-animazio bat marrazten du faseka. Aurkezterakoan, klik bakoitzak fase bat erreproduzitzen du eta gelditu egiten da, zatika banatutako bideo bat bezala. AA ▸ AA bidezko animazioa atalean aurkituko duzu.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-animacion.jpg",
       "cta": "Animazioa probatu",
       "url": "/app/"
      },
      {
       "title": "Begiratzeaz gain, *egiten diren* tutorialak",
       "text": "Hamabi ibilbide labur, guztia zuk zeuk probatzen duzuna: 3D eredu bat, hegan egiten duen mapa bat, zuzeneko bozketa bat, AA… Ikusi ▸ Laguntza ▸ Tutorial interaktiboa atalean daude.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-tutorial.jpg",
       "cta": "Tutorial bat hasi",
       "url": "/app/"
      },
      {
       "title": "450 txantiloi baino gehiago",
       "text": "Gelarako eta enpresarako prest dauden aurkezpenak: gradu amaierako lanen, master amaierako lanen eta tesien defentsak, animaziodun ikasgaiak, ihesaldi-gelak, txostenak… Bat aukeratu eta zure gustura aldatu.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-plantillas.jpg",
       "cta": "Txantiloiak ikusi",
       "url": "/templates"
      },
      {
       "title": "Mapak, 3D eta zuzeneko bozketak",
       "text": "Klik bakoitzarekin leku batetik bestera hegan egiten duen mapa bat, saguarekin biratzen diren 3D ereduak eta publikoak mugikorrarekin erantzuten dituen bozketak, ezer instalatu gabe.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-mapas-3d.jpg",
       "cta": "Gidetan ikusi",
       "url": "/guides"
      }
@@ -244,28 +244,28 @@ export const STARTERS = {
      {
       "title": "Animations *par IA*",
       "text": "Écrivez un sujet —le cycle de l'eau, la mitose, le moteur à quatre temps— et l'IA dessine une animation explicative par étapes. En présentation, chaque clic joue une étape puis s'arrête, comme une vidéo par segments. Vous la trouvez dans IA ▸ Animation par IA.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-animacion.jpg",
       "cta": "Essayer l'animation",
       "url": "/app/"
      },
      {
       "title": "Des tutoriels à *faire*, pas seulement à regarder",
       "text": "Douze parcours courts où vous essayez tout vous-même : un modèle 3D, une carte qui survole le monde, un vote en direct, l'IA… Ils sont dans Affichage ▸ Aide ▸ Tutoriel interactif.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-tutorial.jpg",
       "cta": "Commencer un tutoriel",
       "url": "/app/"
      },
      {
       "title": "Plus de 450 modèles",
       "text": "Des présentations prêtes à l'emploi pour la classe et l'entreprise : soutenances de mémoire et de thèse, leçons animées, escape games, rapports… Vous en choisissez une et vous la modifiez à votre goût.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-plantillas.jpg",
       "cta": "Voir les modèles",
       "url": "/templates"
      },
      {
       "title": "Cartes, 3D et votes en direct",
       "text": "Une carte qui vole d'un lieu à l'autre à chaque clic, des modèles 3D qu'on fait tourner à la souris et des votes auxquels le public répond depuis son téléphone, sans rien installer.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-mapas-3d.jpg",
       "cta": "Voir dans les guides",
       "url": "/guides"
      }
@@ -282,28 +282,28 @@ export const STARTERS = {
      {
       "title": "Animacións *con IA*",
       "text": "Escribe un tema —o ciclo da auga, a mitose, o motor de catro tempos— e a IA debuxa unha animación explicativa por fases. Ao presentar, cada clic reproduce unha fase e para, coma un vídeo por tramos. Atópala en IA ▸ Animación con IA.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-animacion.jpg",
       "cta": "Probar a animación",
       "url": "/app/"
      },
      {
       "title": "Titoriais que se fan, *non só se miran*",
       "text": "Doce percorridos curtos nos que o probas todo ti: un modelo 3D, un mapa que voa, unha votación en directo, a IA… Están en Ver ▸ Axuda ▸ Titorial interactivo.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-tutorial.jpg",
       "cta": "Comezar un titorial",
       "url": "/app/"
      },
      {
       "title": "Máis de 450 modelos",
       "text": "Presentacións listas para clase e para a empresa: defensas de TFG, TFM e tese, leccións con animación, escape rooms, informes… Escolles unha e cámbiala ao teu gusto.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-plantillas.jpg",
       "cta": "Ver os modelos",
       "url": "/templates"
      },
      {
       "title": "Mapas, 3D e votacións en directo",
       "text": "Un mapa que voa duns lugares a outros con cada clic, modelos 3D que se xiran co rato e votacións que o público contesta co móbil, sen instalar nada.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-mapas-3d.jpg",
       "cta": "Velo nas guías",
       "url": "/guides"
      }
@@ -320,28 +320,28 @@ export const STARTERS = {
      {
       "title": "Animazioni *con IA*",
       "text": "Scrivi un argomento —il ciclo dell'acqua, la mitosi, il motore a quattro tempi— e l'IA disegna un'animazione esplicativa per fasi. In presentazione, ogni clic riproduce una fase e si ferma, come un video a segmenti. La trovi in IA ▸ Animazione con IA.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-animacion.jpg",
       "cta": "Prova l'animazione",
       "url": "/app/"
      },
      {
       "title": "Tutorial che *si fanno*, non solo si guardano",
       "text": "Dodici percorsi brevi in cui provi tutto tu: un modello 3D, una mappa che vola, un voto in diretta, l'IA… Sono in Visualizza ▸ Aiuto ▸ Tutorial interattivo.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-tutorial.jpg",
       "cta": "Inizia un tutorial",
       "url": "/app/"
      },
      {
       "title": "Oltre 450 modelli",
       "text": "Presentazioni pronte per la classe e per l'azienda: discussioni di tesi, lezioni con animazione, escape room, relazioni… Ne scegli una e la cambi a tuo gusto.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-plantillas.jpg",
       "cta": "Vedi i modelli",
       "url": "/templates"
      },
      {
       "title": "Mappe, 3D e votazioni in diretta",
       "text": "Una mappa che vola da un luogo all'altro a ogni clic, modelli 3D che si ruotano con il mouse e votazioni a cui il pubblico risponde dal telefono, senza installare nulla.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-mapas-3d.jpg",
       "cta": "Guardalo nelle guide",
       "url": "/guides"
      }
@@ -358,28 +358,28 @@ export const STARTERS = {
      {
       "title": "Animaties *met AI*",
       "text": "Typ een onderwerp —de waterkringloop, mitose, de viertaktmotor— en de AI tekent een uitleganimatie in fasen. Tijdens het presenteren speelt elke klik één fase af en stopt dan, zoals een video in stukken. Je vindt het onder AI ▸ AI-animatie.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-animacion.jpg",
       "cta": "De animatie proberen",
       "url": "/app/"
      },
      {
       "title": "Rondleidingen die je *doet*, niet alleen bekijkt",
       "text": "Twaalf korte rondleidingen waarin je alles zelf probeert: een 3D-model, een kaart die vliegt, een live stemming, de AI… Je vindt ze onder Beeld ▸ Help ▸ Interactieve rondleiding.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-tutorial.jpg",
       "cta": "Een rondleiding starten",
       "url": "/app/"
      },
      {
       "title": "Meer dan 450 sjablonen",
       "text": "Presentaties klaar voor de klas en voor het bedrijf: verdedigingen van scripties en proefschriften, lessen met animatie, escape rooms, rapporten… Kies er een en pas hem aan zoals je wilt.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-plantillas.jpg",
       "cta": "De sjablonen bekijken",
       "url": "/templates"
      },
      {
       "title": "Kaarten, 3D en live stemmingen",
       "text": "Een kaart die bij elke klik van plaats naar plaats vliegt, 3D-modellen die je met de muis draait en stemmingen die het publiek met de telefoon beantwoordt, zonder iets te installeren.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-mapas-3d.jpg",
       "cta": "Bekijk het in de gidsen",
       "url": "/guides"
      }
@@ -396,28 +396,28 @@ export const STARTERS = {
      {
       "title": "Animações *com IA*",
       "text": "Escreve um tema —o ciclo da água, a mitose, o motor de quatro tempos— e a IA desenha uma animação explicativa por fases. Ao apresentar, cada clique reproduz uma fase e para, como um vídeo por troços. Encontras em IA ▸ Animação com IA.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-animacion.jpg",
       "cta": "Experimentar a animação",
       "url": "/app/"
      },
      {
       "title": "Tutoriais que *se fazem*, não só se veem",
       "text": "Doze percursos curtos em que experimentas tudo tu: um modelo 3D, um mapa que voa, uma votação em direto, a IA… Estão em Ver ▸ Ajuda ▸ Tutorial interativo.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-tutorial.jpg",
       "cta": "Começar um tutorial",
       "url": "/app/"
      },
      {
       "title": "Mais de 450 modelos",
       "text": "Apresentações prontas para a aula e para a empresa: defesas de dissertação e de tese, lições com animação, escape rooms, relatórios… Escolhes uma e mudas ao teu gosto.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-plantillas.jpg",
       "cta": "Ver os modelos",
       "url": "/templates"
      },
      {
       "title": "Mapas, 3D e votações em direto",
       "text": "Um mapa que voa de um lugar para outro a cada clique, modelos 3D que se rodam com o rato e votações a que o público responde pelo telemóvel, sem instalar nada.",
-      "image": "",
+      "image": "https://revelaslides.com/img/news/first-mapas-3d.jpg",
       "cta": "Ver nos guias",
       "url": "/guides"
      }
