@@ -26,6 +26,8 @@ const POLLS = new Set(['choice', 'multi', 'rating', 'word', 'qa', 'quiz', 'board
 const TYPES = new Set(['text', 'shape', 'image', 'icon', 'chart', 'table', 'code', 'math', 'model', 'video', 'audio', 'embed', 'poll', 'timer', 'connector', 'ink', 'diagram', 'camera', 'slideref', 'figindex', 'file', 'map']);
 // (The first twenty, from before this check, are held to a lighter rule.)
 const LEGACY = new Set(['lesson', 'report', 'pitch', 'coding', 'maths', 'science', 'history', 'meeting', 'event', 'portfolio', 'moving3d', 'effects', 'diagrams', 'classroom', 'launch', 'travel', 'quiz', 'dashboard', 'folio', 'canvas']);
+// (The defences of theses are longer than the rest: the long thesis, 60; the others, 20.)
+const MAX_SLIDES = key => (key.startsWith('sci_phd') ? 60 : key.startsWith('sci_thesis') ? 20 : 14);
 let n = 0, slides = 0;
 const counts = {};
 for (const [key, meta] of Object.entries(EXAMPLES)) {
@@ -35,7 +37,7 @@ for (const [key, meta] of Object.entries(EXAMPLES)) {
   let d; try { d = await loadExample(key); if (!d) throw new Error('no existe'); } catch (e) { bad('no se construye: ' + e.message); continue; }
   n++; counts[meta.cat] = (counts[meta.cat] || 0) + 1; slides += d.slides.length;
   const W = d.size?.w || 1280, H = d.size?.h || 720;
-  if ((d.slides.length < (LEGACY.has(key) ? 4 : 5)) || d.slides.length > 14) bad(`${d.slides.length} diapositivas (entre 5 y 14)`);
+  if ((d.slides.length < (LEGACY.has(key) ? 4 : 5)) || d.slides.length > MAX_SLIDES(key)) bad(`${d.slides.length} diapositivas (entre 5 y ${MAX_SLIDES(key)})`);
   if (d.palette && !PALETTES[d.palette] && d.palette !== 'custom') bad('paleta desconocida ' + d.palette);
   if (d.fontPair && !FONT_PAIRS[d.fontPair]) bad('tipos de letra desconocidos ' + d.fontPair);
   const ids = new Set();
