@@ -178,9 +178,12 @@ export function cleanTrial(b) {
 // in the Budget object): on; perTour, the credits for finishing each one (0: none); credits, a bonus for finishing them
 // all; days they last; monthlyPeople, how many accounts can get any of it in a calendar month (0: no limit — reached,
 // nothing more until the next month: no boom can run away with it). Off unless turned on. Each tour's credits and the
-// bonus once per account; the account object keeps which ones (op 'tour-done') and grants them itself.
+// bonus once per account; the account object keeps which ones (op 'tour-done') and grants them itself. until: the
+// last day (UTC, «AAAA-MM-DD»; empty: no end) — after it nothing more is given, as if it were off.
 export const TOUR_KEYS = ['basics', 'main', 'maps', 'anim', 'threed', 'live', 'ai', 'present', 'collab', 'design', 'io', 'data'];
-export const TOURS_DEFAULT = { on: false, perTour: {}, credits: 150, days: 90, monthlyPeople: 0 };
+export const TOURS_DEFAULT = { on: false, perTour: {}, credits: 150, days: 90, monthlyPeople: 0, until: '' };
+// (On, and not past its last day — `until`, «AAAA-MM-DD», that whole day counts —: a campaign closes by itself.)
+export const toursActive = (cfg, now = Date.now()) => !!cfg.on && (!cfg.until || now < Date.parse(cfg.until) + 864e5);
 let toursCache = { at: 0, v: null };
 export const resetToursCache = () => { toursCache = { at: 0, v: null }; };
 export async function toursConfig(env, fresh) {
@@ -191,12 +194,13 @@ export async function toursConfig(env, fresh) {
 }
 // The admin's settings for it, checked (null: not valid). At most 1000 credits — a Pro month's.
 export function cleanTours(b) {
-  const cr = +b?.credits, days = +b?.days, max = +(b?.monthlyPeople ?? 0), per = b?.perTour ?? {};
+  const cr = +b?.credits, days = +b?.days, max = +(b?.monthlyPeople ?? 0), per = b?.perTour ?? {}, until = String(b?.until ?? '');
+  if (until && (!/^\d{4}-\d\d-\d\d$/.test(until) || new Date(until + 'T00:00:00Z').toISOString().slice(0, 10) !== until)) return null;
   if (typeof b?.on !== 'boolean' || !Number.isInteger(cr) || cr < 0 || cr > 1000 || !Number.isInteger(days) || days < 1 || days > 365
     || !Number.isInteger(max) || max < 0 || max > 1e6 || !per || typeof per !== 'object' || Array.isArray(per)) return null;
   const perTour = {};
   for (const [k, v] of Object.entries(per)) { if (!TOUR_KEYS.includes(k) || !Number.isInteger(+v) || +v < 0 || +v > 200) return null; if (+v) perTour[k] = +v; }
-  return { on: b.on, perTour, credits: cr, days, monthlyPeople: max };
+  return { on: b.on, perTour, credits: cr, days, monthlyPeople: max, until };
 }
 // The welcome message for a new account (the app's ui/shell/tour.js, after the first sign-in), written in the admin
 // («Promociones ▸ Bienvenida»; kept in the Budget object): on (off unless turned on) and, per language, a title and a
@@ -1330,18 +1334,18 @@ export async function handleApi(req, env, url) {
   }
   if (path === '/tours' && req.method === 'GET') {
     const cfg = await toursConfig(env), r = await call(A, 'tours-get');
-    const left = !cfg.on ? 0 : !cfg.monthlyPeople || r.claimed === monthOf() ? Infinity
+    const left = !toursActive(cfg) ? 0 : !cfg.monthlyPeople || r.claimed === monthOf() ? Infinity
       : cfg.monthlyPeople - (await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'tours-month', { month: monthOf() })).people;
     const perTour = Object.fromEntries(Object.entries(cfg.perTour || {}).filter(([k]) => !r.paid.includes(k)));
-    return json({ done: r.done, reward: cfg.on && left > 0 && (Object.keys(perTour).length || (cfg.credits && !r.rewarded)) ? { perTour, credits: r.rewarded ? 0 : cfg.credits } : null });
+    return json({ done: r.done, reward: toursActive(cfg) && left > 0 && (Object.keys(perTour).length || (cfg.credits && !r.rewarded)) ? { perTour, credits: r.rewarded ? 0 : cfg.credits } : null });
   }
   if (path === '/tours/done' && req.method === 'POST') {
     if (!TOUR_KEYS.includes(body?.tour)) return json({ error: 'bad request' }, 400);
     const cfg = await toursConfig(env), ask = { tour: body.tour, all: TOUR_KEYS, days: cfg.days };
-    const offer = cfg.on ? { per: cfg.perTour?.[body.tour] || 0, bonus: cfg.credits } : {};
+    const offer = toursActive(cfg) ? { per: cfg.perTour?.[body.tour] || 0, bonus: cfg.credits } : {};
     // (Within the month's limit of people — an account counted once a month —; over it, the tour is marked done and
     // nothing is given.)
-    const month = monthOf(), would = cfg.on ? (await call(A, 'tour-done', { ...ask, ...offer, dry: true })).would : 0;
+    const month = monthOf(), would = toursActive(cfg) ? (await call(A, 'tour-done', { ...ask, ...offer, dry: true })).would : 0;
     const counted = would && (await call(A, 'tours-get')).claimed === month;
     const ok = !would || counted || (await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'tours-claim', { month, max: cfg.monthlyPeople })).ok;
     const res = await call(A, 'tour-done', { ...ask, ...(ok && offer), ...(ok && would && { claim: month }) });

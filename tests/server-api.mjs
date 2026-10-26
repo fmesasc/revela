@@ -1862,6 +1862,12 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       ok((await U(t3, 'GET', '/tours')).reward === null, 'tutoriales: con el límite alcanzado, la app no promete nada que no daría');
       await A('POST', '/promos/tours', { body: { on: true, perTour: { maps: 20, ai: 5 }, credits: 0, days: 30, monthlyPeople: 2 } });
       ok((await U(t2, 'POST', '/tours/done', { tour: 'ai' })).granted === 5, 'tutoriales: quien ya contó este mes sigue recibiendo lo suyo (no ocupa otra plaza)');
+      // (A last day: the campaign closes by itself — after it, nothing is promised or given.)
+      ok((await A('POST', '/promos/tours', { body: { on: true, credits: 0, days: 30, until: '2026-02-30' } })).status === 400 && (await A('POST', '/promos/tours', { body: { on: true, credits: 0, days: 30, until: 'mañana' } })).status === 400, 'tutoriales: una fecha de fin no válida, no');
+      await A('POST', '/promos/tours', { body: { on: true, perTour: { basics: 7 }, credits: 0, days: 30, until: '2020-01-01' } });
+      { const t4 = t3; ok((await U(t4, 'GET', '/tours')).reward === null && (await U(t4, 'POST', '/tours/done', { tour: 'basics' })).granted === 0, 'tutoriales: pasado su último día, no promete ni da nada: '); }
+      x = await A('POST', '/promos/tours', { body: { on: true, perTour: { basics: 7 }, credits: 0, days: 30, until: '2099-12-31' } });
+      ok(x.status === 200 && x.j.after.until === '2099-12-31', 'tutoriales: con fecha de fin futura sigue activo');
       await A('POST', '/promos/tours', { body: { on: false, credits: 150, days: 90 } }); }
     // Google Drive: what the app says of each presentation saved there — name, slides, size, when; never its content —
     // for the admin (the person's detail, and each month's people and saves in the summary).
