@@ -59,7 +59,7 @@ export default {
         { name: 'Lisboa', lon: -9.1393, lat: 38.7223, zoom: 5.2, cc: 'pt', note: 'Congreso nacional de glaciología · 2025 · Resultados finales de la tesis' }];
       // Ice and a satellite: a drawn cover figure behind the real 3D model.
       const rings = () => svgURL(520, 520, [60, 110, 160, 210, 250].map((r, i) => `<circle cx="260" cy="260" r="${r}" fill="none" stroke="#bfe3f0" stroke-opacity="${0.5 - i * 0.07}" stroke-width="2"/>`).join('')
-        + `<path d="M40 330 Q120 290 200 320 T360 300 T490 330 V400 H40Z" fill="#dff1f8" opacity=".14"/>`);
+);
       const foot = () => [text('Universidad de Ejemplo · Escuela de Doctorado · Programa de Ciencias de la Tierra y del Clima · Tesis doctoral 2026', 84, 684, 1112, 24, { fontSize: 13, color: GREY, textAlign: 'right' })];
       return numbered(ink(build({ name: 'Defensa de tesis doctoral: Ciencias de la Tierra', palette: 'ocean', fonts: 'editorial', title: { color: INK, size: 40 }, body: { color: INK }, decor: foot }, [
         // 1 · Cover
