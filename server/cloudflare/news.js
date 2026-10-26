@@ -12,8 +12,11 @@
 //     sent: { n, skipped, failed, cursor, started, finished } }
 // A person reads their language's text, else English, else Spanish, else the first one written.
 //
-// Sending goes in batches (BATCH accounts each): the first right when the admin presses «Enviar», the next ones as the admin's
-// page asks for them (it goes on by itself while open) — or by the daily cron (newsRun), which does up to 10 batches. A batch asks the Directory for the next accounts that opted in (op 'news-list').
+// Sending goes in batches (BATCH accounts each) AT A PACE the admin chooses (issue.pace.perHour: 30, 60, 120, 300 or 1800 an hour):
+// the first batch right when the admin presses «Enviar», the next ones when their time comes — Budget's alarm (news kind, brakes.js)
+// wakes up for each — so thousands of emails never leave at once from a domain that is not used to it (mail providers read that as
+// spam; a pace, and each person at a different hour, is what a good sender does). «Continuar ahora» forces a batch; the daily cron
+// (newsRun) picks up one that missed its alarm. A batch asks the Directory for the next accounts that opted in (op 'news-list').
 //
 // Admin routes (admin.js, behind Cloudflare Access; audited):
 //   GET  /news                      → { issues: [summary], audience: { total, byLang }, mail: bool }
@@ -24,18 +27,21 @@
 //   POST /news/<id>/delete          (drafts only)
 //   GET  /news/<id>/preview?lang=   → { subject, html }
 //   POST /news/<id>/test { lang }   → an email to the admin, marked as a test
-//   POST /news/<id>/send { reason } → starts sending (once)    ·  POST /news/<id>/step → one more batch now
+//   POST /news/<id>/send { reason, perHour } → starts sending (once), at that pace  ·  POST /news/<id>/step { force } → the next batch if due (force: now)
 //   POST /news/<id>/cancel          → stops a sending in progress
 
 import { escHtml, random } from './util.js';
 import { mailWords, mailConfigured, sendMail, LOOK, emailFrame, em, plain, paras, pill, arrow } from './mail.js';
 import { acct, call } from './api.js';
 import { STARTERS } from './news-starters.js';
+import { scheduleAlarm } from './brakes.js';
 
 export const NEWS_LANGS = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'];
 export const NEWS_PLANS = ['all', 'free', 'pro'];
 export const NEWS_STATUS = ['draft', 'sending', 'sent', 'cancelled'];
-export const BATCH = 30, MAX_BLOCKS = 8;
+export const BATCH = 30, MAX_BLOCKS = 8, PACES = [30, 60, 120, 300, 1800], DEFAULT_PACE = 60;
+// How long to wait between one batch and the next, for a pace (accounts an hour): at least a minute, a little different each time.
+export const gapMs = perHour => Math.max(60e3, Math.round((BATCH / (PACES.includes(perHour) ? perHour : DEFAULT_PACE)) * 3600e3 * (0.85 + Math.random() * 0.3)));
 const PLACEHOLDER = /\{[^{}"\\]{1,60}\}/;
 
 const str = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, ' ').replace(/\r/g, '').trim().slice(0, n);
@@ -78,12 +84,12 @@ export function cleanIssue(b, existing = null, now = Date.now()) {
     texts[k] = t;
   }
   if (!texts.es && !texts.en) return { error: 'es-or-en' };
-  return { id: existing?.id || random(8).replace(/[^\w]/g, 'x'), name: line(b.name, 80) || texts.es?.subject || texts.en?.subject, status: 'draft', createdAt: existing?.createdAt || now, updatedAt: now,
+  return { id: existing?.id || random(8).replace(/[^\w]/g, 'x'), name: line(b.name, 80) || texts.es?.subject || texts.en?.subject, status: 'draft', createdAt: existing?.createdAt || now, updatedAt: now, pace: { perHour: DEFAULT_PACE },
     audience: { langs: [...new Set(langs)], plan: aud.plan || 'all' }, texts, sent: existing?.sent || { n: 0, skipped: 0, failed: 0, cursor: null, started: null, finished: null } };
 }
 // What a person in this language reads: theirs, else English, else Spanish, else the first one written.
 export const textFor = (issue, lang) => issue.texts?.[lang] || issue.texts?.en || issue.texts?.es || Object.values(issue.texts || {})[0] || null;
-export const summary = i => ({ id: i.id, name: i.name, status: i.status, updatedAt: i.updatedAt, langs: Object.keys(i.texts || {}), audience: i.audience, sent: i.sent,
+export const summary = i => ({ id: i.id, name: i.name, status: i.status, updatedAt: i.updatedAt, langs: Object.keys(i.texts || {}), audience: i.audience, sent: i.sent, pace: i.pace || { perHour: DEFAULT_PACE },
   subject: (textFor(i, 'es') || {}).subject || '' });
 
 // ---- The email ----------------------------------------------------------------------------------
@@ -121,12 +127,18 @@ const inAudience = (rec, aud, now = Date.now()) => {
   return aud.plan === 'pro' ? pro : aud.plan === 'free' ? !pro : true;
 };
 
-// One batch of a sending: the next accounts that opted in, each asked (so each one's own consent is checked again).
-export async function newsStep(env, id, { limit = BATCH, now = Date.now() } = {}) {
+// Where issues are kept: from a Worker, through the Budget object; from Budget's own alarm, straight in its storage.
+const remote = env => ({ get: async id => (await call(budget(env), 'news-get', { id })).issue, put: issue => call(budget(env), 'news-put', { issue }), index: async () => (await call(budget(env), 'news-index')).issues });
+export const localStore = st => ({ get: async id => (await st.get('issue:' + id)) || null, put: issue => st.put('issue:' + issue.id, issue), index: async () => [...(await st.list({ prefix: 'issue:' })).values()] });
+
+// One batch of a sending: the next accounts that opted in, each asked (so each one's own consent is checked again). Only when
+// its time has come (force: now); then the next one is set — by `schedule(at)`: Budget's alarm.
+export async function newsStep(env, id, { limit = BATCH, now = Date.now(), force = false, store = remote(env), schedule = at => call(budget(env), 'news-alarm', { at }) } = {}) {
   if (!env.BUDGET || !env.DIRECTORY) return null;
-  const B = budget(env), issue = (await call(B, 'news-get', { id })).issue;
+  const issue = await store.get(id);
   if (!issue || issue.status !== 'sending') return issue || null;
   if (!mailConfigured(env)) return issue;
+  if (!force && issue.sent.next && issue.sent.next > now + 1000) return issue;           // (not yet: its alarm will come)
   const page = await directory(env, 'news-list', { cursor: issue.sent.cursor, limit });
   for (const rec of page.recs || []) {
     if (!inAudience(rec, issue.audience, now)) { issue.sent.skipped++; continue; }
@@ -135,18 +147,29 @@ export async function newsStep(env, id, { limit = BATCH, now = Date.now() } = {}
   }
   issue.sent.cursor = page.cursor || null; issue.updatedAt = now;
   // (Stopped meanwhile — «Parar el envío» while this batch was going out? Its counts are kept, its state is not overwritten.)
-  const now2 = (await call(B, 'news-get', { id })).issue;
-  if (now2 && now2.status !== 'sending') { now2.sent = { ...now2.sent, n: issue.sent.n, skipped: issue.sent.skipped, failed: issue.sent.failed }; await call(B, 'news-put', { issue: now2 }); return now2; }
-  if (!page.cursor) { issue.status = 'sent'; issue.sent.finished = now; }
-  await call(B, 'news-put', { issue });
+  const now2 = await store.get(id);
+  if (now2 && now2.status !== 'sending') { now2.sent = { ...now2.sent, n: issue.sent.n, skipped: issue.sent.skipped, failed: issue.sent.failed }; await store.put(now2); return now2; }
+  if (!page.cursor) { issue.status = 'sent'; issue.sent.finished = now; issue.sent.next = null; }
+  else issue.sent.next = now + gapMs(issue.pace?.perHour);
+  await store.put(issue);
+  if (issue.status === 'sending') await schedule(issue.sent.next).catch?.(() => {});
   return issue;
 }
-// The daily cron: batches of every sending still in progress (up to `batches` each) — the admin's page, open, goes faster.
-export async function newsRun(env, now = Date.now(), batches = 1) {
+// Budget's alarm: every sending whose time has come gets its batch; the alarm is set again for the next one due.
+export async function newsTick(env, ctx, now = Date.now()) {
+  const store = localStore(ctx.storage), schedule = at => scheduleAlarm(ctx, env, 'news', at);
+  let nextAt = null;
+  for (const i of (await store.index()).filter(x => x.status === 'sending')) {
+    const r = await newsStep(env, i.id, { now, store, schedule });
+    if (r?.status === 'sending' && r.sent.next) nextAt = Math.min(nextAt ?? Infinity, r.sent.next);
+  }
+  return nextAt;
+}
+// The daily cron: a sending whose alarm was lost (restart, emergency switch) gets its batch if it is due.
+export async function newsRun(env, now = Date.now()) {
   if (!env.BUDGET || !env.DIRECTORY) return 0;
-  const { issues } = await call(budget(env), 'news-index').catch(() => ({ issues: [] }));
-  let n = 0;
-  for (const i of issues.filter(x => x.status === 'sending')) for (let k = 0; k < batches; k++) { const r = await newsStep(env, i.id, { now }); n++; if (r?.status !== 'sending') break; }
+  const issues = await remote(env).index().catch(() => []);
+  let n = 0; for (const i of issues.filter(x => x.status === 'sending')) { await newsStep(env, i.id, { now }); n++; }
   return n;
 }
 
@@ -195,12 +218,13 @@ export async function newsAdmin(env, path, q, body, { GET, POST, by, json, audit
     // (A starter's {placeholders} still there: not sent — «{mes}» in a subject would go out as it is.)
     const left = Object.entries(issue.texts).filter(([, t]) => PLACEHOLDER.test(JSON.stringify(t))).map(([l]) => l);
     if (left.length) return json({ error: 'placeholders', langs: left }, 400);
-    issue.status = 'sending'; issue.updatedAt = Date.now(); issue.sent = { n: 0, skipped: 0, failed: 0, cursor: null, started: Date.now(), finished: null };
+    const perHour = PACES.includes(+body?.perHour) ? +body.perHour : DEFAULT_PACE;
+    issue.status = 'sending'; issue.updatedAt = Date.now(); issue.pace = { perHour }; issue.sent = { n: 0, skipped: 0, failed: 0, cursor: null, next: null, started: Date.now(), finished: null };
     await call(B, 'news-put', { issue });
-    await audit({ action: 'news-send', target: 'news:' + id, reason: str(body?.reason, 500), after: { name: issue.name, audience: issue.audience } });
-    return json({ issue: await newsStep(env, id) });
+    await audit({ action: 'news-send', target: 'news:' + id, reason: str(body?.reason, 500), after: { name: issue.name, audience: issue.audience, perHour } });
+    return json({ issue: await newsStep(env, id, { force: true }) });
   }
-  if (act === 'step') return json({ issue: await newsStep(env, id) });
+  if (act === 'step') return json({ issue: await newsStep(env, id, { force: body?.force === true }) });
   if (act === 'cancel') {
     if (issue.status !== 'sending') return json({ error: 'locked' }, 409);
     issue.status = 'cancelled'; issue.updatedAt = Date.now(); await call(B, 'news-put', { issue });

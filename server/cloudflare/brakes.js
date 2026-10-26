@@ -37,6 +37,7 @@ export const ALARMS = {
   model3d: { min: 1e3, perHour: 60, essential: true, label: 'Modelo 3D con IA (model3d.js)',
     why: 'la ronda siguiente de un trabajo que alguien espera; cada ronda llama a la IA y a Blender y gasta créditos (máx. 12 por trabajo)' },
   crawler: { min: MIN_ALARM_MS, perHour: 40, label: 'Rastreador de Captación (crawler.js)' },
+  news: { min: MIN_ALARM_MS, perHour: 70, label: 'Envío de novedades por correo, tanda a tanda (news.js)' },
   share: { min: MIN_ALARM_MS, perHour: 6, label: 'Presentación compartida: caducidad (store.js)' },
   broadcast: { min: MIN_ALARM_MS, perHour: 6, label: 'Emisión y votación: fin de la sala (broadcast.js)' },
   lti: { min: MIN_ALARM_MS, perHour: 6, label: 'LTI: caducidad de un inicio de sesión (lti.js)' },

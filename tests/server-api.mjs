@@ -1926,6 +1926,29 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
         const first = (await A('GET', '/news/starters')).j.starters.first;
         ok(['es', 'en', 'de', 'ar'].every(l => first.texts[l].blocks.slice(0, 4).every(b => /^https:\/\/revelaslides\.com\/img\/news\/first-[\w-]+\.jpg$/.test(b.image))), 'novedades: el primer boletín lleva sus cuatro fotos, en todos los idiomas');
         const pv = (await A('GET', `/news/${id}/preview?lang=es`)).j.html; ok(/<img src="https:\/\/revelaslides\.com\/img\/a\.png" alt="Animación con &lt;b&gt;IA&lt;\/b&gt;"/.test(pv), 'novedades: cada foto lleva su texto alternativo (el título de la sección, escapado)'); }
+      // The pace: a sending goes out in batches of 30 at the pace chosen — the first at once, each next one when its time comes (Budget's
+      // alarm) —, not all at the same moment; «continuar ahora» forces one; the alarm does the due one by itself.
+      { const D = env.DIRECTORY.get(env.DIRECTORY.idFromName('directory')), dir = (op, b) => D.fetch('https://dir/' + op, { method: 'POST', body: JSON.stringify(b) });
+        const subs = Array.from({ length: 70 }, (_, i) => 'fz' + String(i).padStart(3, '0'));
+        for (const sub of subs) await dir('upsert', { sub, email: sub + '@x.example', news: true, lang: 'es', plan: 'free', lastSeen: '2026-10-25' });
+        const pace = (await A('POST', '/news', { body: { issue } })).j.issue; sent = [];
+        x = await A('POST', `/news/${pace.id}/send`, { body: { confirm: true, perHour: 60 } });
+        const t0 = Date.now(), i1 = x.j.issue, gap = i1.sent.next - t0;
+        ok(i1.status === 'sending' && i1.pace.perHour === 60 && i1.sent.cursor && gap > 24 * 60e3 && gap < 36 * 60e3, 'envío a ritmo: la primera tanda sale ya y la siguiente a su hora (unos 30 min a 60 por hora): ' + JSON.stringify([i1.status, i1.pace, Math.round(gap / 60e3)]));
+        ok((await env.BUDGET.inst.get('global').ctx.storage.getAlarm()) >= i1.sent.next - 1000, 'envío a ritmo: Budget despierta a la hora de la siguiente tanda');
+        const again1 = (await A('POST', `/news/${pace.id}/step`, { body: {} })).j.issue;
+        ok(again1.sent.cursor === i1.sent.cursor && again1.sent.next === i1.sent.next, 'envío a ritmo: pedir la tanda antes de su hora no manda nada');
+        const bad = (await A('POST', '/news', { body: { issue } })).j.issue; x = await A('POST', `/news/${bad.id}/send`, { body: { confirm: true, perHour: 5 } });
+        ok(x.j.issue.pace.perHour === 60, 'envío a ritmo: un ritmo que no está en la lista, el recomendado'); await A('POST', `/news/${bad.id}/cancel`, { body: {} });
+        // the alarm: its time comes → the batch goes out by itself and the next one is set
+        const B = env.BUDGET.get(env.BUDGET.idFromName('global')), cur = (await (await B.fetch('https://b/news-get', { method: 'POST', body: JSON.stringify({ id: pace.id }) })).json()).issue;
+        await B.fetch('https://b/news-put', { method: 'POST', body: JSON.stringify({ issue: { ...cur, sent: { ...cur.sent, next: Date.now() - 1000 } } }) });
+        await env.BUDGET.inst.get('global').alarm();
+        const afterAlarm = (await A('GET', `/news/${pace.id}`)).j.issue;
+        ok(afterAlarm.sent.skipped + afterAlarm.sent.n + afterAlarm.sent.failed > i1.sent.skipped + i1.sent.n + i1.sent.failed && afterAlarm.sent.next > Date.now(), 'envío a ritmo: llega la hora y la tanda sale sola, y queda puesta la siguiente');
+        const s3 = (await A('POST', `/news/${pace.id}/step`, { body: { force: true } })).j.issue, s4 = (await A('POST', `/news/${pace.id}/step`, { body: { force: true } })).j.issue;
+        ok(s4.status === 'sent' && s4.sent.next === null, 'envío a ritmo: «continuar ahora» fuerza la tanda y, al acabar, queda enviado (' + JSON.stringify(s4.sent) + ')');
+        for (const sub of subs) await dir('remove', { sub }); }
       // The ready-made texts: six, in the 11 languages, each valid as a draft; only the first (no {braces}) could go out as it is.
       { const st = (await A('GET', '/news/starters')).j.starters, keys = Object.keys(st), LANGS = ['es', 'en', 'fr', 'de', 'it', 'pt', 'ca', 'gl', 'nl', 'eu', 'ar'];
         ok(keys.length === 6 && keys.every(k => LANGS.every(l => st[k].texts[l]?.subject && st[k].texts[l].title)), 'novedades: seis textos hechos, en los 11 idiomas: ' + keys.join());

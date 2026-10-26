@@ -65,7 +65,7 @@ import { handleLti } from './lti.js';
 import { handleCalls } from './calls.js';
 import { docsSettings, TRASH_DAYS, FOLDERS } from './docs.js';
 import { mail, sendMail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL, unsubToken } from './mail.js';
-import { renderNews } from './news.js';
+import { renderNews, newsTick } from './news.js';
 import { scheduleItem, scheduleAll, dayOf } from './schedule.js';
 import { handle3d, configured3d } from './model3d.js';
 import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES, emails as adminEmails } from './admin.js';
@@ -887,6 +887,7 @@ export class Account {
 // ---- The AI budget: all accounts together, per calendar month --------------------------------
 export class Budget {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; }
+  alarm() { return runAlarm(this.ctx, this.env, 'news', async () => { const next = await newsTick(this.env, this.ctx); if (next) await scheduleAlarm(this.ctx, this.env, 'news', next); }); }
   async fetch(req) {
     const op = new URL(req.url).pathname.split('/').pop(), a = req.method === 'POST' ? await req.json() : {};
     // (Also the settings the admin changes without a deploy: Pro's free trial, trialConfig.)
@@ -902,6 +903,8 @@ export class Budget {
     if (op === 'drive-stats') { const months = []; for (let i = 0; i < 6; i++) { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - i); const m = d.toISOString().slice(0, 7); months.push({ month: m, ...((await this.ctx.storage.get('drive:' + m)) || { people: 0, saves: 0 }) }); } return Response.json({ months }); }
     if (op === 'tours-set') { await this.ctx.storage.put('tours', a.tours); return Response.json({ ok: true }); }
     // (The newsletters' issues — news.js: kept whole, they are small.)
+    // (A sending's next batch: Budget wakes up then — news.js newsTick. The only way an alarm is set: brakes.js.)
+    if (op === 'news-alarm') { await scheduleAlarm(this.ctx, this.env, 'news', +a.at || Date.now()); return Response.json({ ok: true }); }
     if (op === 'news-index') return Response.json({ issues: [...(await this.ctx.storage.list({ prefix: 'issue:' })).values()] });
     if (op === 'news-get') return Response.json({ issue: (await this.ctx.storage.get('issue:' + String(a.id))) || null });
     if (op === 'news-put') { await this.ctx.storage.put('issue:' + String(a.issue.id), a.issue); return Response.json({ ok: true }); }

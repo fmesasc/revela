@@ -61,11 +61,23 @@ Se apunta en `img/news/index.json`, que el editor ofrece en un desplegable («O 
 
 1. Producción al día (`Publicar en producción`) y el panel desplegado (`./deploy.sh` en `revela-admin`).
 2. **Vista previa** en cada idioma y **«Enviarme una prueba a mi correo»**: se ve en la bandeja de verdad (Gmail/Outlook, móvil y modo oscuro).
-3. «Enviar a las cuentas…»: pide confirmación y motivo (queda en la auditoría). Sale en tandas de 30; la página sigue pidiendo tandas mientras
-   está abierta; si se cierra, continúa cada día (hasta 10 tandas) o con «Continuar ahora». «Parar el envío» lo detiene.
+3. «Enviar a las cuentas…»: se elige el **ritmo** (30, 60, 120, 300 por hora o lo antes posible; 60 por hora al principio) y pide confirmación y motivo
+   (queda en la auditoría). La primera tanda de 30 sale ya y cada siguiente a su hora (con unos minutos de diferencia entre una y otra): el servidor
+   despierta solo (alarma de Budget, tipo `news`), no hace falta tener el panel abierto. «Continuar ahora» fuerza la siguiente; «Parar el envío»
+   lo detiene; el cron diario recoge una tanda que haya perdido su alarma.
 4. Un boletín enviado no se cambia, borra ni reenvía. Antes de cada correo se vuelve a comprobar que esa cuenta sigue queriéndolo.
 
 ## Si se pide a Claude
 
 Pedir: el tema, a quién va, qué idiomas y, si hace falta, qué fotos. Claude devuelve el JSON (o el archivo `news-src/…`), prepara las imágenes con
 `tools/news-image.py`, lo comprueba con la suite y deja el archivo guardado en el repositorio. Para recibirlo en el panel basta pegar el JSON.
+
+## Para que no acabe en spam
+
+- **Autenticación del dominio** (ya puesta: DKIM de Resend en `resend._domainkey`, SPF del dominio de rebote `send.`, DMARC `p=quarantine`): comprobar en
+  un Gmail propio, «Mostrar original»: SPF, DKIM y DMARC en **PASS**. Probar también con mail-tester.com antes del primer envío grande.
+- **Ritmo y calentamiento**: un dominio que no suele mandar mucho y de golpe manda miles es sospechoso. 60 por hora al principio; subir si no hay quejas.
+- **Solo a quien lo pidió** (pocas quejas), con baja visible y en la cabecera `List-Unsubscribe` (un clic, lo que exigen Gmail y Yahoo).
+- Contenido normal: asunto sin MAYÚSCULAS ni signos de más, una imagen o dos, sin acortadores de enlaces. Gmail mira sobre todo si la gente
+  abre, no borra sin leer y no marca como spam: un boletín que interesa es el mejor antideslizamiento.
+- Si algún día se marca mucho como spam: parar, mirar «Saltados» y las bajas del envío, y bajar el ritmo.
