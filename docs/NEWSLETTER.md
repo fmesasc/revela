@@ -35,14 +35,17 @@ Un JSON, con un texto por idioma (los 11: `es en fr de it pt ca gl nl eu ar`; el
 - Todo es texto sin formato (se escapa). Los `{marcadores}` hay que rellenarlos: **el servidor no deja enviar** un borrador que aún los lleve.
 - Los nombres de menús citados («Ver ▸ Ayuda ▸ Tutorial interactivo») van como los muestra la app en cada idioma (`src/i18n`).
 
-## Dos formas de tener uno nuevo
+## Cómo llega un boletín nuevo al panel
 
-1. **Sin desplegar nada (lo más rápido).** Se pide el boletín en JSON (en los idiomas que se quieran), se pega en
-   **Novedades ▸ Nuevo boletín ▸ «Pegar un boletín…» ▸ Importar**, se revisa y se guarda como borrador. Cada boletín enviado queda
-   registrado en el panel; los preparados se guardan además en el repositorio privado del panel, `revela-admin/novedades/`.
-2. **Como texto de partida fijo** (para los que se repiten): un archivo `server/cloudflare/news-src/NN-clave.json` con
-   `{ "key": "clave", "name": "…", "texts": { los 11 idiomas } }` y `node tools/build-news-starters.mjs`. Aparece en «Empezar desde…» con
-   la próxima publicación. La suite comprueba que `news-starters.js` coincide con `news-src/` (`--check`).
+Los boletines no son diarios: se piden cuando hace falta («prepárame el de noviembre sobre…») y Claude los **añade al panel**:
+
+1. **Lo habitual: archivo en el repositorio del panel.** Claude escribe `revela-admin/novedades/AAAA-MM-nombre.json` (formato de arriba, en los idiomas pedidos),
+   lo comprueba, hace commit y despliega el panel (`./deploy.sh`, que genera `novedades/index.json`). No hace falta publicar Revela. Aparece en
+   **Novedades ▸ Nuevo boletín ▸ «Boletines que Claude ha preparado»**; al elegirlo entra como **borrador** para mirarlo, mandarse una prueba y enviarlo. Queda además
+   archivado en el repositorio, con fecha.
+2. **Pegándolo**: **Novedades ▸ Nuevo boletín ▸ «Pegar un boletín (JSON)» ▸ Importar** (si se recibe en el chat).
+3. **Como texto de partida fijo** (para los que se repiten): `server/cloudflare/news-src/NN-clave.json` + `node tools/build-news-starters.mjs`; aparece en
+   «Empezar desde…» con la próxima publicación. La suite comprueba que `news-starters.js` coincide con `news-src/` (`--check`).
 
 ## Imágenes
 
