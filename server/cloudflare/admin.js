@@ -822,6 +822,16 @@ export async function handleAdmin(req, env, url) {
     await audit(env, { by, action: body.blocked ? 'block' : 'unblock', target: body.sub, reason, before: r.before, after: r.after });
     return json({ ok: true, ...r });
   }
+  // Newsletters of one account: paused or resumed (api.js admin-news). Pausing keeps what the person accepted; resuming only works
+  // for someone who did accept — it never signs anyone up.
+  if (POST && path === '/news-hold') {
+    const reason = clip(body.reason, 500).trim(); if (!reason || typeof body.enabled !== 'boolean') return json({ error: 'bad request' }, 400);
+    if (!(await account(body.sub))) return json({ error: 'not found' }, 404);
+    const r = await call(acct(env, body.sub), 'admin-news', { on: body.enabled, reason, by });
+    if (r.error) return json({ error: r.error }, 409);
+    await audit(env, { by, action: body.enabled ? 'news-resume' : 'news-pause', target: body.sub, reason, before: r.before, after: r.after });
+    return json({ ok: true, ...r });
+  }
   if (POST && path === '/sessions-end') {
     const reason = clip(body.reason, 500).trim(); if (!reason || (body.id !== undefined && !/^[\w-]{16}$/.test(body.id))) return json({ error: 'bad request' }, 400);
     if (!(await account(body.sub))) return json({ error: 'not found' }, 404);

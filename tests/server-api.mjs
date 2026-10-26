@@ -1098,8 +1098,17 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   // The minute of the last use and the access log (api.js touch): the sign-in is the first line; using it again within 20 minutes adds none.
   { const u0 = (await A('GET', '/users?q=1414')).j.users[0], lg = (await A('GET', '/access?sub=1414')).j;
     ok(u0.lastSeenAt > Date.now() - 60e3 && lg.access.length === 1 && lg.access[0].how === 'login' && lg.access[0].email === 'pia@example.com', 'accesos: la entrada deja la hora y una línea: ' + JSON.stringify([u0.lastSeenAt, lg.access]));
-    await req('GET', '/api/me', { cookie: pia }); await req('GET', '/api/me', { cookie: pia });
+    await req('GET', '/api/me', { headers: { Cookie: pia } }); await req('GET', '/api/me', { headers: { Cookie: pia } });
     ok((await A('GET', '/access?sub=1414')).j.access.length === 1, 'accesos: usarla otra vez enseguida no añade líneas');
+    // (The newsletters, paused and resumed by the administration: the person's «yes» is kept; no «yes», nothing to resume.)
+    ok((await A('POST', '/news-hold', { body: { sub: '1414', enabled: true, reason: 'x' } })).status === 409, 'novedades: quien no las pidió no se puede reactivar');
+    await req('POST', '/api/mail/prefs', { headers: { Cookie: pia }, body: { news: true } });
+    x = await A('POST', '/news-hold', { body: { sub: '1414', enabled: false, reason: 'Cambian las normas' } });
+    ok(x.status === 200 && x.j.after.paused && (await A('GET', '/users?q=1414')).j.users[0].news === false && (await A('GET', '/users/1414')).j.newsOn, 'novedades: pausadas por el administrador (su «sí» se conserva y ya no entra en los envíos)');
+    ok((await A('POST', '/news-hold', { body: { sub: '1414', enabled: false } })).status === 400, 'novedades: la pausa pide un motivo');
+    x = await A('POST', '/news-hold', { body: { sub: '1414', enabled: true, reason: 'Me equivoqué' } });
+    ok(x.status === 200 && x.j.after.enabled && (await A('GET', '/users?q=1414')).j.users[0].news === true && (await A('GET', '/audit?target=1414')).j.entries.some(e => e.action === 'news-pause'), 'novedades: reactivadas, y las dos cosas quedan en la auditoría');
+    await req('POST', '/api/mail/prefs', { headers: { Cookie: pia }, body: { news: false } });   // (as it was: the other newsletter tests count who asked)
     ok((await A('GET', '/access')).j.access.some(x => x.sub === '1414') && (await A('GET', '/access?day=2000-01-01')).j.access.length === 0, 'accesos: el registro de todos, y por día'); }
   ok((await A('GET', '/users?q=nadie')).j.users.length === 0, 'directorio: sin resultados');
   { // Any field, not only the email's start: the middle of the email, several words, accents and case, the plan, by pages.

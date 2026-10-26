@@ -267,7 +267,7 @@ export class Account {
     if (!this.env.DIRECTORY) return;
     const prof = await this.get('profile', null); if (!prof?.sub) return;
     const own = await this.plan(), rec = { sub: prof.sub, email: prof.email, name: prof.name || null, plan: own, until: own === 'pro' ? await this.proUntil() : 0, credits: await this.get('credits', 0),
-      created: prof.created || null, lang: prof.lang || null, news: !!(await this.get('newsOn', null)), newsAt: (await this.get('newsOn', null))?.at || null, lastSeen: await this.get('lastSeen', null), lastSeenAt: await this.get('lastSeenAt', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)), bytes: (await this.storage()).used,
+      created: prof.created || null, lang: prof.lang || null, news: !!(await this.get('newsOn', null)) && !(await this.get('newsHold', null)), newsAt: (await this.get('newsOn', null))?.at || null, lastSeen: await this.get('lastSeen', null), lastSeenAt: await this.get('lastSeenAt', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)), bytes: (await this.storage()).used,
       // (Test mode, apart: the flag, a Pro only from test mode, and the test credits — kept out of the real counts.)
       billingTest: !!(await this.get('billingTest', null)), test: own === 'pro' && !!(await this.get('plan', null))?.test && !((await this.get('proGift', null))?.until > Date.now()),
       testCredits: (await this.lots()).filter(l => l.test && l.exp > Date.now()).reduce((t, l) => t + l.n, 0) };
@@ -584,7 +584,7 @@ export class Account {
       }
       case 'mail-news': {                                  // { issue: { id, texts }, ref }: one newsletter to this account — only if it asked for them
         const prof = await this.get('profile', null), sent = await this.get('mailed', []);
-        if (!prof?.email || !(await this.get('newsOn', null)) || (await this.get('blocked', null))) return this.json({ ok: false, skipped: true });
+        if (!prof?.email || !(await this.get('newsOn', null)) || (await this.get('newsHold', null)) || (await this.get('blocked', null))) return this.json({ ok: false, skipped: true });
         if (a.ref && sent.includes(a.ref)) return this.json({ ok: false, skipped: true });
         const tok = await unsubToken(this.env, prof.sub, 'news'); if (!tok) return this.json({ ok: false });     // (no way out: none sent)
         const site = this.env.SITE_URL || 'https://revelaslides.com', unsub = `${site}/api/mail/unsubscribe?t=${encodeURIComponent(tok)}`;
@@ -837,7 +837,7 @@ export class Account {
         return this.json({ profile: prof, plan: await this.plan(), until: await this.proUntil(), stored: await this.get('plan', null), proGift: await this.get('proGift', null),
           credits: await this.get('credits', 0), debt: await this.get('debt', 0), lots: await this.lots(), ledger: (await this.get('ledger', [])).slice(-50).reverse(),
           sessions: { n: sessions.length, kinds: sessions.map(v => v.kind), list: sessionList(await this.get('sessions', {}), '', true) }, storage: await this.storage(), storageQuota: await this.get('storageQuota', null), docs: (await this.get('docs', [])).length, team: await this.get('team', null),
-          blocked: await this.get('blocked', null), lastSeen: await this.get('lastSeen', null), lastSeenAt: await this.get('lastSeenAt', null), access: await this.get('access', []), mailOff: await this.get('mailOff', []), customer: !!(await this.get('customer', null)), refunded: await this.get('refunded', []),
+          blocked: await this.get('blocked', null), lastSeen: await this.get('lastSeen', null), lastSeenAt: await this.get('lastSeenAt', null), access: await this.get('access', []), newsOn: await this.get('newsOn', null), newsHold: await this.get('newsHold', null), mailOff: await this.get('mailOff', []), customer: !!(await this.get('customer', null)), refunded: await this.get('refunded', []),
           billingTest: await this.get('billingTest', null), customerTest: !!(await this.get('customerTest', null)),
           trial: { used: !!(await this.get('trialUsed', null)), usedTest: !!(await this.get('trialUsedTest', null)), paid: !!(await this.get('proPaid', null)), paidTest: !!(await this.get('proPaidTest', null)) } });
       }
@@ -874,6 +874,15 @@ export class Account {
         if (a.blocked) await this.put({ blocked: { at: Date.now(), by: a.by, reason: a.reason } }); else await this.ctx.storage.delete('blocked');
         await this.dirSync(true);
         return this.json({ before: { blocked: before }, after: { blocked: await this.get('blocked', null) } });
+      }
+      // The newsletters, paused or resumed by the administration (admin.js /news-hold): the person's «yes» (newsOn) is kept
+      // and only the sending stops, so resuming never subscribes anyone who didn't ask — it needs the «yes» to be there.
+      case 'admin-news': {                                 // { on, reason, by } → { before, after } | { error: 'no consent' }
+        const hold = await this.get('newsHold', null), consent = await this.get('newsOn', null), before = { enabled: !!consent && !hold, paused: !!hold };
+        if (a.on && !consent) return this.json({ error: 'no consent' });
+        if (a.on) await this.ctx.storage.delete('newsHold'); else await this.put({ newsHold: { at: Date.now(), by: a.by, reason: a.reason } });
+        await this.dirSync(true);
+        return this.json({ before, after: { enabled: !!(await this.get('newsOn', null)) && !(await this.get('newsHold', null)), paused: !!(await this.get('newsHold', null)) } });
       }
       case 'admin-billing-test': {                         // { on, reason, by }: this account pays in Stripe's test mode
         const before = await this.get('billingTest', null);
