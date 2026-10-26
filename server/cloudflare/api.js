@@ -956,6 +956,18 @@ export class Budget {
       return Response.json({ clicks, unsubs, tracked, opened, clicked });
     }
     if (op === 'news-test-count') { const k = 'ntc:' + Math.floor(Date.now() / 36e5), n = ((await this.ctx.storage.get(k)) || 0) + 1; await this.ctx.storage.put(k, n); return Response.json({ n }); }
+    // The admin's copy of what is kept here besides the accounts (admin.js /backup): the settings and the newsletters. Only
+    // reads, a few rows. And a gate: one copy per 20 minutes (what a button pressed again and again would cost).
+    if (op === 'backup-config') {
+      const st = this.ctx.storage, config = {};
+      for (const k of ['tours', 'welcome', 'storage', 'trial']) config[k] = (await st.get(k)) ?? null;
+      return Response.json({ config, news: [...(await st.list({ prefix: 'issue:' })).values()] });
+    }
+    if (op === 'backup-gate') {
+      const last = (await this.ctx.storage.get('backupAt')) || 0, now = Date.now(), min = Math.max(60e3, +a.min || 20 * 60e3);
+      if (now - last < min) return Response.json({ ok: false, wait: Math.ceil((min - (now - last)) / 1000) });
+      await this.ctx.storage.put('backupAt', now); return Response.json({ ok: true });
+    }
     if (op === 'news-index') return Response.json({ issues: [...(await this.ctx.storage.list({ prefix: 'issue:' })).values()] });
     if (op === 'news-get') return Response.json({ issue: (await this.ctx.storage.get('issue:' + String(a.id))) || null });
     if (op === 'news-put') { await this.ctx.storage.put('issue:' + String(a.issue.id), a.issue); return Response.json({ ok: true }); }

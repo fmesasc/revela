@@ -15,6 +15,7 @@
 // itself (Origin), so another site can't use the Access cookie (CSRF).
 //
 //   GET  /api/admin/whoami                 → { email }
+//   POST /api/admin/backup { reason }          → the copy to download: { accounts, accesses, config, newsletters, audit } (once per 20 min)
 //   GET  /api/admin/stats                  → { users, pro, blocked, ai: { month, usd, limit }, tickets: { open, waiting, closed },
 //                                          test: { accounts (billingTest), pro (Pro only from test mode), credits } }
 //   GET  /api/admin/users?q=&cursor=       → { users, cursor }   (q: words in any field; none: most recently seen)
@@ -232,6 +233,11 @@ export class Directory {
     if (op === 'access-list') {
       const log = (await st.get('acc')) || [], sub = a.sub ? String(a.sub) : '', day = a.day ? String(a.day) : '';
       return Response.json({ access: log.filter(x => (!sub || x.sub === sub) && (!day || new Date(x.at).toISOString().slice(0, 10) === day)).slice(0, Math.min(500, Math.max(1, +a.limit || 100))), total: log.length });
+    }
+    // Every account's record (what the directory knows, never anything secret) and the latest accesses: the copy the admin downloads.
+    if (op === 'backup') {
+      const users = []; for (const [, r] of await st.list({ prefix: 'u:', limit: 100000 })) users.push(r);
+      return Response.json({ users, access: (await st.get('acc')) || [] });
     }
     if (op === 'remove') {
       const old = await st.get('u:' + a.sub); if (old) await st.delete(['u:' + old.sub, emailKey(old), seenKey(old), legacyKey(old)]);
@@ -831,6 +837,18 @@ export async function handleAdmin(req, env, url) {
     if (r.error) return json({ error: r.error }, 409);
     await audit(env, { by, action: body.enabled ? 'news-resume' : 'news-pause', target: body.sub, reason, before: r.before, after: r.after });
     return json({ ok: true, ...r });
+  }
+  // A copy to download: the accounts the directory knows, the settings, the newsletters and the latest 1000 lines of the audit
+  // log — as a file, to keep. No presentations, no passwords, no session keys, no payment data. It only reads (a few dozen
+  // requests whatever the number of accounts), once per 20 minutes at most, and says who asked and why in the audit log.
+  if (POST && path === '/backup') {
+    const reason = clip(body.reason, 500).trim(); if (!reason) return json({ error: 'bad request' }, 400);
+    const gate = await call(stub(env.BUDGET, 'global'), 'backup-gate', {}); if (!gate.ok) return json({ error: 'too soon', wait: gate.wait }, 429);
+    const dir = await call(D, 'backup'), cfg = await call(stub(env.BUDGET, 'global'), 'backup-config'), auditLog = []; let cursor = null;
+    for (let i = 0; i < 5; i++) { const r = await call(L, 'list', { cursor, limit: 200 }); auditLog.push(...(r.entries || [])); cursor = r.cursor; if (!cursor) break; }
+    await audit(env, { by, action: 'backup', target: 'backup', reason, after: { accounts: dir.users.length, news: cfg.news.length, audit: auditLog.length } });
+    return json({ app: 'revela', at: new Date().toISOString(), by, note: 'Copia de la administración de Revela: cuentas del directorio, ajustes, boletines y registro de auditoría. Sin presentaciones ni datos de pago.',
+      accounts: dir.users, accesses: dir.access, config: cfg.config, newsletters: cfg.news, audit: auditLog });
   }
   if (POST && path === '/sessions-end') {
     const reason = clip(body.reason, 500).trim(); if (!reason || (body.id !== undefined && !/^[\w-]{16}$/.test(body.id))) return json({ error: 'bad request' }, 400);

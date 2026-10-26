@@ -1109,6 +1109,12 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     x = await A('POST', '/news-hold', { body: { sub: '1414', enabled: true, reason: 'Me equivoqué' } });
     ok(x.status === 200 && x.j.after.enabled && (await A('GET', '/users?q=1414')).j.users[0].news === true && (await A('GET', '/audit?target=1414')).j.entries.some(e => e.action === 'news-pause'), 'novedades: reactivadas, y las dos cosas quedan en la auditoría');
     await req('POST', '/api/mail/prefs', { headers: { Cookie: pia }, body: { news: false } });   // (as it was: the other newsletter tests count who asked)
+    // (The copy to download: accounts, settings, newsletters, audit — once per 20 minutes, with a reason, audited; nothing secret in it.)
+    ok((await A('POST', '/backup', { body: {} })).status === 400, 'copia: pide un motivo');
+    x = await A('POST', '/backup', { body: { reason: 'Copia de seguridad semanal' } });
+    ok(x.status === 200 && Array.isArray(x.j.accounts) && x.j.accounts.some(u => u.sub === '1414') && Array.isArray(x.j.audit) && x.j.config && 'tours' in x.j.config && !/secret|token|password/i.test(JSON.stringify(x.j.accounts)), 'copia: cuentas, ajustes, boletines y auditoría: ' + x.status);
+    ok((await A('POST', '/backup', { body: { reason: 'otra vez' } })).status === 429, 'copia: dos seguidas, no (cuesta lecturas)');
+    ok((await A('GET', '/audit?limit=5')).j.entries.some(e => e.action === 'backup'), 'copia: queda en la auditoría');
     ok((await A('GET', '/access')).j.access.some(x => x.sub === '1414') && (await A('GET', '/access?day=2000-01-01')).j.access.length === 0, 'accesos: el registro de todos, y por día'); }
   ok((await A('GET', '/users?q=nadie')).j.users.length === 0, 'directorio: sin resultados');
   { // Any field, not only the email's start: the middle of the email, several words, accents and case, the plan, by pages.
