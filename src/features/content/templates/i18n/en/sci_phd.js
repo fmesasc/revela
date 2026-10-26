@@ -150,7 +150,7 @@ export default {
  "Diferencia": "Difference",
  "Kongsvegen": "Kongsvegen",
  "Hansbreen": "Hansbreen",
- "Austfonna (borde)": "Austfonna (borde)",
+ "Austfonna (borde)": "Austfonna (edge)",
  "<div style=\"font-size:52px;font-weight:800;line-height:1.05;color:#40937d;\">0,04 m/año</div><div style=\"font-size:21px;margin-top:10px\">de diferencia media entre lo que midieron las estacas y lo que dicen los satélites.</div>": "<div style=\"font-size:52px;font-weight:800;line-height:1.05;color:#40937d;\">0.04 m/yr</div><div style=\"font-size:21px;margin-top:10px\">mean difference between what the stakes measured and what the satellites say.</div>",
  "El método reproduce el campo con un error menor que la incertidumbre anunciada.": "The method reproduces the field data with an error smaller than the stated uncertainty.",
  "Resultados": "Results",

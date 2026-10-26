@@ -150,7 +150,7 @@ export default {
  "Diferencia": "Écart",
  "Kongsvegen": "Kongsvegen",
  "Hansbreen": "Hansbreen",
- "Austfonna (borde)": "Austfonna (borde)",
+ "Austfonna (borde)": "Austfonna (bord)",
  "<div style=\"font-size:52px;font-weight:800;line-height:1.05;color:#40937d;\">0,04 m/año</div><div style=\"font-size:21px;margin-top:10px\">de diferencia media entre lo que midieron las estacas y lo que dicen los satélites.</div>": "<div style=\"font-size:52px;font-weight:800;line-height:1.05;color:#40937d;\">0,04 m/an</div><div style=\"font-size:21px;margin-top:10px\">d'écart moyen entre ce qu'ont mesuré les balises et ce que disent les satellites.</div>",
  "El método reproduce el campo con un error menor que la incertidumbre anunciada.": "La méthode reproduit le terrain avec une erreur inférieure à l'incertitude annoncée.",
  "Resultados": "Résultats",

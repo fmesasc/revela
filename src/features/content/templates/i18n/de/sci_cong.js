@@ -2,7 +2,7 @@ export default {
  "Defensa de TFG: Ingeniería aeroespacial": "Verteidigung der Bachelorarbeit: Luft- und Raumfahrttechnik",
  "Universidad de Ejemplo · Escuela de Ingeniería Aeroespacial · Grado en Ingeniería Aeroespacial · Trabajo de Fin de Grado 2026": "Beispieluniversität · Fakultät für Luft- und Raumfahrttechnik · Bachelor Luft- und Raumfahrttechnik · Bachelorarbeit 2026",
  "≈30 s. Saluda al tribunal y presenta el proyecto con una frase: «He diseñado y ensayado un satélite del tamaño de dos bricks de leche». Nombres y universidad de ejemplo.": "≈30 s. Begrüße die Prüfungskommission und stelle das Projekt in einem Satz vor: „Ich habe einen Satelliten entworfen und getestet, so groß wie zwei Milchtüten.“ Namen und Universität sind Beispiele.",
- "Órbitas dibujadas alrededor del satélite": "Órbitas dibujadas alrededor del satélite",
+ "Órbitas dibujadas alrededor del satélite": "Gezeichnete Umlaufbahnen um den Satelliten",
  "CubeSat - 2 RU Generic": "CubeSat - 2 RU Generic",
  "TFG · INGENIERÍA AEROESPACIAL": "BACHELORARBEIT · LUFT- UND RAUMFAHRTTECHNIK",
  "UniCube-1: diseño, construcción y ensayo de un nanosatélite universitario de 2U": "UniCube-1: Entwurf, Bau und Test eines universitären 2U-Nanosatelliten",

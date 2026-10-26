@@ -468,7 +468,7 @@ export default {
  "Conferencia de envases sostenibles · 2025 · Póster": "Ontzi jasangarrien konferentzia · 2025 · Posterra",
  "Singapur": "Singapur",
  "Cumbre asiática de comercio sostenible · 2026 · Ponencia": "Merkataritza jasangarriaren Asiako gailurra · 2026 · Hitzaldia",
- "Ciudad del Cabo": "Ciutat del Cap",
+ "Ciudad del Cabo": "Cape Town",
  "Congreso de economía verde · 2026 · Comunicación oral": "Ekonomia berdearen kongresua · 2026 · Ahozko komunikazioa",
  "Nueva York": "New York",
  "Foro mundial de gestión de residuos · 2026 · Ponencia invitada y premio": "Hondakinen kudeaketaren mundu-foroa · 2026 · Hitzaldi gonbidatua eta saria",
