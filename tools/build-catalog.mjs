@@ -8,7 +8,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), '../src/features/content/templates');
-const files = readdirSync(dir).filter(f => f.endsWith('.js') && !['kit.js', 'catalog.js'].includes(f)).sort();
+const files = readdirSync(dir).filter(f => f.endsWith('.js') && !['kit.js', 'catalog.js', 'phdkit.js'].includes(f)).sort();
 const catalog = {}, seen = new Map(), broken = [];
 for (const f of files) {
   // (A file with an error is left out and named, so the others can still be checked.)

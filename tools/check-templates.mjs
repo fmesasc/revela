@@ -26,8 +26,8 @@ const POLLS = new Set(['choice', 'multi', 'rating', 'word', 'qa', 'quiz', 'board
 const TYPES = new Set(['text', 'shape', 'image', 'icon', 'chart', 'table', 'code', 'math', 'model', 'video', 'audio', 'embed', 'poll', 'timer', 'connector', 'ink', 'diagram', 'camera', 'slideref', 'figindex', 'file', 'map']);
 // (The first twenty, from before this check, are held to a lighter rule.)
 const LEGACY = new Set(['lesson', 'report', 'pitch', 'coding', 'maths', 'science', 'history', 'meeting', 'event', 'portfolio', 'moving3d', 'effects', 'diagrams', 'classroom', 'launch', 'travel', 'quiz', 'dashboard', 'folio', 'canvas']);
-// (The defences of theses are longer than the rest: the long thesis, 60; the others, 20.)
-const MAX_SLIDES = key => (key.startsWith('sci_phd') ? 60 : key.startsWith('sci_thesis') ? 20 : 14);
+// (The defences of theses are longer than the rest: the long thesis, 60; the ones with the congresses' map, 24; the others, 20.)
+const MAX_SLIDES = key => (key.startsWith('sci_phd') ? 60 : key.startsWith('sci_cong') ? 24 : key.startsWith('sci_thesis') ? 20 : 14);
 let n = 0, slides = 0;
 const counts = {};
 for (const [key, meta] of Object.entries(EXAMPLES)) {
