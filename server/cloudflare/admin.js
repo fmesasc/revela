@@ -208,7 +208,7 @@ export class Directory {
       if (!a.sub) return Response.json({ error: 'bad request' }, { status: 400 });
       const old = await st.get('u:' + a.sub), rec = { sub: String(a.sub), email: String(a.email || '').toLowerCase(), name: a.name || null, plan: a.plan || 'free', until: +a.until || 0,
         credits: +a.credits || 0, created: +a.created || null, lastSeen: a.lastSeen || null, team: a.team || null, blocked: !!a.blocked,
-        lang: a.lang ? String(a.lang).slice(0, 5) : null, news: !!a.news, billingTest: !!a.billingTest, test: !!a.test, testCredits: Math.max(0, +a.testCredits || 0), bytes: Math.max(0, +a.bytes || 0), updated: Date.now() };
+        lang: a.lang ? String(a.lang).slice(0, 5) : null, news: !!a.news, newsAt: +a.newsAt || null, billingTest: !!a.billingTest, test: !!a.test, testCredits: Math.max(0, +a.testCredits || 0), bytes: Math.max(0, +a.bytes || 0), updated: Date.now() };
       const gone = old ? [emailKey(old), seenKey(old)].filter(k => k !== emailKey(rec) && k !== seenKey(rec)) : [];
       if (gone.length) await st.delete(gone);
       await st.put({ ['u:' + rec.sub]: rec, [emailKey(rec)]: rec.sub, [seenKey(rec)]: rec.sub });
@@ -229,7 +229,11 @@ export class Directory {
       const more = cursor ? (await st.list({ prefix: 'u:', startAfter: cursor, limit: 1 })).size > 0 : false;
       return Response.json({ recs, cursor: more ? cursor : null });
     }
-    if (op === 'news-count') { let total = 0; const byLang = {}; for (const [, r] of await st.list({ prefix: 'u:' })) if (r.news && !r.blocked) { total++; byLang[r.lang || 'es'] = (byLang[r.lang || 'es'] || 0) + 1; } return Response.json({ total, byLang }); }
+    if (op === 'news-count') {          // (since: how many asked for them after that time — the ones a newsletter sent before has not reached)
+      let total = 0, since = 0; const byLang = {};
+      for (const [, r] of await st.list({ prefix: 'u:' })) if (r.news && !r.blocked) { total++; byLang[r.lang || 'es'] = (byLang[r.lang || 'es'] || 0) + 1; if (+a.since && (r.newsAt || 0) > +a.since) since++; }
+      return Response.json({ total, byLang, since });
+    }
     if (op === 'subs') {                                  // { emails } → { subs: { email: sub } } (teams.js: a team's members)
       const subs = {};
       for (const e of (Array.isArray(a.emails) ? a.emails : []).slice(0, 1000)) { const m = await st.list({ prefix: `e:${String(e).toLowerCase()}|`, limit: 1 }); for (const [, sub] of m) subs[e] = sub; }

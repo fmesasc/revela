@@ -65,7 +65,7 @@ import { handleLti } from './lti.js';
 import { handleCalls } from './calls.js';
 import { docsSettings, TRASH_DAYS, FOLDERS } from './docs.js';
 import { mail, sendMail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL, unsubToken } from './mail.js';
-import { renderNews, newsTick } from './news.js';
+import { renderNews, newsTick, linkTarget, NEWS_LANGS, recipientToken, readRecipientToken } from './news.js';
 import { scheduleItem, scheduleAll, dayOf } from './schedule.js';
 import { handle3d, configured3d } from './model3d.js';
 import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES, emails as adminEmails } from './admin.js';
@@ -263,7 +263,7 @@ export class Account {
     if (!this.env.DIRECTORY) return;
     const prof = await this.get('profile', null); if (!prof?.sub) return;
     const own = await this.plan(), rec = { sub: prof.sub, email: prof.email, name: prof.name || null, plan: own, until: own === 'pro' ? await this.proUntil() : 0, credits: await this.get('credits', 0),
-      created: prof.created || null, lang: prof.lang || null, news: !!(await this.get('newsOn', null)), lastSeen: await this.get('lastSeen', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)), bytes: (await this.storage()).used,
+      created: prof.created || null, lang: prof.lang || null, news: !!(await this.get('newsOn', null)), newsAt: (await this.get('newsOn', null))?.at || null, lastSeen: await this.get('lastSeen', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)), bytes: (await this.storage()).used,
       // (Test mode, apart: the flag, a Pro only from test mode, and the test credits — kept out of the real counts.)
       billingTest: !!(await this.get('billingTest', null)), test: own === 'pro' && !!(await this.get('plan', null))?.test && !((await this.get('proGift', null))?.until > Date.now()),
       testCredits: (await this.lots()).filter(l => l.test && l.exp > Date.now()).reduce((t, l) => t + l.n, 0) };
@@ -571,7 +571,7 @@ export class Account {
         if (a.ref && sent.includes(a.ref)) return this.json({ ok: false, skipped: true });
         const tok = await unsubToken(this.env, prof.sub, 'news'); if (!tok) return this.json({ ok: false });     // (no way out: none sent)
         const site = this.env.SITE_URL || 'https://revelaslides.com', unsub = `${site}/api/mail/unsubscribe?t=${encodeURIComponent(tok)}`;
-        const ok = await sendMail(this.env, { to: prof.email, kind: 'news', ...renderNews(a.issue, prof.lang || 'es', { unsub, site }), unsubscribe: unsub });
+        const ok = await sendMail(this.env, { to: prof.email, kind: 'news', ...renderNews(a.issue, prof.lang || 'es', { unsub, site, track: true, rt: await recipientToken(this.env, a.issue.id, prof.sub) }), unsubscribe: unsub });
         if (ok && a.ref) await this.put({ mailed: [...sent, a.ref].slice(-200) });
         return this.json({ ok });
       }
@@ -905,6 +905,31 @@ export class Budget {
     // (The newsletters' issues — news.js: kept whole, they are small.)
     // (A sending's next batch: Budget wakes up then — news.js newsTick. The only way an alarm is set: brakes.js.)
     if (op === 'news-alarm') { await scheduleAlarm(this.ctx, this.env, 'news', +a.at || Date.now()); return Response.json({ ok: true }); }
+    // Newsletters: how many clicks each link got (no one's name: «this link, once more»), the unsubscribes of each day, and the
+    // tests sent to any address in the hour (a limit: the admin's panel is not a way to send mail to whoever).
+    if (op === 'news-click') { const k = 'nk:' + String(a.id).slice(0, 20), c = (await this.ctx.storage.get(k)) || {}; c[String(a.k)] = (c[String(a.k)] || 0) + 1; await this.ctx.storage.put(k, c); return Response.json({ ok: true }); }
+    // Who opened and who clicked (per account, as the privacy policy says): 'nr:<boletín>:<sub>' → { o: { at, n }, c: { <enlace>: { at, n } } }.
+    if (op === 'news-seen') {
+      const k = `nr:${String(a.id).slice(0, 20)}:${String(a.sub).slice(0, 80)}`, r = (await this.ctx.storage.get(k)) || { c: {} }, now = Date.now();
+      if (a.ev === 'o') r.o = { at: r.o?.at || now, last: now, n: (r.o?.n || 0) + 1 }; else r.c[String(a.ev)] = { at: r.c[String(a.ev)]?.at || now, last: now, n: (r.c[String(a.ev)]?.n || 0) + 1 };
+      await this.ctx.storage.put(k, r); return Response.json({ ok: true });
+    }
+    if (op === 'news-readers') {
+      const out = []; for (const [k, v] of await this.ctx.storage.list({ prefix: `nr:${String(a.id).slice(0, 20)}:`, limit: 2000 })) out.push({ sub: k.split(':').slice(2).join(':'), ...v });
+      return Response.json({ readers: out });
+    }
+    if (op === 'news-forget') {        // an account deleted: its marks in every newsletter go
+      const gone = []; for (const [k] of await this.ctx.storage.list({ prefix: 'nr:' })) if (k.endsWith(':' + String(a.sub))) gone.push(k);
+      for (let i = 0; i < gone.length; i += 100) await this.ctx.storage.delete(gone.slice(i, i + 100)); return Response.json({ ok: true, n: gone.length });
+    }
+    if (op === 'news-unsub') { const k = 'nu:' + new Date().toISOString().slice(0, 10), n = ((await this.ctx.storage.get(k)) || 0) + 1; await this.ctx.storage.put(k, n); return Response.json({ ok: true }); }
+    if (op === 'news-stats') {
+      const clicks = (await this.ctx.storage.get('nk:' + String(a.id).slice(0, 20))) || {}, from = new Date(+a.from || 0).toISOString().slice(0, 10);
+      let unsubs = 0; for (const [k, n] of await this.ctx.storage.list({ prefix: 'nu:' })) if (k.slice(3) >= from) unsubs += n;
+      let tracked = 0, opened = 0, clicked = 0; for (const [, v] of await this.ctx.storage.list({ prefix: `nr:${String(a.id).slice(0, 20)}:`, limit: 5000 })) { tracked++; if (v.o) opened++; if (Object.keys(v.c || {}).length) clicked++; }
+      return Response.json({ clicks, unsubs, tracked, opened, clicked });
+    }
+    if (op === 'news-test-count') { const k = 'ntc:' + Math.floor(Date.now() / 36e5), n = ((await this.ctx.storage.get(k)) || 0) + 1; await this.ctx.storage.put(k, n); return Response.json({ n }); }
     if (op === 'news-index') return Response.json({ issues: [...(await this.ctx.storage.list({ prefix: 'issue:' })).values()] });
     if (op === 'news-get') return Response.json({ issue: (await this.ctx.storage.get('issue:' + String(a.id))) || null });
     if (op === 'news-put') { await this.ctx.storage.put('issue:' + String(a.issue.id), a.issue); return Response.json({ ok: true }); }
@@ -1076,8 +1101,28 @@ export async function handleApi(req, env, url) {
   if (path === '/billing/webhook' && req.method === 'POST') return stripeWebhook(req, env, json, 'live');
   if (path === '/billing/webhook-test' && req.method === 'POST') return stripeWebhook(req, env, json, 'test');
   // The link to stop optional emails (signed; no session: it's opened from the email, or posted by the mail app).
+  // A link of a newsletter: counted (the link, never who) and sent on to where the newsletter itself says — not to an address from the link.
+  const nl = path.match(/^\/n\/([\w]{4,20})\/(x|\d{1,2}|o\.gif)$/);
+  if (nl && req.method === 'GET' && env.BUDGET) {
+    const B = env.BUDGET.get(env.BUDGET.idFromName('global')), isTest = url.searchParams.get('t') === '1', who = await readRecipientToken(env, nl[1], url.searchParams.get('r'));
+    // The opening: a 1×1 picture (the email asks for it) — kept per account, once more each time; approximate (some mail apps load pictures ahead).
+    if (nl[2] === 'o.gif') {
+      if (who && !isTest) await call(B, 'news-seen', { id: nl[1], sub: who, ev: 'o' }).catch(() => {});
+      const gif = Uint8Array.from(atob('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'), c => c.charCodeAt(0));
+      return new Response(gif, { headers: { 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, max-age=0', 'Referrer-Policy': 'no-referrer' } });
+    }
+    const issue = (await call(B, 'news-get', { id: nl[1] }).catch(() => ({}))).issue, lang = NEWS_LANGS.includes(url.searchParams.get('l')) ? url.searchParams.get('l') : 'es';
+    const to = issue && linkTarget(issue, nl[2], lang, s.site);
+    if (!to) return Response.redirect(s.site + '/', 302);
+    if (!isTest) {
+      await call(B, 'news-click', { id: nl[1], k: nl[2] }).catch(() => {});
+      if (who) await call(B, 'news-seen', { id: nl[1], sub: who, ev: nl[2] }).catch(() => {});
+    }
+    return new Response(null, { status: 302, headers: { Location: to, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
+  }
   if (path === '/mail/unsubscribe' && (req.method === 'GET' || req.method === 'POST')) {
     const t = await readUnsubToken(env, url.searchParams.get('t')), r = t ? await call(acct(env, t.sub), 'mail-off', { kind: t.kind }) : { ok: false };
+    if (r.ok && t?.kind === 'news' && env.BUDGET) await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'news-unsub').catch(() => {});
     return new Response(unsubPage(r.lang, r.ok, s.site, t?.kind), { status: r.ok ? 200 : 400, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
       'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'", 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer' } });
   }
@@ -1335,7 +1380,9 @@ export async function handleApi(req, env, url) {
       const r = await call(A, 'mail-test'); return json(r, r.error === 'too soon' ? 429 : r.error ? 503 : r.ok ? 200 : 502);
     }
     case '/mail/prefs': {                                 // GET → { off, optional }; POST { off: [kinds] }
-      return json(await call(A, 'mail-prefs', req.method === 'POST' ? { off: body.off, news: body.news } : {}));
+      const pr = await call(A, 'mail-prefs', req.method === 'POST' ? { off: body.off, news: body.news } : {});
+      if (req.method === 'POST' && body.news === false && pr.news === false && env.BUDGET) await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'news-unsub').catch(() => {});
+      return json(pr);
     }
     case '/terms': {
       if (req.method !== 'POST') return json({ error: 'method' }, 405);
@@ -1423,6 +1470,7 @@ export async function deleteAccount(env, sub) {
     for (const e of people) await call(acct(env, 'e:' + e), 'inbox-remove', { id });
   }
   if (w.email) await call(acct(env, 'e:' + w.email), 'wipe');
+  if (env.BUDGET) await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'news-forget', { sub }).catch(() => {});   // (what it opened and clicked in the newsletters)
   for (const [customer, key] of [[w.customer, env.STRIPE_SECRET_KEY], [w.customerTest, env.STRIPE_TEST_SECRET_KEY]]) {
     if (!customer || !key) continue;
     const subs = await (await (env.FETCH || fetch)('https://api.stripe.com/v1/subscriptions?' + new URLSearchParams({ customer, status: 'active' }), { headers: { Authorization: `Bearer ${key}` } }).catch(() => null))?.json().catch(() => null);

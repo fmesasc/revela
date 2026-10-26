@@ -42,7 +42,7 @@ env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
     const t = new URL(u).searchParams.get('access_token');
-    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' }, 'tok-lia': { sub: '2323', email: 'lia@example.com' }, 'tok-sto': { sub: '2424', email: 'sto@example.com' }, 'tok-una': { sub: '2525', email: 'una@example.com' }, 'tok-tour': { sub: '2626', email: 'tour@example.com' }, 'tok-tour2': { sub: '2727', email: 'tour2@example.com' }, 'tok-tour3': { sub: '2828', email: 'tour3@example.com' }, 'tok-nwa': { sub: '3001', email: 'nwa@example.com' }, 'tok-nwb': { sub: '3002', email: 'nwb@example.com' }, 'tok-nwc': { sub: '3003', email: 'nwc@example.com' }, 'tok-nwd': { sub: '3004', email: 'nwd@example.com' }, 'tok-nwe': { sub: '3005', email: 'nwe@example.com' } }[t];
+    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' }, 'tok-lia': { sub: '2323', email: 'lia@example.com' }, 'tok-sto': { sub: '2424', email: 'sto@example.com' }, 'tok-una': { sub: '2525', email: 'una@example.com' }, 'tok-tour': { sub: '2626', email: 'tour@example.com' }, 'tok-tour2': { sub: '2727', email: 'tour2@example.com' }, 'tok-tour3': { sub: '2828', email: 'tour3@example.com' }, 'tok-nwa': { sub: '3001', email: 'nwa@example.com' }, 'tok-nwb': { sub: '3002', email: 'nwb@example.com' }, 'tok-nwc': { sub: '3003', email: 'nwc@example.com' }, 'tok-nwd': { sub: '3004', email: 'nwd@example.com' }, 'tok-nwe': { sub: '3005', email: 'nwe@example.com' }, 'tok-nwf': { sub: '3006', email: 'nwf@example.com' } }[t];
     if (t === 'tok-otraapp') return Response.json({ aud: 'otra-app', sub: '333', email: 'x@example.com', email_verified: 'true' });
     return who ? Response.json({ aud: CID, ...who, email_verified: 'true', expires_in: 3000 }) : new Response('bad', { status: 400 });
   }
@@ -1919,6 +1919,14 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       { const ph = (await A('POST', '/news', { body: { issue: { ...issue, texts: { es: { ...issue.texts.es, subject: 'Novedades de {mes}' } } } } })).j.issue;
         x = await A('POST', `/news/${ph.id}/send`, { body: { confirm: true } });
         ok(x.status === 400 && x.j.error === 'placeholders' && x.j.langs[0] === 'es', 'novedades: con un {marcador} sin rellenar, no se envía'); }
+      // The test to any address (a mail-tester.com one), exactly as it would go — not counted — and limited to 20 an hour.
+      { sent = []; x = await A('POST', `/news/${id}/test`, { body: { lang: 'es', to: 'Test-ab12@srv1.mail-tester.com', asReal: true } });
+        const m = sent[0];
+        ok(x.status === 200 && m && m.to === 'test-ab12@srv1.mail-tester.com' && !/^\[PRUEBA\]/.test(m.subject) && m.headers?.['List-Unsubscribe'] && /\/api\/n\/\w+\/0\?l=es&amp;t=1/.test(m.html) && /Dejar de recibir novedades/.test(m.html), 'prueba a otra dirección, como saldría de verdad (sin [PRUEBA], con su baja y sus enlaces, que no cuentan): ' + JSON.stringify(m && [m.to, m.subject]));
+        sent = []; await A('POST', `/news/${id}/test`, { body: { lang: 'es', to: 'otra@example.com' } });
+        ok(sent[0].to === 'otra@example.com' && /^\[PRUEBA\]/.test(sent[0].subject) && !sent[0].headers, 'prueba a otra dirección, marcada, sin baja');
+        ok((await A('POST', `/news/${id}/test`, { body: { to: 'no es un correo' } })).status === 400 && (await A('POST', `/news/${id}/test`, { body: { to: 'a@b.c<x>' } })).status === 400, 'prueba: una dirección que no lo es, no');
+        }
       // The pictures for newsletters: the website's list (site/img/news/index.json), only well-named JPEGs, with their address.
       { const prevF = env.FETCH; env.FETCH = async (u, init) => (String(u).endsWith('/img/news/index.json') ? Response.json([{ slug: 'a', file: 'a.jpg', description: 'Una', width: 1056, height: 594 }, { slug: 'x', file: '../../etc/x.jpg', description: 'Mala' }, { slug: 'p', file: 'p.png' }]) : prevF(u, init));
         const im = (await A('GET', '/news/images')).j.images; env.FETCH = prevF;
@@ -1959,7 +1967,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
           && (/\{[^{}"\\]{1,60}\}/.test(JSON.stringify(t)) === /\{[^{}"\\]{1,60}\}/.test(JSON.stringify(st[k].texts.es))); })), 'novedades: en todos los idiomas, mismas direcciones y botones, y con {marcadores} donde el español los lleva');
         ok(!/\{[^{}"\\]{1,60}\}/.test(JSON.stringify(st.first.texts)) && keys.filter(k => k !== 'first').every(k => /\{[^{}"\\]{1,60}\}/.test(JSON.stringify(st[k].texts.es))), 'novedades: solo «Primer boletín» está listo para enviar tal cual'); }
       sent = []; x = await A('POST', `/news/${id}/test`, { body: { lang: 'es' } });
-      ok(x.status === 200 && sent.length === 1 && sent[0].to === 'jefe@example.com' && /^\[PRUEBA\] /.test(sent[0].subject) && !sent[0].headers, 'novedades: la prueba llega a quien administra, marcada, sin enlace de baja');
+      ok(x.status === 200 && sent.length === 1 && sent[0].to === 'jefe@example.com' && /^\[PRUEBA\] /.test(sent[0].subject) && !sent[0].headers, 'novedades: la prueba llega a quien administra, marcada, sin enlace de baja ');
       ok((await A('POST', `/news/${id}/send`, { body: {} })).status === 400, 'novedades: enviar pide confirmación');
       const edited = JSON.parse(JSON.stringify(made.j.issue)); edited.texts.es.subject = 'Novedades de octubre (2)';
       ok((await A('POST', '/news', { body: { issue: edited } })).j.issue.texts.es.subject.endsWith('(2)'), 'novedades: un borrador se puede cambiar');
@@ -1967,6 +1975,31 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       const got = sent.filter(m => m.kind === 'news' || /octubre/.test(m.subject)).map(m => m.to).sort();
       ok(x.status === 200 && x.j.issue.status === 'sent' && x.j.issue.sent.n === got.length && got.includes('nwa@example.com') && got.includes('nwc@example.com') && !got.includes('nwb@example.com'), 'novedades: solo a quien las pidió: ' + JSON.stringify(got) + ' ' + JSON.stringify(x.j.issue.sent));
       { const m = sent.find(y => y.to === 'nwa@example.com'); ok(m.subject === 'Novedades de octubre (2)' && /List-Unsubscribe/.test(Object.keys(m.headers || {}).join()) && /\/api\/mail\/unsubscribe\?t=/.test(m.html) && /Dejar de recibir novedades/.test(m.html), 'novedades: cada correo lleva su baja (en el cuerpo y en la cabecera)'); }
+      let clickId = '';
+      // Links that count: a click goes through our address, is counted as «this link, once more» (no one's name) and goes on to where the newsletter says.
+      { const real = sent.find(y => y.to === 'nwc@example.com' && /octubre/i.test(y.subject)); const m0 = real?.html.match(/href="([^"]*\/api\/n\/[^"]+\/0\?[^"]*)"/);
+        ok(m0 && /\/api\/n\/\w+\/0\?l=es(&r=[\w.-]+)?$/.test(m0[1].replace(/&amp;/g, '&')), 'enlaces con cuenta: el de la primera sección pasa por nuestra dirección: ' + (m0 && m0[1]));
+        const path = m0[1].replace(SITE, '').replace(/&amp;/g, '&'), gid = path.split('/')[3];
+        const c1 = await req('GET', path, { origin: null }); const to1 = c1.headers.get('Location');
+        ok(c1.status === 302 && /^https:\/\/revelaslides\.com\/app\/\?utm_source=news&utm_medium=email&utm_campaign=/.test(to1), 'enlaces con cuenta: sigue al destino que dice el boletín, con su etiqueta: ' + to1);
+        await req('GET', path + '&t=1', { origin: null }); await req('GET', path.replace('/0?', '/x?'), { origin: null });
+        const evil = await req('GET', path + '&to=https://malo.example&url=https://malo.example', { origin: null });
+        ok(!/malo\.example/.test(evil.headers.get('Location')), 'enlaces con cuenta: la dirección de destino no se toma de la dirección del enlace');
+        ok((await req('GET', `/api/n/${gid}/7?l=es`, { origin: null })).headers.get('Location') === SITE + '/' && (await req('GET', `/api/n/nonexist1/0?l=es`, { origin: null })).headers.get('Location') === SITE + '/', 'enlaces con cuenta: uno que no existe vuelve a la web');
+        clickId = gid; }
+      // Per person (privacy policy: «Correos con novedades»): the email carries a signed mark of the account; opening and clicking are kept for it.
+      { const real = sent.find(y => y.to === 'nwc@example.com' && /octubre/i.test(y.subject)), px = real.html.match(/src="([^"]*\/api\/n\/\w+\/o\.gif\?r=[^"]+)"/), lk = real.html.match(/href="([^"]*\/api\/n\/\w+\/0\?[^"]*r=[^"]+)"/);
+        ok(px && lk, 'por persona: el correo lleva su marca firmada en el píxel y en los enlaces');
+        const pxPath = px[1].replace(SITE, ''), lkPath = lk[1].replace(SITE, '').replace(/&amp;/g, '&'), gid2 = pxPath.split('/')[3];
+        const g1 = await req('GET', pxPath, { origin: null }); await req('GET', pxPath, { origin: null });
+        ok(g1.status === 200 && g1.headers.get('Content-Type') === 'image/gif' && /no-store/.test(g1.headers.get('Cache-Control')), 'por persona: el píxel devuelve una imagen y no se guarda en caché');
+        await req('GET', lkPath, { origin: null });
+        const forged = pxPath.replace(/\.[\w-]{16}$/, '.0000000000000000'), other = pxPath.replace('/' + gid2 + '/', '/' + (gid2.slice(0, -1) + (gid2.slice(-1) === 'a' ? 'b' : 'a')) + '/');
+        await req('GET', forged, { origin: null }); await req('GET', other, { origin: null }); await req('GET', lkPath + '&t=1', { origin: null });
+        const rd = (await A('GET', `/news/${gid2}/readers`)).j;
+        const me = rd.readers.find(y => y.email === 'nwc@example.com');
+        ok(rd.total === 1 && me && me.opened.n === 2 && me.clicks['0']?.n === 3 && me.clicks.x?.n === 1, 'por persona: queda anotado quién abrió (2 veces) y qué enlace pulsó; una marca falsa, de otro boletín o de una prueba no cuenta: ' + JSON.stringify(rd));
+        const st2 = (await A('GET', `/news/${gid2}`)).j.stats; ok(st2.opened === 1 && st2.clicked === 1 && st2.tracked === 1, 'por persona: las cifras de la ficha: ' + JSON.stringify([st2.opened, st2.clicked, st2.tracked])); }
       ok((await A('POST', `/news/${id}/send`, { body: { confirm: true } })).status === 409 && (await A('POST', '/news', { body: { issue: { ...edited, id } } })).status === 409 && (await A('POST', `/news/${id}/delete`, { body: {} })).status === 409, 'novedades: lo enviado no se cambia, borra ni reenvía');
       ok((await A('GET', '/news')).j.issues.some(i => i.id === id && i.status === 'sent' && i.sent.n === 2), 'novedades: en la lista, enviada a 2');
       // Stopping them: the link in the email.
@@ -1975,11 +2008,29 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
         const i2 = (await A('POST', '/news', { body: { issue } })).j.issue; sent = [];
         await A('POST', `/news/${i2.id}/send`, { body: { confirm: true } });
         ok(!sent.some(y => y.to === 'nwa@example.com') && sent.some(y => y.to === 'nwc@example.com'), 'novedades: quien se dio de baja no recibe la siguiente'); }
+      { const st = (await A('GET', `/news/${clickId}`)).j.stats;
+        ok(st.clicks['0'] === 3 && st.clicks.x === 1 && st.unsubs >= 1, 'estadísticas: tres clics en el enlace 0 (los de prueba, con t=1, no cuentan), uno en el botón, y las bajas desde el envío: ' + JSON.stringify(st)); }
+      // «Enviar a quienes aún no lo han recibido»: whoever asked for the newsletters after this one went out gets it; nobody gets it twice.
+      { const nf = await lg('tok-nwf', { news: true }); ok((await meOf(nf)).news === true, 'nueva suscripción tras el envío');
+        const before = (await A('GET', `/news/${clickId}`)).j; ok(before.stats.joined === 1, 'se ve cuántas cuentas han pedido las novedades desde el envío: ' + before.stats.joined);
+        ok((await A('POST', `/news/${clickId}/again`, { body: { perHour: 1800 } })).status === 400, 'volver a enviar pide confirmación');
+        sent = []; x = await A('POST', `/news/${clickId}/again`, { body: { confirm: true, perHour: 1800, reason: 'Los nuevos' } });
+        const got2 = sent.filter(y => /octubre/i.test(y.subject)).map(y => y.to);
+        ok(x.status === 200 && JSON.stringify(got2) === JSON.stringify(['nwf@example.com']) && x.j.issue.status === 'sent' && x.j.issue.sent.n === 1 && x.j.issue.rounds.length === 1 && x.j.issue.rounds[0].n === 2, 'llega solo a la cuenta nueva (nwc ya lo tenía, nwa se dio de baja): ' + JSON.stringify([got2, x.j.issue.sent, x.j.issue.rounds]));
+        sent = []; await A('POST', `/news/${clickId}/again`, { body: { confirm: true, perHour: 1800 } });
+        ok(!sent.some(y => /octubre/i.test(y.subject)), 'otra vez, y nadie lo recibe dos veces');
+        ok((await A('POST', `/news/${(await A('POST', '/news', { body: { issue } })).j.issue.id}/again`, { body: { confirm: true } })).status === 409, 'un borrador no se envía «otra vez»'); }
+      // An account deleted: what it opened and clicked goes with it.
+      { const rd0 = (await A('GET', `/news/${clickId}/readers`)).j; ok(rd0.readers.some(y => y.email === 'nwc@example.com'), 'antes de borrar la cuenta, sus marcas están');
+        ok((await req('POST', '/api/account/delete', { headers: { Cookie: nc }, body: { confirm: 'nwc@example.com' } })).status === 200, 'cuenta borrada');
+        const rd1 = (await A('GET', `/news/${clickId}/readers`)).j; ok(!rd1.readers.some(y => y.email === 'nwc@example.com') && rd1.total === 0, 'borrar la cuenta borra lo que abrió y pulsó: ' + JSON.stringify(rd1)); }
       // The account is asked again just before: one who stops them between the list and the email gets nothing.
       { const i3 = (await A('POST', '/news', { body: { issue: { ...issue, audience: { langs: ['en'], plan: 'all' } } } })).j.issue; sent = [];
         await A('POST', `/news/${i3.id}/send`, { body: { confirm: true } });
         ok(!sent.some(y => /octubre/.test(y.subject)), 'novedades: el público por idioma se respeta (nadie tiene «en»)'); }
       ok((await A('POST', '/news/zzzzzzzz/send', { body: { confirm: true } })).status === 404 && (await adm('POST', '/news', { token: null, body: { issue } })).status === 403, 'novedades: sin sesión de administración, no; una inexistente, 404');
+      { let last = 200; for (let i = 0; i < 25 && last !== 429; i++) last = (await A('POST', `/news/${id}/test`, { body: { to: `l${i}@example.com` } })).status;
+        ok(last === 429, 'prueba: como mucho 20 a la hora'); }
       // The welcome by email: off unless the admin turned «mail» on; once; the admin's text.
       await A('POST', '/promos/welcome', { body: { on: false, mail: false, texts: { es: { title: 'Te damos la bienvenida', text: 'Hay tutoriales interactivos.\nEn Ver ▸ Ayuda.' }, en: { title: 'Welcome', text: 'There are interactive tutorials.' } } } });
       sent = []; const nd = await lg('tok-nwd');

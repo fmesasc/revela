@@ -81,3 +81,26 @@ Pedir: el tema, a quién va, qué idiomas y, si hace falta, qué fotos. Claude d
 - Contenido normal: asunto sin MAYÚSCULAS ni signos de más, una imagen o dos, sin acortadores de enlaces. Gmail mira sobre todo si la gente
   abre, no borra sin leer y no marca como spam: un boletín que interesa es el mejor antideslizamiento.
 - Si algún día se marca mucho como spam: parar, mirar «Saltados» y las bajas del envío, y bajar el ritmo.
+
+## Qué se mide
+
+Por **cuenta** (lo dice la política de privacidad, «Correos con novedades»; la información a las cuentas anteriores ya se dio por escrito y a las nuevas
+les llega por la web):
+
+- **Aperturas** (aproximadas: una imagen de 1×1 en el correo; Apple Mail y algunos clientes la cargan siempre, otros nunca) y **clics** por enlace,
+  con la fecha y cuántas veces. Los enlaces van firmados con la cuenta y el boletín (`recipientToken`), así que nadie puede inventarse la marca de otro.
+  Pasan por `/api/n/<boletín>/<enlace>?r=<marca>`, que lo anota y redirige a lo que el propio boletín dice (nunca a una dirección del enlace).
+- En la ficha de cada boletín enviado: abiertos y con clics (de los que se pudo seguir), clics por enlace, bajas desde el envío y la lista de
+  **quién lo abrió y qué pulsó** (500 como mucho). Los clics de las pruebas (`&t=1`) no cuentan. Algunos antivirus de correo abren los enlaces y suman de más.
+- Las visitas a la web que llegan del boletín salen además en el panel de Web como `utm:news:<boletín>`.
+- Al borrar una cuenta se borra lo que abrió y pulsó (`news-forget`).
+
+## Enviar a quienes aún no lo han recibido
+
+En un boletín enviado, «Enviar a quienes aún no lo han recibido» lo manda otra vez, a ritmo, a las cuentas que lo piden y no lo tienen: las que se suscribieron
+después (la ficha dice cuántas) y las que fallaron. Cada cuenta recuerda qué boletines recibió, así que nadie lo recibe dos veces. Cada ronda queda anotada.
+
+## Pruebas con otra dirección
+
+En la ficha de un borrador: «Enviar la prueba» a una dirección escrita (p. ej. la que da mail-tester.com) y la casilla **«Como saldría de verdad»** (sin «[PRUEBA]»,
+con su baja y sus enlaces, que no cuentan). Hasta 20 pruebas por hora; cada una queda en la auditoría.

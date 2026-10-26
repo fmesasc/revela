@@ -26,11 +26,14 @@
 //   POST /news { issue }            → { issue }  (new, or a draft changed)
 //   POST /news/<id>/delete          (drafts only)
 //   GET  /news/<id>/preview?lang=   → { subject, html }
-//   POST /news/<id>/test { lang }   → an email to the admin, marked as a test
+//   POST /news/<id>/test { lang, to?, asReal? } → a test email to the admin or any address (asReal: exactly as it would go, for a spam test); 20 an hour
 //   POST /news/<id>/send { reason, perHour } → starts sending (once), at that pace  ·  POST /news/<id>/step { force } → the next batch if due (force: now)
+//   POST /news/<id>/again { confirm, perHour, reason } → a sent newsletter again, to the accounts it has not reached (new ones)
+//   GET  /news/<id>/readers         → who opened and who clicked (per account, as the privacy policy says)
 //   POST /news/<id>/cancel          → stops a sending in progress
 
-import { escHtml, random } from './util.js';
+import { escHtml, random, EMAIL, hmac, b64url, enc, unb64 } from './util.js';
+import { unsubToken } from './mail.js';
 import { mailWords, mailConfigured, sendMail, LOOK, emailFrame, em, plain, paras, pill, arrow } from './mail.js';
 import { acct, call } from './api.js';
 import { STARTERS } from './news-starters.js';
@@ -96,25 +99,62 @@ export const summary = i => ({ id: i.id, name: i.name, status: i.status, updated
 // (The frame and look are mail.js's, shared with every email.)
 const { INK, INK2, LINE, WARM, SERIF, SANS } = LOOK;
 
+// A link in a newsletter, as it finally goes: a path of the website in the person's language (the app's has no prefix), tagged with
+// utm_source=news and the newsletter, so the visit says where it came from; an address outside the website goes as it is.
+export function siteLink(issue, lang, u, site = 'https://revelaslides.com') {
+  const full = u.startsWith('/') ? site + (lang && lang !== 'es' && !/^\/(app|api)(\/|$)/.test(u) ? '/' + lang : '') + u : u;
+  try {
+    const x = new URL(full); if (x.host !== new URL(site).host) return full;
+    x.searchParams.set('utm_source', 'news'); x.searchParams.set('utm_medium', 'email');
+    x.searchParams.set('utm_campaign', String(issue.id || 'news').toLowerCase().replace(/[^a-z0-9_.-]/g, '').slice(0, 30) || 'news');
+    return x.href;
+  } catch { return full; }
+}
+
 // → { subject, html, text } (unsub: the link out, null in a test; test: marks it; site: for a button that is a path).
-export function renderNews(issue, lang, { unsub = null, test = false, site = 'https://revelaslides.com' } = {}) {
+export function renderNews(issue, lang, { unsub = null, test = false, track = false, real = false, rt = '', site = 'https://revelaslides.com' } = {}) {
   const tx = textFor(issue, lang) || { subject: '', blocks: [] }, W = mailWords(lang);
   // (A link to the website: in the person's language and tagged — utm_source=news, the issue — so the visit says where it came from.)
-  const tag = u => { try { const x = new URL(u); if (x.host !== new URL(site).host) return u; x.searchParams.set('utm_source', 'news'); x.searchParams.set('utm_medium', 'email'); x.searchParams.set('utm_campaign', String(issue.id || 'news').toLowerCase().replace(/[^a-z0-9_.-]/g, '').slice(0, 30) || 'news'); return x.href; } catch { return u; } };
-  const href = u => tag(u.startsWith('/') ? site + (lang && lang !== 'es' && !/^\/(app|api)(\/|$)/.test(u) ? '/' + lang : '') + u : u), subject = (test ? '[PRUEBA] ' : '') + plain(tx.subject), eyebrow = tx.eyebrow || W.eyebrow;
+  // (track: the link goes through our own address, /api/n/<boletín>/<enlace>, which counts the click — no one's name, only «this link, once
+  // more» — and sends on to where it was going: the address comes from the newsletter itself, never from the link. In a test it is marked, not counted.)
+  const direct = u => siteLink(issue, lang, u, site);
+  const href = (u, k) => (track || real ? `${site}/api/n/${issue.id}/${k}?l=${lang}${test ? '&t=1' : ''}${rt && !test ? '&r=' + rt : ''}` : direct(u)), subject = (test && !real ? '[PRUEBA] ' : '') + plain(tx.subject), eyebrow = tx.eyebrow || W.eyebrow;
   const P = `margin:0 0 16px;font:17px/1.65 ${SANS};color:${INK2}`, head = !!(tx.title || tx.intro);
   const blocks = (tx.blocks || []).map((b, i) => `<tr><td style="padding:${i ? 6 : 0}px 36px 6px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"${i || head ? ` class="top" style="border-top:1px solid ${LINE}"` : ''}><tr><td style="padding-top:${i || head ? 26 : 0}px">
 ${b.image ? `<img src="${escHtml(b.image)}" alt="${escHtml(plain(b.title))}" width="528" style="display:block;width:100%;max-width:528px;height:auto;border-radius:14px;margin:0 0 18px;border:1px solid ${LINE}">` : ''}
-${b.title ? `<h2 class="ink" style="margin:0 0 10px;font:450 28px/1.2 ${SERIF};letter-spacing:-.01em;color:${INK}">${em(b.title)}</h2>` : ''}${paras(b.text, P)}${b.cta && b.url ? arrow(b.cta, href(b.url)) : ''}</td></tr></table></td></tr>`).join('\n');
+${b.title ? `<h2 class="ink" style="margin:0 0 10px;font:450 28px/1.2 ${SERIF};letter-spacing:-.01em;color:${INK}">${em(b.title)}</h2>` : ''}${paras(b.text, P)}${b.cta && b.url ? arrow(b.cta, href(b.url, i)) : ''}</td></tr></table></td></tr>`).join('\n');
   const rows = `${head ? `<tr><td style="padding:38px 36px 18px"><p class="warm" style="margin:0 0 16px;font:600 13px/1 ${SANS};${lang === 'ar' ? '' : 'letter-spacing:.14em;text-transform:uppercase;'}color:${WARM}">${escHtml(eyebrow)}</p>${tx.title ? `<h1 class="ink" style="margin:0 0 16px;font:450 40px/1.1 ${SERIF};letter-spacing:-.015em;color:${INK}">${em(tx.title)}</h1>` : ''}${paras(tx.intro, P)}</td></tr>` : ''}
 ${blocks}
 ${tx.outro ? `<tr><td style="padding:14px 36px 6px">${paras(tx.outro, P)}</td></tr>` : ''}
-<tr><td style="padding:14px 36px 38px">${pill(W.open, tag(site + '/app/'))}</td></tr>`;
-  const foot = `${escHtml(W.foot)}<br>${escHtml(W.why)}${unsub ? `<br><a class="mut" href="${escHtml(unsub)}" style="color:${INK2}">${escHtml(W.unsub)}</a>` : (test ? '<br>(prueba: sin enlace de baja)' : '')}`;
-  const html = emailFrame({ lang, subject, preheader: tx.preheader || '', rows, foot, site });
-  const text = [`${eyebrow.toUpperCase()}`, '', plain(tx.title), '', tx.intro, '', ...(tx.blocks || []).flatMap(b => [plain(b.title), b.text, b.cta && b.url ? `${b.cta}: ${href(b.url)}` : '', '']), tx.outro, '', `${W.open}: ${tag(site + '/app/')}`, '—', W.foot, W.why,
+<tr><td style="padding:14px 36px 38px">${pill(W.open, href('/app/', 'x'))}</td></tr>`;
+  const foot = `${escHtml(W.foot)}<br>${escHtml(W.why)}${unsub ? `<br><a class="mut" href="${escHtml(unsub)}" style="color:${INK2}">${escHtml(W.unsub)}</a>` : (test && !real ? '<br>(prueba: sin enlace de baja)' : '')}`;
+  // (A pixel that says «opened» — only in a real sending to an account: tracked per person, as the privacy policy says; approximate, because
+  // some mail apps load pictures ahead of time. Not in previews or tests.)
+  const pixel = track && rt && !test ? `<img src="${site}/api/n/${issue.id}/o.gif?r=${rt}" width="1" height="1" alt="" style="display:block;border:0;width:1px;height:1px">` : '';
+  const html = emailFrame({ lang, subject, preheader: tx.preheader || '', rows, foot: foot + pixel, site });
+  const text = [`${eyebrow.toUpperCase()}`, '', plain(tx.title), '', tx.intro, '', ...(tx.blocks || []).flatMap((b, i) => [plain(b.title), b.text, b.cta && b.url ? `${b.cta}: ${href(b.url, i)}` : '', '']), tx.outro, '', `${W.open}: ${href('/app/', 'x')}`, '—', W.foot, W.why,
     ...(unsub ? [`${W.unsub}: ${unsub}`] : [])].filter(x => x !== undefined && x !== null).join('\n').replace(/\n{3,}/g, '\n\n').trim();
   return { subject, html, text };
+}
+
+// Who a click or an opening belongs to: the account, in the link — signed (MAIL_SECRET), for this newsletter only —, so nobody can make up
+// somebody else's. → '' without a secret (then nothing per person is kept).
+export async function recipientToken(env, issueId, sub) {
+  if (!env.MAIL_SECRET || !sub) return '';
+  const a = b64url(enc.encode(String(sub))); return `${a}.${(await hmac(env.MAIL_SECRET, `nr:${issueId}.${a}`)).slice(0, 16)}`;
+}
+export async function readRecipientToken(env, issueId, t) {
+  const [a, sig] = String(t || '').split('.'); if (!env.MAIL_SECRET || !a || !sig || a.length > 120) return null;
+  const want = (await hmac(env.MAIL_SECRET, `nr:${issueId}.${a}`)).slice(0, 16);
+  if (want.length !== sig.length || [...want].reduce((d, ch, i) => d | (ch.charCodeAt(0) ^ sig.charCodeAt(i)), 0)) return null;
+  try { return unb64(a); } catch { return null; }
+}
+// Where link k of a newsletter goes, in a language (k: the section's number, or «x» for the button to the app): the address the newsletter
+// itself holds, tagged. Null if there is no such link.
+export function linkTarget(issue, k, lang, site = 'https://revelaslides.com') {
+  if (!/^(x|\d{1,2})$/.test(String(k))) return null;
+  const u = k === 'x' ? '/app/' : (textFor(issue, lang)?.blocks || [])[+k]?.url;
+  return u ? siteLink(issue, lang, u, site) : null;
 }
 
 // ---- Keeping and sending -----------------------------------------------------------------------------
@@ -199,7 +239,21 @@ export async function newsAdmin(env, path, q, body, { GET, POST, by, json, audit
   }
   const m = path.match(/^\/news\/([\w]{4,20})(?:\/(\w+))?$/); if (!m) return json({ error: 'not found' }, 404);
   const [, id, act] = m, issue = await get(id); if (!issue) return json({ error: 'not found' }, 404);
-  if (GET && !act) return json({ issue });
+  if (GET && !act) {
+    const stats = issue.status === 'draft' ? null : await call(B, 'news-stats', { id, from: issue.sent?.started || 0 });
+    // (How many asked for the newsletters after this one was sent: the ones «Enviar a quienes aún no lo han recibido» would reach.)
+    const joined = stats && env.DIRECTORY ? (await directory(env, 'news-count', { since: issue.sent?.started || 0 })).since : 0;
+    return json({ issue, stats: stats && { ...stats, joined } });
+  }
+  // Who has opened and who has clicked (per account): the readers of this one.
+  if (GET && act === 'readers') {
+    const { readers } = await call(B, 'news-readers', { id }), list = [];
+    for (const r of readers.sort((x, y) => Object.keys(y.c || {}).length - Object.keys(x.c || {}).length || (y.o?.last || 0) - (x.o?.last || 0)).slice(0, 500)) {
+      const u = env.DIRECTORY ? (await directory(env, 'get', { sub: r.sub })).user : null;
+      list.push({ email: u?.email || '(cuenta eliminada)', name: u?.name || '', opened: r.o || null, clicks: r.c || {} });
+    }
+    return json({ readers: list, total: readers.length });
+  }
   if (GET && act === 'preview') { const lang = NEWS_LANGS.includes(q.get('lang')) ? q.get('lang') : 'es'; const r = renderNews(issue, lang, { unsub: '#', site: env.SITE_URL || 'https://revelaslides.com' }); return json({ subject: r.subject, html: r.html, lang }); }
   if (!POST) return json({ error: 'method' }, 405);
   if (act === 'delete') {
@@ -208,8 +262,16 @@ export async function newsAdmin(env, path, q, body, { GET, POST, by, json, audit
   }
   if (act === 'test') {
     if (!mailConfigured(env)) return json({ error: 'mail not configured' }, 503);
-    const lang = NEWS_LANGS.includes(body?.lang) ? body.lang : 'es', r = renderNews(issue, lang, { test: true, site: env.SITE_URL || 'https://revelaslides.com' });
-    return json({ ok: await sendMail(env, { to: by, kind: 'news-test', ...r }), to: by });
+    // To the admin's own address, or any other written in the panel (a mail-tester.com address, a friend's mailbox), as it would really go
+    // — with «asReal»: no «[PRUEBA]», its way out and its links: a real email for a spam test — but marked so its clicks are not counted.
+    const lang = NEWS_LANGS.includes(body?.lang) ? body.lang : 'es', to = String(body?.to || by).trim().toLowerCase(), real = body?.asReal === true;
+    if (!EMAIL.test(to) || to.length > 254) return json({ error: 'bad address' }, 400);
+    if ((await call(B, 'news-test-count')).n > 20) return json({ error: 'too many tests' }, 429);
+    const site = env.SITE_URL || 'https://revelaslides.com';
+    let unsub = null; if (real) { const tok = await unsubToken(env, 'test', 'news'); unsub = tok && `${site}/api/mail/unsubscribe?t=${encodeURIComponent(tok)}`; }
+    const r = renderNews(issue, lang, { test: true, real, unsub, site });
+    await audit({ action: 'news-test', target: 'news:' + id, after: { to, lang, real } });
+    return json({ ok: await sendMail(env, { to, kind: 'news-test', ...r, ...(unsub && { unsubscribe: unsub }) }), to });
   }
   if (act === 'send') {
     if (issue.status !== 'draft') return json({ error: 'locked' }, 409);
@@ -225,6 +287,20 @@ export async function newsAdmin(env, path, q, body, { GET, POST, by, json, audit
     return json({ issue: await newsStep(env, id, { force: true }) });
   }
   if (act === 'step') return json({ issue: await newsStep(env, id, { force: body?.force === true }) });
+  // «Enviar a quienes aún no lo han recibido»: a sent (or stopped) newsletter again over the accounts that asked for them — each account
+  // remembers what it received (mail-news), so only the ones it has not reached get it: those who asked after it was sent, or that failed.
+  if (act === 'again') {
+    if (!['sent', 'cancelled'].includes(issue.status)) return json({ error: 'locked' }, 409);
+    if (!mailConfigured(env) || !env.MAIL_SECRET) return json({ error: 'mail not configured' }, 503);
+    if (body?.confirm !== true) return json({ error: 'confirm' }, 400);
+    const perHour = PACES.includes(+body?.perHour) ? +body.perHour : DEFAULT_PACE, prev = issue.sent;
+    issue.status = 'sending'; issue.updatedAt = Date.now(); issue.pace = { perHour };
+    issue.rounds = [...(issue.rounds || []), { at: prev.started, n: prev.n, skipped: prev.skipped, failed: prev.failed }].slice(-20);
+    issue.sent = { n: 0, skipped: 0, failed: 0, cursor: null, next: null, started: Date.now(), finished: null };
+    await call(B, 'news-put', { issue });
+    await audit({ action: 'news-again', target: 'news:' + id, reason: str(body?.reason, 500), after: { name: issue.name, perHour, rounds: issue.rounds.length } });
+    return json({ issue: await newsStep(env, id, { force: true }) });
+  }
   if (act === 'cancel') {
     if (issue.status !== 'sending') return json({ error: 'locked' }, 409);
     issue.status = 'cancelled'; issue.updatedAt = Date.now(); await call(B, 'news-put', { issue });
