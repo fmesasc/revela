@@ -68,7 +68,7 @@ import { mail, sendMail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPT
 import { renderNews, newsTick, linkTarget, NEWS_LANGS, recipientToken, readRecipientToken } from './news.js';
 import { scheduleItem, scheduleAll, dayOf } from './schedule.js';
 import { handle3d, configured3d } from './model3d.js';
-import { createTicket, supportReply, directoryUpsert, directoryRemove, CHARGES, emails as adminEmails } from './admin.js';
+import { createTicket, supportReply, directoryUpsert, directoryAccess, directoryRemove, CHARGES, emails as adminEmails } from './admin.js';
 import { record } from './finance.js';
 import { NOTICE_PLACES, noticesFor, noticesOp } from './notices.js';
 import { scheduleAlarm, runAlarm, brakesOp } from './brakes.js';
@@ -267,11 +267,11 @@ export class Account {
     if (!this.env.DIRECTORY) return;
     const prof = await this.get('profile', null); if (!prof?.sub) return;
     const own = await this.plan(), rec = { sub: prof.sub, email: prof.email, name: prof.name || null, plan: own, until: own === 'pro' ? await this.proUntil() : 0, credits: await this.get('credits', 0),
-      created: prof.created || null, lang: prof.lang || null, news: !!(await this.get('newsOn', null)), newsAt: (await this.get('newsOn', null))?.at || null, lastSeen: await this.get('lastSeen', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)), bytes: (await this.storage()).used,
+      created: prof.created || null, lang: prof.lang || null, news: !!(await this.get('newsOn', null)), newsAt: (await this.get('newsOn', null))?.at || null, lastSeen: await this.get('lastSeen', null), lastSeenAt: await this.get('lastSeenAt', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)), bytes: (await this.storage()).used,
       // (Test mode, apart: the flag, a Pro only from test mode, and the test credits — kept out of the real counts.)
       billingTest: !!(await this.get('billingTest', null)), test: own === 'pro' && !!(await this.get('plan', null))?.test && !((await this.get('proGift', null))?.until > Date.now()),
       testCredits: (await this.lots()).filter(l => l.test && l.exp > Date.now()).reduce((t, l) => t + l.n, 0) };
-    const last = await this.get('dirRec', null), now = Date.now(), same = x => JSON.stringify({ ...x, credits: 0, testCredits: 0, bytes: 0 });
+    const last = await this.get('dirRec', null), now = Date.now(), same = x => JSON.stringify({ ...x, credits: 0, testCredits: 0, bytes: 0, lastSeenAt: 0 });
     // (Credits and space change often: written again at most every five minutes — at once if the space moved 100 KB.)
     const moved = Math.abs((last?.rec.bytes || 0) - (rec.bytes || 0));
     if (!force && last && same(last.rec) === same(rec) && moved < MB / 10 && ((last.rec.credits === rec.credits && last.rec.testCredits === rec.testCredits && !moved) || now - last.at < 5 * 60e3)) return;
@@ -292,6 +292,7 @@ export class Account {
     if (out.fin.length) await record(this.env, out.fin);
     if (out.sched.length) await scheduleAll(this.env, out.sched).catch(e => console.log('schedule', e?.message));
     if (out.dir && (await directoryUpsert(this.env, out.dir))) await this.put({ dirRec: { rec: out.dir, at: Date.now() } });
+    if (out.access) await directoryAccess(this.env, out.access);
   }
   // Credits come in lots, each with its expiry ({ n, exp }); they are spent from the one that
   // expires first. What a request really cost beyond the balance is a debt, paid by the next
@@ -412,6 +413,18 @@ export class Account {
     this.fin({ kind: 'active', mau: month !== today.slice(0, 7) });          // (daily and monthly active users: finance.js)
     if (!(await this.get('idleNext', null))) await this.idleFrom(today);
   }
+  // The minute of the last use, and the last 30 uses (the administration's «Último uso» and its access log): noted when
+  // the person signs in and, using it, after 20 minutes without — so a day of work is a few lines, not one per
+  // request. The directory gets it after the answer (flush), where the list of everyone's latest accesses is kept.
+  async touch(how, place = {}) {
+    const now = Date.now(), last = await this.get('lastSeenAt', 0);
+    if (how !== 'login' && now - last < 20 * 60e3) return;
+    const at = { at: now, how, ...(place.device && { device: place.device }) };
+    await this.put({ lastSeenAt: now, access: [at, ...(await this.get('access', []))].slice(0, 30) });
+    const prof = await this.get('profile', null); if (!prof?.sub) return;
+    const x = { sub: prof.sub, email: prof.email, ...at };
+    if (this.out) this.out.access = x; else await directoryAccess(this.env, x);
+  }
   async idleFrom(day) {
     const sub = (await this.get('profile', {})).sub; if (!sub) return;
     const ref = 'w30:' + day; await this.put({ idleNext: ref });
@@ -452,10 +465,10 @@ export class Account {
   // Then, after its answer, what it has for the shared objects (flush(): one after another, in their own line, so the
   // next request here doesn't wait for them either; 'wipe' does).
   fetch(req) {
-    const out = { fin: [], sched: [], dir: null }, before = this.flushing;
+    const out = { fin: [], sched: [], dir: null, access: null }, before = this.flushing;
     const run = async () => { this.out = out; this.before = before; try { return await this.handle(req); } finally { this.out = null; } };
     const p = (this.queue || Promise.resolve()).then(run, run); this.queue = p.catch(() => {});
-    const send = () => (out.fin.length || out.sched.length || out.dir ? this.flush(out).catch(e => console.log('flush', e?.message)) : null);
+    const send = () => (out.fin.length || out.sched.length || out.dir || out.access ? this.flush(out).catch(e => console.log('flush', e?.message)) : null);
     this.flushing = Promise.all([this.flushing, p.catch(() => {})]).then(send);
     this.ctx.waitUntil?.(this.flushing);
     return p;
@@ -475,7 +488,7 @@ export class Account {
         }
         // (The news by email: only when the person ticked it — signing up here, or later in «Mi cuenta» — never by default.)
         if (fresh && a.news === true) await this.put({ newsOn: { at: Date.now(), how: 'signup' } });
-        await this.seen(); await this.dirSync(fresh);
+        await this.seen(); await this.touch('login', sessionPlace(a)); await this.dirSync(fresh);
         const secret = random(32), sessions = await this.get('sessions', {});
         const days = a.kind === 'desktop' ? 90 : 30;
         // (At most 20 sessions: the oldest go.)
@@ -506,7 +519,7 @@ export class Account {
       }
       case 'check': {                                      // { secret, device?, where? } → ok?
         const sessions = await this.get('sessions', {}), h = await sha256(a.secret || ''), v = sessions[h], ok = !!v && v.expires > Date.now();
-        if (ok) await this.seen();
+        if (ok) { await this.seen(); if (v.kind !== 'impersonation') await this.touch('use', sessionPlace(a, v)); }
         // A session in use doesn't end: with less than two thirds of its time left, it gets its full time again
         // (30 days on the web, 90 in the desktop app, from now). Only an unused one runs out.
         // Its last use (and where from) is noted at most once an hour, to spare the storage.
@@ -824,7 +837,7 @@ export class Account {
         return this.json({ profile: prof, plan: await this.plan(), until: await this.proUntil(), stored: await this.get('plan', null), proGift: await this.get('proGift', null),
           credits: await this.get('credits', 0), debt: await this.get('debt', 0), lots: await this.lots(), ledger: (await this.get('ledger', [])).slice(-50).reverse(),
           sessions: { n: sessions.length, kinds: sessions.map(v => v.kind), list: sessionList(await this.get('sessions', {}), '', true) }, storage: await this.storage(), storageQuota: await this.get('storageQuota', null), docs: (await this.get('docs', [])).length, team: await this.get('team', null),
-          blocked: await this.get('blocked', null), lastSeen: await this.get('lastSeen', null), mailOff: await this.get('mailOff', []), customer: !!(await this.get('customer', null)), refunded: await this.get('refunded', []),
+          blocked: await this.get('blocked', null), lastSeen: await this.get('lastSeen', null), lastSeenAt: await this.get('lastSeenAt', null), access: await this.get('access', []), mailOff: await this.get('mailOff', []), customer: !!(await this.get('customer', null)), refunded: await this.get('refunded', []),
           billingTest: await this.get('billingTest', null), customerTest: !!(await this.get('customerTest', null)),
           trial: { used: !!(await this.get('trialUsed', null)), usedTest: !!(await this.get('trialUsedTest', null)), paid: !!(await this.get('proPaid', null)), paidTest: !!(await this.get('proPaidTest', null)) } });
       }

@@ -197,25 +197,44 @@ function haystack(r) {
 //   'u:' + sub → { sub, email, name, plan, until, credits, created, lastSeen, team, blocked, billingTest, test (Pro only from
 //                 Stripe's test mode), testCredits, updated }
 //   'e:' + email + '|' + sub → sub          (a team's members by email: subs)
-//   's:' + lastSeen + '|' + sub → sub       (the most recently seen first)
+//   's:' + lastSeen + '|' + lastSeenAt + '|' + sub → sub   (the most recently seen first, to the minute)
+//   'acc' → [{ sub, email, at, how, device? }]   (the latest 500 accesses of everyone, newest first: see 'access')
 export class Directory {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; }
   fetch(req) { const run = () => this.handle(req); const p = (this.queue || Promise.resolve()).then(run, run); this.queue = p.catch(() => {}); return p; }
   async handle(req) {
     const op = new URL(req.url).pathname.split('/').pop(), a = await req.json().catch(() => ({})), st = this.ctx.storage;
-    const seenKey = r => `s:${r.lastSeen || '0000-00-00'}|${r.sub}`, emailKey = r => `e:${String(r.email || '').toLowerCase()}|${r.sub}`;
+    const seenKey = r => `s:${r.lastSeen || '0000-00-00'}|${String(r.lastSeenAt || 0).padStart(13, '0')}|${r.sub}`, legacyKey = r => `s:${r.lastSeen || '0000-00-00'}|${r.sub}`, emailKey = r => `e:${String(r.email || '').toLowerCase()}|${r.sub}`;
     if (op === 'upsert') {
       if (!a.sub) return Response.json({ error: 'bad request' }, { status: 400 });
       const old = await st.get('u:' + a.sub), rec = { sub: String(a.sub), email: String(a.email || '').toLowerCase(), name: a.name || null, plan: a.plan || 'free', until: +a.until || 0,
-        credits: +a.credits || 0, created: +a.created || null, lastSeen: a.lastSeen || null, team: a.team || null, blocked: !!a.blocked,
+        credits: +a.credits || 0, created: +a.created || null, lastSeen: a.lastSeen || null, lastSeenAt: +a.lastSeenAt || null, team: a.team || null, blocked: !!a.blocked,
         lang: a.lang ? String(a.lang).slice(0, 5) : null, news: !!a.news, newsAt: +a.newsAt || null, billingTest: !!a.billingTest, test: !!a.test, testCredits: Math.max(0, +a.testCredits || 0), bytes: Math.max(0, +a.bytes || 0), updated: Date.now() };
-      const gone = old ? [emailKey(old), seenKey(old)].filter(k => k !== emailKey(rec) && k !== seenKey(rec)) : [];
+      const gone = old ? [emailKey(old), seenKey(old), legacyKey(old)].filter(k => k !== emailKey(rec) && k !== seenKey(rec)) : [];
       if (gone.length) await st.delete(gone);
       await st.put({ ['u:' + rec.sub]: rec, [emailKey(rec)]: rec.sub, [seenKey(rec)]: rec.sub });
       return Response.json({ ok: true });
     }
+    // A sign-in, or a use after a while without (api.js touch): the minute on the record, its place in the index, and the
+    // line in the access log. An account the directory doesn't know yet is left to its next upsert (which carries it).
+    if (op === 'access') {
+      const old = await st.get('u:' + a.sub), at = +a.at || Date.now(), how = a.how === 'login' ? 'login' : 'use';
+      if (old && at >= (old.lastSeenAt || 0)) {
+        const rec = { ...old, lastSeen: new Date(at).toISOString().slice(0, 10) >= (old.lastSeen || '') ? new Date(at).toISOString().slice(0, 10) : old.lastSeen, lastSeenAt: at };
+        const gone = [seenKey(old), legacyKey(old)].filter(k => k !== seenKey(rec));
+        if (gone.length) await st.delete(gone);
+        await st.put({ ['u:' + rec.sub]: rec, [seenKey(rec)]: rec.sub });
+      }
+      const log = (await st.get('acc')) || [];
+      await st.put('acc', [{ sub: String(a.sub), email: String(a.email || '').toLowerCase().slice(0, 200), at, how, ...(a.device && { device: String(a.device).slice(0, 60) }) }, ...log].slice(0, 500));
+      return Response.json({ ok: true });
+    }
+    if (op === 'access-list') {
+      const log = (await st.get('acc')) || [], sub = a.sub ? String(a.sub) : '', day = a.day ? String(a.day) : '';
+      return Response.json({ access: log.filter(x => (!sub || x.sub === sub) && (!day || new Date(x.at).toISOString().slice(0, 10) === day)).slice(0, Math.min(500, Math.max(1, +a.limit || 100))), total: log.length });
+    }
     if (op === 'remove') {
-      const old = await st.get('u:' + a.sub); if (old) await st.delete(['u:' + old.sub, emailKey(old), seenKey(old)]);
+      const old = await st.get('u:' + a.sub); if (old) await st.delete(['u:' + old.sub, emailKey(old), seenKey(old), legacyKey(old)]);
       return Response.json({ ok: true });
     }
     if (op === 'get') return Response.json({ user: (await st.get('u:' + a.sub)) || null });
@@ -261,7 +280,7 @@ export class Directory {
         if (words.length) { const text = haystack(r); if (!words.every(w => text.includes(w))) continue; }
         found.push(r);
       }
-      const cmps = { lastSeen: (x, y) => String(x.lastSeen || '').localeCompare(String(y.lastSeen || '')), email: (x, y) => fold(x.email).localeCompare(fold(y.email)),
+      const cmps = { lastSeen: (x, y) => String(x.lastSeen || '').localeCompare(String(y.lastSeen || '')) || (x.lastSeenAt || 0) - (y.lastSeenAt || 0), email: (x, y) => fold(x.email).localeCompare(fold(y.email)),
         name: (x, y) => fold(x.name).localeCompare(fold(y.name)), credits: (x, y) => (x.credits || 0) - (y.credits || 0), created: (x, y) => (x.created || 0) - (y.created || 0),
         plan: (x, y) => String(x.plan).localeCompare(String(y.plan)) || (x.until || 0) - (y.until || 0), team: (x, y) => (x.team ? 1 : 0) - (y.team ? 1 : 0) };
       if (q && !a.sort) {
@@ -293,6 +312,11 @@ export class Directory {
     }
     return Response.json({ error: 'unknown' }, { status: 404 });
   }
+}
+// A use of an account (api.js touch), sent to the Directory (never throws).
+export async function directoryAccess(env, x) {
+  if (!env.DIRECTORY || !x?.sub) return false;
+  try { return (await stub(env.DIRECTORY, 'directory').fetch('https://dir/access', { method: 'POST', body: JSON.stringify(x) })).ok; } catch { return false; }
 }
 // An account's record, sent to the Directory (never throws).
 export async function directoryUpsert(env, rec) {
@@ -648,6 +672,8 @@ export async function handleAdmin(req, env, url) {
     // (drive: per month, how many people saved in their Google Drive and how many saves — api.js /drive/seen.)
     return json({ ...u, ai: ai && { month: new Date().toISOString().slice(0, 7), usd: ai.usd, limit: ai.limit }, tickets, errors, openrouter, health: healthOf(env), drive: drive?.months || [] });
   }
+  // The latest accesses of everyone (or one account's, ?sub=; or one day's, ?day=AAAA-MM-DD), newest first: the last 500.
+  if (GET && path === '/access') return json(await call(D, 'access-list', { sub: clip(q.get('sub'), 100), day: clip(q.get('day'), 10), limit: +q.get('limit') || 100 }));
   if (GET && path === '/users') return json(await call(D, 'search', { q: clip(q.get('q'), 200), cursor: q.get('cursor') || null, limit: +q.get('limit') || 50, sort: q.get('sort') || null, dir: q.get('dir') || null, active: q.get('active') || null }));
   let m = path.match(/^\/users\/([\w.-]{1,100})$/);
   if (GET && m) {

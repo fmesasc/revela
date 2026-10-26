@@ -1095,6 +1095,12 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   x = await A('GET', '/users?q=pia');
   ok(x.status === 200 && x.j.users.length === 1 && x.j.users[0].sub === '1414' && x.j.users[0].credits === 50 && x.j.users[0].plan === 'free' && x.j.users[0].lastSeen, 'directorio: buscar por correo: ' + JSON.stringify(x.j));
   ok((await A('GET', '/users?q=1414')).j.users[0]?.email === 'pia@example.com', 'directorio: buscar por sub');
+  // The minute of the last use and the access log (api.js touch): the sign-in is the first line; using it again within 20 minutes adds none.
+  { const u0 = (await A('GET', '/users?q=1414')).j.users[0], lg = (await A('GET', '/access?sub=1414')).j;
+    ok(u0.lastSeenAt > Date.now() - 60e3 && lg.access.length === 1 && lg.access[0].how === 'login' && lg.access[0].email === 'pia@example.com', 'accesos: la entrada deja la hora y una línea: ' + JSON.stringify([u0.lastSeenAt, lg.access]));
+    await req('GET', '/api/me', { cookie: pia }); await req('GET', '/api/me', { cookie: pia });
+    ok((await A('GET', '/access?sub=1414')).j.access.length === 1, 'accesos: usarla otra vez enseguida no añade líneas');
+    ok((await A('GET', '/access')).j.access.some(x => x.sub === '1414') && (await A('GET', '/access?day=2000-01-01')).j.access.length === 0, 'accesos: el registro de todos, y por día'); }
   ok((await A('GET', '/users?q=nadie')).j.users.length === 0, 'directorio: sin resultados');
   { // Any field, not only the email's start: the middle of the email, several words, accents and case, the plan, by pages.
     const mid = (await A('GET', '/users?q=' + encodeURIComponent('a@example'))).j.users, both = (await A('GET', '/users?q=' + encodeURIComponent('PÍA gratis 1414'))).j.users;
