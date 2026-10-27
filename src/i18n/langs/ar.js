@@ -5189,4 +5189,5 @@ export default {
   "Quiero recibir las novedades de Revela por correo (puedo darme de baja cuando quiera).": "أرغب في تلقي أخبار Revela عبر البريد الإلكتروني (يمكنني إلغاء الاشتراك في أي وقت).",
   "Quiero recibir las novedades de Revela por correo": "أرغب في تلقي أخبار Revela عبر البريد الإلكتروني",
   "De momento, en el modo Realista no se pueden usar fotos propias, por la seguridad de los usuarios: estamos trabajando en ello.": "في الوقت الحالي لا يدعم الوضع الواقعي استخدام صورك الخاصة، حفاظًا على أمان المستخدمين: نعمل على ذلك.",
+  "Realista (con textura, para objetos, animales y personas). Cuesta más y tarda un minuto; desmárcalo para formas geométricas sencillas con fotos propias.": "واقعي (بنسيج، للأشياء والحيوانات والأشخاص). يكلّف أكثر ويستغرق نحو دقيقة؛ ألغِ التحديد للأشكال الهندسية البسيطة أو لاستخدام صورك.",
 };

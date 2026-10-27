@@ -5189,4 +5189,5 @@ export default {
   "Quiero recibir las novedades de Revela por correo (puedo darme de baja cuando quiera).": "Revelaren berriak posta elektronikoz jaso nahi ditut (nahi dudanean baja eman dezaket).",
   "Quiero recibir las novedades de Revela por correo": "Revelaren berriak posta elektronikoz jaso nahi ditut",
   "De momento, en el modo Realista no se pueden usar fotos propias, por la seguridad de los usuarios: estamos trabajando en ello.": "Oraingoz, modu errealistak ezin ditu zure argazkiak erabili, erabiltzaileen segurtasunerako: horretan ari gara lanean.",
+  "Realista (con textura, para objetos, animales y personas). Cuesta más y tarda un minuto; desmárcalo para formas geométricas sencillas con fotos propias.": "Errealista (testurarekin, objektu, animalia eta pertsonentzat). Gehiago kostatzen du eta minutu bat inguru behar du; desmarkatu forma geometriko sinpleetarako edo zure argazkietarako.",
 };

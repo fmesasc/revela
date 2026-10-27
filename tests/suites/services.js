@@ -3606,8 +3606,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const api = async (path, body) => { calls.push([path, body]); return path === '3d' ? { ok: true, realistic: true, blender: true, estimate: { max: 104 }, realisticEstimate: { max: 60 } } : { id: 'job-realista-123456', estimate: { max: 40 } }; };
     await M.openModelAi({ api, interval: 5000 });
     const m = D.getElementById('m3a-modal'), q = s => m.querySelector(s);
-    assert(q('.m3a-real') && q('.m3a-realnote').hidden && !q('.m3a-photos').disabled, 'sin marcar «Realista», las fotos se pueden usar');
-    assert(/104/.test(q('.m3a-est').textContent), 'sin Realista, la estimación de las rondas');
+    assert(q('.m3a-real') && q('.m3a-real').checked && !q('.m3a-realnote').hidden && q('.m3a-photos').disabled, '«Realista» viene marcado por defecto (sin fotos propias de momento)');
+    q('.m3a-real').checked = false; q('.m3a-real').dispatchEvent(new W.Event('change'));
+    assert(q('.m3a-realnote').hidden && !q('.m3a-photos').disabled && /104/.test(q('.m3a-est').textContent), 'desmarcado, las fotos se pueden usar y vale la estimación de las rondas');
     q('.m3a-real').checked = true; q('.m3a-real').dispatchEvent(new W.Event('change'));
     assert(/60/.test(q('.m3a-est').textContent), 'con Realista, su estimación');
     assert(q('.m3a-photos').disabled && !q('.m3a-realnote').hidden && /seguridad/.test(q('.m3a-realnote').textContent), 'con «Realista», las fotos se desactivan y se explica por qué');

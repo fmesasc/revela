@@ -5189,4 +5189,5 @@ export default {
   "Quiero recibir las novedades de Revela por correo (puedo darme de baja cuando quiera).": "Ik wil het nieuws van Revela per e-mail ontvangen (ik kan me altijd afmelden).",
   "Quiero recibir las novedades de Revela por correo": "Ik wil het nieuws van Revela per e-mail ontvangen",
   "De momento, en el modo Realista no se pueden usar fotos propias, por la seguridad de los usuarios: estamos trabajando en ello.": "Voorlopig kan de realistische modus geen eigen foto’s gebruiken, voor de veiligheid van gebruikers: we werken eraan.",
+  "Realista (con textura, para objetos, animales y personas). Cuesta más y tarda un minuto; desmárcalo para formas geométricas sencillas con fotos propias.": "Realistisch (met textuur, voor objecten, dieren en mensen). Kost meer en duurt ongeveer een minuut; vink uit voor eenvoudige geometrische vormen of eigen foto’s.",
 };

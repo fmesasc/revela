@@ -281,8 +281,12 @@ export function varyDesign(key, { recent = recentDesigns(), rnd = Math.random } 
   const best = near.filter(x => x[1] === near[0][1]), pool = best.length >= 2 ? best : near.slice(0, 3);       // (the closest ones; if one stands out, it and the next ones)
   return pool[Math.floor(rnd() * pool.length)][0];
 }
-// The designs for a prompt: shuffled, so no one is always first.
-export const designsForPrompt = (rnd = Math.random) => Object.entries(DECK_DESIGNS).map(e => [rnd(), e]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+// The designs for a prompt: shuffled, so no one is always first — the light ones first and the dark ones (said to be only
+// for when a dark look is asked for) after them, each group shuffled.
+export const designsForPrompt = (rnd = Math.random) => {
+  const mix = list => list.map(e => [rnd(), e]).sort((a, b) => a[0] - b[0]).map(x => x[1]), all = Object.entries(DECK_DESIGNS), dark = e => /\bDARK\b/.test(e[1]);
+  return [...mix(all.filter(e => !dark(e))), ...mix(all.filter(dark))];
+};
 // opts: { topic, source (document text), count, audience, tone, language, images, palette,
 //   attachments (pictures: attach.js — a PDF's figures among them, marked figure: true) }
 // → specs (with .title and .design: one of DECK_DESIGNS, for a new deck).
