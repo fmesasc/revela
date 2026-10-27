@@ -23,7 +23,15 @@ Rules for draw():
 - Keep the bottom 160 px free (the player's caption goes there) and the top-right corner (120 × 50) free. Do not draw captions or stage titles: the player shows them from stages[].
 - Scientifically and factually correct for the audience. All text (names, captions, labels) in ${language}.
 - Robust: no undefined lookups, guard every array index (stage can be any valid index at any time), never throw.`;
-const strip = s => String(s || '').replace(/^\s*```(?:js|javascript)?\s*/i, '').replace(/```\s*$/, '').trim();
+// The code of the answer: inside a fence if it has one (even with a sentence before or after), else from RevelaAnim.define on.
+const strip = s => {
+  s = String(s || ''); const fenced = s.match(/```(?:js|javascript)?\s*\n([\s\S]*?)```/i);
+  if (fenced && /RevelaAnim\.define\s*\(/.test(fenced[1])) return fenced[1].trim();
+  const at = s.search(/RevelaAnim\.define\s*\(/);
+  return (at > 0 ? s.slice(at) : s).replace(/^\s*```(?:js|javascript)?\s*/i, '').replace(/```\s*$/, '').trim();
+};
+// A long text pasted as the topic (a project brief, a document): the scene is about its central idea, in a few stages.
+const TOPIC_NOTE = 'If the topic is a long text or a brief rather than a short subject, pick its single most visual process or idea and animate only that, simply (3–5 stages); never answer with prose or questions, only the code.';
 
 // → { scene, stages: [{ name, caption, duration }], usd? }  — or throws (EMPTY: no scene; BROKEN: still failing after a fix).
 // onStep(k): 'write' | 'check' | 'fix' | 'recheck', for the dialog. check: for the tests (a fake sandbox).
@@ -31,13 +39,16 @@ export async function createAiAnimation(topic, { language = lang(), audience = '
   const ask = (user, max = 14000) => chat([{ role: 'system', content: SYSTEM(language) }, { role: 'user', content: user }],
     { maxTokens: max, feature: 'animation', tier: 'advanced', signal });
   onStep('write');
-  let scene = strip(await ask(`Topic: ${String(topic).slice(0, 600)}${audience ? `\nAudience: ${String(audience).slice(0, 200)}` : ''}`));
+  const first = `Topic: ${String(topic).slice(0, 600)}${audience ? `\nAudience: ${String(audience).slice(0, 200)}` : ''}\n\n${TOPIC_NOTE}`;
+  let scene = strip(await ask(first));
+  // (Prose instead of code, or cut off: once more, asking only for the code.)
+  if (!/RevelaAnim\.define\s*\(/.test(scene)) scene = strip(await ask(`${first}\n\nYour last answer had no RevelaAnim.define(…) code. Answer ONLY with the JavaScript.`));
   if (!/RevelaAnim\.define\s*\(/.test(scene)) throw new Error('EMPTY');
   onStep('check');
   let r = await check(scene);
   if (!r.ok) {
     onStep('fix');
-    const fixed = strip(await ask(`Topic: ${String(topic).slice(0, 600)}\n\nYour previous scene failed when run: ${r.error}\nFix the cause so it can never happen at any stage; keep the rest.\n\nPrevious scene:\n${scene}`));
+    const fixed = strip(await ask(`Topic: ${String(topic).slice(0, 600)}\n\n${TOPIC_NOTE}\n\nYour previous scene failed when run: ${r.error}\nFix the cause so it can never happen at any stage; keep the rest.\n\nPrevious scene:\n${scene}`));
     if (/RevelaAnim\.define\s*\(/.test(fixed)) { scene = fixed; onStep('recheck'); r = await check(scene); }
     if (!r.ok) throw Object.assign(new Error('BROKEN'), { detail: r.error });
   }

@@ -78,7 +78,8 @@ export async function openAiAnimation(existing = selectedBlock()?.aiAnim ? selec
       anim = { topic: what, lang: currentLang(), scene: r.scene, stages: r.stages, mode: anim?.mode || 'steps', durations: r.stages.map(s => s.duration) };   // (a new scene: no words of the old one)
       status(''); paint();
     } catch (e) {
-      status(e.message === 'BROKEN' || e.message === 'EMPTY' ? t('La IA no ha conseguido una animación que funcione. Prueba otra vez o cambia un poco el tema.') : aiErrorText(e));
+      const why = e.detail ? ` (${String(e.detail).slice(0, 120)})` : '';   // (the reason, to tell it when it keeps failing)
+      status(e.message === 'BROKEN' || e.message === 'EMPTY' ? t('La IA no ha conseguido una animación que funcione. Prueba otra vez o cambia un poco el tema.') + why : aiErrorText(e));
     } finally { q('.aian-go').disabled = q('.aian-again').disabled = false; }
   }
   q('.aian-go').addEventListener('click', make);

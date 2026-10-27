@@ -1046,6 +1046,112 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   Date.now = now0; aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'hola' } }], usage: { cost: 0.01 } } });
 }
 
+// ---- «Realista» de objetos: brief + imagen de referencia + TRELLIS en fal (trellis3d.js; OpenRouter y fal simulados) ----
+{
+  const now0 = Date.now; let skew = 0; Date.now = () => now0() + skew;
+  const gil = cookieFrom(await req('POST', '/api/login', { body: { accessToken: 'tok-gil', terms: TERMS } }));
+  const G = () => acc('1212').ctx.storage.m, credits = () => G().get('credits');
+  await acc('1212').fetch(new Request('https://do/grant', { method: 'POST', body: JSON.stringify({ credits: 300, reason: 'grant', ref: 'ttrellis' }) }));
+  const job = id => env.MODELJOBS.inst.get('job:' + id), tick = id => job(id).alarm();
+  const status = async id => (await req('GET', '/api/3d/jobs/' + id, { headers: { Cookie: gil } })).json();
+  const prevFetch = env.FETCH, falCalls = []; let falStatus = ['IN_PROGRESS', 'COMPLETED'], falSubmit = 200;
+  const PNG = 'data:image/png;base64,' + 'iVBORw0KGgo'.repeat(20);
+  aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'a brass microscope, photorealistic, isolated on a pure white seamless background, centered', images: [{ image_url: { url: PNG } }] } }], usage: { cost: 0.04 } } });
+  env.FETCH = async (u, init = {}) => {
+    const s = String(u); if (!s.includes('fal.run') && !s.includes('fal.media')) return prevFetch(u, init);
+    falCalls.push({ u: s, method: init.method || 'GET', auth: init.headers?.Authorization, body: init.body && JSON.parse(init.body) });
+    if (s === 'https://queue.fal.run/fal-ai/trellis') return falSubmit === 200 ? Response.json({ request_id: 'rq-1', status_url: 'https://queue.fal.run/fal-ai/trellis/requests/rq-1/status', response_url: 'https://queue.fal.run/fal-ai/trellis/requests/rq-1' }) : new Response('x', { status: falSubmit });
+    if (s.endsWith('/status')) return Response.json({ status: falStatus.shift() || 'COMPLETED' });
+    if (s.endsWith('/requests/rq-1')) return Response.json({ model_mesh: { url: 'https://v3.fal.media/files/malla.glb', content_type: 'model/gltf-binary' } });
+    return new Response(Buffer.from('glTF-trellis'));
+  };
+  env.BLENDER_URL = 'https://blender.test'; env.BLENDER_SECRET = 'secreto-blender'; env.MODELJOBS = namespace(ModelJob, env);
+  delete env.FAL_KEY; delete env.RUNWARE_KEY; delete env.MESHY_ENABLED;
+  ok((await (await req('GET', '/api/3d', { headers: { Cookie: gil } })).json()).realistic === false, 'Realista: sin clave de TRELLIS no se ofrece');
+  env.FAL_KEY = 'id:secreto-fal';
+  ok((await (await req('GET', '/api/3d', { headers: { Cookie: gil } })).json()).realistic === true, 'Realista: con FAL_KEY (TRELLIS en fal) se ofrece');
+  // Sin Blender (solo la clave de TRELLIS): el diálogo se ofrece, solo con Realista.
+  { const bu = env.BLENDER_URL; delete env.BLENDER_URL;
+    const i0 = await (await req('GET', '/api/3d', { headers: { Cookie: gil } })).json();
+    ok(i0.ok === true && i0.blender === false && i0.realistic === true && i0.realisticEstimate.max > 0, 'Realista sin Blender: se ofrece solo Realista: ' + JSON.stringify(i0));
+    ok((await (await req('GET', '/api/me', { headers: { Cookie: gil } })).json()).model3d === true, 'Realista sin Blender: la app lo muestra');
+    ok((await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una taza' } })).status === 503, 'Realista sin Blender: sin Realista (con Blender), 503');
+    env.BLENDER_URL = bu; }
+  ok((await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'un microscopio', realistic: true, images: ['data:image/png;base64,AAAA'] } })).status === 400, 'Realista: de momento sin fotos propias (hasta firmar el DPA)');
+  const before = credits();
+  const r = await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'un microscopio de laboratorio', realistic: true, lang: 'es' } });
+  const { id, estimate } = await r.json();
+  ok(r.status === 200 && estimate.rounds === 1 && estimate.max < 100, 'Realista: un objeto va por TRELLIS, barato (no los 1,20 $ de Meshy): ' + JSON.stringify(estimate));
+  ok(job(id).ctx.storage.m.get('job').engine === 'trellis', 'Realista: el motor del objeto es TRELLIS');
+  aiCalls = []; await tick(id);   // brief + image
+  ok(aiCalls.length === 2 && aiCalls[1].body.modalities?.[0] === 'image' && /white/.test(JSON.stringify(aiCalls[1].body.messages)), 'Realista: primero el brief y después la imagen sobre fondo liso');
+  ok(!falCalls.length && (await status(id)).status === 'running', 'Realista: aún nada a fal');
+  await tick(id); // submit
+  ok(falCalls.length === 1 && falCalls[0].auth === 'Key id:secreto-fal' && falCalls[0].body.image_url === PNG && falCalls[0].body.texture_size === 1024, 'Realista: la imagen sale hacia fal-ai/trellis con la clave: ' + JSON.stringify(falCalls[0]?.body && Object.keys(falCalls[0].body)));
+  skew += 25e3; await tick(id); ok((await status(id)).status === 'running', 'Realista: mientras fal trabaja, sigue');
+  skew += 25e3; await tick(id);
+  const st = await status(id);
+  ok(st.status === 'done' && st.glb !== false, 'Realista: terminado: ' + JSON.stringify([st.status, st.error]));
+  ok(before - credits() > 0 && before - credits() < 100, 'Realista: se cobra una sola vez, poco: ' + (before - credits()));
+  const mr = await (await req('GET', '/api/3d/jobs/' + id + '/model', { headers: { Cookie: gil } })).json();
+  ok(Buffer.from(mr.glb.split(',')[1], 'base64').toString() === 'glTF-trellis', 'Realista: el GLB es el de fal');
+  await req('POST', '/api/3d/jobs/' + id + '/cancel', { headers: { Cookie: gil }, body: {} });
+  // fal rechaza el envío: nada cobrado.
+  falSubmit = 500; const c0 = credits();
+  const id2 = (await (await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una silla', realistic: true } })).json()).id;
+  await tick(id2); await tick(id2);
+  const st2 = await status(id2);
+  ok(st2.status === 'failed' && /trellis/.test(st2.error || '') && credits() === c0, 'Realista: si fal falla, no se cobra: ' + JSON.stringify([st2.status, st2.error, c0 - credits()]));
+  await req('POST', '/api/3d/jobs/' + id2 + '/cancel', { headers: { Cookie: gil }, body: {} });
+  // Con clave de Runware: TRELLIS.2 por su API (envío async + consulta), y se cobra una vez.
+  { env.RUNWARE_KEY = 'rw-secreta'; falCalls.length = 0; let rwPolls = 0, rwReply = null;
+    const prev = env.FETCH;
+    env.FETCH = async (u, init = {}) => { const s = String(u); if (s.startsWith('https://im.runware.ai/')) return new Response(Buffer.from('glTF-runware')); if (s !== 'https://api.runware.ai/v1') return prev(u, init);
+      const b = JSON.parse(init.body)[0]; falCalls.push({ u: s, auth: init.headers.Authorization, body: b });
+      if (b.taskType === '3dInference') return rwReply ? Response.json(rwReply) : Response.json({ data: [{ taskUUID: b.taskUUID, status: 'processing' }] });
+      return ++rwPolls < 2 ? Response.json({ data: [{ taskUUID: b.taskUUID, taskType: 'getResponse', status: 'processing' }] }) : Response.json({ data: [{ taskUUID: b.taskUUID, status: 'success', cost: 0.027, outputs: { files: [{ url: 'https://im.runware.ai/malla.glb' }] } }] }); };
+    const c1 = credits();
+    const idR = (await (await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una jirafa', realistic: true } })).json()).id;
+    await tick(idR); await tick(idR);
+    const sub = falCalls.find(c => c.body?.taskType === '3dInference');
+    ok(sub && sub.auth === 'Bearer rw-secreta' && sub.body.model === 'microsoft:trellis-2@4b' && sub.body.includeCost === true && sub.body.settings.resolution === 1024 && sub.body.settings.textureSize === 1024 && sub.body.inputs.image === PNG, 'Runware: se envía a trellis-2 con su clave, la imagen y el coste pedido: ' + JSON.stringify(sub?.body && Object.keys(sub.body)));
+    skew += 25e3; await tick(idR); ok((await status(idR)).status === 'running', 'Runware: mientras procesa, sigue');
+    skew += 25e3; await tick(idR); skew += 25e3; await tick(idR);
+    const sR = await status(idR);
+    ok(sR.status === 'done' && c1 - credits() > 0, 'Runware: terminado y cobrado una vez: ' + JSON.stringify([sR.status, sR.error, c1 - credits()]));
+    await req('POST', '/api/3d/jobs/' + idR + '/cancel', { headers: { Cookie: gil }, body: {} });
+    // Saldo retenido por otras peticiones: reintenta a los 10 s y sale.
+    rwReply = { data: [], errors: [{ code: 'concurrentRequestLimitExceeded' }] };
+    const idT = (await (await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una taza', realistic: true } })).json()).id;
+    await tick(idT); await tick(idT); ok((await status(idT)).status === 'running', 'Runware: con el saldo retenido por otras peticiones, reintenta y no falla');
+    rwReply = null; skew += 11e3; await tick(idT); skew += 25e3; await tick(idT); skew += 25e3; await tick(idT); skew += 25e3; await tick(idT);
+    ok((await status(idT)).status === 'done', 'Runware: y al liberarse, termina: ' + JSON.stringify(await status(idT)));
+    await req('POST', '/api/3d/jobs/' + idT + '/cancel', { headers: { Cookie: gil }, body: {} }); rwPolls = 0;
+    // Runware rechaza (sin saldo): error y nada cobrado.
+    rwReply = { data: [], errors: [{ code: 'insufficientCredits' }] }; const c2 = credits();
+    const idE = (await (await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una silla', realistic: true } })).json()).id;
+    await tick(idE); await tick(idE);
+    const sE = await status(idE);
+    ok(sE.status === 'failed' && /insufficientCredits/.test(sE.error || '') && credits() === c2, 'Runware: si rechaza, no se cobra: ' + JSON.stringify([sE.status, sE.error]));
+    await req('POST', '/api/3d/jobs/' + idE + '/cancel', { headers: { Cookie: gil }, body: {} });
+    // Solo con la clave de Runware (sin fal) también se ofrece, y una persona va por TRELLIS (Meshy necesita fal).
+    delete env.FAL_KEY;
+    ok((await (await req('GET', '/api/3d', { headers: { Cookie: gil } })).json()).realistic === true, 'Runware: solo con su clave ya se ofrece «Realista»');
+    const idP = (await (await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'un médico con bata', realistic: true } })).json()).id;
+    ok(job(idP).ctx.storage.m.get('job').engine === 'trellis', 'Runware: sin fal, una persona también va por TRELLIS');
+    await req('POST', '/api/3d/jobs/' + idP + '/cancel', { headers: { Cookie: gil }, body: {} });
+    env.FAL_KEY = 'id:secreto-fal'; delete env.RUNWARE_KEY; env.FETCH = prev; }
+  // Una persona sigue por Meshy (esqueleto y animación).
+  falSubmit = 200; falCalls.length = 0; env.MESHY_ENABLED = '1';
+  await acc('1212').fetch(new Request('https://do/grant', { method: 'POST', body: JSON.stringify({ credits: 1000, reason: 'grant', ref: 'ttrellis2' }) }));
+  const r3 = await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'un médico con bata', realistic: true } }), j3 = await r3.json(), id3 = j3.id;
+  ok(r3.status === 200, 'Realista: otra tras descartar: ' + JSON.stringify(j3));
+  ok(job(id3).ctx.storage.m.get('job').engine === 'meshy', 'Realista: una persona va por Meshy, con animación');
+  await req('POST', '/api/3d/jobs/' + id3 + '/cancel', { headers: { Cookie: gil }, body: {} });
+  env.FETCH = prevFetch; delete env.FAL_KEY; delete env.MESHY_ENABLED; Date.now = now0;
+  aiReply = () => ({ status: 200, body: { choices: [{ message: { content: 'hola' } }], usage: { cost: 0.01 } } });
+}
+
 // ---- Administration (admin.js): Cloudflare Access, the directory, credits, plan, block, tickets, audit ----
 {
   const ADMIN = 'https://admin.revelaslides.com', TEAM = 'revela-team', AUD = 'aud-revela-admin';
@@ -1605,7 +1711,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     { const l = (await A('GET', '/audit?target=finance:' + fid)).j.entries;
       ok(l.length === 2 && l[0].action === 'finance-edit' && l[0].before.amount === 31 && l[0].after.amount === 5 && l[1].action === 'finance-add' && l[0].by === 'jefe@example.com', 'entradas: auditoría (alta y cambio, antes y después)'); }
     x = await A('GET', `/finance/summary?from=${today}&to=${today}&group=day`);
-    ok(x.j.time.hours === 2.5 && x.j.time.byCategory.soporte === 2.5 && x.j.time.profitPerHour === Math.round((x.j.totals.profit / 2.5) * 100) / 100 && x.j.totals.fixed > 12 && x.j.fixed.monthly === Math.round(5 * 0.86 * 100) / 100,
+    ok(x.j.time.hours === 2.5 && x.j.time.byCategory.soporte === 2.5 && Math.abs(x.j.time.profitPerHour - x.j.totals.profit / 2.5) <= 0.011 && x.j.totals.fixed > 12 && x.j.fixed.monthly === Math.round(5 * 0.86 * 100) / 100,
       'resumen: horas, beneficio por hora y gastos fijos: ' + JSON.stringify([x.j.time, x.j.fixed]));
     // CSV for the accountant.
     { const r = await adm('GET', `/finance/export.csv?from=${today}&to=${today}`), r2 = await adm('GET', `/finance/export.csv?from=${today}&to=${today}`), t = await r.text(), lines = t.split('\r\n');

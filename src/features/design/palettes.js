@@ -21,6 +21,19 @@ export const PALETTES = {
   violet:    { name: 'Violeta',           bg: '#1b1030', fg: '#f3eefe', accents: ['#9b5de5', '#f15bb5', '#fee440', '#00bbf9', '#00f5d4', '#ff8fab'] },
   midnight:  { name: 'Medianoche',        bg: '#0b0f19', fg: '#e6e9ef', accents: ['#7aa2f7', '#bb9af7', '#9ece6a', '#e0af68', '#f7768e', '#2ac3de'] },
   grayscale: { name: 'Escala de grises',  bg: '#ffffff', fg: '#000000', accents: ['#404040', '#7f7f7f', '#a5a5a5', '#262626', '#595959', '#d9d9d9'] },
+  // More looks, so a new presentation doesn't come out in the same few colours every time (ai/authoring.js picks among them).
+  glaciar:   { name: 'Glaciar',     bg: '#f2f8fb', fg: '#0f2a3d', accents: ['#1b6ca8', '#238e9c', '#5b7fa6', '#e4572e', '#6e8e8f', '#b08126'] },
+  citrico:   { name: 'Cítrico',     bg: '#fffef7', fg: '#1d2b12', accents: ['#6aa30e', '#c47400', '#e03e52', '#0096a3', '#8a5cc2', '#b28e00'] },
+  frambuesa: { name: 'Frambuesa',   bg: '#fdf1f4', fg: '#3a1022', accents: ['#b0185a', '#e0527f', '#7b3fa0', '#b87023', '#2c8c8c', '#5a2a8f'] },
+  salvia:    { name: 'Salvia',      bg: '#f1f4ee', fg: '#26332a', accents: ['#4f7a5a', '#708874', '#a67b44', '#3f6e8c', '#a35d5d', '#6c7f3a'] },
+  pizarra:   { name: 'Pizarra',     bg: '#eef1f5', fg: '#1a2433', accents: ['#2f4a73', '#4f7cb0', '#b67018', '#348d81', '#b5445b', '#6b7a90'] },
+  mostaza:   { name: 'Mostaza',     bg: '#fbf8ef', fg: '#15233f', accents: ['#b37c00', '#1f3b73', '#c8502d', '#2e7d6e', '#7a4f9a', '#5d6b82'] },
+  laguna:    { name: 'Laguna',      bg: '#effafa', fg: '#0c3340', accents: ['#0a8f9c', '#23945e', '#2468c4', '#c2701d', '#8a62d1', '#d4476b'] },
+  lavanda:   { name: 'Lavanda',     bg: '#f6f2fc', fg: '#2a1f45', accents: ['#6a4bc7', '#906fca', '#e0609a', '#2a9d8f', '#b67d23', '#4b6fd1'] },
+  grafito:   { name: 'Grafito',     bg: '#1c1f24', fg: '#f0f1f3', accents: ['#f2a93b', '#6ec1e4', '#8fd18a', '#e7728c', '#b39ddb', '#f2d16b'] },
+  esmeralda: { name: 'Esmeralda',   bg: '#0c2a24', fg: '#f1f6f2', accents: ['#e0b84a', '#4fc79f', '#7fd0e0', '#e08a6a', '#b7d56b', '#c9a0e6'] },
+  burdeos:   { name: 'Burdeos',     bg: '#2a0f1b', fg: '#fbeff3', accents: ['#e87f98', '#f2b36b', '#8fd0c0', '#c9a0e6', '#f2d98a', '#7fb2e8'] },
+  cobalto:   { name: 'Cobalto',     bg: '#0c1f4d', fg: '#f2f5ff', accents: ['#ffd23f', '#6fb1ff', '#ff7a7a', '#7be0b0', '#c9a6ff', '#ffa94d'] },
 };
 
 // Heading / body font pairs, from the catalogue in fonts.js.
@@ -33,6 +46,12 @@ export const FONT_PAIRS = {
   bold:     { name: 'Impacto',   heading: 'Bebas Neue',       body: 'Roboto' },
   friendly: { name: 'Amable',    heading: 'Poppins',          body: 'Nunito' },
   websafe:  { name: 'Sin descargas', heading: 'Georgia',      body: 'Verdana' },
+  humanist: { name: 'Humanista', heading: 'Raleway',             body: 'Lato' },
+  display:  { name: 'Display',   heading: 'Abril Fatface',       body: 'Lato' },
+  geometric:{ name: 'Geométrica', heading: 'Josefin Sans',       body: 'Work Sans' },
+  elegant:  { name: 'Elegante',  heading: 'Cormorant Garamond',  body: 'Fira Sans' },
+  rounded:  { name: 'Redondeada', heading: 'Quicksand',          body: 'Nunito' },
+  condensed:{ name: 'Condensada', heading: 'Oswald',             body: 'Open Sans' },
 };
 
 const stackOf = name => FONTS.find(f => f.name === name)?.stack || '';

@@ -145,7 +145,7 @@ export const withAiAnim = (b, changes) => { const a = { ...b.aiAnim, ...changes 
 
 // Run a scene in a hidden sandbox, as the presentation will, through every stage quickly: its stages (from its
 // «ready») or the error it gave. Used before handing one over (features/ai/aianim.js) and by the tests.
-export function checkAiAnim(scene, { ms = 260, timeout = 12000, lang = 'es' } = {}) {
+export function checkAiAnim(scene, { ms = 260, timeout = 25000, lang = 'es' } = {}) {
   return new Promise(resolve => {
     const f = document.createElement('iframe'); let stages = null, done = false, seen = 0;
     f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;

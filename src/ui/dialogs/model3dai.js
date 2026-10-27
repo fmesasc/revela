@@ -48,6 +48,8 @@ export async function openModelAi({ api = local, interval = 2500 } = {}) {
       <label class="fr-l">${t('¿Qué modelo quieres?')}<textarea class="m3a-prompt" rows="3" maxlength="2000" placeholder="${esc(t('p. ej.: una taza de café de cerámica azul'))}"></textarea></label>
       <div class="m3a-examples">${EXAMPLES.map(x => `<button type="button" class="mini2 m3a-ex">${esc(t(x))}</button>`).join('')}</div>
       <label class="fr-l">${t('Fotos de referencia (opcional, hasta 3)')}<input type="file" class="m3a-photos" accept="image/jpeg,image/png" multiple></label>
+      <p class="host-help m3a-realnote" hidden>${t('De momento, en el modo Realista no se pueden usar fotos propias, por la seguridad de los usuarios: estamos trabajando en ello.')}</p>
+      ${info.realistic && !info.local ? `<label class="fr-chk"><input type="checkbox" class="m3a-real"${info.blender === false ? ' checked disabled' : ''}> ${t('Realista (con textura; y con esqueleto y animación si es una persona). Cuesta más y tarda unos minutos.')}</label>` : ''}
       <p class="host-help">${info.local ? t('La descripción, las fotos de referencia y las fotos del modelo se envían al servicio de IA (OpenRouter y el proveedor del modelo). El modelo se construye en tu navegador.')
         : t('La descripción y las fotos se envían al servicio de IA (OpenRouter y el proveedor del modelo). El guion de Blender se ejecuta en un servidor de Revela y el trabajo se borra a las 24 horas.')}</p>
       <p class="host-help m3a-est">${info.local ? t('Cada ronda cuesta lo que cobra la IA por ella, normalmente muy poco.') : t('Hasta {n} créditos (se cobra lo que cuesta de verdad, normalmente bastante menos).').replace('{n}', info.estimate?.max ?? '?')}</p>
@@ -64,6 +66,10 @@ export async function openModelAi({ api = local, interval = 2500 } = {}) {
     </div></div>`;
   document.body.appendChild(back);
   const q = s => back.querySelector(s);
+  // «Realista» sends the picture to a service outside the EU: until the data-processing agreement is signed, no photos of their own.
+  const sync = () => { const on = !!q('.m3a-real')?.checked, f = q('.m3a-photos'); if (on) f.value = ''; f.disabled = on; q('.m3a-realnote').hidden = !on;
+    const n = (on ? info.realisticEstimate : info.estimate)?.max; if (n != null && !info.local) q('.m3a-est').textContent = t('Hasta {n} créditos (se cobra lo que cuesta de verdad, normalmente bastante menos).').replace('{n}', n); };
+  q('.m3a-real')?.addEventListener('change', sync); sync();
   let timer = null, glb = null, closed = false;
   const close = () => { closed = true; clearTimeout(timer); back.remove(); };
   q('.modal-close').addEventListener('click', close);
@@ -109,8 +115,9 @@ export async function openModelAi({ api = local, interval = 2500 } = {}) {
     if (files.length > 3) { alertDialog(t('Como mucho 3 fotos de referencia.')); return; }
     q('.m3a-go').disabled = true;
     try {
-      const images = (await Promise.all(files.map(photo))).filter(Boolean);
-      current = (await api('3d/jobs', { prompt, images, lang: currentLang() })).id; working();
+      const realistic = !!q('.m3a-real')?.checked;
+      const images = realistic ? [] : (await Promise.all(files.map(photo))).filter(Boolean);
+      current = (await api('3d/jobs', { prompt, images, lang: currentLang(), ...(realistic && { realistic: true }) })).id; working();
     } catch (e) { fail(e); }
     finally { if (!closed) q('.m3a-go').disabled = false; }
   });

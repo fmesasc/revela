@@ -3562,6 +3562,66 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(room.size, 0, 'al colgar, salen de la sala');
   });
 
+  await test('diseños de la IA: más variedad, sin repetir los últimos, y todos se construyen con buen contraste', async () => {
+    const W = frame.contentWindow, AU = await W.eval("import('/src/features/ai/authoring.js')"), GL = R.gallery, P = R.palettes;
+    const keys = Object.keys(AU.DECK_DESIGNS), dark = k => !!AU.DARK_DESIGNS[k];
+    assert(keys.length >= 24, 'unos 25 diseños entre los que elegir (antes 13): ' + keys.length);
+    assert(keys.every(k => GL.GALLERY[k]), 'todos existen en la galería');
+    assert(Object.entries(AU.DARK_DESIGNS).every(([d, l]) => GL.GALLERY[l] && !dark(l) && /DARK/.test(AU.DECK_DESIGNS[d])), 'cada oscuro tiene su equivalente claro');
+    const NEW = ['glaciar', 'citrico', 'frambuesa', 'salvia', 'pizarra', 'mostaza', 'laguna', 'lavanda', 'grafito', 'esmeralda', 'burdeos', 'cobalto'];
+    const ratio = (a, b) => { const lum = h => { const v = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(x => x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; }; const p = lum(a), q = lum(b); return (Math.max(p, q) + 0.05) / (Math.min(p, q) + 0.05); };
+    for (const k of keys) {
+      const d = GL.buildFromGallery(k), pal = P.PALETTES[GL.GALLERY[k].palette];
+      assert(d && d.slides.length && pal, k + ': se construye');
+      assert(ratio(pal.fg, pal.bg) >= 7, k + ': texto sobre fondo con contraste ' + ratio(pal.fg, pal.bg).toFixed(1));
+      if (NEW.includes(k)) assert(pal.accents.filter(c => ratio(c, pal.bg) >= 3).length >= 5, k + ': casi todos sus acentos se leen sobre el fondo');
+    }
+    // Variety: a design among the last two is swapped for the closest one that wasn't — of the same light/dark kind, never among the last four.
+    const rnd = (v => () => v)(0.3);
+    eq(AU.varyDesign('nature', { recent: [], rnd }), 'nature', 'sin historial, se queda');
+    eq(AU.varyDesign('nature', { recent: ['minimal', 'corporate', 'education'], rnd }), 'nature', 'si no es de los dos últimos, se queda');
+    for (const k of keys) {
+      const recent = [k, 'zzz-no', 'mono', 'minimal', 'corporate'], v = AU.varyDesign(k, { recent, rnd });
+      assert(v !== k && keys.includes(v) && dark(v) === dark(k) && !recent.slice(0, 4).includes(v), k + ' → ' + v + ': otro, del mismo tipo y que no es de los últimos');
+    }
+    const seen = new Set(); for (let i = 0; i < 40; i++) seen.add(AU.varyDesign('nature', { recent: ['nature'], rnd: () => i / 40 }));
+    assert(seen.size >= 2, 'y no siempre el mismo: ' + [...seen].join(', '));
+    // The list in the prompt changes order, and the person's recent ones are named.
+    const a = AU.designsForPrompt(() => 0.9).map(x => x[0]).join(), b = AU.designsForPrompt(() => 0.1).map(x => x[0]).join();
+    assert(AU.designsForPrompt().length === keys.length, 'la lista entera');
+    const rs = [0.5, 0.2, 0.9, 0.1, 0.7]; let n = 0; const o1 = AU.designsForPrompt(() => rs[n++ % 5]).map(x => x[0]).join();
+    assert(o1 !== keys.join(), 'barajada (no siempre en el mismo orden)');
+    W.localStorage.removeItem('rv-recent-designs'); AU.rememberDesign('glaciar'); AU.rememberDesign('mostaza'); AU.rememberDesign('glaciar'); AU.rememberDesign('inventado');
+    eq(AU.recentDesigns().join(), 'glaciar,mostaza', 'recuerda los últimos (sin repetir y sin inventos)');
+    const real = W.fetch, calls = []; R.ai.setAiKey('sk-or-prueba'); R.ai.acceptPrivacy();
+    W.fetch = agentMock(W, [{ title: 'T', design: 'glaciar', slides: [{ kind: 'title', title: 'Hielo' }] }], calls);
+    const specs = await AU.createDeck({ topic: 'El hielo del Ártico' }); W.fetch = real;
+    assert(/last presentations used: glaciar, mostaza/.test(calls[0].messages[0].content), 'el aviso de lo reciente va en la petición');
+    assert(specs.design !== 'glaciar' && AU.DECK_DESIGNS[specs.design] && !dark(specs.design), 'y si el modelo repite uno reciente, se cambia por otro claro: ' + specs.design);
+    W.localStorage.removeItem('rv-recent-designs');
+  });
+
+  await test('Crear modelo 3D con IA: el modo Realista, de momento sin fotos propias (y lo avisa)', async () => {
+    reset(); const W = frame.contentWindow, M = await W.eval("import('/src/ui/dialogs/model3dai.js')"), calls = [];
+    const api = async (path, body) => { calls.push([path, body]); return path === '3d' ? { ok: true, realistic: true, blender: true, estimate: { max: 104 }, realisticEstimate: { max: 60 } } : { id: 'job-realista-123456', estimate: { max: 40 } }; };
+    await M.openModelAi({ api, interval: 5000 });
+    const m = D.getElementById('m3a-modal'), q = s => m.querySelector(s);
+    assert(q('.m3a-real') && q('.m3a-realnote').hidden && !q('.m3a-photos').disabled, 'sin marcar «Realista», las fotos se pueden usar');
+    assert(/104/.test(q('.m3a-est').textContent), 'sin Realista, la estimación de las rondas');
+    q('.m3a-real').checked = true; q('.m3a-real').dispatchEvent(new W.Event('change'));
+    assert(/60/.test(q('.m3a-est').textContent), 'con Realista, su estimación');
+    assert(q('.m3a-photos').disabled && !q('.m3a-realnote').hidden && /seguridad/.test(q('.m3a-realnote').textContent), 'con «Realista», las fotos se desactivan y se explica por qué');
+    q('.m3a-prompt').value = 'un microscopio de laboratorio'; q('.m3a-go').click(); await sleep(50);
+    const post = calls.find(c => c[0] === '3d/jobs');
+    assert(post && post[1].realistic === true && !(post[1].images || []).length, 'al servidor va «realista» y sin fotos: ' + JSON.stringify(post && Object.keys(post[1])));
+    m.querySelector('.modal-close')?.click(); m.remove();
+    // Sin Blender (solo la clave de TRELLIS): solo se ofrece el Realista, ya marcado.
+    await M.openModelAi({ api: async p => (p === '3d' ? { ok: true, realistic: true, blender: false, estimate: { max: 104 }, realisticEstimate: { max: 60 } } : {}), interval: 5000 });
+    const m2 = D.getElementById('m3a-modal');
+    assert(m2.querySelector('.m3a-real').checked && m2.querySelector('.m3a-real').disabled && m2.querySelector('.m3a-photos').disabled && /60/.test(m2.querySelector('.m3a-est').textContent), 'sin Blender: «Realista» marcado, fijo, sin fotos y con su estimación');
+    m2.remove();
+  });
+
   await test('Crear modelo 3D con IA: rondas, cambios e insertar (servidor simulado)', async () => {
     reset(); const W = frame.contentWindow, M = await W.eval("import('/src/ui/dialogs/model3dai.js')"), calls = [];
     // The server: round 1 fails in Blender, round 2 works; then a request for changes, and discarding.

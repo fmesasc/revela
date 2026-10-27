@@ -442,6 +442,7 @@ export const CATALOG = {"biz_strategy":{"name":"Plan estratégico y OKR","summar
   "show_3d_platform":{"name":"Diseño de niveles: el salto","summary":"Hoja de personaje 3D desde cuatro ángulos, andar y saltar un hueco, física con ecuación y código, Transformar el mapa del nivel y etiquetar","cat":"showcase","file":"show_3d"},
   "show_3d_theater":{"name":"Teatro: el ensayo de la escena","summary":"Personajes 3D que van a sus marcas vistos desde arriba y, con Transformar, desde el patio de butacas; réplicas con sus gestos y telón","cat":"showcase","file":"show_3d"},
   "show_3d_materials":{"name":"Materiales que juegan con la luz","summary":"Estudio de fotografía 3D: iridiscencia desde dos ángulos, metal cepillado que gira, hoja a contraluz, terciopelo, muestras con Transformar","cat":"showcase","file":"show_3d"},
+  "show_3d_ai":{"name":"Modelos 3D creados con IA","summary":"Galería de seis modelos 3D hechos con IA a partir de un texto: giran con el ratón, con datos de cada uno, ideas para clase y cómo pedirlos","cat":"showcase","file":"show_3d_ai"},
   "show_anim_firefly":{"name":"Cuento: la luciérnaga sin luz","summary":"Un cuento con entradas y salidas: narración visible solo en su paso, diálogos que aparecen y se van, vuelos y luz que vuelve","cat":"showcase","file":"show_anim"},
   "show_anim_ferries":{"name":"Ferris entre islas: rutas de verano","summary":"Trayectorias sobre un mapa: barcos que giran con el camino, rutas que se dibujan a su paso, tres líneas a la vez, escala y horarios","cat":"showcase","file":"show_anim"},
   "show_anim_foosball":{"name":"Torneo de futbolín de la oficina","summary":"Animaciones encadenadas con sonidos como un juego: pases con clic, tiro, gol con aplausos, cuadro que avanza, tabla y porra","cat":"showcase","file":"show_anim"},
@@ -513,6 +514,7 @@ export const LOADERS = {
   "sci_tfg2": () => import('./sci_tfg2.js'),
   "sci_tfg3": () => import('./sci_tfg3.js'),
   "show_3d": () => import('./show_3d.js'),
+  "show_3d_ai": () => import('./show_3d_ai.js'),
   "show_anim": () => import('./show_anim.js'),
   "showcase": () => import('./showcase.js'),
 };

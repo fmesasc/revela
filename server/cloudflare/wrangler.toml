@@ -62,6 +62,21 @@ AI_PRICES = '{"openai/gpt-4o-mini":[0.15,0.6],"google/gemini-2.5-flash":[0.3,2.5
 AI_3D_MODEL = "anthropic/claude-sonnet-5"
 AI_3D_REASONING = "medium"
 BLENDER_USD_PER_SECOND = "0.0001"
+# «Realista»: personas y objetos con textura (y, en humanoides, esqueleto + animación) por Meshy a
+# través de fal.ai, para lo que el bpy desde cero no puede. Se activa SOLO con el secreto FAL_KEY
+# (`npx wrangler secret put FAL_KEY`); sin él, el modo realista ni se ofrece y todo sigue con el bpy.
+# Coste real de fal, que se cobra una vez (no por ronda):
+# Objetos (no personas) van por TRELLIS.2 en Runware (secreto RUNWARE_KEY; o TRELLIS en fal si solo hay FAL_KEY):
+# imagen de referencia (~0,045 $) + TRELLIS (medido: 0,011–0,062 $) ≈ 0,07 $ reales.
+# TRELLIS_USD = "0.12"          # lo que se cobra por modelo (una vez)
+# TRELLIS_TEXTURE = "1024"      # 512 | 1024 | 2048
+# TRELLIS_RESOLUTION = "1024"   # 512 | 1024 | 1536 (solo Runware)
+# TRELLIS_BRIEF_MODEL / TRELLIS_IMAGE_MODEL   # modelos de OpenRouter del brief y de la imagen
+# REALISTIC_ENGINE = "meshy"    # fuerza Meshy también para objetos
+# MESHY_USD = "1.2"              # texturizado
+# MESHY_USD_ANIMATED = "1.52"    # texturizado + esqueleto + animación
+# MESHY_ANIM_ACTION = "92"       # id de animación de fal (0 = Idle)
+# MESHY_MAX_WAIT = "480"         # segundos antes de rendirse si fal no termina
 # BLENDER_URL (the revela-blender Worker, e.g. https://revela-blender.<account>.workers.dev) is set in
 # Cloudflare with the secret BLENDER_SECRET; without both the feature is off (503 'not configured').
 # Emails (mail.js). From whom (optional; default "Revela <avisos@revelaslides.com>"):
@@ -111,6 +126,7 @@ new_sqlite_classes = ["ShareBox", "Limits"]
 # Accounts API (api.js): one object per account, the global AI budget, and
 # desktop sign-ins. Secrets (never in this file): `npx wrangler secret put …`
 #   OPENROUTER_KEY          the AI key (set a credit limit on it at openrouter.ai)
+# Var (optional): OPENROUTER_LOW_USD — warn the admins by email when OpenRouter's real balance drops below this (default 5).
 #   STRIPE_SECRET_KEY       Stripe's secret key (billing; optional until you sell)
 #   STRIPE_WEBHOOK_SECRET   the signing secret of the webhook (…/api/billing/webhook)
 #   STRIPE_TEST_SECRET_KEY, STRIPE_TEST_WEBHOOK_SECRET   Stripe's test mode (…/api/billing/webhook-test; optional:
@@ -119,6 +135,9 @@ new_sqlite_classes = ["ShareBox", "Limits"]
 # CREDITS_1500, TEAM_SEAT), STRIPE_MODE (live | test; default live). See docs/NUBE.md.
 #   UNSPLASH_ACCESS_KEY     Unsplash's access key (photos; optional)
 #   PEXELS_API_KEY          Pexels' API key (photos; optional)
+#   RUNWARE_KEY             Runware key: «realistic» objects by TRELLIS.2 (optional)
+#   FAL_KEY                 fal.ai key for «realistic» 3D (Meshy): persons and realistic/animated
+#                           models; optional — without it the realistic mode is off and bpy is used
 #   CALLS_APP_ID, CALLS_APP_SECRET   Cloudflare Realtime SFU app (video calls; optional)
 #   TURN_KEY_ID, TURN_KEY_API_TOKEN  Cloudflare Realtime ▸ TURN Server: relays for the phone remote, votes and live collaboration (optional; without them, STUN only)
 [[durable_objects.bindings]]

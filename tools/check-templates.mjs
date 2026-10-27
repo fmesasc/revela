@@ -57,12 +57,12 @@ for (const [key, meta] of Object.entries(EXAMPLES)) {
       const slack = deco ? 600 : 40;                      // (decorations may bleed off the slide; content may not)
       if (b.type !== 'connector' && (b.x < -slack || b.y < -slack || b.x + b.w > W + slack || b.y + b.h > H + slack)) bad(`${what}: fuera de la diapositiva (${b.x},${b.y} ${b.w}×${b.h})`);
       if (b.type === 'text' && !String(b.html || '').trim() && !b.ph) bad(`${what}: texto vacío`);
-      if (b.type === 'model' && !MODELS.has(b.src)) bad(`${what}: modelo 3D que no está en las bibliotecas`);
+      if (b.type === 'model' && !MODELS.has(b.src) && !/(^|\/)assets\/ai3d\/[\w-]+\.glb$/.test(b.src)) bad(`${what}: modelo 3D que no está en las bibliotecas`);
       if (b.type === 'chart' && !CHARTS.has(b.chartType || 'bar')) bad(`${what}: gráfico «${b.chartType}»`);
       if (b.type === 'diagram' && !LAYOUTS.has(b.layout)) bad(`${what}: diagrama «${b.layout}»`);
       if (b.type === 'poll' && !POLLS.has(b.kind || 'choice')) bad(`${what}: votación «${b.kind}»`);
       for (const a of [b.animation, ...(b.anims || [])].filter(Boolean)) if (!EFFECTS.has(a.effect)) bad(`${what}: efecto «${a.effect}»`);
-      if ((b.type === 'image' || b.type === 'video' || b.type === 'audio') && !/^(data:|https:\/\/|assets\/)/.test(b.src || '')) bad(`${what}: dirección «${String(b.src).slice(0, 40)}»`);
+      if ((b.type === 'image' || b.type === 'video' || b.type === 'audio') && !/^(data:|https:\/\/|assets\/)|\/assets\/ai3d\//.test(b.src || '')) bad(`${what}: dirección «${String(b.src).slice(0, 40)}»`);
     }
   });
 }

@@ -67,7 +67,7 @@ import { docsSettings, TRASH_DAYS, FOLDERS } from './docs.js';
 import { mail, sendMail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL, unsubToken } from './mail.js';
 import { renderNews, newsTick, linkTarget, NEWS_LANGS, recipientToken, readRecipientToken } from './news.js';
 import { scheduleItem, scheduleAll, dayOf } from './schedule.js';
-import { handle3d, configured3d } from './model3d.js';
+import { handle3d, configured3d, configuredRealistic as configured3dAny } from './model3d.js';
 import { createTicket, supportReply, directoryUpsert, directoryAccess, directoryRemove, CHARGES, emails as adminEmails } from './admin.js';
 import { record } from './finance.js';
 import { NOTICE_PLACES, noticesFor, noticesOp } from './notices.js';
@@ -1411,7 +1411,7 @@ export async function handleApi(req, env, url) {
       const trialDays = billing && r.plan !== 'pro' ? await trialOffer(env, A, mode) : 0;
       // (A renewed session: its cookie lasts as long again — the app asks /me when it opens.)
       const renew = me.renewed && me.via === 'cookie' ? { 'Set-Cookie': `${COOKIE}=${me.raw}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=${me.renewed * 86400}` } : {};
-      return json({ ...r, billing, billingTest: mode === 'test', portal, trialDays, photos: photoProviders(env), model3d: configured3d(env) && !!env.MODELJOBS, ...(me.impersonation && { impersonation: { by: me.impersonation.by, until: me.impersonation.until } }) }, 200, renew);
+      return json({ ...r, billing, billingTest: mode === 'test', portal, trialDays, photos: photoProviders(env), model3d: (configured3d(env) || configured3dAny(env)) && !!env.MODELJOBS, ...(me.impersonation && { impersonation: { by: me.impersonation.by, until: me.impersonation.until } }) }, 200, renew);
     }
     case '/mail/test': {                                  // «Send me a test email» (only to the account's own address)
       if (req.method !== 'POST') return json({ error: 'method' }, 405);

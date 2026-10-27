@@ -326,7 +326,7 @@ export function openCreateDeck() {
         // (A new one starts from a design with its layouts — the one chosen, or the AI's for the content —: its
         // slides are composed like the templates', not plain lists on an empty background.)
         if (q('.ad-new').checked) {
-          const d = buildFromGallery(q('.ad-pal').value || specs.design || 'minimal'); ensureLayouts(d);
+          const designKey = q('.ad-pal').value || specs.design || 'minimal', d = buildFromGallery(designKey); ensureLayouts(d); deck.rememberDesign(designKey);
           if (specs.title) d.name = specs.title;
           d.legibility = opts.dest;   // (the destination the slides are laid out for: fromspec.js leg())
           scaleDeckType(d, profileFor(opts.dest).scale);   // (projector: bigger type everywhere; print: a touch smaller)

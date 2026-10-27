@@ -242,13 +242,47 @@ export const DECK_DESIGNS = { minimal: 'any topic, very clean, white background,
   notebook: 'classes and workshops, a lined notebook page, cream background', nature: 'science, nature, health, light background with soft circles',
   sketch: 'creative, hand-drawn frame, white background', bold: 'strong statements, black and white with a side band',
   mono: 'magazine style, editorial, strong typography, white background',
+  glaciar: 'science, climate, health, calm; icy white with blue and teal, soft circle', citrico: 'fun, youth, workshops; bright white with lime, orange and pink dots',
+  frambuesa: 'creative, culture, design, people; blush pink with berry, display headlines', salvia: 'wellbeing, nature, sustainability, calm; sage green, elegant serif',
+  pizarra: 'business, engineering, data; light slate with a navy top band, geometric type', mostaza: 'editorial, history, statements; warm white with mustard and navy, condensed headlines',
+  laguna: 'water, travel, leisure, health; pale aqua with a gradient foot band', lavanda: 'education, psychology, creativity; soft lilac with rounded shapes',
   ocean: 'DARK blue background (only if asked for a dark look)', tech: 'DARK background, technology, software, data (only if asked for a dark look)',
   night: 'DARK, keynotes (only if asked for a dark look)', pitch: 'DARK violet, startups, products, bold (only if asked for a dark look)',
-  warm: 'DARK brown, humanities, stories (only if asked for a dark look)' };
-export const DARK_DESIGNS = { ocean: 'nature', tech: 'corporate', night: 'mono', pitch: 'bold', warm: 'academic' };   // (→ its light counterpart)
+  warm: 'DARK brown, humanities, stories (only if asked for a dark look)',
+  grafito: 'DARK charcoal with amber, engineering, finance (only if asked for a dark look)', esmeralda: 'DARK green with gold, luxury, nature, finance (only if asked for a dark look)',
+  burdeos: 'DARK wine with rose, culture, fashion, food (only if asked for a dark look)', cobalto: 'DARK cobalt blue with yellow, energetic, sport, youth (only if asked for a dark look)' };
+export const DARK_DESIGNS = { ocean: 'nature', tech: 'corporate', night: 'mono', pitch: 'bold', warm: 'academic', grafito: 'pizarra', esmeralda: 'salvia', burdeos: 'frambuesa', cobalto: 'citrico' };   // (→ its light counterpart)
 const ASKS_DARK = /\b(dark|oscur\w*|negr\w*|noche|night|black|fosc\w*|nit|sombre|dunkel|scur\w*)\b/i;
 // A dark design only if the brief asks for one; otherwise its light counterpart.
 export const lightUnlessAsked = (d, opts) => DARK_DESIGNS[d] && !ASKS_DARK.test([opts.topic, opts.tone, opts.audience, opts.palette].filter(Boolean).join(' ')) ? DARK_DESIGNS[d] : d;
+
+// Variety. The AI used to pick, for «science» or «a lesson» or «a report», the design that matched best — and the same one every time, so a person
+// making several presentations got the same look in all of them. Now: the order of the list changes on each call, the ones this person got
+// lately are named in the prompt, and if the answer is one of those anyway, it is swapped for the closest one that wasn't.
+// What each design feels like (words they share are what «closest» means) — hand-written, not computed.
+const FEEL = { minimal: 'clean any', education: 'friendly school bright', corporate: 'business clean', academic: 'sober research editorial', notebook: 'school handmade',
+  nature: 'nature calm', sketch: 'creative handmade', bold: 'statement strong', mono: 'editorial strong', glaciar: 'calm science clean', citrico: 'friendly bright youth',
+  frambuesa: 'creative culture warm', salvia: 'calm nature wellbeing', pizarra: 'business tech clean', mostaza: 'editorial warm statement', laguna: 'calm water bright',
+  lavanda: 'creative calm school', ocean: 'calm science', tech: 'tech business', night: 'strong editorial', pitch: 'strong youth statement', warm: 'warm culture editorial',
+  grafito: 'tech business strong', esmeralda: 'nature calm editorial', burdeos: 'culture warm editorial', cobalto: 'youth strong bright' };
+const RECENT_KEY = 'rv-recent-designs', RECENT_KEEP = 8;
+export const recentDesigns = () => { try { const a = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); return Array.isArray(a) ? a.filter(k => DECK_DESIGNS[k]) : []; } catch { return []; } };
+export const rememberDesign = key => {
+  if (!DECK_DESIGNS[key]) return;
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify([key, ...recentDesigns().filter(k => k !== key)].slice(0, RECENT_KEEP))); } catch {}
+};
+// The key, or — when it is among the last two this person got — the closest design (the same light/dark kind) that isn't among the last four.
+export function varyDesign(key, { recent = recentDesigns(), rnd = Math.random } = {}) {
+  if (!DECK_DESIGNS[key] || !recent.slice(0, 2).includes(key)) return key;
+  const feel = k => new Set((FEEL[k] || '').split(' ')), mine = feel(key), dark = k => !!DARK_DESIGNS[k];
+  const near = Object.keys(DECK_DESIGNS).filter(k => k !== key && dark(k) === dark(key) && !recent.slice(0, 4).includes(k))
+    .map(k => [k, [...feel(k)].filter(w => mine.has(w)).length]).sort((a, b) => b[1] - a[1]);
+  if (!near.length) return key;
+  const best = near.filter(x => x[1] === near[0][1]), pool = best.length >= 2 ? best : near.slice(0, 3);       // (the closest ones; if one stands out, it and the next ones)
+  return pool[Math.floor(rnd() * pool.length)][0];
+}
+// The designs for a prompt: shuffled, so no one is always first.
+export const designsForPrompt = (rnd = Math.random) => Object.entries(DECK_DESIGNS).map(e => [rnd(), e]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
 // opts: { topic, source (document text), count, audience, tone, language, images, palette,
 //   attachments (pictures: attach.js — a PDF's figures among them, marked figure: true) }
 // → specs (with .title and .design: one of DECK_DESIGNS, for a new deck).
@@ -350,10 +384,12 @@ export async function createDeck(opts = {}) {
   const src = withResearch(opts.source, opts.research);
   const source = src ? `\n\nBase the content ONLY on this document (keep its real facts, figures and terms; leave out references and acknowledgements):\n"""\n${String(src).slice(0, 60000)}\n"""` : '';
   const pics = (opts.attachments || []).filter(a => a.kind === 'image'), figs = pics.map((a, i) => (a.figure ? i + 1 : 0)).filter(Boolean);
+  const recent = opts.recentDesigns ?? recentDesigns();
   const out = await chatJSON([
-    { role: 'system', content: `You are an expert presentation designer and speechwriter. Write a deck that someone will PRESENT out loud: few words on the slides, the speech in the notes. Answer only JSON: {"title":"…","design":"<one of: ${Object.entries(DECK_DESIGNS).map(([k, v]) => `${k} (${v})`).join('; ')}>","slides":[{"kind":"…",…}]}.
+    { role: 'system', content: `You are an expert presentation designer and speechwriter. Write a deck that someone will PRESENT out loud: few words on the slides, the speech in the notes. Answer only JSON: {"title":"…","design":"<one of: ${designsForPrompt().map(([k, v]) => `${k} (${v})`).join('; ')}>","slides":[{"kind":"…",…}]}.
 ${SPEC_DOC}
 How to make it good:
+- Design: many different looks suit any subject, so don't pick the textbook match out of habit — choose the one that fits THIS subject, audience and mood.${recent.length ? ` The person's last presentations used: ${recent.join(', ')}; avoid those unless the brief asks for one.` : ''}
 - Titles say the slide's message, as a short statement (max ~9 words): "Monolithic simulators are hard to adapt", not "Limitations".
 - Start with a "title" slide (subtitle: who / where, if the document says), end with a "closing" slide. Decks of 12 slides or more: a "section" slide opening each main part (one every 4-7 slides, its title the part's name, as in the agenda); none in decks under 12 slides.
 - Vary the kinds; a "bullets" slide at most every third slide, with 3-5 points. Use "key_idea" for the central claims, "steps" for processes, "comparison" for before/after, "features" for components.
@@ -450,7 +486,7 @@ ${profileFor(opts.dest).guide ? '- ' + profileFor(opts.dest).guide + '\n' : ''}W
   varyLists(specs);
   sentenceCase(specs, opts.language || lang());
   tidyBelow(specs);
-  specs.title = str(res.title); specs.design = DECK_DESIGNS[res.design] ? lightUnlessAsked(res.design, opts) : null; specs.quality = q;
+  specs.title = str(res.title); specs.design = DECK_DESIGNS[res.design] ? varyDesign(lightUnlessAsked(res.design, opts), { recent: opts.recentDesigns }) : null; specs.quality = q;
   return specs;
 }
 // Whether a slide has something to show besides its title.
