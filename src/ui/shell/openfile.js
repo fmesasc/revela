@@ -76,7 +76,15 @@ export async function openPresentation(file) {
   // (A PowerPoint says how far it is, and afterwards what of it couldn't be kept as it was — never left out unsaid.)
   const notes = [];
   try {
-    replaceDeck(await whileOpening(async say => fitImported(await (isODF(file) ? importODP(file) : importPPTX(file, { notes, progress: p => say?.(progressText(p)) }))), file.name));
+    const deck = await whileOpening(async say => fitImported(await (isODF(file) ? importODP(file) : importPPTX(file, { notes, progress: p => say?.(progressText(p)) }))), file.name);
+    // A package with a theme and no slides (a theme file, a template with no slides): it isn't a presentation to open, so the open one
+    // stays and gets that theme — the same as dropping a .thmx.
+    if (!Array.isArray(deck?.slides)) {
+      if (!applyThemeFrom(sanitizeDeck(deck))) throw new Error('No se encontraron diapositivas en el archivo.');
+      alertDialog(t('Ese archivo no tiene diapositivas, solo un tema: se ha aplicado a la presentación abierta.'));
+      return true;
+    }
+    replaceDeck(deck);
     if (notes.length) alertDialog(importNotesText(notes));
     return true;
   }

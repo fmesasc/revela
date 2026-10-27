@@ -3368,6 +3368,7 @@ export default {
   "Usar el tema de otra presentación…": "Thema van een andere presentatie gebruiken…",
   "Abrir un tema de Office (.thmx)…": "Een Office-thema openen (.thmx)…",
   "Guardar el tema (.thmx)": "Thema opslaan (.thmx)",
+  "Ese archivo no tiene diapositivas, solo un tema: se ha aplicado a la presentación abierta.": "Dat bestand heeft geen dia's, alleen een thema: het is toegepast op de geopende presentatie.",
   "Ese archivo no tiene un tema que se pueda usar.": "Dat bestand heeft geen bruikbaar thema.",
   "No se pudo leer el tema: ": "Het thema kon niet worden gelezen: ",
   "No se pudo guardar el tema: ": "Het thema kon niet worden opgeslagen: ",

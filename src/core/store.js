@@ -274,6 +274,9 @@ export function adoptDeck(deck, { sameDocument = false } = {}) {
   notify();
 }
 export function replaceDeck(deck) {
+  // (Something that isn't a presentation — a theme-only package, a broken file — never replaces the open one: before this, the open
+  // presentation was lost and every click after it failed with «reading '0'»/«reading 'length'».)
+  if (!deck || !Array.isArray(deck.slides)) throw new Error('El archivo no contiene diapositivas.');
   // Another deck: leave the master view too (it would edit a master that isn't there).
   leaving(); epoch++;
   // (Also from a presentation marked as final: that protects it, not the app.)

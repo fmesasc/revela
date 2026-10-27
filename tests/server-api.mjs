@@ -1111,9 +1111,12 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     await req('POST', '/api/mail/prefs', { headers: { Cookie: pia }, body: { news: false } });   // (as it was: the other newsletter tests count who asked)
     // (The copy to download: accounts, settings, newsletters, audit — once per 20 minutes, with a reason, audited; nothing secret in it.)
     ok((await A('POST', '/backup', { body: {} })).status === 400, 'copia: pide un motivo');
-    x = await A('POST', '/backup', { body: { reason: 'Copia de seguridad semanal' } });
-    ok(x.status === 200 && Array.isArray(x.j.accounts) && x.j.accounts.some(u => u.sub === '1414') && Array.isArray(x.j.audit) && x.j.config && 'tours' in x.j.config && !/secret|token|password/i.test(JSON.stringify(x.j.accounts)), 'copia: cuentas, ajustes, boletines y auditoría: ' + x.status);
+    x = await A('POST', '/backup', { body: { reason: 'Copia de seguridad semanal', include: ['accounts', 'config', 'audit'], auditLines: 5 } });
+    ok(x.status === 200 && Array.isArray(x.j.accounts) && x.j.accounts.some(u => u.sub === '1414') && Array.isArray(x.j.audit) && x.j.audit.length <= 5 && x.j.config && 'tours' in x.j.config && !/secret|token|password/i.test(JSON.stringify(x.j.accounts)), 'copia: lo elegido (cuentas, ajustes y 5 líneas de auditoría): ' + x.status);
+    ok(!('accesses' in x.j) && !('newsletters' in x.j) && x.j.include.join() === 'accounts,config,audit', 'copia: y solo eso: nada de lo que no se pidió');
     ok((await A('POST', '/backup', { body: { reason: 'otra vez' } })).status === 429, 'copia: dos seguidas, no (cuesta lecturas)');
+    // (Lo que entra es elección de quien la pide: en este test el freno ya saltó, así que se comprueba lo que se puede sin pedir otra: nada de secciones vacías.)
+    ok((await A('POST', '/backup', { body: { reason: 'x', include: ['nada'] } })).status === 400, 'copia: una lista sin secciones válidas, no');
     ok((await A('GET', '/audit?limit=5')).j.entries.some(e => e.action === 'backup'), 'copia: queda en la auditoría');
     ok((await A('GET', '/access')).j.access.some(x => x.sub === '1414') && (await A('GET', '/access?day=2000-01-01')).j.access.length === 0, 'accesos: el registro de todos, y por día'); }
   ok((await A('GET', '/users?q=nadie')).j.users.length === 0, 'directorio: sin resultados');

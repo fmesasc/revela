@@ -20,7 +20,7 @@ export async function saveVersion(name = '', auto = false, kind = null) {
   const deck = await dehydrate(snapshot(state.deck)).catch(() => (approxSize(state.deck) > 20e6 ? null : snapshot(state.deck)));
   if (!deck) return null;
   const v = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, time: Date.now(), name, auto, ...(kind && { kind }),
-    title: deck.name || '', slides: deck.slides.length, deck };
+    title: deck.name || '', slides: deck.slides?.length ?? 0, deck };
   await verPut(v);
   if (auto) await prune();
   return v.id;

@@ -3368,6 +3368,7 @@ export default {
   "Usar el tema de otra presentación…": "Beste aurkezpen baten gaia erabili…",
   "Abrir un tema de Office (.thmx)…": "Office gai bat ireki (.thmx)…",
   "Guardar el tema (.thmx)": "Gaia gorde (.thmx)",
+  "Ese archivo no tiene diapositivas, solo un tema: se ha aplicado a la presentación abierta.": "Fitxategi horrek ez du diapositibarik, gai bat baizik: irekitako aurkezpenari aplikatu zaio.",
   "Ese archivo no tiene un tema que se pueda usar.": "Fitxategi horrek ez du erabil daitekeen gairik.",
   "No se pudo leer el tema: ": "Ezin izan da gaia irakurri: ",
   "No se pudo guardar el tema: ": "Ezin izan da gaia gorde: ",

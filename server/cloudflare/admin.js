@@ -15,7 +15,7 @@
 // itself (Origin), so another site can't use the Access cookie (CSRF).
 //
 //   GET  /api/admin/whoami                 → { email }
-//   POST /api/admin/backup { reason }          → the copy to download: { accounts, accesses, config, newsletters, audit } (once per 20 min)
+//   POST /api/admin/backup { reason, include?, auditLines? } → the copy to download: only what `include` lists of { accounts, accesses, config, newsletters, audit } (once per 20 min)
 //   GET  /api/admin/stats                  → { users, pro, blocked, ai: { month, usd, limit }, tickets: { open, waiting, closed },
 //                                          test: { accounts (billingTest), pro (Pro only from test mode), credits } }
 //   GET  /api/admin/users?q=&cursor=       → { users, cursor }   (q: words in any field; none: most recently seen)
@@ -843,12 +843,22 @@ export async function handleAdmin(req, env, url) {
   // requests whatever the number of accounts), once per 20 minutes at most, and says who asked and why in the audit log.
   if (POST && path === '/backup') {
     const reason = clip(body.reason, 500).trim(); if (!reason) return json({ error: 'bad request' }, 400);
+    // What goes in is the administrator's choice: `include` (accounts, accesses, config, newsletters, audit; all by default) and, for the audit
+    // log, how many lines (1-1000; 1000 by default). Less asked is less read.
+    const ALL = ['accounts', 'accesses', 'config', 'newsletters', 'audit'];
+    const include = Array.isArray(body.include) ? ALL.filter(k => body.include.includes(k)) : ALL;
+    if (!include.length) return json({ error: 'bad request' }, 400);
+    const auditLines = Math.min(1000, Math.max(1, Math.round(+body.auditLines || 1000)));
     const gate = await call(stub(env.BUDGET, 'global'), 'backup-gate', {}); if (!gate.ok) return json({ error: 'too soon', wait: gate.wait }, 429);
-    const dir = await call(D, 'backup'), cfg = await call(stub(env.BUDGET, 'global'), 'backup-config'), auditLog = []; let cursor = null;
-    for (let i = 0; i < 5; i++) { const r = await call(L, 'list', { cursor, limit: 200 }); auditLog.push(...(r.entries || [])); cursor = r.cursor; if (!cursor) break; }
-    await audit(env, { by, action: 'backup', target: 'backup', reason, after: { accounts: dir.users.length, news: cfg.news.length, audit: auditLog.length } });
-    return json({ app: 'revela', at: new Date().toISOString(), by, note: 'Copia de la administración de Revela: cuentas del directorio, ajustes, boletines y registro de auditoría. Sin presentaciones ni datos de pago.',
-      accounts: dir.users, accesses: dir.access, config: cfg.config, newsletters: cfg.news, audit: auditLog });
+    const want = k => include.includes(k);
+    const dir = want('accounts') || want('accesses') ? await call(D, 'backup') : { users: [], access: [] };
+    const cfg = want('config') || want('newsletters') ? await call(stub(env.BUDGET, 'global'), 'backup-config') : { config: {}, news: [] };
+    const auditLog = []; let cursor = null;
+    if (want('audit')) for (let i = 0; i < Math.ceil(auditLines / 200); i++) { const r = await call(L, 'list', { cursor, limit: Math.min(200, auditLines - auditLog.length) }); auditLog.push(...(r.entries || [])); cursor = r.cursor; if (!cursor || auditLog.length >= auditLines) break; }
+    await audit(env, { by, action: 'backup', target: 'backup', reason, after: { include, accounts: want('accounts') ? dir.users.length : undefined, news: want('newsletters') ? cfg.news.length : undefined, audit: want('audit') ? auditLog.length : undefined } });
+    return json({ app: 'revela', at: new Date().toISOString(), by, include, note: 'Copia de la administración de Revela. Sin presentaciones ni datos de pago.',
+      ...(want('accounts') && { accounts: dir.users }), ...(want('accesses') && { accesses: dir.access }), ...(want('config') && { config: cfg.config }),
+      ...(want('newsletters') && { newsletters: cfg.news }), ...(want('audit') && { audit: auditLog }) });
   }
   if (POST && path === '/sessions-end') {
     const reason = clip(body.reason, 500).trim(); if (!reason || (body.id !== undefined && !/^[\w-]{16}$/.test(body.id))) return json({ error: 'bad request' }, 400);

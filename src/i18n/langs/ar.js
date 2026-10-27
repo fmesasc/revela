@@ -3368,6 +3368,7 @@ export default {
   "Usar el tema de otra presentación…": "استخدام سمة عرض تقديمي آخر…",
   "Abrir un tema de Office (.thmx)…": "فتح سمة Office ‏(.thmx)…",
   "Guardar el tema (.thmx)": "حفظ السمة (.thmx)",
+  "Ese archivo no tiene diapositivas, solo un tema: se ha aplicado a la presentación abierta.": "لا يحتوي هذا الملف على شرائح، بل على سمة فقط: وقد طُبّقت على العرض المفتوح.",
   "Ese archivo no tiene un tema que se pueda usar.": "لا يحتوي هذا الملف على سمة يمكن استخدامها.",
   "No se pudo leer el tema: ": "تعذّرت قراءة السمة: ",
   "No se pudo guardar el tema: ": "تعذّر حفظ السمة: ",

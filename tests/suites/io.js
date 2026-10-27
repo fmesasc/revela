@@ -1497,6 +1497,25 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset();
   });
 
+  await test('abrir un paquete con solo un tema (sin diapositivas) no deja rota la presentación abierta', async () => {
+    // (Un .pptx sin presentation.xml —un tema suelto, una plantilla vacía—: antes sustituía la presentación por algo sin `slides` y todo fallaba después.)
+    R.store.replaceDeck(R.model.emptyDeck()); R.render();
+    R.state.deck.slides[0].blocks[0].html = 'Mi título'; R.render();
+    const tema = await fixture('brisa.thmx'), comoPptx = new TW.File([await tema.arrayBuffer()], 'tema-suelto.pptx');
+    let ok = false;
+    const abrir = R.openfile.openPresentation(comoPptx).then(r => { ok = r; });
+    await sleep(400); D.querySelectorAll('.modal-backdrop .dlg-ok').forEach(b => b.click()); await abrir;
+    assert(ok, 'se acepta: el tema se aplica');
+    const d = R.state.deck;
+    assert(Array.isArray(d.slides) && d.slides.length === 1 && /Mi título/.test(d.slides[0].blocks[0].html), 'la presentación abierta sigue ahí, con lo escrito');
+    eq(d.officeTheme.name, 'Brisa', 'y con el tema del archivo');
+    R.store.clampSlide(); assert(R.store.currentSlide(), 'y se puede seguir trabajando (antes: «reading \'0\'»)');
+    // Y lo que no es una presentación no la sustituye nunca.
+    let lanzo = false; try { R.store.replaceDeck({ name: 'sin diapositivas' }); } catch { lanzo = true; }
+    assert(lanzo && R.state.deck === d, 'replaceDeck rechaza algo sin diapositivas y deja la actual como estaba');
+    reset();
+  });
+
   await test('temas: exportar a PowerPoint escribe el tema (colores, mapa, fuentes) y al volver a importarlo es el mismo', async () => {
     const d = await themeImport('noche.pptx'), blob = await R.pptx.buildPptxBlob(d);
     const zip = await TW.JSZip.loadAsync(blob), th = await zip.file('ppt/theme/theme1.xml').async('string');
