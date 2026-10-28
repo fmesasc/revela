@@ -65,7 +65,7 @@ export async function withSkeleton(glb) {
     const guess = A.detectKind(shape); if (guess.kind !== 'person') return { glb, animated: false };
     if (guess.yaw) shape = A.modelShape(g, guess.yaw);
     const J = A.proposeJoints(shape, 'person', guess.opts || {});
-    return { glb: A.buildRig(g, shape, 'person', J), animated: true };
+    return { glb: A.buildRig(g, shape, 'person', J, { heat: true }), animated: true };
   } catch { return { glb, animated: false }; }
 }
 

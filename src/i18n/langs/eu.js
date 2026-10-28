@@ -5193,4 +5193,5 @@ export default {
   "Creando el modelo realista: suele tardar un minuto…": "Eredu errealista sortzen: normalean minutu bat behar du…",
   "Hasta {n} créditos; hasta {m} si es una persona, que además se anima con su esqueleto (se cobra lo que cuesta de verdad).": "Gehienez {n} kreditu; {m} arte pertsona bat bada, eta hari eskeleto bat eta mugimendua ematen zaizkio (benetako kostua kobratzen da).",
   "Poniéndole esqueleto para que ande…": "Eskeleto bat jartzen ibil dadin…",
+  "Calculando cómo se pega la piel a los huesos…": "Larruazala hezurrei nola lotzen zaien kalkulatzen…",
 };

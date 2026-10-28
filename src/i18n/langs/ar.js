@@ -5193,4 +5193,5 @@ export default {
   "Creando el modelo realista: suele tardar un minuto…": "جارٍ إنشاء النموذج الواقعي: يستغرق عادةً نحو دقيقة…",
   "Hasta {n} créditos; hasta {m} si es una persona, que además se anima con su esqueleto (se cobra lo que cuesta de verdad).": "حتى {n} رصيدًا؛ وحتى {m} إذا كان شخصًا، إذ يحصل أيضًا على هيكل عظمي ويتحرك (يُحتسب التكلفة الفعلية).",
   "Poniéndole esqueleto para que ande…": "جارٍ إضافة هيكل عظمي ليتمكن من المشي…",
+  "Calculando cómo se pega la piel a los huesos…": "جارٍ حساب كيفية التصاق الجلد بالعظام…",
 };

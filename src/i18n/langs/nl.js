@@ -5193,4 +5193,5 @@ export default {
   "Creando el modelo realista: suele tardar un minuto…": "Het realistische model wordt gemaakt: dat duurt meestal een minuut…",
   "Hasta {n} créditos; hasta {m} si es una persona, que además se anima con su esqueleto (se cobra lo que cuesta de verdad).": "Tot {n} credits; tot {m} als het een persoon is, die ook een skelet krijgt en beweegt (je betaalt wat het echt kost).",
   "Poniéndole esqueleto para que ande…": "Het krijgt een skelet zodat het kan lopen…",
+  "Calculando cómo se pega la piel a los huesos…": "Berekenen hoe de huid aan de botten hecht…",
 };

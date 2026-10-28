@@ -201,12 +201,15 @@ export async function openAutoRig(b, { onDone } = {}) {
     finally { btn.disabled = false; }
   });
 
-  q('.rig-ok').addEventListener('click', () => {
+  q('.rig-ok').addEventListener('click', async () => {
     if (!built) return;
-    const k = KINDS[kind];
+    const k = KINDS[kind], btn = q('.rig-ok'); btn.disabled = true;
+    // The model that is applied has its weights by heat diffusion (a few seconds); the preview, while joints were dragged, the quick ones.
+    const busy = toast(t('Calculando cómo se pega la piel a los huesos…'), { busy: true }); await new Promise(r => setTimeout(r, 30));
+    let final = built; try { final = buildRig(g, shape, kind, J, { heat: true }); } catch { /* the quick one stays */ } finally { busy?.close(); }
     commit(() => {
       const x = currentSlide().blocks.find(y => y.id === b.id); if (!x) return;
-      x.src = built; x.clip = 'Idle'; x.autoRotate = false;
+      x.src = final; x.clip = 'Idle'; x.autoRotate = false;
       x.walk = { clip: k.move, end: k.end || '', endOnce: true, face: true, look: true };
     });
     close(); onDone?.();

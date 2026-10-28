@@ -5193,4 +5193,5 @@ export default {
   "Creando el modelo realista: suele tardar un minuto…": "Creando o modelo realista: adoita tardar un minuto…",
   "Hasta {n} créditos; hasta {m} si es una persona, que además se anima con su esqueleto (se cobra lo que cuesta de verdad).": "Ata {n} créditos; ata {m} se é unha persoa, que ademais recibe esqueleto e se anima (cóbrase o custo real).",
   "Poniéndole esqueleto para que ande…": "Poñéndolle un esqueleto para que ande…",
+  "Calculando cómo se pega la piel a los huesos…": "Calculando como se pega a pel aos ósos…",
 };

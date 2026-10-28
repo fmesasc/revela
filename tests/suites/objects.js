@@ -1819,7 +1819,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(dlg.joints.handL[1] > J0.handL[1] + 0.05, 'arrastrar mueve la articulación');
     assert(Math.abs(dlg.joints.handR[1] - dlg.joints.handL[1]) < 1e-6 && Math.abs(dlg.joints.handR[0] + dlg.joints.handL[0]) < 0.02, 'y la del otro lado, a la vez');
     for (let i = 0; i < 40 && !dlg.built; i++) await sleep(50);
-    D.querySelector('#rig-modal .rig-ok').click(); await sleep(20);
+    D.querySelector('#rig-modal .rig-ok').click(); for (let i = 0; i < 200 && D.getElementById('rig-modal'); i++) await sleep(20);   // (the weights by heat diffusion are calculated first)
     const x = slide().blocks.at(-1);
     assert(x.src !== person && x.clip === 'Idle' && x.walk?.clip === 'Walk', 'aplicado: con esqueleto, en reposo, y anda al moverse');
     R.store.undo(); eq(slide().blocks.at(-1).src, person, 'se deshace');
