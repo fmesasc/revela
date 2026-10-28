@@ -65,7 +65,7 @@ export async function withSkeleton(glb) {
     const guess = A.detectKind(shape); if (guess.kind !== 'person') return { glb, animated: false };
     if (guess.yaw) shape = A.modelShape(g, guess.yaw);
     const J = A.proposeJoints(shape, 'person', guess.opts || {});
-    return { glb: A.buildRig(g, shape, 'person', J, { heat: true }), animated: true };
+    return { glb: A.buildRig(g, shape, 'person', J, { heat: true }), animated: true, stride: +A.walkStride(J, shape.box.max[1] - shape.box.min[1]).toFixed(2) };
   } catch { return { glb, animated: false }; }
 }
 
@@ -110,7 +110,7 @@ export async function openModelAi({ api = hybrid, interval = 2500 } = {}) {
     else if (info.local) q('.m3a-est').textContent = t('Cada ronda cuesta lo que cobra la IA por ella, normalmente muy poco.');
     else if (info.estimate?.max != null) q('.m3a-est').textContent = estText(info.estimate.max); };
   q('.m3a-real')?.addEventListener('change', sync); sync();
-  let timer = null, glb = null, glbAnimated = false, closed = false;
+  let timer = null, glb = null, glbAnimated = false, glbStride = 0, closed = false;
   const close = () => { closed = true; clearTimeout(timer); back.remove(); };
   q('.modal-close').addEventListener('click', close);
   back.querySelectorAll('.m3a-ex').forEach(b => b.addEventListener('click', () => { q('.m3a-prompt').value = b.textContent; }));
@@ -138,7 +138,7 @@ export async function openModelAi({ api = hybrid, interval = 2500 } = {}) {
       glb = (await api(`3d/jobs/${current}/model`)).glb; glbAnimated = !!s.animated;
       if (!glbAnimated && currentReal && s.animate) {                    // (a person: its skeleton, made here)
         q('.m3a-status').innerHTML = `<i class="ms m3a-spin">progress_activity</i> ${t('Poniéndole esqueleto para que ande…')}`;
-        const r = await withSkeleton(glb); glb = r.glb; glbAnimated = r.animated;
+        const r = await withSkeleton(glb); glb = r.glb; glbAnimated = r.animated; glbStride = r.stride || 0;
       }
       if (closed) return;
       const mv = document.createElement('model-viewer');
@@ -172,7 +172,7 @@ export async function openModelAi({ api = hybrid, interval = 2500 } = {}) {
   });
   q('.m3a-discard').addEventListener('click', async () => { const id = current; current = null; close(); try { await api(`3d/jobs/${id}/cancel`, {}); } catch {} });
   // (Once inserted, the job isn't needed: it is deleted from the server.)
-  q('.m3a-insert').addEventListener('click', () => { if (!glb) return; insertGeneratedModel(glb, t('Modelo creado con IA'), { animated: glbAnimated }); const id = current; current = null; close(); api(`3d/jobs/${id}/cancel`, {}).catch(() => {}); });
+  q('.m3a-insert').addEventListener('click', () => { if (!glb) return; insertGeneratedModel(glb, t('Modelo creado con IA'), { animated: glbAnimated, stride: glbStride }); const id = current; current = null; close(); api(`3d/jobs/${id}/cancel`, {}).catch(() => {}); });
   if (current) working();                                // (a job still open: back to it)
   else q('.m3a-prompt').focus();
 }

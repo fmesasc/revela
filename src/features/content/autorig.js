@@ -931,6 +931,16 @@ export function snapInside(shape, J, H) {
 }
 
 
+
+// How far a person walking with the Walk clip advances in one cycle, in heights of its body: the planted foot goes back relative to the
+// body by D during the 60 % of the cycle that it is down, so the body goes D / 0.6 ahead per cycle (a walk that doesn't skate). The
+// player uses it to play the clip as fast as the object moves along its path.
+export function walkStride(J, H) {
+  const z = t => A_posedFootZ(J, H, t);
+  return Math.max(0.2, (z(0) - z(0.6)) / 0.6 / H);
+}
+function A_posedFootZ(J, H, t) { const q = posedJoints('person', J, 'Walk', t, H); return q.footL[2]; }
+
 // ---- Weights refined by looking at the movement ---------------------------------------------------------------------------
 // The skeleton is posed (walking, running, waving…) and every vertex gets a score: how much the edges around it stretch or squash.
 // Where it is high — loose cloth between the legs, a cape, the crook of an elbow — the weights are blended with the neighbours'

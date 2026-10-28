@@ -7,7 +7,7 @@
 
 import { commit, currentSlide } from '../../core/store.js';
 import { readModel, modelShape, proposeJoints, buildRig, skeletonOf, jointLabel, CLIPS, CLIP_LABELS, KINDS, countOf, mirrorOf,
-  detectKind, projectView, toView, viewTriangles, pointsFromViews, seedJoints } from '../../features/content/autorig.js';
+  detectKind, projectView, toView, viewTriangles, pointsFromViews, seedJoints, walkStride } from '../../features/content/autorig.js';
 import { aiConnected, privacyAccepted, acceptPrivacy } from '../../features/ai/openrouter.js';
 import { detectWithAI } from '../../features/ai/rigkind.js';
 import { loadModelViewer } from '../../core/vendor.js';
@@ -210,7 +210,7 @@ export async function openAutoRig(b, { onDone } = {}) {
     commit(() => {
       const x = currentSlide().blocks.find(y => y.id === b.id); if (!x) return;
       x.src = final; x.clip = 'Idle'; x.autoRotate = false;
-      x.walk = { clip: k.move, end: k.end || '', endOnce: true, face: true, look: true };
+      x.walk = { clip: k.move, end: k.end || '', endOnce: true, face: true, look: true, ...(kind === 'person' && { stride: +walkStride(J, shape.box.max[1] - shape.box.min[1]).toFixed(2) }) };
     });
     close(); onDone?.();
   });

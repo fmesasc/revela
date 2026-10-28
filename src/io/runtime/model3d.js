@@ -65,9 +65,15 @@ export function model3dRuntime() {
     if (w) cancelAnimationFrame(w.raf);
     w = { t0: now0 }; walks.set(mv, w); el = el || mv;
     playClip(mv, clip);
-    var last = null, face = mv.hasAttribute('data-face'), yaw = null;
+    var last = null, face = mv.hasAttribute('data-face'), yaw = null, stride = parseFloat(mv.getAttribute('data-stride')) || 0, lastT = now0, vs = 0;
     (function step(now) {
       var p = offset(el);
+      // The clip plays as fast as the object goes: the body's height on the slide × the stride (heights per cycle) over the clip's length, so
+      // the feet don't skate. (Smoothed: the speed of a path is not even.)
+      if (stride && last && now > lastT) { var v = Math.hypot(p[0] - last[0], p[1] - last[1]) / ((now - lastT) / 1000); vs = vs ? vs * 0.85 + v * 0.15 : v;
+        var fig = (mv.offsetHeight || 0) * 0.88 * 1.5 / (parseFloat(mv.getAttribute('data-bleed')) || 1), len = mv.duration || 1.1, v1 = stride * fig / len;
+        if (v1 > 1 && vs > 2) mv.timeScale = Math.max(0.5, Math.min(2.4, vs / v1)); }
+      lastT = now;
       if (face && last) { var dx = p[0] - last[0], dy = p[1] - last[1];
         if (Math.hypot(dx, dy) > 0.4) { var y = Math.atan2(dx, dy) * 180 / Math.PI; if (yaw === null || Math.abs(((y - yaw + 540) % 360) - 180) > 2) { yaw = y; turn(mv, y); } } }
       last = p;
@@ -75,7 +81,7 @@ export function model3dRuntime() {
     })(now0);
   }
   function arrive(mv) {
-    walks.delete(mv);
+    walks.delete(mv); if (mv.hasAttribute('data-stride')) mv.timeScale = parseFloat(mv.getAttribute('data-speed')) || 1;
     if (mv.hasAttribute('data-look')) turn(mv, null);
     if (mv.__step) return;                                // (a step "after the previous" already plays its own: a wave on arrival)
     var end = mv.getAttribute('data-end-clip');

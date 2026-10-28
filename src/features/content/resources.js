@@ -210,9 +210,10 @@ export function insertSketchfab(m) {
 
 // A model made with AI (ui/dialogs/model3dai.js): a GLB data URL, with its caption.
 // animated: it comes with its own animation (a person with a skeleton, walking): it plays, looping.
-export const insertGeneratedModel = (src, caption, { animated = false } = {}) => addModelBlock({ src, caption, animated });
+export const insertGeneratedModel = (src, caption, { animated = false, stride = 0 } = {}) => addModelBlock({ src, caption, animated, stride });
 
 // A 3D model object, ready to move (see model3d.js).
-function addModelBlock({ src, caption, credit, animated = false, clip = null }) {
-  return place({ id: uid(), type: 'model', src, caption, credit, autoRotate: !animated, ...(animated && { clip: clip || '*' }), ...centred(440, 440), rotation: 0, animation: null });
+function addModelBlock({ src, caption, credit, animated = false, clip = null, stride = 0 }) {
+  // (A person Revela gave a skeleton: it rests (Idle) and walks (Walk) when it moves along a path, as fast as it goes.)
+  return place({ id: uid(), type: 'model', src, caption, credit, autoRotate: !animated, ...(animated && (stride ? { clip: 'Idle', walk: { clip: 'Walk', end: 'Idle', face: true, look: false, stride } } : { clip: clip || '*' })), ...centred(440, 440), rotation: 0, animation: null });
 }

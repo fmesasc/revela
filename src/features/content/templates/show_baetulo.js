@@ -77,7 +77,7 @@ export default {
           kicker('UN ROMANO PASEA POR BAETULO', 70, 50, 700), H('Un vecino cualquiera, en una calle cualquiera', 66, 80, 1000, 60, 38),
           ...[['Su primera mención', 'La cita por escrito Pomponio Mela, hacia el 43-44 d. C.'], ['Un pacto de hospitalidad', 'La Tabula Hospitalis une a los badalonenses con Quintus Licinius Silvanus Granianus.'],
             ['Una ciudad que se camina', 'Calles ortogonales: el decumanus y el cardo máximo se cruzaban en ángulo recto.']].flatMap(([t, d], i) => fact(t, d, 70 + i * 390, 150, 370, 124, i === 1 ? BLUE : TERRA)),
-          withAnims(ai3d('baetulo-romano', 70, 270, 220, 360, 'Ciudadano romano con túnica en 3D creado con IA', { clip: 'Idle', walk: { clip: 'Walk', end: 'Idle', face: true, look: false } }), path(route, { duration: 5200 })),
+          withAnims(ai3d('baetulo-romano', 70, 270, 220, 360, 'Ciudadano romano con túnica en 3D creado con IA', { clip: 'Idle', walk: { clip: 'Walk', end: 'Idle', face: true, look: false, stride: 0.67 } }), path(route, { duration: 5200 })),
           text('Clic: echa a andar', 1000, 580, 230, 34, { fontSize: 16, color: '#f6efe0', bg: TERRA, radius: 17, textAlign: 'center', vAlign: 'middle' }), foot()],
           notes: 'Un clic y nuestro vecino de Baetulo echa a andar por la calle. Es un ciudadano con túnica y cinturón, una figura inventada, no un retrato. Detrás tenéis tres datos: la primera mención escrita conocida es de Pomponio Mela, hacia el 43-44 después de Cristo; la Tabula Hospitalis recoge un pacto de hospitalidad con Quintus Licinius Silvanus Granianus, y la ciudad tenía calles en cuadrícula. Cuando este modelo tenga esqueleto, caminará de verdad mientras se desplaza.' };
       })(),

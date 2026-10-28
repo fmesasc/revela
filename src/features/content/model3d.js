@@ -83,6 +83,7 @@ export function modelAttrs(b) {
     if (walk.end && walk.endOnce) a.push(['data-end-once', '']);
     if (walk.face !== false) a.push(['data-face', '']);
     if (walk.look !== false) a.push(['data-look', '']);
+    if (walk.stride > 0) a.push(['data-stride', String(walk.stride)]);          // (body heights per cycle: the clip plays as fast as the object moves)
   }
   if (b.motion && b.motion !== 'none') a.push(['data-motion', b.motion]);
   if (b.arrive && b.arrive !== 'keep') a.push(['data-arrive', b.arrive]);

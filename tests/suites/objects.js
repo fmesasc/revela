@@ -1926,10 +1926,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       for (let i = 0; i < 100 && !mv.loaded; i++) await sleep(100);
       const before = mv.getBoundingClientRect(), info0 = { loaded: !!mv.loaded, anims: mv.availableAnimations, name: mv.animationName, paused: mv.paused };
       FW.Reveal.next(); await sleep(1500);
-      const mid = mv.getBoundingClientRect(), info1 = { name: mv.animationName, paused: mv.paused, t: mv.currentTime };
-      await sleep(1500); const info2 = { name: mv.animationName, paused: mv.paused, t: mv.currentTime }, after = mv.getBoundingClientRect();
+      const mid = mv.getBoundingClientRect(), info1 = { name: mv.animationName, paused: mv.paused, t: mv.currentTime, scale: mv.timeScale };
+      await sleep(1500); const info2 = { name: mv.animationName, paused: mv.paused, t: mv.currentTime, scale: mv.timeScale }, after = mv.getBoundingClientRect();
       assert(info0.anims.includes('Walk') && info0.anims.includes('Idle') && info0.name === 'Idle' && !info0.paused, 'antes del clic: de pie, respirando (Idle): ' + JSON.stringify(info0));
       assert(info1.name === 'Walk' && !info1.paused && info2.t !== info1.t, 'al hacer clic: el clip Walk se reproduce: ' + JSON.stringify([info1, info2]));
+      assert(mv.getAttribute('data-stride') === '0.67' && info1.scale > 0.5 && info1.scale <= 2.4 && info1.scale !== 1, 'el clip va a la velocidad del recorrido (no patina): ' + JSON.stringify([info1.scale, info2.scale]));
       assert(mid.x - before.x > 100 && after.x - mid.x > 100, 'y se desplaza por la diapositiva: ' + [before.x, mid.x, after.x].map(Math.round).join(' → '));
     } finally { f.remove(); }
   });
