@@ -914,6 +914,61 @@ export function snapInside(shape, J, H) {
   return out;
 }
 
+
+// ---- Weights refined by looking at the movement ---------------------------------------------------------------------------
+// The skeleton is posed (walking, running, waving…) and every vertex gets a score: how much the edges around it stretch or squash.
+// Where it is high — loose cloth between the legs, a cape, the crook of an elbow — the weights are blended with the neighbours'
+// until it isn't: the cloth stops following one bone and goes with the surface around it. Directly lowers what tools/rig-metrics.mjs
+// counts. poses: [bone matrices (as arrays of 16, in the order of the bones)] for each sampled pose.
+export function refineWeights(pos, idx, joints, weights, nb, poses, H, { rounds = 5, limit = 0.22, lambda = 0.6 } = {}) {
+  const n = pos.length / 3, { wid, m, A, B } = weldGraph(pos, idx, H * 0.0025); if (!A.length || !poses.length) return { joints, weights };
+  const rep = new Int32Array(m); for (let k = 0; k < n; k++) rep[wid[k]] = k;
+  let cur = new Float32Array(m * nb); const cnt = new Float32Array(m);
+  for (let k = 0; k < n; k++) { const id = wid[k]; cnt[id]++; for (let c = 0; c < 4; c++) cur[id * nb + joints[k * 4 + c]] += weights[k * 4 + c]; }
+  for (let id = 0; id < m; id++) if (cnt[id] > 1) for (let b = 0; b < nb; b++) cur[id * nb + b] /= cnt[id];
+  const deg = new Int32Array(m + 1); for (let e = 0; e < A.length; e++) { deg[A[e] + 1]++; deg[B[e] + 1]++; } for (let i = 0; i < m; i++) deg[i + 1] += deg[i];
+  const nbr = new Int32Array(deg[m]), fill = deg.slice(0, m); for (let e = 0; e < A.length; e++) { nbr[fill[A[e]]++] = B[e]; nbr[fill[B[e]]++] = A[e]; }
+  const restLen = new Float32Array(nbr.length); for (let i = 0; i < m; i++) for (let e = deg[i]; e < deg[i + 1]; e++) { const a = rep[i] * 3, b = rep[nbr[e]] * 3; restLen[e] = Math.hypot(pos[a] - pos[b], pos[a + 1] - pos[b + 1], pos[a + 2] - pos[b + 2]); }
+  const D = poses.map(() => new Float32Array(m * 3)), score = new Float32Array(m);
+  for (let r = 0; r < rounds; r++) {
+    poses.forEach((M, p) => { const out = D[p];
+      for (let i = 0; i < m; i++) { const x = pos[rep[i] * 3], y = pos[rep[i] * 3 + 1], z = pos[rep[i] * 3 + 2]; let ox = 0, oy = 0, oz = 0;
+        for (let b = 0; b < nb; b++) { const w = cur[i * nb + b]; if (w < 1e-4) continue; const T = M[b]; ox += w * (T[0] * x + T[4] * y + T[8] * z + T[12]); oy += w * (T[1] * x + T[5] * y + T[9] * z + T[13]); oz += w * (T[2] * x + T[6] * y + T[10] * z + T[14]); }
+        out[i * 3] = ox; out[i * 3 + 1] = oy; out[i * 3 + 2] = oz; } });
+    score.fill(0); let bad = 0;
+    for (let i = 0; i < m; i++) { let s = 0, c = 0;
+      for (let e = deg[i]; e < deg[i + 1]; e++) { const l0 = restLen[e]; if (l0 < 1e-7) continue; const j = nbr[e];
+        for (let p = 0; p < D.length; p++) { const d = D[p], l = Math.hypot(d[i * 3] - d[j * 3], d[i * 3 + 1] - d[j * 3 + 1], d[i * 3 + 2] - d[j * 3 + 2]) / l0; s += Math.abs(l - 1); c++; } }
+      score[i] = c ? s / c : 0; if (score[i] > limit) bad++; }
+    if (!bad) break;
+    // The bad points take their neighbours' weights (a few passes, so the blend reaches a bit around them).
+    for (let pass = 0; pass < 3; pass++) {
+      const next = new Float32Array(cur);
+      for (let i = 0; i < m; i++) { const f = score[i] > limit ? lambda : score[i] > limit * 0.6 ? lambda * 0.4 : 0; if (!f || deg[i + 1] === deg[i]) continue;
+        for (let b = 0; b < nb; b++) { let a = 0; for (let e = deg[i]; e < deg[i + 1]; e++) a += cur[nbr[e] * nb + b]; next[i * nb + b] = (1 - f) * cur[i * nb + b] + f * a / (deg[i + 1] - deg[i]); } }
+      cur = next;
+    }
+  }
+  const J2 = new Uint8Array(n * 4), W2 = new Float32Array(n * 4);
+  for (let k = 0; k < n; k++) {
+    const o = wid[k] * nb, best = [[-1, 0], [-1, 0], [-1, 0], [-1, 0]];
+    for (let c = 0; c < nb; c++) { const w = cur[o + c]; if (w <= best[3][1]) continue; let at = 3; while (at > 0 && best[at - 1][1] < w) { best[at] = best[at - 1]; at--; } best[at] = [c, w]; }
+    let sum = 0; for (let c = 0; c < 4; c++) sum += best[c][1];
+    if (!sum) { J2[k * 4] = joints[k * 4]; W2[k * 4] = 1; continue; }
+    for (let c = 0; c < 4; c++) { J2[k * 4 + c] = Math.max(0, best[c][0]); W2[k * 4 + c] = best[c][1] / sum; }
+  }
+  return { joints: J2, weights: W2 };
+}
+// The skinning matrix of every bone (in the order of `list`) at time t (0..1) of a clip.
+function poseMatrices(kind, J, list, clip, t, H) {
+  const pose = poseOf(kind, J, clip, t, H, list), L = localTurns(list, pose.P), world = {};
+  return list.map(([name, parent]) => {
+    const local = M4.trs(parent ? sub(J[name], J[parent]) : add(J[name], [0, pose.lift, 0]), L[name]);
+    world[name] = parent ? M4.mul(world[parent], local) : local;
+    return M4.mul(world[name], M4.trs(scale(J[name], -1)));
+  });
+}
+
 // ---- Animations (made here) ------------------------------------------------------------------
 // Each clip: seconds, and a pose at time t (0..1 of the loop) as world turns
 // per joint (by directions for limbs, so any rest pose works) plus a hip lift.
@@ -1170,10 +1225,14 @@ export function buildRig(g, shape, kind, J, opts = {}) {
   // Every mesh, flattened into the model's space, bound to the bones.
   const meshNodes = [];
   let geo = null; try { geo = volumeDistances(shape, B, H); } catch { geo = null; }
+  let poses = null;
   shape.parts.forEach(({ prim, pos, nor }) => {
     const bound = bindWeights(pos, B, H, J.hips[0], kind === 'person' ? J.thighL?.[1] ?? null : null, geo), pidx = shape.parts.find(x => x.pos === pos)?.idx;
     let { joints, weights } = bound;
-    if (opts.heat && pidx) { try { ({ joints, weights } = heatWeights(pos, pidx, B.length, H, bound.near)); } catch { ({ joints, weights } = smoothWeights(pos, pidx, bound.joints, bound.weights, B.length, H * 0.03)); } }
+    if (opts.heat && pidx) { try { ({ joints, weights } = heatWeights(pos, pidx, B.length, H, bound.near)); } catch { ({ joints, weights } = smoothWeights(pos, pidx, bound.joints, bound.weights, B.length, H * 0.03)); }
+      if (opts.refine === true) {   // (off: measured no better than the heat weights alone, a little worse)
+        try { poses ||= [['Walk', [0.1, 0.25, 0.4, 0.6, 0.75, 0.9]], ['Run', [0.2, 0.6]], ['Wave', [0.3, 0.7]], ['Jump', [0.5]]].filter(([c]) => CLIPS[kind].some(x => x[0] === c)).flatMap(([c, ts]) => ts.map(t => poseMatrices(kind, J, list, c, t, H)));
+        ({ joints, weights } = refineWeights(pos, pidx, joints, weights, B.length, poses, H)); } catch { /* the weights as they were */ } } }
     else ({ joints, weights } = smoothWeights(pos, pidx, joints, weights, B.length, H * 0.03));
     if (kind === 'person' && J.crotchY != null && J.hips[1] - J.crotchY > H * 0.04) {   // (a tunic or a dress covers the legs: loose cloth between the legs and the hips)
       // Cloth that wraps both legs would be torn apart as they part: it follows the pelvis, with only a part of the legs' pull.
