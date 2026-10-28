@@ -452,6 +452,7 @@ export default {"biz_board":["Risultati trimestrali al consiglio","Blu scuro e o
 "show_anim_rpg":["Gioco di ruolo da tavolo: la tua prima partita","Personaggi 3D con le loro animazioni: attaccare, parare, lanciare incantesimi e cadere; camminare fino al rivale, dado che rotola e vita che scende"],
 "show_anim_speech":["Discorso: salviamo la biblioteca","Enfasi al ritmo di un discorso: frase in primo piano e il resto attenuato, barrare, evidenziare, sottolineatura e cerchio a mano, conto alla rovescia"],
 "show_anim_tshirt":["Infografica: il viaggio di una maglietta","Infografica che si rivela: percorso che si disegna con le sue tappe a tempo, pittogramma di gocce che si riempie, cascata, cifre e formula"],
+"show_baetulo":["Baetulo: i Romani a Badalona","Storia locale con sei modelli 3D fatti con l’IA: un romano che passeggia, un legionario, anfora, lucerna, nave e Venere; sfide"],
 "showcase_3d":["Catalogo: il 3D a fondo","Modelli 3D con tutte le opzioni: viste, movimenti in entrata, rotazione, bordi, margine, clip, camminata e arrivo con Trasformazione"],
 "showcase_animations":["Catalogo: animazioni","Tutte le animazioni degli oggetti: entrata, enfasi, uscita, percorsi, disegno, concatenate, suoni e più su un oggetto"],
 "showcase_charts":["Catalogo: grafici","I 15 tipi di grafico, due per diapositiva, con serie, combinato, griglia, etichette e titoli degli assi, e la tabella delle opzioni"],

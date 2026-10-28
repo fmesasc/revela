@@ -5191,4 +5191,5 @@ export default {
   "De momento, en el modo Realista no se pueden usar fotos propias, por la seguridad de los usuarios: estamos trabajando en ello.": "في الوقت الحالي لا يدعم الوضع الواقعي استخدام صورك الخاصة، حفاظًا على أمان المستخدمين: نعمل على ذلك.",
   "Realista (con textura, para objetos, animales y personas). Cuesta más y tarda un minuto; desmárcalo para formas geométricas sencillas con fotos propias.": "واقعي (بنسيج، للأشياء والحيوانات والأشخاص). يكلّف أكثر ويستغرق نحو دقيقة؛ ألغِ التحديد للأشكال الهندسية البسيطة أو لاستخدام صورك.",
   "Creando el modelo realista: suele tardar un minuto…": "جارٍ إنشاء النموذج الواقعي: يستغرق عادةً نحو دقيقة…",
+  "Hasta {n} créditos; hasta {m} si es una persona, que además se anima con su esqueleto (se cobra lo que cuesta de verdad).": "حتى {n} رصيدًا؛ وحتى {m} إذا كان شخصًا، إذ يحصل أيضًا على هيكل عظمي ويتحرك (يُحتسب التكلفة الفعلية).",
 };

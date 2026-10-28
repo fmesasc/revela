@@ -212,7 +212,7 @@ export function proposeJoints(shape, kind = 'person', opts = {}) {
   const { min, max } = shape.box, H = max[1] - min[1], W = max[0] - min[0], D = max[2] - min[2];
   const cx = (min[0] + max[0]) / 2, cz = (min[2] + max[2]) / 2, y = f => min[1] + H * f, J = {};
   if (kind === 'person') {
-    const prof = profile(shape), found = personFromProfile(prof, shape);
+    const prof = profile(shape), found = personFromBody(prof, shape) || personFromProfile(prof, shape);
     if (found) return found;
     const torso = slab(shape, 1, y(0.5), y(0.62)) || { min, max, mid: [cx, 0, cz] };
     const zc = torso.mid[2], tw = Math.min(torso.max[0] - torso.min[0], W);
@@ -242,6 +242,52 @@ export function proposeJoints(shape, kind = 'person', opts = {}) {
       const x = cx + side * lw;
       J['leg' + s] = [x, by, z(zf)]; J['knee' + s] = [x, min[1] + (belly - min[1]) * 0.5, z(zf)]; J['paw' + s] = [x, min[1] + H * 0.03, z(zf)];
     }
+  }
+  return J;
+}
+
+// A standing person from the body's proportions, adjusted by what the silhouette shows. The slices alone (personFromProfile)
+// fail with loose clothes — a tunic or a dress hides the crotch, so hips, knees and arms land in the wrong places —; the
+// proportions of a body don't: head, shoulders, hips, knees and ankles are at known heights of a standing person, and the
+// silhouette only has to say how wide, where the neck is, and where each leg and arm is. Null when it is not a standing
+// person with its feet down (a T pose goes on to the slices).
+// Heights are fractions of the whole height, for an adult (a child has a bigger head and shorter legs: `kid`).
+const BODY = { adult: { shoulder: 0.82, chest: 0.72, spine: 0.62, hips: 0.52, thigh: 0.5, knee: 0.285, ankle: 0.045, elbow: 0.63, wrist: 0.47, armDrop: 0.19, headTop: 1 },
+  kid: { shoulder: 0.76, chest: 0.67, spine: 0.58, hips: 0.47, thigh: 0.45, knee: 0.255, ankle: 0.045, elbow: 0.58, wrist: 0.42, armDrop: 0.18, headTop: 1 } };
+function personFromBody(prof, shape) {
+  const { min, max } = shape.box, H = max[1] - min[1], n = prof.length, cx = (min[0] + max[0]) / 2;
+  if (!(H > 0) || H < (max[0] - min[0]) * 0.9 || H < (max[2] - min[2]) * 1.2) return null;       // (lying down, or a wide object)
+  const row = f => prof[Math.max(0, Math.min(n - 1, Math.round(f * n - 0.5)))];
+  const ext = L => (L.pieces.length ? [Math.min(...L.pieces.map(p => p.a)), Math.max(...L.pieces.map(p => p.b))] : null);
+  const width = L => { const e = ext(L); return e ? e[1] - e[0] : 0; };
+  const mainOf = L => L.pieces.reduce((b, p) => (!b || Math.abs(p.mid - cx) < Math.abs(b.mid - cx) ? p : b), null);
+  // A T pose: arms out at the shoulders, wider than the person is tall × 0.6 — the slices do that one.
+  if (width(row(0.8)) > H * 0.62) return null;
+  // The neck: the narrowest slice (of the whole silhouette) between 0.78 and 0.93 of the height; the head is above it.
+  let neckF = 0.86, w = Infinity;
+  for (let f = 0.78; f <= 0.93; f += 1 / n) { const k = width(row(f)); if (k > 0 && k < w * 0.97) { w = k; neckF = f; } }
+  const headH = (1 - neckF) * H, kid = headH > H * 0.17;
+  const P = kid ? BODY.kid : BODY.adult, y = f => min[1] + H * f, zOf = f => mainOf(row(f))?.z ?? (min[2] + max[2]) / 2;
+  const neckY = y(Math.min(P.shoulder + 0.05, Math.max(neckF, P.shoulder + 0.02)));
+  const J = {};
+  J.hips = [cx, y(P.hips), zOf(P.hips)]; J.spine = [cx, y(P.spine), zOf(P.spine)]; J.chest = [cx, y(P.chest), zOf(P.chest)];
+  J.neck = [cx, neckY, zOf(neckF)]; J.head = [cx, neckY + (max[1] - neckY) * 0.5, zOf(Math.min(0.97, (neckF + 1) / 2))];
+  // Shoulders: half of the silhouette's width where the shoulders are, less the arm; arms hang from there (a little out: an A pose).
+  const sw = width(row(P.shoulder - 0.02)), armW = H * 0.075, shX = Math.max(H * 0.07, Math.min(sw / 2 - armW / 2, H * 0.2));
+  // The legs: the piece on each side at the knee and near the ground (the nearest to the middle on that side).
+  const legAt = (f, sd) => row(f).pieces.filter(p => (p.mid - cx) * sd > 0).sort((a, b) => Math.abs(a.mid - cx) - Math.abs(b.mid - cx))[0];
+  for (const [s, sd] of [['L', 1], ['R', -1]]) {
+    const sh = [cx + sd * shX, y(P.shoulder), zOf(P.shoulder)];
+    // The hand hangs where the silhouette's edge is at the wrists — or, if the arm is inside the body, a little out of the shoulder.
+    const wr = row(P.wrist), e = ext(wr), edge = e ? (sd > 0 ? e[1] : e[0]) : cx + sd * (shX + armW);
+    const wx = (edge - sd * armW * 0.5 - cx) * sd > shX * 0.8 ? edge - sd * armW * 0.5 : cx + sd * Math.min(shX * 1.15, shX + armW * 0.4);
+    const hand = [wx, y(P.wrist - 0.04), zOf(P.wrist)], elbow = [(sh[0] + wx) / 2 + sd * armW * 0.15, y(P.elbow), zOf(P.elbow)];
+    J['arm' + s] = sh; J['forearm' + s] = elbow; J['hand' + s] = hand;
+    const hip = legAt(P.thigh - 0.03, sd) || legAt(P.knee + 0.05, sd), knee = legAt(P.knee, sd) || hip, foot = legAt(0.06, sd) || knee;
+    const hx = hip ? hip.mid : cx + sd * H * 0.07, kx = knee ? knee.mid : hx, fx = foot ? foot.mid : kx;
+    J['thigh' + s] = [Math.abs(hx - cx) < H * 0.03 ? cx + sd * H * 0.05 : hx, y(P.thigh), hip?.z ?? zOf(P.thigh)];
+    J['shin' + s] = [kx, y(P.knee), knee?.z ?? zOf(P.knee)];
+    J['foot' + s] = [fx, y(P.ankle), foot?.z ?? zOf(0.06)];
   }
   return J;
 }
@@ -596,18 +642,24 @@ function bones(kind, J, list = skeletonOf(kind, J)) {
 }
 // Up to four bones per vertex, the nearest ones weighing most (smooth bends at
 // the joints). Plain loops over typed arrays: models can have 100 000+ vertices.
-export function bindWeights(pos, B, H) {
+// cx: the middle line of the body (x): a limb's bones belong to one side of it, so a vertex far on the other side doesn't follow
+// them — two legs close together (a child, a dress) would otherwise drag each other's cloth along.
+export function bindWeights(pos, B, H, cx = null, hipY = null) {
   const n = pos.length / 3, nb = B.length, joints = new Uint8Array(n * 4), weights = new Float32Array(n * 4), eps = H * 0.004;
   const A = new Float64Array(nb * 3), D = new Float64Array(nb * 3), L2 = new Float64Array(nb);
   B.forEach((bn, j) => { for (let c = 0; c < 3; c++) { A[j * 3 + c] = bn.a[c]; D[j * 3 + c] = bn.b[c] - bn.a[c]; } L2[j] = D[j * 3] ** 2 + D[j * 3 + 1] ** 2 + D[j * 3 + 2] ** 2 || 1; });
   const bd = new Float64Array(4), bj = new Int32Array(4);
+  const side = B.map(bn => (cx != null && /^(arm|forearm|hand|thigh|shin|foot|leg|knee|paw|wing)/.test(bn.name) ? (/L$/.test(bn.name) ? 1 : /R$/.test(bn.name) ? -1 : 0) : 0));
+  const thighy = B.map(bn => /^(thigh|shin|foot)[LR]$/.test(bn.name));
   for (let k = 0; k < n; k++) {
     const px = pos[k * 3], py = pos[k * 3 + 1], pz = pos[k * 3 + 2];
     bd.fill(Infinity); bj.fill(0);
     for (let j = 0; j < nb; j++) {                           // distance to the bone (a segment)
       const ax = px - A[j * 3], ay = py - A[j * 3 + 1], az = pz - A[j * 3 + 2], dx = D[j * 3], dy = D[j * 3 + 1], dz = D[j * 3 + 2];
       const t = Math.max(0, Math.min(1, (ax * dx + ay * dy + az * dz) / L2[j]));
-      const d = Math.hypot(ax - dx * t, ay - dy * t, az - dz * t);
+      let d = Math.hypot(ax - dx * t, ay - dy * t, az - dz * t);
+      if (hipY != null && thighy[j] && py > hipY - H * 0.015) d *= 1 + 1.4 * Math.min(1, (py - (hipY - H * 0.015)) / (H * 0.08));   // (the belt and what is above the hips follow the trunk, not the thighs)
+      if (side[j]) { const away = -(px - cx) * side[j] / (H * 0.05); if (away > 0.2) d *= 1 + 1.5 * Math.min(1, away); }   // (on the other side of the body)
       if (d >= bd[3]) continue;
       let at = 3; while (at > 0 && bd[at - 1] > d) { bd[at] = bd[at - 1]; bj[at] = bj[at - 1]; at--; }
       bd[at] = d; bj[at] = j;
@@ -638,7 +690,7 @@ function personPose(J, clip, t, H) {
   const arm = (s, dir, fore) => { P['arm' + s] = limbTo(J, 'arm' + s, 'forearm' + s, dir); P['forearm' + s] = limbTo(J, 'forearm' + s, 'hand' + s, fore || dir); P['hand' + s] = P['forearm' + s]; };
   const body = (bend = 0, twist = 0, side = 0) => { const q = Q.mul(Q.axis(Y, twist), Q.mul(Q.axis(X, bend), Q.axis(Z, side))); P.spine = q; P.chest = q; P.neck = q; P.head = q; };
   if (clip === 'Walk' || clip === 'Run') {
-    const run = clip === 'Run', A = run ? 38 : 24, K = run ? 70 : 38;
+    const run = clip === 'Run', A = run ? 36 : 20, K = run ? 66 : 32;
     for (const [s, off] of [['L', 0], ['R', Math.PI]]) {
       const sw = A * Math.sin(ph + off), kn = K * Math.max(0, Math.sin(ph + off - Math.PI / 2 + 0.6)) * (run ? 1 : 0.9) + (run ? 12 : 4);
       leg(s, sw, kn);
@@ -833,7 +885,7 @@ export function buildRig(g, shape, kind, J) {
   // Every mesh, flattened into the model's space, bound to the bones.
   const meshNodes = [];
   shape.parts.forEach(({ prim, pos, nor }) => {
-    const { joints, weights } = bindWeights(pos, B, H);
+    const { joints, weights } = bindWeights(pos, B, H, J.hips[0], kind === 'person' ? J.thighL?.[1] ?? null : null);
     const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
     for (let k = 0; k < pos.length; k += 3) for (let c = 0; c < 3; c++) { mn[c] = Math.min(mn[c], pos[k + c]); mx[c] = Math.max(mx[c], pos[k + c]); }
     const attributes = { ...prim.attributes, POSITION: addAccessor(out, pos, 'VEC3', { min: mn, max: mx }), JOINTS_0: addAccessor(out, joints, 'VEC4'), WEIGHTS_0: addAccessor(out, weights, 'VEC4') };

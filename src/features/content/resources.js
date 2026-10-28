@@ -209,7 +209,8 @@ export function insertSketchfab(m) {
 }
 
 // A model made with AI (ui/dialogs/model3dai.js): a GLB data URL, with its caption.
-export const insertGeneratedModel = (src, caption) => addModelBlock({ src, caption });
+// animated: it comes with its own animation (a person with a skeleton, walking): it plays, looping.
+export const insertGeneratedModel = (src, caption, { animated = false } = {}) => addModelBlock({ src, caption, animated });
 
 // A 3D model object, ready to move (see model3d.js).
 function addModelBlock({ src, caption, credit, animated = false, clip = null }) {

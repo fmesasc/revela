@@ -1860,6 +1860,55 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     table: ['object', [[-0.6, 0.7, -0.4, 0.6, 0.76, 0.4], ...[[-0.55, -0.35], [0.5, -0.35], [-0.55, 0.3], [0.5, 0.3]].map(([x, z]) => [x, 0, z, x + 0.05, 0.7, z + 0.05])]],
   };
 
+  await test('esqueleto automático: una persona con túnica (la entrepierna tapada) tiene la cabeza, la cadera, las rodillas y los brazos en su sitio', async () => {
+    reset(); const W = frame.contentWindow, A = await W.eval("import('/src/features/content/autorig.js')");
+    const model = boxes => {
+      const pos = [], idx = [];
+      for (const [a, b, c, d, e, f] of boxes) {
+        const o = pos.length / 3;
+        for (const [x, y, z] of [[a, b, c], [d, b, c], [d, e, c], [a, e, c], [a, b, f], [d, b, f], [d, e, f], [a, e, f]]) pos.push(x, y, z);
+        for (const t of [0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6, 0, 4, 5, 0, 5, 1, 1, 5, 6, 1, 6, 2, 2, 6, 7, 2, 7, 3, 3, 7, 4, 3, 4, 0]) idx.push(o + t);
+      }
+      const P = new W.Float32Array(pos), I = new W.Uint16Array(idx), bin = new W.Uint8Array(P.byteLength + I.byteLength);
+      bin.set(new W.Uint8Array(P.buffer)); bin.set(new W.Uint8Array(I.buffer), P.byteLength);
+      const json = { asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }], meshes: [{ primitives: [{ attributes: { POSITION: 0 }, indices: 1 }] }],
+        bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: P.byteLength }, { buffer: 0, byteOffset: P.byteLength, byteLength: I.byteLength }],
+        accessors: [{ bufferView: 0, componentType: 5126, count: pos.length / 3, type: 'VEC3', min: [-9, -9, -9], max: [9, 9, 9] }, { bufferView: 1, componentType: 5123, count: idx.length, type: 'SCALAR' }] };
+      return A.writeGLB({ json, bin });
+    };
+    // 1.8 high, in a tunic down to the knees: the legs only show below it, the arms hang against the body, the neck is thin.
+    const person = model([[0.04, 0, -0.07, 0.17, 0.62, 0.07], [-0.17, 0, -0.07, -0.04, 0.62, 0.07], [-0.24, 0.55, -0.12, 0.24, 1.45, 0.12],
+      [0.25, 0.85, -0.05, 0.33, 1.42, 0.05], [-0.33, 0.85, -0.05, -0.25, 1.42, 0.05], [-0.05, 1.45, -0.05, 0.05, 1.54, 0.05], [-0.12, 1.54, -0.11, 0.12, 1.8, 0.11]]);
+    const g = await A.readModel(person), shape = A.modelShape(g), J = A.proposeJoints(shape, 'person'), H = 1.8;
+    assert(Math.abs(J.hips[1] / H - 0.52) < 0.07 && Math.abs(J.thighL[1] / H - 0.5) < 0.07, 'la cadera a la altura de la cadera, no en el borde de la túnica (' + (J.hips[1] / H).toFixed(2) + ')');
+    assert(Math.abs(J.shinL[1] / H - 0.285) < 0.06 && Math.abs(J.shinR[1] / H - 0.285) < 0.06, 'las rodillas a su altura (' + (J.shinL[1] / H).toFixed(2) + ')');
+    assert(J.head[1] / H > 0.88 && J.neck[1] / H > 0.8 && J.neck[1] / H < 0.9 && J.head[1] > J.neck[1], 'la cabeza en la cabeza y el cuello bajo ella (' + [J.head[1] / H, J.neck[1] / H].map(v => v.toFixed(2)).join(' ') + ')');
+    assert(J.armL[1] > J.forearmL[1] && J.forearmL[1] > J.handL[1] && J.handL[1] / H > 0.35 && J.handL[1] / H < 0.55, 'los brazos cuelgan: hombro, codo y mano, de arriba abajo (' + (J.handL[1] / H).toFixed(2) + ')');
+    assert(J.handL[0] > 0.1 && J.handR[0] < -0.1 && J.thighL[0] > 0 && J.thighR[0] < 0 && J.footL[0] > 0 && J.footR[0] < 0, 'cada lado en su sitio (L a +X, R a -X)');
+    // A child: bigger head and shorter legs.
+    const kid = model([[0.03, 0, -0.05, 0.11, 0.4, 0.05], [-0.11, 0, -0.05, -0.03, 0.4, 0.05], [-0.15, 0.38, -0.08, 0.15, 0.82, 0.08], [0.16, 0.55, -0.04, 0.22, 0.82, 0.04], [-0.22, 0.55, -0.04, -0.16, 0.82, 0.04],
+      [-0.04, 0.82, -0.04, 0.04, 0.88, 0.04], [-0.12, 0.88, -0.1, 0.12, 1.1, 0.1]]);
+    const Jk = A.proposeJoints(A.modelShape(await A.readModel(kid)), 'person'), Hk = 1.1;
+    assert(Jk.hips[1] / Hk < 0.5 && Jk.head[1] / Hk > 0.88 && Jk.shinL[1] / Hk > 0.2 && Jk.shinL[1] / Hk < 0.32, 'un niño: la cadera, rodillas y cabeza a sus alturas (' + [Jk.hips[1], Jk.shinL[1], Jk.head[1]].map(v => (v / Hk).toFixed(2)).join(' ') + ')');
+    // And it walks: the legs bound to their own side (two close together don't drag each other).
+    const out = A.buildRig(g, shape, 'person', J), g2 = await A.readModel(out);
+    const w = A.bindWeights(new W.Float32Array([0.1, 0.3, 0, -0.1, 0.3, 0]), [{ name: 'shinL', a: [0.1, 0.5, 0], b: [0.1, 0, 0] }, { name: 'shinR', a: [-0.1, 0.5, 0], b: [-0.1, 0, 0] }], 1.8, 0);
+    assert(w.joints[0] === 0 && w.joints[4] === 1 && w.weights[0] > 0.9 && w.weights[4] > 0.9, 'cada pierna sigue a su hueso');
+    assert(g2.json.animations.some(a => a.name === 'Walk'), 'y se crea la animación de andar');
+  });
+
+  await test('plantilla Baetulo: el romano y el legionario traen esqueleto y las animaciones que pide la plantilla (Idle y Walk)', async () => {
+    reset(); const W = frame.contentWindow, A = await W.eval("import('/src/features/content/autorig.js')"), T = await W.eval("import('/src/features/content/templates/show_baetulo.js')");
+    for (const id of ['baetulo-romano', 'baetulo-legionario']) {
+      const buf = await (await fetch(`/assets/ai3d/${id}.glb`)).arrayBuffer(), g = await A.readModel(new URL(`/assets/ai3d/${id}.glb`, W.location.href).href);
+      const names = (g.json.animations || []).map(a => a.name);
+      assert(g.json.skins?.length === 1 && g.json.skins[0].joints.length >= 17 && names.includes('Walk') && names.includes('Idle'), id + ': esqueleto y animaciones: ' + names.join());
+      assert(buf.byteLength < 6_000_000, id + ': pesa ' + (buf.byteLength / 1e6).toFixed(1) + ' MB');
+    }
+    const deck = T.default.show_baetulo.make(), walkers = deck.slides.flatMap(s => s.blocks).filter(b => b.type === 'model' && b.walk);
+    assert(walkers.length >= 1 && walkers.every(b => b.walk.clip === 'Walk'), 'el paseo de la plantilla usa el clip Walk');
+  });
+
   await test('esqueleto automático: más tipos (pájaro, dragón, pez, serpiente, araña, pulpo, objeto) con huesos, animaciones y glTF válidos', async () => {
     reset(); const W = frame.contentWindow;
     const A = await W.eval("import('/src/features/content/autorig.js')"), G = await W.eval("import('/src/features/content/gltf.js')");

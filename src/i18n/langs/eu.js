@@ -5191,4 +5191,5 @@ export default {
   "De momento, en el modo Realista no se pueden usar fotos propias, por la seguridad de los usuarios: estamos trabajando en ello.": "Oraingoz, modu errealistak ezin ditu zure argazkiak erabili, erabiltzaileen segurtasunerako: horretan ari gara lanean.",
   "Realista (con textura, para objetos, animales y personas). Cuesta más y tarda un minuto; desmárcalo para formas geométricas sencillas con fotos propias.": "Errealista (testurarekin, objektu, animalia eta pertsonentzat). Gehiago kostatzen du eta minutu bat inguru behar du; desmarkatu forma geometriko sinpleetarako edo zure argazkietarako.",
   "Creando el modelo realista: suele tardar un minuto…": "Eredu errealista sortzen: normalean minutu bat behar du…",
+  "Hasta {n} créditos; hasta {m} si es una persona, que además se anima con su esqueleto (se cobra lo que cuesta de verdad).": "Gehienez {n} kreditu; {m} arte pertsona bat bada, eta hari eskeleto bat eta mugimendua ematen zaizkio (benetako kostua kobratzen da).",
 };

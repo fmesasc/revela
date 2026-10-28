@@ -192,7 +192,8 @@ export async function openAutoRig(b, { onDone } = {}) {
       kind = ans.kind; opts = { ...ans.opts }; view = KINDS[kind].view; clip = KINDS[kind].move;
       if (ans.turn) { yaw = (yaw + ans.turn) % 360; shape = modelShape(g, yaw); }
       reset();
-      J = seedJoints(shape, kind, J, hints, ans.turn); draw(); rebuild();
+      // (For a person the body's proportions place the joints better than the AI's pixels: it only says what it is and where it faces.)
+      J = kind === 'person' ? proposeJoints(shape, kind, opts) : seedJoints(shape, kind, J, hints, ans.turn); draw(); rebuild();
       showGuess(kind, null, true);
       const price = cost?.credits != null ? `${String(+cost.credits.toFixed(2)).replace('.', ',')} ${t('créditos')}` : cost?.usd != null ? `$${cost.usd.toFixed(4)}` : '';
       aiMsg((ans.turn ? t('Girado para que mire de frente.') + ' ' : '') + (price ? t('Coste:') + ' ' + price : ''));
@@ -211,5 +212,7 @@ export async function openAutoRig(b, { onDone } = {}) {
     close(); onDone?.();
   });
   reset();
+  // A shape that doesn't say clearly what it is (an engine, a cell, a ship): the AI looks at it, if it is already connected and its notice accepted.
+  if (guess.confidence < 0.6 && aiConnected() && privacyAccepted()) q('.rig-ai').click();
   return { back, guess, get joints() { return J; }, get built() { return built; }, get kind() { return kind; }, get yaw() { return yaw; }, get view() { return view; } };
 }

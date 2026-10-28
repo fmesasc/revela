@@ -3622,7 +3622,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       if (path === '3d/jobs') return { id: 'job-realista-123456' };
       if (path.endsWith('/model')) return { glb: 'data:model/gltf-binary;base64,Z2xURg==' };
       if (path.endsWith('/cancel')) return { ok: true };
-      return { status: 'done', rounds: [{ n: 1, ok: true, note: '' }], left: 0, total: 1, max: 1, glb: true }; };
+      return { status: 'done', rounds: [{ n: 1, ok: true, note: '' }], left: 0, total: 1, max: 1, glb: true, animated: true }; };
     await M.openModelAi({ api, interval: 5 });
     let m = D.getElementById('m3a-modal'); const q = s => m.querySelector(s);
     if (!q('.m3a-work').hidden) { q('.m3a-discard').click(); await sleep(30); await M.openModelAi({ api, interval: 5 }); m = D.getElementById('m3a-modal'); }   // (a job left open by another test)
@@ -3632,7 +3632,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(q('.m3a-insert') && !q('.m3a-insert').disabled && vis(q('.m3a-insert')), 'el botón de insertar se ve y se puede pulsar');
     assert(!vis(q('.m3a-more')) && !vis(q('.m3a-end')), 'y no hay «Pedir cambios» en un modelo realista');
     const before = slide().blocks.length; q('.m3a-insert').click(); await sleep(200);
-    assert(slide().blocks.length === before + 1 && slide().blocks.at(-1).type === 'model', 'insertarlo pone el modelo en la diapositiva');
+    assert(slide().blocks.length === before + 1 && slide().blocks.at(-1).type === 'model' && slide().blocks.at(-1).clip === '*', 'insertarlo pone el modelo en la diapositiva y, si trae su animación (esqueleto), con la animación puesta');
     D.getElementById('m3a-modal')?.remove();
   });
 

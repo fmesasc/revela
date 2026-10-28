@@ -452,6 +452,7 @@ export default {"biz_board":["Hiruhileko emaitzak kontseiluari","Urdin iluna eta
 "show_anim_rpg":["Mahai-rola: zure lehen partida","3D pertsonaiak beren animazioekin: eraso, blokeatu, sorginkeriak bota eta erori; aurkariarengana oinez joan, biraka doan dadoa eta jaisten den bizitza"],
 "show_anim_speech":["Hitzaldia: salba dezagun liburutegia","Hitzaldi baten erritmoko enfasia: esaldia fokuan eta gainerakoa itzalita, marratu, nabarmendu, eskuz egindako azpimarra eta zirkulua, atzerako kontaketa"],
 "show_anim_tshirt":["Infografia: kamiseta baten bidaia","Bere burua erakusten duen infografia: geltokiak garaiz dituen ibilbide marraztua, betetzen den tanta-piktograma, ur-jauzia, zifrak eta formula"],
+"show_baetulo":["Baetulo: erromatarrak Badalonan","Tokiko historia AArekin egindako sei 3D eredurekin: paseatzen duen erromatar bat, legionario bat, anfora, lanpara, ontzia, Venus; erronkak"],
 "showcase_3d":["Katalogoa: 3D sakonean","3D ereduak aukera guztiekin: ikuspegiak, sartzean mugimenduak, biraketa, ertzak, marjina, klipak, ibiltzea eta Eraldatu bidezko iristea"],
 "showcase_animations":["Katalogoa: animazioak","Objektuen animazio guztiak: sarrera, enfasia, irteera, ibilbideak, marraztu, kateatuak, soinuak eta hainbat objektu bakarrean"],
 "showcase_charts":["Katalogoa: grafikoak","15 grafiko motak, bi diapositiba bakoitzeko, serieekin, konbinatuarekin, saretarekin, etiketekin eta ardatzen izenburuekin, eta aukeren taula"],

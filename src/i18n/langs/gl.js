@@ -5191,4 +5191,5 @@ export default {
   "De momento, en el modo Realista no se pueden usar fotos propias, por la seguridad de los usuarios: estamos trabajando en ello.": "Polo momento, o modo Realista non pode usar fotos propias, pola seguridade das persoas usuarias: estamos traballando niso.",
   "Realista (con textura, para objetos, animales y personas). Cuesta más y tarda un minuto; desmárcalo para formas geométricas sencillas con fotos propias.": "Realista (con textura, para obxectos, animais e persoas). Custa máis e tarda un minuto; desmárcao para formas xeométricas sinxelas ou fotos propias.",
   "Creando el modelo realista: suele tardar un minuto…": "Creando o modelo realista: adoita tardar un minuto…",
+  "Hasta {n} créditos; hasta {m} si es una persona, que además se anima con su esqueleto (se cobra lo que cuesta de verdad).": "Ata {n} créditos; ata {m} se é unha persoa, que ademais recibe esqueleto e se anima (cóbrase o custo real).",
 };

@@ -452,6 +452,7 @@ export default {"biz_board":["Résultats trimestriels au conseil","Bleu foncé e
 "show_anim_rpg":["Jeu de rôle sur table : ta première partie","Personnages 3D avec leurs animations : attaquer, bloquer, lancer des sorts et tomber ; marcher jusqu'à l'adversaire, dé qui roule et vie qui baisse"],
 "show_anim_speech":["Discours : sauvons la bibliothèque","L'emphase au rythme d'un discours : phrase en avant et reste atténué, barrer, surligner, soulignement et cercle à la main, compte à rebours"],
 "show_anim_tshirt":["Infographie : le voyage d'un t-shirt","Infographie qui se dévoile : route qui se dessine avec ses étapes au bon moment, pictogramme de gouttes qui se remplit, cascade, chiffres et formule"],
+"show_baetulo":["Baetulo : les Romains à Badalona","Histoire locale avec six modèles 3D créés par l’IA : un Romain qui marche, un légionnaire, amphore, lampe, navire, Vénus ; défis"],
 "showcase_3d":["Catalogue : la 3D en détail","Modèles 3D avec toutes leurs options : vues, mouvements à l’entrée, rotation, bords, marge, clips, marche et arrivée avec Morphose"],
 "showcase_animations":["Catalogue : animations","Toutes les animations d’objet : entrée, emphase, sortie, trajectoires, dessin, enchaînées, sons et plusieurs sur un objet"],
 "showcase_charts":["Catalogue : graphiques","Les 15 types de graphique, deux par diapositive, avec séries, combiné, grille, étiquettes et titres d’axes, et le tableau des options"],

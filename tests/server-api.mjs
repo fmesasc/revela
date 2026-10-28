@@ -1120,6 +1120,36 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     const sR = await status(idR);
     ok(sR.status === 'done' && c1 - credits() > 0, 'Runware: terminado y cobrado una vez: ' + JSON.stringify([sR.status, sR.error, c1 - credits()]));
     await req('POST', '/api/3d/jobs/' + idR + '/cancel', { headers: { Cookie: gil }, body: {} });
+    // Una persona, con la clave de fal: tras TRELLIS, esqueleto y caminar (Meshy rigging); si falla, el modelo sin esqueleto y sin cobrar el esqueleto.
+    { const prevR = env.FETCH; let rigMode = 'ok', rigPolls = 0; const rigCalls = [];
+      env.FETCH = async (u, init = {}) => { const s = String(u);
+        if (s.startsWith('https://queue.fal.run/fal-ai/meshy/rigging')) { rigCalls.push([s, init.body && JSON.parse(init.body)]);
+          if (s === 'https://queue.fal.run/fal-ai/meshy/rigging') return rigMode === 'submit-fail' ? new Response('x', { status: 500 }) : Response.json({ request_id: 'rg-1' });
+          if (s.endsWith('/status')) return Response.json({ status: ++rigPolls < 2 ? 'IN_PROGRESS' : rigMode === 'fail' ? 'FAILED' : 'COMPLETED', error: 'no humanoid' });
+          return Response.json({ rigged_character_glb: { url: 'https://v3.fal.media/files/rig.glb' }, basic_animations: { walking_glb: { url: 'https://v3.fal.media/files/walk.glb' } } }); }
+        if (s === 'https://v3.fal.media/files/walk.glb') return new Response(Buffer.from('glTF-camina'));
+        if (s === 'https://v3.fal.media/files/rig.glb') return new Response(Buffer.from('glTF-esqueleto'));
+        return prevR(u, init); };
+      await acc('1212').fetch(new Request('https://do/grant', { method: 'POST', body: JSON.stringify({ credits: 2000, reason: 'grant', ref: 'trig' }) }));
+      const run = async (prompt, mode) => { rigMode = mode; rigPolls = 0; rigCalls.length = 0; rwPolls = 0;
+        const c0 = credits(), jr = await (await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt, realistic: true } })).json();
+        for (let i = 0; i < 14; i++) { const st = await status(jr.id); if (st.status !== 'running') break; skew += 25e3; await tick(jr.id); }
+        const st = await status(jr.id); return { id: jr.id, st, spent: c0 - credits(), est: jr.estimate }; };
+      const a = await run('un médico con bata blanca', 'ok');
+      ok(a.st.status === 'done' && a.st.animated === true, 'Esqueleto: una persona termina con su animación: ' + JSON.stringify([a.st.status, a.st.error, a.st.animated]));
+      ok(rigCalls[0][1].model_url === 'https://im.runware.ai/malla.glb' && rigCalls[0][1].height_meters === 1.7, 'Esqueleto: se envía a fal el modelo de TRELLIS: ' + JSON.stringify(rigCalls[0]));
+      ok(Buffer.from((await (await req('GET', '/api/3d/jobs/' + a.id + '/model', { headers: { Cookie: gil } })).json()).glb.split(',')[1], 'base64').toString() === 'glTF-camina', 'Esqueleto: se entrega el GLB que camina');
+      ok(a.est.max > 100 && a.spent > 0, 'Esqueleto: se aparta más (con el esqueleto) y se cobra: ' + JSON.stringify([a.est, a.spent]));
+      await req('POST', '/api/3d/jobs/' + a.id + '/cancel', { headers: { Cookie: gil }, body: {} });
+      const b = await run('un médico con bata blanca', 'fail');
+      ok(b.st.status === 'done' && b.st.animated === false && b.spent > 0 && b.spent < a.spent, 'Esqueleto: si fal no lo consigue, se entrega el modelo sin esqueleto y cuesta menos: ' + JSON.stringify([b.st.status, b.st.animated, b.spent, a.spent]));
+      await req('POST', '/api/3d/jobs/' + b.id + '/cancel', { headers: { Cookie: gil }, body: {} });
+      const c = await run('un médico con bata blanca', 'submit-fail');
+      ok(c.st.status === 'done' && c.st.animated === false, 'Esqueleto: si ni se envía, igual: ' + JSON.stringify([c.st.status, c.st.error, c.st.animated]));
+      await req('POST', '/api/3d/jobs/' + c.id + '/cancel', { headers: { Cookie: gil }, body: {} });
+      const d = await run('una jirafa', 'ok'); ok(!rigCalls.length && d.st.animated === false, 'Esqueleto: lo que no es una persona no se manda a rigging');
+      await req('POST', '/api/3d/jobs/' + d.id + '/cancel', { headers: { Cookie: gil }, body: {} });
+      env.FETCH = prevR; }
     // Saldo retenido por otras peticiones: reintenta a los 10 s y sale.
     rwReply = { data: [], errors: [{ code: 'concurrentRequestLimitExceeded' }] };
     const idT = (await (await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una taza', realistic: true } })).json()).id;
@@ -1717,7 +1747,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     { const r = await adm('GET', `/finance/export.csv?from=${today}&to=${today}`), r2 = await adm('GET', `/finance/export.csv?from=${today}&to=${today}`), t = await r.text(), lines = t.split('\r\n');
       ok(r.status === 200 && /text\/csv/.test(r.headers.get('Content-Type')) && /attachment; filename="revela-contabilidad-/.test(r.headers.get('Content-Disposition')) && new Uint8Array(await r2.arrayBuffer())[0] === 0xef && t.startsWith('fecha;tipo;concepto;categoría;importe;moneda;impuestos;comisión;neto;importe_eur'), 'CSV: cabecera (con BOM, para Excel) y descarga');
       ok(lines.some(l => /^\d{4}-\d\d-\d\d;ingreso;credits-500;;12,1;EUR;2,1;0,4;9,6;12,1;;;1414;evt_f1$/.test(l)), 'CSV: el pago con impuestos, comisión y neto: ' + lines.find(l => /ingreso/.test(l)));
-      ok(lines.some(l => /;reembolso;/.test(l)) && lines.some(l => /;coste;IA \(\d+ peticiones\);ia;-0,\d+;USD;/.test(l)) && lines.some(l => /;horas;Tickets;soporte;.*;2,5;/.test(l)), 'CSV: reembolso, coste de IA del día y horas');
+      ok(lines.some(l => /;reembolso;/.test(l)) && lines.some(l => /;coste;IA \(\d+ peticiones\);ia;-\d+,\d+;USD;/.test(l)) && lines.some(l => /;horas;Tickets;soporte;.*;2,5;/.test(l)), 'CSV: reembolso, coste de IA del día y horas');
       ok(t.includes(`"'=HYPERLINK(""http://malo"")"`) && !/;=HYPERLINK/.test(t), 'CSV: sin fórmulas inyectadas'); }
     // Raw events, by pages; the money ones by kind.
     { const p1 = (await A('GET', '/finance/events?limit=3')).j, p2 = (await A('GET', '/finance/events?limit=3&cursor=' + encodeURIComponent(p1.cursor))).j;

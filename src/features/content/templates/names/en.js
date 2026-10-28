@@ -452,6 +452,7 @@ export default {"biz_board":["Quarterly results for the board","Dark blue and go
 "show_anim_rpg":["Tabletop role-playing: your first game","3D characters with their animations: attack, block, cast spells and fall; walk up to the rival, a rolling die and health that drops"],
 "show_anim_speech":["Speech: let's save the library","Emphasis in step with a speech: the sentence in focus and the rest dimmed, strike-through, highlight, hand-drawn underline and circle, countdown"],
 "show_anim_tshirt":["Infographic: the journey of a T-shirt","An infographic that reveals itself: a route drawn with its stops on time, a pictogram of drops that fills, waterfall, figures and formula"],
+"show_baetulo":["Baetulo: Romans in Badalona","Local history with six AI-made 3D models: a strolling Roman, a legionary, amphora, lamp, ship and Venus; with class challenges"],
 "showcase_3d":["Catalogue: 3D in depth","3D models with all their options: views, moves on entry, spin, edges, margin, clips, walking and arrival with Morph"],
 "showcase_animations":["Catalogue: animations","Every object animation: entrance, emphasis, exit, motion paths, draw, chained, sounds and several on one object"],
 "showcase_charts":["Catalogue: charts","The 15 chart types, two per slide, with series, combo, grid, labels and axis titles, plus the table of options"],

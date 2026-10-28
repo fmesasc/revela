@@ -28,7 +28,7 @@ export function modelApiWith(localApi, serverApi, { signedIn = () => true } = {}
     if (path === '3d') {
       const info = await localApi(path, body);
       if (!info.ok || !signedIn()) return info;
-      try { const s = await serverApi('3d'); if (s.ok && s.realistic) return { ...info, realistic: true, realisticEstimate: s.realisticEstimate }; } catch {}
+      try { const s = await serverApi('3d'); if (s.ok && s.realistic) return { ...info, realistic: true, realisticEstimate: s.realisticEstimate, animatedEstimate: s.animatedEstimate }; } catch {}
       return info;
     }
     if (path === '3d/jobs') {
@@ -93,11 +93,11 @@ export async function openModelAi({ api = hybrid, interval = 2500 } = {}) {
   // «Realista» sends the picture to a service outside the EU: until the data-processing agreement is signed, no photos of their own.
   const estText = n => t('Hasta {n} créditos (se cobra lo que cuesta de verdad, normalmente bastante menos).').replace('{n}', n);
   const sync = () => { const on = !!q('.m3a-real')?.checked, f = q('.m3a-photos'); if (on) f.value = ''; f.disabled = on; q('.m3a-realnote').hidden = !on;
-    if (on && info.realisticEstimate) q('.m3a-est').textContent = estText(info.realisticEstimate.max);
+    if (on && info.realisticEstimate) q('.m3a-est').textContent = info.animatedEstimate ? t('Hasta {n} créditos; hasta {m} si es una persona, que además se anima con su esqueleto (se cobra lo que cuesta de verdad).').replace('{n}', info.realisticEstimate.max).replace('{m}', info.animatedEstimate.max) : estText(info.realisticEstimate.max);
     else if (info.local) q('.m3a-est').textContent = t('Cada ronda cuesta lo que cobra la IA por ella, normalmente muy poco.');
     else if (info.estimate?.max != null) q('.m3a-est').textContent = estText(info.estimate.max); };
   q('.m3a-real')?.addEventListener('change', sync); sync();
-  let timer = null, glb = null, closed = false;
+  let timer = null, glb = null, glbAnimated = false, closed = false;
   const close = () => { closed = true; clearTimeout(timer); back.remove(); };
   q('.modal-close').addEventListener('click', close);
   back.querySelectorAll('.m3a-ex').forEach(b => b.addEventListener('click', () => { q('.m3a-prompt').value = b.textContent; }));
@@ -122,10 +122,10 @@ export async function openModelAi({ api = hybrid, interval = 2500 } = {}) {
     q('.m3a-end').hidden = running || currentReal; q('.m3a-endb').hidden = running; q('.m3a-more').hidden = currentReal;   // (no changes to a realistic one: another is made; «Insertar» stays)
     q('.m3a-insert').disabled = !s.glb; q('.m3a-more').disabled = s.total >= s.max;
     if (!running && s.glb && !glb) {
-      glb = (await api(`3d/jobs/${current}/model`)).glb;
+      glb = (await api(`3d/jobs/${current}/model`)).glb; glbAnimated = !!s.animated;
       if (closed) return;
       const mv = document.createElement('model-viewer');
-      Object.assign(mv, { src: glb, alt: t('Modelo creado con IA') }); mv.setAttribute('camera-controls', ''); mv.setAttribute('auto-rotate', '');
+      Object.assign(mv, { src: glb, alt: t('Modelo creado con IA') }); mv.setAttribute('camera-controls', ''); if (glbAnimated) mv.setAttribute('autoplay', ''); else mv.setAttribute('auto-rotate', '');
       mv.style.cssText = 'width:100%;height:100%'; q('.m3a-view').replaceChildren(mv); q('.m3a-view').hidden = false;
     }
   };
@@ -155,7 +155,7 @@ export async function openModelAi({ api = hybrid, interval = 2500 } = {}) {
   });
   q('.m3a-discard').addEventListener('click', async () => { const id = current; current = null; close(); try { await api(`3d/jobs/${id}/cancel`, {}); } catch {} });
   // (Once inserted, the job isn't needed: it is deleted from the server.)
-  q('.m3a-insert').addEventListener('click', () => { if (!glb) return; insertGeneratedModel(glb, t('Modelo creado con IA')); const id = current; current = null; close(); api(`3d/jobs/${id}/cancel`, {}).catch(() => {}); });
+  q('.m3a-insert').addEventListener('click', () => { if (!glb) return; insertGeneratedModel(glb, t('Modelo creado con IA'), { animated: glbAnimated }); const id = current; current = null; close(); api(`3d/jobs/${id}/cancel`, {}).catch(() => {}); });
   if (current) working();                                // (a job still open: back to it)
   else q('.m3a-prompt').focus();
 }

@@ -23,7 +23,7 @@ import { credits, priceOf } from './ai.js';
 import { writeText, readParts } from './store.js';
 import { DAY, enc, random } from './util.js';
 import { scheduleAlarm, runAlarm } from './brakes.js';
-import { trellisSettings, trellisProvider, realisticEngine, trellisReference, trellisSubmit, trellisPoll } from './trellis3d.js';
+import { trellisSettings, trellisProvider, realisticEngine, trellisReference, trellisSubmit, trellisPoll, rigAvailable, rigSubmit, rigPoll } from './trellis3d.js';
 import { configuredMeshy, meshySettings, meshyUsd, meshySubmit, meshyStatus, meshyResult, fetchGlb, looksHumanoid } from './meshy3d.js';
 
 const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -66,7 +66,8 @@ export async function handle3d(path, req, body, env, me, A, json) {
   const [, id, op] = m, k = settings3d(env), s = settings(env);
   // (The «realistic» mode needs no Blender: with only a TRELLIS key the dialog offers just that.)
   if (path === '/3d') return json({ ok: (configured3d(env) || configuredRealistic(env)) && !!env.OPENROUTER_KEY && !!env.MODELJOBS, estimate: estimate3d(env), blender: configured3d(env), realistic: configuredRealistic(env),
-    ...(configuredRealistic(env) && { realisticEstimate: { perRound: credits(trellisSettings(env).usd, s), rounds: 1, max: credits(trellisSettings(env).usd, s) } }) });
+    ...(configuredRealistic(env) && { realisticEstimate: { perRound: credits(trellisSettings(env).usd, s), rounds: 1, max: credits(trellisSettings(env).usd, s) },
+      ...(rigAvailable(env) && { animatedEstimate: { max: credits(trellisSettings(env).usd + trellisSettings(env).rigUsd, s) } }) }) });
   if (!env.MODELJOBS || (!configured3d(env) && !configuredRealistic(env))) return json({ error: 'not configured' }, 503);
   if (!env.OPENROUTER_KEY) return json({ error: 'ai not configured' }, 503);
   const pass = async (jid, o, a) => { const r = await jobOf(env, jid).fetch('https://job/' + o, { method: 'POST', body: JSON.stringify({ sub: me.sub, ...a }) }); return json(await r.json(), r.status); };
@@ -91,9 +92,10 @@ export async function handle3d(path, req, body, env, me, A, json) {
     // (Until the data-processing agreement with the image→3D provider is signed: the «realistic» mode takes no photos of their own.)
     if (realistic && images.length) return json({ error: 'no photos in realistic mode' }, 400);
     const animate = realistic && (body.animate != null ? !!body.animate : looksHumanoid(prompt));
-    const engine = realistic ? realisticEngine(env, animate) : null, rUsd = engine === 'trellis' ? trellisSettings(env).usd : meshyUsd(env, animate);
+    const engine = realistic ? realisticEngine(env, animate) : null, rig = engine === 'trellis' && animate && rigAvailable(env);
+    const rUsd = engine === 'trellis' ? trellisSettings(env).usd + (rig ? trellisSettings(env).rigUsd : 0) : meshyUsd(env, animate);   // (held at the most; settled at what it really was)
     const jid = random(16), b = await begin(jid, realistic ? rUsd : roundUsd(s, k)); if (b.stop) return b.stop;
-    await jobOf(env, jid).fetch('https://job/init', { method: 'POST', body: JSON.stringify({ id: jid, sub: me.sub, prompt, images, hold: b.hold, lang: /^[a-z]{2}$/.test(body.lang || '') ? body.lang : 'es', realistic, animate, engine }) });
+    await jobOf(env, jid).fetch('https://job/init', { method: 'POST', body: JSON.stringify({ id: jid, sub: me.sub, prompt, images, hold: b.hold, lang: /^[a-z]{2}$/.test(body.lang || '') ? body.lang : 'es', realistic, animate, engine, rig }) });
     const est = realistic ? { perRound: credits(rUsd, s), rounds: 1, max: credits(rUsd, s) } : estimate3d(env);
     return json({ id: jid, estimate: est, realistic });
   }
@@ -164,12 +166,12 @@ export class ModelJob {
       for (let i = 0; i < a.images.length; i++) await st.put('img:' + i, a.images[i]);
       await st.put('job', { id: a.id, sub: a.sub, prompt: a.prompt, images: a.images.length, lang: a.lang, status: 'running', rounds: [], left: k.rounds, total: 0,
         hold: a.hold, run: random(6), feedback: [], pending: null, last: null, glb: false, charged: 0, created: Date.now(), expires: Date.now() + DAY,
-        realistic: !!a.realistic, animate: !!a.animate, engine: a.engine || 'meshy', meshy: a.realistic ? { phase: a.engine === 'trellis' ? 'prep' : 'submit' } : null });
+        realistic: !!a.realistic, animate: !!a.animate, engine: a.engine || 'meshy', rig: !!a.rig, animated: false, meshy: a.realistic ? { phase: a.engine === 'trellis' ? 'prep' : 'submit' } : null });
       await scheduleAlarm(this.ctx, this.env, 'model3d', Date.now()); return this.json({ ok: true });   // (brakes.js: in a second)
     }
     const job = await st.get('job');
     if (!job || job.sub !== a.sub || Date.now() > job.expires) return this.json({ error: 'not found' }, 404);   // (someone else's: as if it didn't exist)
-    if (op === 'get') return this.json({ status: job.status, rounds: job.rounds, left: job.left, total: job.total, max: k.maxRounds, glb: job.glb, error: job.error || null, charged: job.charged, expires: job.expires });
+    if (op === 'get') return this.json({ status: job.status, rounds: job.rounds, left: job.left, total: job.total, max: k.maxRounds, glb: job.glb, animated: !!job.animated, error: job.error || null, charged: job.charged, expires: job.expires });
     if (op === 'model') { if (!job.glb) return this.json({ error: 'not ready' }, 404); return this.json({ glb: 'data:model/gltf-binary;base64,' + (await readParts(st, 'glb:')).join('') }); }
     if (op === 'can') return this.json(job.realistic ? { ok: false, error: 'not supported' } : job.status === 'running' ? { ok: false, error: 'running' } : job.total >= k.maxRounds ? { ok: false, error: 'round limit' } : { ok: true });
     if (op === 'feedback') {
@@ -321,12 +323,35 @@ export class ModelJob {
       return st.put('job', cur);
     }
     let res;
-    if (trellis) {
+    if (trellis && m.phase === 'poll' && !m.done) {
       res = await trellisPoll(env, m);
       const cur0 = await st.get('job'); if (!cur0 || cur0.run !== run || cur0.status !== 'running') return;
       if (res.status === 'IN_PROGRESS') { cur0.nextTick = Date.now() + mk.pollSec * 1000; return st.put('job', cur0); }
       if (res.status !== 'COMPLETED') { await this.settleMeshy(cur0, 0); return this.finish(cur0, 'failed', tag + (res.error || 'error')); }
       res.ok = true;
+      // A person, with fal's key: on to the skeleton (the walk); if it fails the model is given as it is and the skeleton isn't charged.
+      if (cur0.rig && m.phase !== 'rig') {
+        cur0.meshy = { phase: 'rigsubmit', glbUrl: res.glbUrl, cost: res.cost || 0, started: Date.now() }; cur0.nextTick = Date.now() + 1000; return st.put('job', cur0);
+      }
+    } else if (m.phase === 'rigsubmit' || m.phase === 'rig') {
+      const keep = { glbUrl: m.glbUrl, cost: m.cost };
+      const rigFail = async why => {   // (the model without a skeleton)
+        const c = await st.get('job'); if (!c || c.run !== run || c.status !== 'running') return null;
+        c.rigFailed = why; c.rig = false; c.meshy = { phase: 'poll', provider: 'runware', done: true, ...keep, started: Date.now() }; c.nextTick = Date.now() + 500; await st.put('job', c); return null; };
+      if (Date.now() - (m.started || 0) > trellisSettings(env).rigWaitSec * 1000) return rigFail('rig timeout');
+      if (m.phase === 'rigsubmit') {
+        const sub = await rigSubmit(env, m.glbUrl);
+        const c = await st.get('job'); if (!c || c.run !== run || c.status !== 'running') return;
+        if (!sub.ok) return rigFail(sub.error);
+        c.meshy = { ...m, phase: 'rig', statusUrl: sub.statusUrl, responseUrl: sub.responseUrl }; c.nextTick = Date.now() + mk.pollSec * 1000; return st.put('job', c);
+      }
+      const rp = await rigPoll(env, m);
+      const c = await st.get('job'); if (!c || c.run !== run || c.status !== 'running') return;
+      if (rp.status === 'IN_PROGRESS') { c.nextTick = Date.now() + mk.pollSec * 1000; return st.put('job', c); }
+      if (rp.status !== 'COMPLETED') return rigFail(rp.error);
+      res = { ok: true, glbUrl: rp.glbUrl, cost: m.cost, rigged: true };
+    } else if (trellis && m.done) {   // (the model before its skeleton was tried: given as it is)
+      res = { ok: true, glbUrl: m.glbUrl, cost: m.cost };
     } else {
     const sx = await meshyStatus(env, m.statusUrl);
     let cur = await st.get('job'); if (!cur || cur.run !== run || cur.status !== 'running') return;
@@ -340,11 +365,11 @@ export class ModelJob {
     cur = await st.get('job'); if (!cur || cur.run !== run || cur.status !== 'running') return;
     if (!glb.ok) { await this.settleMeshy(cur, 0); return this.finish(cur, 'failed', tag + glb.error); }
     await writeText(st, 'glb:', glb.b64);
-    const usd = trellis ? trellisSettings(env).usd : meshyUsd(env, !!cur.animate);
-    await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'spend', { usd: trellis ? (res.cost || 0.03) + trellisSettings(env).imageUsd : usd });
+    const usd = trellis ? trellisSettings(env).usd + (res.rigged ? trellisSettings(env).rigUsd : 0) : meshyUsd(env, !!cur.animate);
+    await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'spend', { usd: trellis ? (res.cost || 0.03) + trellisSettings(env).imageUsd + (res.rigged ? 0.2 : 0) : usd });
     const r = await this.settleMeshy(cur, usd);
     cur = await st.get('job'); if (!cur || cur.run !== run || cur.status !== 'running') return;
-    cur.glb = true; cur.charged += (r && r.used) || 0;
+    cur.glb = true; cur.animated = !!res.rigged; cur.charged += (r && r.used) || 0;
     return this.finish(cur, 'done');
   }
 }

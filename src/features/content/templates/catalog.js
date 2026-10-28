@@ -453,6 +453,7 @@ export const CATALOG = {"biz_strategy":{"name":"Plan estratégico y OKR","summar
   "show_anim_haiku":{"name":"Taller de haiku: palabra a palabra","summary":"Animación por palabras y párrafos: versos palabra a palabra, consigna frase a frase, sílabas contadas y Transformar","cat":"showcase","file":"show_anim"},
   "show_anim_tshirt":{"name":"Infografía: el viaje de una camiseta","summary":"Infografía que se revela: ruta que se dibuja con sus paradas a tiempo, pictograma de gotas que se llena, cascada, cifras y fórmula","cat":"showcase","file":"show_anim"},
   "show_anim_bike":{"name":"Las marchas de la bici, sin misterio","summary":"Movimientos sincronizados: engranajes que giran a su relación real, ruedas que ruedan su distancia, dos carriles a la vez y tabla","cat":"showcase","file":"show_anim"},
+  "show_baetulo":{"name":"Baetulo: los romanos en Badalona","summary":"Historia local con seis modelos 3D hechos con IA: un romano que pasea, un legionario, ánfora, lucerna, barco y Venus; con retos para clase","cat":"showcase","file":"show_baetulo"},
   "showcase_transitions":{"name":"Catálogo: transiciones","summary":"Las 22 transiciones de diapositiva, una a una: entrada, salida distinta, direcciones, velocidad y avance automático","cat":"showcase","file":"showcase"},
   "showcase_animations":{"name":"Catálogo: animaciones","summary":"Todas las animaciones de objeto: entrada, énfasis, salida, trayectorias, dibujar, encadenadas, sonidos y varias en un objeto","cat":"showcase","file":"showcase"},
   "showcase_3d":{"name":"Catálogo: el 3D a fondo","summary":"Modelos 3D con todas sus opciones: vistas, movimientos al entrar, giro, bordes, margen, clips, andar y llegada con Transformar","cat":"showcase","file":"showcase"},
@@ -516,5 +517,6 @@ export const LOADERS = {
   "show_3d": () => import('./show_3d.js'),
   "show_3d_ai": () => import('./show_3d_ai.js'),
   "show_anim": () => import('./show_anim.js'),
+  "show_baetulo": () => import('./show_baetulo.js'),
   "showcase": () => import('./showcase.js'),
 };

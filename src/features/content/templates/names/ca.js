@@ -452,6 +452,7 @@ export default {"biz_board":["Resultats trimestrals al consell","Blau fosc i dau
 "show_anim_rpg":["Rol de taula: la teva primera partida","Personatges 3D amb les seves animacions: atacar, bloquejar, llançar encanteris i caure; caminar fins al rival, dau que roda i vida que baixa"],
 "show_anim_speech":["Discurs: salvem la biblioteca","Èmfasi al ritme d'un discurs: frase en focus i la resta atenuada, ratllar, ressaltar, subratllat i cercle a mà, compte enrere"],
 "show_anim_tshirt":["Infografia: el viatge d'una samarreta","Infografia que es revela: ruta que es dibuixa amb les parades a temps, pictograma de gotes que s'omple, cascada, xifres i fórmula"],
+"show_baetulo":["Baetulo: els romans a Badalona","Història local amb sis models 3D fets amb IA: un romà que passeja, un legionari, àmfora, llàntia, vaixell i Venus; reptes"],
 "showcase_3d":["Catàleg: el 3D a fons","Models 3D amb totes les opcions: vistes, moviments en entrar, gir, vores, marge, clips, caminar i arribada amb Transformació"],
 "showcase_animations":["Catàleg: animacions","Totes les animacions d’objecte: entrada, èmfasi, sortida, trajectòries, dibuixar, encadenades, sons i diverses en un objecte"],
 "showcase_charts":["Catàleg: gràfics","Els 15 tipus de gràfic, dos per diapositiva, amb sèries, combinat, quadrícula, etiquetes i títols d’eixos, i la taula d’opcions"],
