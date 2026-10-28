@@ -81,6 +81,7 @@ const range = (n, f) => Array.from({ length: Math.max(0, n) }, (_, i) => f(i + 1
 const PERSON = [['hips', null], ['spine', 'hips'], ['chest', 'spine'], ['neck', 'chest'], ['head', 'neck'],
   ['armL', 'chest'], ['forearmL', 'armL'], ['handL', 'forearmL'], ['armR', 'chest'], ['forearmR', 'armR'], ['handR', 'forearmR'],
   ['thighL', 'hips'], ['shinL', 'thighL'], ['footL', 'shinL'], ['thighR', 'hips'], ['shinR', 'thighR'], ['footR', 'shinR']];
+const HEM = [['hemF', 'hips'], ['hemFt', 'hemF'], ['hemB', 'hips'], ['hemBt', 'hemB'], ['hemL', 'hips'], ['hemLt', 'hemL'], ['hemR', 'hips'], ['hemRt', 'hemR']];
 const ANIMAL = [['hips', null], ['spine', 'hips'], ['chest', 'spine'], ['neck', 'chest'], ['head', 'neck'], ['tail', 'hips'],
   ['legFL', 'chest'], ['kneeFL', 'legFL'], ['pawFL', 'kneeFL'], ['legFR', 'chest'], ['kneeFR', 'legFR'], ['pawFR', 'kneeFR'],
   ['legBL', 'hips'], ['kneeBL', 'legBL'], ['pawBL', 'kneeBL'], ['legBR', 'hips'], ['kneeBR', 'legBR'], ['pawBR', 'kneeBR']];
@@ -131,7 +132,7 @@ export function skeletonOf(kind, src = {}) {
       ...sides(s => range(n / 2, i => [['leg' + i + s, 'hips'], ['knee' + i + s, 'leg' + i + s], ['foot' + i + s, 'knee' + i + s]]).flat())];
     case 'octopus': return [['hips', null], ['head', 'hips'], ...range(n, i => [['arm' + i + 'a', 'hips'], ['arm' + i + 'b', 'arm' + i + 'a'], ['arm' + i + 'c', 'arm' + i + 'b']]).flat()];
     case 'object': return [['hips', null], ...range(n, i => ['bend' + i, i > 1 ? 'bend' + (i - 1) : 'hips'])];
-    default: return PERSON;
+    default: return src && src.hemF ? [...PERSON, ...HEM] : PERSON;   // (a person in a tunic or a dress has four more bones hanging from the hips)
   }
 }
 // (each kind with its usual counts)
@@ -142,7 +143,8 @@ export const JOINT_LABELS = { hips: 'Cadera', spine: 'Espalda', chest: 'Pecho', 
   legFL: 'Pata del. izq.', kneeFL: 'Rodilla del. izq.', pawFL: 'Pie del. izq.', legFR: 'Pata del. der.', kneeFR: 'Rodilla del. der.', pawFR: 'Pie del. der.',
   legBL: 'Pata tras. izq.', kneeBL: 'Rodilla tras. izq.', pawBL: 'Pie tras. izq.', legBR: 'Pata tras. der.', kneeBR: 'Rodilla tras. der.', pawBR: 'Pie tras. der.',
   wingL: 'Ala izq.', wing2L: 'Codo del ala izq.', wingTipL: 'Punta del ala izq.', wingR: 'Ala der.', wing2R: 'Codo del ala der.', wingTipR: 'Punta del ala der.',
-  finL: 'Aleta izq.', finR: 'Aleta der.', finTop: 'Aleta de arriba', abdomen: 'Abdomen' };
+  finL: 'Aleta izq.', finR: 'Aleta der.', finTop: 'Aleta de arriba', abdomen: 'Abdomen',
+  hemF: 'Falda: delante', hemFt: 'Falda: bajo delante', hemB: 'Falda: detrás', hemBt: 'Falda: bajo detrás', hemL: 'Falda: lado izq.', hemLt: 'Falda: bajo izq.', hemR: 'Falda: lado der.', hemRt: 'Falda: bajo der.' };
 const NUMBERED = [[/^tail(\d+)$/, 'Cola {n}'], [/^body(\d+)$/, 'Cuerpo {n}'], [/^bend(\d+)$/, 'Doblez {n}'],
   [/^leg(\d+)L$/, 'Pata {n} izq.'], [/^leg(\d+)R$/, 'Pata {n} der.'], [/^knee(\d+)L$/, 'Rodilla {n} izq.'], [/^knee(\d+)R$/, 'Rodilla {n} der.'],
   [/^foot(\d+)L$/, 'Pie {n} izq.'], [/^foot(\d+)R$/, 'Pie {n} der.'], [/^arm(\d+)a$/, 'Tentáculo {n}'], [/^arm(\d+)b$/, 'Tentáculo {n} (medio)'], [/^arm(\d+)c$/, 'Tentáculo {n} (punta)']];
@@ -213,7 +215,7 @@ export function proposeJoints(shape, kind = 'person', opts = {}) {
   const cx = (min[0] + max[0]) / 2, cz = (min[2] + max[2]) / 2, y = f => min[1] + H * f, J = {};
   if (kind === 'person') {
     const prof = profile(shape), found = personFromBody(prof, shape) || personFromProfile(prof, shape);
-    if (found) return found;   // (snapInside(shape, found, H) tidies the drawing but measured worse on the walk: 4,5 % → 4,9 % of stretched edges)
+    if (found) return addHem(shape, found, H);   // (snapInside(shape, found, H) tidies the drawing but measured worse on the walk: 4,5 % → 4,9 % of stretched edges)
     const torso = slab(shape, 1, y(0.5), y(0.62)) || { min, max, mid: [cx, 0, cz] };
     const zc = torso.mid[2], tw = Math.min(torso.max[0] - torso.min[0], W);
     J.hips = [cx, y(0.52), zc]; J.spine = [cx, y(0.62), zc]; J.chest = [cx, y(0.72), zc]; J.neck = [cx, y(0.84), zc]; J.head = [cx, y(0.9), zc];
@@ -281,6 +283,20 @@ export function legCentres(shape, ys, H) {
   return out;
 }
 
+
+// A tunic or a dress that covers the legs: four bones hang from the hips (front, back and the two sides) down to the hem, inside the
+// cloth, and swing as the legs push it — so the cloth is carried by them and not torn between the two legs.
+function addHem(shape, J, H) {
+  const hipsY = J.hips[1], cr = J.crotchY; if (cr == null || hipsY - cr < H * 0.15) return J;   // (jeans and suits: the legs part right under the hips; only a tunic or a dress hides them for long)
+  const yh = cr + H * 0.02, yw = hipsY - H * 0.015; let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const { pos } of shape.parts) for (let k = 0; k < pos.length; k += 3) if (Math.abs(pos[k + 1] - yh) < H * 0.03) { x0 = Math.min(x0, pos[k]); x1 = Math.max(x1, pos[k]); z0 = Math.min(z0, pos[k + 2]); z1 = Math.max(z1, pos[k + 2]); }
+  if (!isFinite(x0) || x1 - x0 < H * 0.12) return J;
+  const cx = J.hips[0], cz = (z0 + z1) / 2, rx = Math.min(x1 - cx, cx - x0), rz = Math.min(z1 - cz, cz - z0), at = (dx, dz, f) => [cx + dx * f, yw + (yh - yw) * (f > 0.6 ? 1 : 0), cz + dz * f];
+  const out = { ...J };
+  for (const [k, dx, dz] of [['F', 0, rz], ['B', 0, -rz], ['L', rx, 0], ['R', -rx, 0]]) { out['hem' + k] = [cx + dx * 0.55, yw, cz + dz * 0.55]; out['hem' + k + 't'] = [cx + dx * 0.8, yh, cz + dz * 0.8]; }
+  Object.defineProperty(out, 'crotchY', { value: cr, enumerable: false });
+  return out;
+}
 // A standing person from the body's proportions, adjusted by what the silhouette shows. The slices alone (personFromProfile)
 // fail with loose clothes — a tunic or a dress hides the crotch, so hips, knees and arms land in the wrong places —; the
 // proportions of a body don't: head, shoulders, hips, knees and ankles are at known heights of a standing person, and the
@@ -998,6 +1014,11 @@ function personPose(J, clip, t, H) {
       const armSw = -(run ? 40 : 22) * Math.sin(ph + off);
       arm(s, downOut(S[s], 10, armSw), downOut(S[s], 6, armSw + (run ? 70 : 20)));
     }
+    if (J.hemF) {                                          // the cloth: each side follows its leg a moment late, the front and the back sway with both
+      const sway = (s, a) => { P['hem' + s] = limbTo(J, 'hem' + s, 'hem' + s + 't', norm([0, -Math.cos(a * deg), Math.sin(a * deg)])); P['hem' + s + 't'] = P['hem' + s]; };
+      const swL = A * Math.sin(ph - 0.5), swR = A * Math.sin(ph + Math.PI - 0.5);
+      sway('L', swL * 0.55); sway('R', swR * 0.55); sway('F', Math.max(swL, swR) * 0.5); sway('B', Math.min(swL, swR) * 0.35);
+    }
     body(run ? 10 : 3, run ? 6 * Math.sin(ph) : 4 * Math.sin(ph), run ? 0 : 1.5 * Math.sin(ph));
     P.hips = Q.mul(Q.axis(Y, (run ? -6 : -5) * Math.sin(ph)), Q.axis(Z, (run ? 3 : 2.5) * Math.sin(ph)));   // the pelvis swings against the shoulders
     lift = H * (run ? 0.03 : 0.012) * Math.abs(Math.cos(ph));
@@ -1234,7 +1255,19 @@ export function buildRig(g, shape, kind, J, opts = {}) {
         try { poses ||= [['Walk', [0.1, 0.25, 0.4, 0.6, 0.75, 0.9]], ['Run', [0.2, 0.6]], ['Wave', [0.3, 0.7]], ['Jump', [0.5]]].filter(([c]) => CLIPS[kind].some(x => x[0] === c)).flatMap(([c, ts]) => ts.map(t => poseMatrices(kind, J, list, c, t, H)));
         ({ joints, weights } = refineWeights(pos, pidx, joints, weights, B.length, poses, H)); } catch { /* the weights as they were */ } } }
     else ({ joints, weights } = smoothWeights(pos, pidx, joints, weights, B.length, H * 0.03));
-    if (kind === 'person' && J.crotchY != null && J.hips[1] - J.crotchY > H * 0.04) {   // (a tunic or a dress covers the legs: loose cloth between the legs and the hips)
+    if (kind === 'person' && opts.torso !== false && J.armL && J.armR) {   // (the cloth of the trunk, beside an arm that hangs against it, doesn't go up with the arm)
+      const arms = B.map(b => /^(arm|forearm|hand)[LR]$/.test(b.name)), sp = B.findIndex(b => b.name === 'spine'), hp = B.findIndex(b => b.name === 'hips'), ch = B.findIndex(b => b.name === 'chest');
+      const half = Math.min(J.armL[0] - J.hips[0], J.hips[0] - J.armR[0]) - H * 0.03, top = J.armL[1] - H * 0.08, low = J.handL[1] - H * 0.02;
+      if (sp >= 0 && hp >= 0 && ch >= 0 && half > H * 0.04) for (let k = 0; k < pos.length / 3; k++) { const y = pos[k * 3 + 1];
+        if (y > top || y < low || Math.abs(pos[k * 3] - J.hips[0]) > half) continue;
+        const to = y > J.hips[1] ? sp : hp; let moved = 0;
+        for (let c = 0; c < 4; c++) if (arms[joints[k * 4 + c]]) { moved += weights[k * 4 + c]; weights[k * 4 + c] = 0; }
+        if (!moved) continue;
+        let at = -1; for (let c = 0; c < 4; c++) if (joints[k * 4 + c] === to) at = c;
+        if (at < 0) { at = [0, 1, 2, 3].reduce((m, c) => (weights[k * 4 + c] < weights[k * 4 + m] ? c : m), 0); joints[k * 4 + at] = to; weights[k * 4 + at] = 0; }
+        weights[k * 4 + at] += moved; }
+    }
+    if (kind === 'person' && !J.hemF && J.crotchY != null && J.hips[1] - J.crotchY > H * 0.04) {   // (a tunic or a dress covers the legs: loose cloth between the legs and the hips)
       // Cloth that wraps both legs would be torn apart as they part: it follows the pelvis, with only a part of the legs' pull.
       const hi = B.findIndex(b => b.name === 'hips'), legs = B.map(b => /^(thigh|shin|foot)[LR]$/.test(b.name)), keep = 0.4;
       if (hi >= 0) for (let k = 0; k < pos.length / 3; k++) { const y = pos[k * 3 + 1]; if (y < J.crotchY - H * 0.02 || y > J.hips[1]) continue;

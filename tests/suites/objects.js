@@ -1895,6 +1895,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const w = A.bindWeights(new W.Float32Array([0.1, 0.3, 0, -0.1, 0.3, 0]), [{ name: 'shinL', a: [0.1, 0.5, 0], b: [0.1, 0, 0] }, { name: 'shinR', a: [-0.1, 0.5, 0], b: [-0.1, 0, 0] }], 1.8, 0);
     assert(w.joints[0] === 0 && w.joints[4] === 1 && w.weights[0] > 0.9 && w.weights[4] > 0.9, 'cada pierna sigue a su hueso');
     assert(g2.json.animations.some(a => a.name === 'Walk'), 'y se crea la animación de andar');
+    // The tunic hides the legs for a long way: four bones hang from the hips into the cloth (and don't exist for trousers).
+    assert(J.hemF && J.hemFt && J.hemB && J.hemL && J.hemR && J.hemF[2] > J.hips[2] && J.hemB[2] < J.hips[2] && J.hemL[0] > J.hemR[0], 'una túnica: huesos de tela delante, detrás y a los lados: ' + JSON.stringify([Object.keys(J).filter(k => /hem/.test(k)), J.crotchY, J.hips]));
+    eq(g2.json.skins[0].joints.length, A.skeletonOf('person', J).length, 'y entran en el esqueleto'); assert(A.skeletonOf('person', J).length === A.SKELETONS.person.length + 8, 'ocho más');
+    const trousers = model([[0.04, 0, -0.07, 0.17, 0.95, 0.07], [-0.17, 0, -0.07, -0.04, 0.95, 0.07], [-0.2, 0.9, -0.1, 0.2, 1.45, 0.1], [0.25, 0.85, -0.05, 0.33, 1.42, 0.05], [-0.33, 0.85, -0.05, -0.25, 1.42, 0.05], [-0.05, 1.45, -0.05, 0.05, 1.54, 0.05], [-0.12, 1.54, -0.11, 0.12, 1.8, 0.11]]);
+    assert(!A.proposeJoints(A.modelShape(await A.readModel(trousers)), 'person').hemF, 'con pantalones, sin huesos de tela');
     // The GLB of a rigged model has nothing left over (the original meshes are gone) and its weights are bytes.
     const prim = g2.json.meshes[0].primitives[0], wacc = g2.json.accessors[prim.attributes.WEIGHTS_0];
     eq(g2.json.meshes.length, 1, 'solo la malla unida a los huesos, no la original'); assert(wacc.componentType === 5121 && wacc.normalized === true, 'pesos en bytes');
