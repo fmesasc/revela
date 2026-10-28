@@ -25,6 +25,7 @@ export function trellisSettings(env) {
     briefModel: env.TRELLIS_BRIEF_MODEL || 'google/gemini-2.5-flash',
     imageModel: env.TRELLIS_IMAGE_MODEL || env.AI_IMAGE_MODEL || 'bytedance-seed/seedream-4.5',
     qaModel: env.TRELLIS_QA_MODEL || 'google/gemini-2.5-flash-lite',
+    personImageModel: env.TRELLIS_PERSON_IMAGE_MODEL || 'google/gemini-2.5-flash-image',   // (draws a whole standing person far more often than Seedream, which crops at the knees)
   };
 }
 // Qué motor hace un trabajo «realista»: Meshy si hay que animar (o si se pide por variable) y hay clave de fal; TRELLIS para el resto.
@@ -65,7 +66,7 @@ export async function trellisReference(env, prompt, { person = false, tries = 3 
   let made = 0, last = null, why = '';
   for (let i = 0; i < (person ? tries : 1); i++) {
     const ask = i ? brief + ' IMPORTANT: exactly one single person, standing, the ENTIRE body from the top of the head to the soles of both shoes, with white empty space under the feet; wide framing, small figure in the middle of the picture; no close-up.' : brief;
-    const im = await or(env, { model: k.imageModel, modalities: ['image'], messages: [{ role: 'user', content: ask }] }); made++;
+    const im = await or(env, { model: person ? k.personImageModel : k.imageModel, modalities: ['image'], messages: [{ role: 'user', content: ask }] }); made++;
     const image = im?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     if (!/^data:image\//.test(image || '') && !/^https:\/\//.test(image || '')) continue;
     last = image; if (!person) break;
