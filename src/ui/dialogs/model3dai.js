@@ -119,7 +119,7 @@ export async function openModelAi({ api = hybrid, interval = 2500 } = {}) {
       : s.status === 'done' ? t('Listo. Gíralo con el ratón para verlo por todos lados.')
       : s.status === 'failed' ? t('No ha conseguido un modelo válido. Pide cambios para intentarlo otra vez.')
       : t(ERRORS[s.error] || 'Algo ha fallado.');
-    q('.m3a-end').hidden = q('.m3a-endb').hidden = running || currentReal;   // (no changes to a realistic one: another is made)
+    q('.m3a-end').hidden = running || currentReal; q('.m3a-endb').hidden = running; q('.m3a-more').hidden = currentReal;   // (no changes to a realistic one: another is made; «Insertar» stays)
     q('.m3a-insert').disabled = !s.glb; q('.m3a-more').disabled = s.total >= s.max;
     if (!running && s.glb && !glb) {
       glb = (await api(`3d/jobs/${current}/model`)).glb;

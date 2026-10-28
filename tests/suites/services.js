@@ -3615,6 +3615,27 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     await api('3d/jobs/srv-12345678901234/cancel', {}); await api('3d/jobs/srv-12345678901234'); assert(L.at(-1)[0] === '3d/jobs/srv-12345678901234', 'descartado: ya no es del servidor');
   });
 
+  await test('Crear modelo 3D con IA: un modelo realista terminado se puede insertar (sin «Pedir cambios»)', async () => {
+    reset(); const W = frame.contentWindow, M = await W.eval("import('/src/ui/dialogs/model3dai.js')"), calls = [];
+    const api = async (path, body) => { calls.push([path, body]);
+      if (path === '3d') return { ok: true, realistic: true, local: true, estimate: null, realisticEstimate: { max: 60 } };
+      if (path === '3d/jobs') return { id: 'job-realista-123456' };
+      if (path.endsWith('/model')) return { glb: 'data:model/gltf-binary;base64,Z2xURg==' };
+      if (path.endsWith('/cancel')) return { ok: true };
+      return { status: 'done', rounds: [{ n: 1, ok: true, note: '' }], left: 0, total: 1, max: 1, glb: true }; };
+    await M.openModelAi({ api, interval: 5 });
+    let m = D.getElementById('m3a-modal'); const q = s => m.querySelector(s);
+    if (!q('.m3a-work').hidden) { q('.m3a-discard').click(); await sleep(30); await M.openModelAi({ api, interval: 5 }); m = D.getElementById('m3a-modal'); }   // (a job left open by another test)
+    q('.m3a-prompt').value = 'una jirafa'; q('.m3a-real').checked = true; q('.m3a-go').click();
+    for (let i = 0; i < 150 && !(!q('.m3a-work').hidden && q('.m3a-view') && !q('.m3a-view').hidden); i++) await sleep(20);
+    const vis = el => !!el && !el.closest('[hidden]') && !el.hidden;
+    assert(q('.m3a-insert') && !q('.m3a-insert').disabled && vis(q('.m3a-insert')), 'el botón de insertar se ve y se puede pulsar');
+    assert(!vis(q('.m3a-more')) && !vis(q('.m3a-end')), 'y no hay «Pedir cambios» en un modelo realista');
+    const before = slide().blocks.length; q('.m3a-insert').click(); await sleep(200);
+    assert(slide().blocks.length === before + 1 && slide().blocks.at(-1).type === 'model', 'insertarlo pone el modelo en la diapositiva');
+    D.getElementById('m3a-modal')?.remove();
+  });
+
   await test('Crear modelo 3D con IA: el modo Realista, de momento sin fotos propias (y lo avisa)', async () => {
     reset(); const W = frame.contentWindow, M = await W.eval("import('/src/ui/dialogs/model3dai.js')"), calls = [];
     const api = async (path, body) => { calls.push([path, body]); return path === '3d' ? { ok: true, realistic: true, blender: true, estimate: { max: 104 }, realisticEstimate: { max: 60 } } : { id: 'job-realista-123456', estimate: { max: 40 } }; };
