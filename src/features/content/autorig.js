@@ -305,6 +305,9 @@ function personFromBody(prof, shape) {
   const P = kid ? BODY.kid : BODY.adult, y = f => min[1] + H * f, zOf = f => mainOf(row(f))?.z ?? (min[2] + max[2]) / 2;
   const neckY = y(Math.min(P.shoulder + 0.05, Math.max(neckF, P.shoulder + 0.02)));
   const J = {};
+  // Where the legs part: the highest slice with two pieces, one on each side of the middle (below it, a tunic or a dress covers them as one).
+  let crotchF = 0; for (let f = 0.05; f < P.hips + 0.05; f += 1 / n) { const L = row(f).pieces; if (L.some(p => p.mid > cx) && L.some(p => p.mid < cx) && !L.some(p => p.a < cx && p.b > cx)) crotchF = f; else if (crotchF > 0.2) break; }
+  Object.defineProperty(J, 'crotchY', { value: y(crotchF || P.hips), enumerable: false });
   J.hips = [cx, y(P.hips), zOf(P.hips)]; J.spine = [cx, y(P.spine), zOf(P.spine)]; J.chest = [cx, y(P.chest), zOf(P.chest)];
   J.neck = [cx, neckY, zOf(neckF)]; J.head = [cx, neckY + (max[1] - neckY) * 0.5, zOf(Math.min(0.97, (neckF + 1) / 2))];
   // Shoulders: half of the silhouette's width where the shoulders are, less the arm; arms hang from there (a little out: an A pose).
@@ -699,7 +702,7 @@ function bones(kind, J, list = skeletonOf(kind, J)) {
 // the joints). Plain loops over typed arrays: models can have 100 000+ vertices.
 // cx: the middle line of the body (x): a limb's bones belong to one side of it, so a vertex far on the other side doesn't follow
 // them — two legs close together (a child, a dress) would otherwise drag each other's cloth along.
-export function bindWeights(pos, B, H, cx = null, hipY = null) {
+export function bindWeights(pos, B, H, cx = null, hipY = null, geo = null) {
   const n = pos.length / 3, nb = B.length, joints = new Uint8Array(n * 4), weights = new Float32Array(n * 4), eps = H * 0.004;
   const A = new Float64Array(nb * 3), D = new Float64Array(nb * 3), L2 = new Float64Array(nb);
   B.forEach((bn, j) => { for (let c = 0; c < 3; c++) { A[j * 3 + c] = bn.a[c]; D[j * 3 + c] = bn.b[c] - bn.a[c]; } L2[j] = D[j * 3] ** 2 + D[j * 3 + 1] ** 2 + D[j * 3 + 2] ** 2 || 1; });
@@ -707,12 +710,13 @@ export function bindWeights(pos, B, H, cx = null, hipY = null) {
   const side = B.map(bn => (cx != null && /^(arm|forearm|hand|thigh|shin|foot|leg|knee|paw|wing)/.test(bn.name) ? (/L$/.test(bn.name) ? 1 : /R$/.test(bn.name) ? -1 : 0) : 0));
   const thighy = B.map(bn => /^(thigh|shin|foot)[LR]$/.test(bn.name));
   for (let k = 0; k < n; k++) {
-    const px = pos[k * 3], py = pos[k * 3 + 1], pz = pos[k * 3 + 2];
+    const px = pos[k * 3], py = pos[k * 3 + 1], pz = pos[k * 3 + 2], gv = geo ? geo.at(px, py, pz) : -1;
     bd.fill(Infinity); bj.fill(0);
     for (let j = 0; j < nb; j++) {                           // distance to the bone (a segment)
       const ax = px - A[j * 3], ay = py - A[j * 3 + 1], az = pz - A[j * 3 + 2], dx = D[j * 3], dy = D[j * 3 + 1], dz = D[j * 3 + 2];
       const t = Math.max(0, Math.min(1, (ax * dx + ay * dy + az * dz) / L2[j]));
       let d = Math.hypot(ax - dx * t, ay - dy * t, az - dz * t);
+      if (gv >= 0) { const g = geo.dist(j, gv); d = isFinite(g) ? Math.max(d, g) : d * 4 + H * 0.2; }   // (through the body, not through the air)
       if (hipY != null && thighy[j] && py > hipY - H * 0.015) d *= 1 + 1.4 * Math.min(1, (py - (hipY - H * 0.015)) / (H * 0.08));   // (the belt and what is above the hips follow the trunk, not the thighs)
       if (side[j]) { const away = -(px - cx) * side[j] / (H * 0.05); if (away > 0.2) d *= 1 + 1.5 * Math.min(1, away); }   // (on the other side of the body)
       if (d >= bd[3]) continue;
@@ -769,6 +773,55 @@ export function smoothWeights(pos, idx, joints, weights, nb, radius) {
     for (let c = 0; c < 4; c++) { J2[k * 4 + c] = Math.max(0, best[c][0]); W2[k * 4 + c] = sum ? best[c][1] / sum : (c ? 0 : 1); }
   }
   return { joints: J2, weights: W2 };
+}
+
+
+// ---- Distances through the body's volume (geodesic voxel binding) -------------------------------------------------------
+// The straight-line distance from a vertex to a bone ignores the body: the cloth of a tunic is nearer the other leg than its
+// own, an arm hanging against the trunk is as near the trunk's bone. Here the model is voxelised (its surface, and what is inside
+// it), and each bone's distance is measured walking through the voxels (Dionne & de Lasa, 2013): what is far *inside the
+// shape* from a bone is far, however close it is in a straight line. Works with open or broken meshes too: then it walks over
+// the surface alone. → { at(vertexPos) → voxel, dist(bone, voxel) → distance in model units } or null (too big or empty).
+export function volumeDistances(shape, B, H) {
+  const { min, max } = shape.box, cell = H / 90, pad = 2;
+  const nx = Math.ceil((max[0] - min[0]) / cell) + 2 * pad + 1, ny = Math.ceil((max[1] - min[1]) / cell) + 2 * pad + 1, nz = Math.ceil((max[2] - min[2]) / cell) + 2 * pad + 1, N = nx * ny * nz;
+  if (N > 1.5e6 || !B.length) return null;   // (a bigger grid would weigh too much in a browser tab)
+  const vi = (x, y, z) => ((Math.floor((x - min[0]) / cell) + pad) * ny + Math.floor((y - min[1]) / cell) + pad) * nz + Math.floor((z - min[2]) / cell) + pad;
+  const ok = (i, j, k) => i >= 0 && j >= 0 && k >= 0 && i < nx && j < ny && k < nz;
+  const surf = new Uint8Array(N);                                       // 1: the surface
+  const mark = (x, y, z) => { const i = Math.floor((x - min[0]) / cell) + pad, j = Math.floor((y - min[1]) / cell) + pad, k = Math.floor((z - min[2]) / cell) + pad; if (ok(i, j, k)) surf[(i * ny + j) * nz + k] = 1; };
+  for (const { pos, idx } of shape.parts) {
+    if (!idx) continue;
+    for (let t = 0; t + 2 < idx.length; t += 3) {
+      const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3;
+      const e = Math.max(Math.hypot(pos[a] - pos[b], pos[a + 1] - pos[b + 1], pos[a + 2] - pos[b + 2]), Math.hypot(pos[b] - pos[c], pos[b + 1] - pos[c + 1], pos[b + 2] - pos[c + 2]), Math.hypot(pos[c] - pos[a], pos[c + 1] - pos[a + 1], pos[c + 2] - pos[a + 2]));
+      const st = Math.max(1, Math.ceil(e / (cell * 0.6)));
+      for (let u = 0; u <= st; u++) for (let v = 0; v <= st - u; v++) { const w = st - u - v, fu = u / st, fv = v / st, fw = w / st;
+        mark(pos[a] * fu + pos[b] * fv + pos[c] * fw, pos[a + 1] * fu + pos[b + 1] * fv + pos[c + 1] * fw, pos[a + 2] * fu + pos[b + 2] * fv + pos[c + 2] * fw); }
+    }
+  }
+  // Outside = reachable from the corner without crossing the surface (6 neighbours); allowed = the surface and what is inside.
+  const outside = new Uint8Array(N), stack = new Int32Array(N); let sp = 0;
+  stack[sp++] = 0; outside[0] = 1;
+  while (sp) { const c = stack[--sp], k = c % nz, j = ((c - k) / nz) % ny, i = ((c - k) / nz - j) / ny;
+    for (const [di, dj, dk] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) { const ii = i + di, jj = j + dj, kk = k + dk; if (!ok(ii, jj, kk)) continue; const o = (ii * ny + jj) * nz + kk; if (!outside[o] && !surf[o]) { outside[o] = 1; stack[sp++] = o; } } }
+  const allowed = new Uint8Array(N); let nAllowed = 0; for (let i = 0; i < N; i++) if (!outside[i]) { allowed[i] = 1; nAllowed++; }
+  if (!nAllowed) return null;
+  // One 3-4-5 chamfer distance per bone (Dial's buckets), from the voxels the bone passes through (snapped to the nearest allowed one).
+  const offs = []; for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) for (let dk = -1; dk <= 1; dk++) { const m = Math.abs(di) + Math.abs(dj) + Math.abs(dk); if (m) offs.push([di, dj, dk, m === 1 ? 3 : m === 2 ? 4 : 5, (di * ny + dj) * nz + dk]); }
+  const near = (i, j, k) => { for (let r = 0; r <= 6; r++) for (let di = -r; di <= r; di++) for (let dj = -r; dj <= r; dj++) for (let dk = -r; dk <= r; dk++) { if (Math.max(Math.abs(di), Math.abs(dj), Math.abs(dk)) !== r) continue; const ii = i + di, jj = j + dj, kk = k + dk; if (ok(ii, jj, kk) && allowed[(ii * ny + jj) * nz + kk]) return (ii * ny + jj) * nz + kk; } return -1; };
+  const D = B.map(bn => {
+    const dist = new Uint16Array(N).fill(65535), len = Math.hypot(bn.b[0] - bn.a[0], bn.b[1] - bn.a[1], bn.b[2] - bn.a[2]), steps = Math.max(1, Math.ceil(len / (cell * 0.5)));
+    const buckets = [[]];
+    for (let s = 0; s <= steps; s++) { const f = s / steps, i = Math.floor((bn.a[0] + (bn.b[0] - bn.a[0]) * f - min[0]) / cell) + pad, j = Math.floor((bn.a[1] + (bn.b[1] - bn.a[1]) * f - min[1]) / cell) + pad, k = Math.floor((bn.a[2] + (bn.b[2] - bn.a[2]) * f - min[2]) / cell) + pad;
+      const o = near(i, j, k); if (o >= 0 && dist[o] !== 0) { dist[o] = 0; buckets[0].push(o); } }
+    for (let d = 0; d < buckets.length; d++) { const bk = buckets[d]; if (!bk) continue;
+      for (let q = 0; q < bk.length; q++) { const c = bk[q]; if (dist[c] !== d) continue; const k = c % nz, j = ((c - k) / nz) % ny, i = ((c - k) / nz - j) / ny;
+        for (const [di, dj, dk, w, off] of offs) { const ii = i + di, jj = j + dj, kk = k + dk; if (!ok(ii, jj, kk)) continue; const o = c + off; if (!allowed[o]) continue; const nd = d + w; if (nd < dist[o]) { dist[o] = nd; (buckets[nd] ||= []).push(o); } } }
+      buckets[d] = null; }
+    return dist;
+  });
+  return { at: (x, y, z) => vi(x, y, z), dist: (b, v) => { const d = D[b][v]; return d === 65535 ? Infinity : d * cell / 3; } };
 }
 
 // ---- Animations (made here) ------------------------------------------------------------------
@@ -1025,9 +1078,17 @@ export function buildRig(g, shape, kind, J) {
   json.skins = [{ joints: list.map(([n]) => idx[n]), skeleton: idx.hips, inverseBindMatrices: addAccessor(out, ibm, 'MAT4') }];
   // Every mesh, flattened into the model's space, bound to the bones.
   const meshNodes = [];
+  let geo = null; try { geo = volumeDistances(shape, B, H); } catch { geo = null; }
   shape.parts.forEach(({ prim, pos, nor }) => {
-    let { joints, weights } = bindWeights(pos, B, H, J.hips[0], kind === 'person' ? J.thighL?.[1] ?? null : null);
+    let { joints, weights } = bindWeights(pos, B, H, J.hips[0], kind === 'person' ? J.thighL?.[1] ?? null : null, geo);
     ({ joints, weights } = smoothWeights(pos, shape.parts[shape.parts.findIndex(x => x.pos === pos)]?.idx, joints, weights, B.length, H * 0.03));
+    if (kind === 'person' && J.crotchY != null && J.hips[1] - J.crotchY > H * 0.04) {   // (a tunic or a dress covers the legs: loose cloth between the legs and the hips)
+      // Cloth that wraps both legs would be torn apart as they part: it follows the pelvis, with only a part of the legs' pull.
+      const hi = B.findIndex(b => b.name === 'hips'), legs = B.map(b => /^(thigh|shin|foot)[LR]$/.test(b.name)), keep = 0.4;
+      if (hi >= 0) for (let k = 0; k < pos.length / 3; k++) { const y = pos[k * 3 + 1]; if (y < J.crotchY - H * 0.02 || y > J.hips[1]) continue;
+        let moved = 0; for (let c = 0; c < 4; c++) if (legs[joints[k * 4 + c]]) { const w = weights[k * 4 + c]; weights[k * 4 + c] = w * keep; moved += w * (1 - keep); }
+        if (moved) { let at = -1; for (let c = 0; c < 4; c++) if (joints[k * 4 + c] === hi) at = c; if (at < 0) { at = weights[k * 4 + 3] === Math.min(...[0, 1, 2, 3].map(c => weights[k * 4 + c])) ? 3 : [0, 1, 2, 3].reduce((m, c) => (weights[k * 4 + c] < weights[k * 4 + m] ? c : m), 0); joints[k * 4 + at] = hi; weights[k * 4 + at] = 0; } weights[k * 4 + at] += moved; } }
+    }
     if (kind === 'person' && J.footL && J.footR) {              // (the soles and heels follow only their foot: the shin and the foot turn differently, the shoe would stretch between them)
       const fi = [B.findIndex(b => b.name === 'footL'), B.findIndex(b => b.name === 'footR')], top = Math.max(J.footL[1], J.footR[1]) + H * 0.04, nv = pos.length / 3;   // (the shoe rises above the ankle: all of it is the foot's)
       const idxArr = shape.parts.find(x => x.pos === pos)?.idx;
@@ -1049,7 +1110,7 @@ export function buildRig(g, shape, kind, J) {
           comp = k => { const t = sum.get(find(g.wid[k])); return !t ? -1 : Math.abs(t.l - t.r) > 1e-6 * t.n ? (t.l > t.r ? 0 : 1) : (t.x / t.n > J.hips[0] ? 0 : 1); };
         }
         for (let k = 0; k < nv; k++) if (pos[k * 3 + 1] < top) {
-          const own = comp ? comp(k) : -1, side = own >= 0 ? own : pos[k * 3] > J.hips[0] ? 0 : 1, f = fi[side], fade = Math.min(1, (top - pos[k * 3 + 1]) / (H * 0.03));
+          const own = comp ? comp(k) : -1, side = own >= 0 ? own : pos[k * 3] > J.hips[0] ? 0 : 1, f = fi[side], fade = Math.min(1, (top - pos[k * 3 + 1]) / (H * 0.01));
           // (a blend at the edge, so the ankle doesn't show a seam: the foot's share grows towards the ground)
           for (let c = 0; c < 4; c++) { weights[k * 4 + c] *= 1 - fade; if (joints[k * 4 + c] === f) weights[k * 4 + c] += fade; }
           if (![0, 1, 2, 3].some(c => joints[k * 4 + c] === f && weights[k * 4 + c] > 0)) { joints[k * 4 + 3] = f; weights[k * 4 + 3] = fade; }
