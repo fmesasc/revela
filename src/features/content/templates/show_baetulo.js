@@ -48,7 +48,7 @@ export default {
         text('Los romanos en Badalona', 80, 335, 640, 60, { fontFamily: SERIF, fontSize: 38, color: '#f6efe0' }),
         text('Una ciudad, su vino y su gente, contados con modelos 3D hechos con IA', 80, 420, 560, 90, { fontSize: 24, color: '#d3e3e8', lineHeight: 1.3 }),
         R(80, 540, 120, 4, GOLD), foot(80, '#a9c4cc'),
-        ai3d('baetulo-anfora', 690, 60, 480, 560, 'Ánfora vinaria romana en 3D creada con IA', { autoRotate: true, spin: 14, edge: 'fade' })],
+        withAnims(ai3d('baetulo-anfora', 690, 60, 480, 560, 'Ánfora vinaria romana en 3D creada con IA', { autoRotate: true, spin: 14, edge: 'fade' }), A('zoom-in', { start: 'withPrev', duration: 700 }))],
         notes: 'Bienvenida. Vamos a visitar Baetulo, la ciudad romana de Badalona, con piezas en tres dimensiones que se pueden girar con el ratón. Todos los modelos se han creado con la IA de Revela a partir de una descripción: son interpretaciones, no réplicas de piezas concretas. En la portada gira un ánfora de vino, el producto que hizo famosa a la ciudad.' },
 
       // 2 · a new city by the sea
@@ -84,7 +84,7 @@ export default {
 
       // 4 · the legionary
       { layout: 'blank', transition: 'fade', back: [...wall(), halo(330, 340, 500), ...floor(330, 596, 340)], extra: [
-        ai3d('baetulo-legionario', 100, 70, 460, 540, 'Legionario romano con armadura de placas en 3D creado con IA', { autoRotate: true, spin: 12, edge: 'fade', clip: 'Idle' }),
+        withAnims(ai3d('baetulo-legionario', 100, 70, 460, 540, 'Legionario romano con armadura de placas en 3D creado con IA', { autoRotate: true, spin: 12, edge: 'fade', clip: 'Idle' }), A('zoom-in', { start: 'withPrev', duration: 700 })),
         kicker('PARA COMPARAR', 640, 56, 500), H('Un legionario frente a un ciudadano', 636, 88, 580, 130, 42),
         text('Baetulo no era un campamento militar: este soldado es una pieza para comparar la vida civil con la militar.', 640, 232, 570, 90, { fontSize: 21, color: INK, lineHeight: 1.3 }),
         ...seq(fact('Armadura de bandas', 'La lorica segmentata, hecha de placas de metal articuladas, protegía el torso.', 640, 340, 570, 110, BLUE), 0),
@@ -100,12 +100,12 @@ export default {
         ...seq(fact('Casi el triple', 'Que el primer catálogo, publicado 28 años antes.', 430, 220, 360, 112, BLUE), 0),
         ...seq(fact('Más que Tarraco y Empúries', 'Es la ciudad costera de la Tarraconense con más sellos.', 430, 358, 360, 112), 1),
         text('Las ánforas de Baetulo se han encontrado por todo el Imperio. Esta es del tipo Pascual 1.', 70, 510, 720, 80, { fontSize: 21, color: INK, lineHeight: 1.3 }),
-        ai3d('baetulo-anfora', 810, 70, 400, 540, 'Ánfora vinaria tipo Pascual 1 en 3D creada con IA', { autoRotate: true, spin: 14, edge: 'fade' }), foot()],
+        withAnims(ai3d('baetulo-anfora', 810, 70, 400, 540, 'Ánfora vinaria tipo Pascual 1 en 3D creada con IA', { autoRotate: true, spin: 14, edge: 'fade' }), A('zoom-in', { start: 'withPrev', duration: 700 })), foot()],
         notes: 'El vino fue el gran negocio de Baetulo. Floreció sobre todo con Augusto y exportó vino layetano. Un volumen reciente, editado por Carreras, Comas y Guitart, cataloga 614 sellos de ánfora, casi el triple que el primero, publicado 28 años antes. Apunta a que Baetulo fue probablemente el principal puerto exportador del vino layetano entre la República tardía y el Alto Imperio. El modelo es un ánfora de tipo Pascual 1, hecha con IA.' },
 
       // 6 · the ship
       { layout: 'blank', transition: 'fade', back: [...sea(), R(0, 560, 1280, 160, '#1f5f7a', { fill2: DEEP, gradType: 'linear', opacity: 0.9 }), ...[0, 1, 2, 3, 4, 5].map(i => E(40 + i * 220, 590 + (i % 2) * 22, 150, 14, '#7fb8cc', { opacity: 0.35 }))], extra: [
-        ai3d('baetulo-barco', 60, 80, 600, 500, 'Barco mercante romano en 3D creado con IA', { autoRotate: true, spin: 10, edge: 'fade' }),
+        withAnims(ai3d('baetulo-barco', 60, 80, 600, 500, 'Barco mercante romano en 3D creado con IA', { motion: 'float', edge: 'fade' }), A('zoom-in', { start: 'withPrev', duration: 700 })),
         kicker('A TODO EL IMPERIO', 700, 66, 500, { color: GOLD }), H('EL BARCO QUE LLEVABA EL VINO', 696, 98, 520, 130, 40, { color: '#f6efe0', letterSpacing: 1 }),
         text('Las ánforas salían por mar. Baetulo fue probablemente el principal puerto exportador del vino layetano entre la República tardía y el Alto Imperio.', 700, 250, 510, 150, { fontSize: 22, color: '#e6eff2', lineHeight: 1.35 }),
         ...seq([R(700, 430, 510, 90, '#0e2f3f', { radius: 8, stroke: GOLD, strokeWidth: 1 }),
@@ -115,7 +115,7 @@ export default {
 
       // 7 · the oil lamp
       { layout: 'blank', transition: 'fade', back: [...wall(), halo(310, 350, 480, '#f4d79a', 0.6), ...floor(310, 566, 300)], extra: [
-        ai3d('baetulo-lucerna', 90, 100, 440, 460, 'Lucerna, lámpara de aceite romana, en 3D creada con IA', { autoRotate: true, spin: 16, edge: 'fade' }),
+        withAnims(ai3d('baetulo-lucerna', 90, 100, 440, 460, 'Lucerna, lámpara de aceite romana, en 3D creada con IA', { autoRotate: true, spin: 16, edge: 'fade' }), A('zoom-in', { start: 'withPrev', duration: 700 })),
         kicker('LA VIDA COTIDIANA', 620, 56, 500), H('LA LUCERNA: LUZ PARA LA NOCHE', 616, 88, 600, 110, 42, { letterSpacing: 1 }),
         text('Cuando se hacía de noche, la casa se alumbraba con lámparas de aceite como esta.', 620, 220, 590, 80, { fontSize: 21, color: INK, lineHeight: 1.3 }),
         ...seq(fact('Aceite y mecha', 'Se llenaba de aceite y una mecha encendida daba una luz pequeña y temblorosa.', 620, 320, 590, 112, BLUE), 0),
@@ -152,7 +152,7 @@ export default {
         text('Este modelo está inspirado en la Venus de Badalona, pero no es la pieza real: es una interpretación hecha con IA.', 70, 176, 640, 100, { fontSize: 22, color: INK, lineHeight: 1.3 }),
         ...seq(fact('Una estatuilla de 28 cm', 'La Venus de Badalona mide solo 28 cm.', 70, 310, 620, 104, BLUE), 0),
         ...seq(fact('Una pieza clave', 'Es una de las representaciones femeninas más importantes de Cataluña.', 70, 430, 620, 112), 1),
-        ai3d('baetulo-venus', 700, 70, 460, 490, 'Estatuilla de Venus de bronce, inspirada en la de Badalona, en 3D creada con IA', { autoRotate: true, spin: 14, edge: 'fade' }), foot()],
+        withAnims(ai3d('baetulo-venus', 700, 70, 460, 490, 'Estatuilla de Venus de bronce, inspirada en la de Badalona, en 3D creada con IA', { autoRotate: true, spin: 14, edge: 'fade' }), A('zoom-in', { start: 'withPrev', duration: 700 })), foot()],
         notes: 'Insistid en la diferencia: este modelo está inspirado en la Venus de Badalona, no es esa pieza. La original es una estatuilla de 28 centímetros, una de las representaciones femeninas más importantes de Cataluña. Podéis comparar el modelo con fotos de la pieza real y comentar qué detalles ha inventado la IA.' },
 
       // 11 · Magna Celebratio

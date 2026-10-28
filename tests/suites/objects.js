@@ -1909,6 +1909,26 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(r2.animated === false && r2.glb === box, 'un objeto se queda como estaba');
   });
 
+  await test('plantilla Baetulo en el visor real: el romano pasea de verdad (clip Walk activo y se desplaza) al hacer clic', async () => {
+    reset(); const W = frame.contentWindow, T = await W.eval("import('/src/features/content/templates/show_baetulo.js')");
+    const deck = T.default.show_baetulo.make(); R.store.replaceDeck(deck); R.render();
+    const html = R.io.buildHTML(R.state.deck, { inApp: true });
+    const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f); f.srcdoc = html;
+    try {
+      for (let i = 0; i < 150 && !f.contentWindow?.Reveal?.isReady?.(); i++) await sleep(100);
+      const FW = f.contentWindow, FD = f.contentDocument; FW.Reveal.slide(2); await sleep(800);
+      const mv = [...FD.querySelectorAll('.present model-viewer')].find(m => /romano/.test(m.getAttribute('src') || '')); assert(mv, 'el modelo del romano en la diapositiva 3');
+      for (let i = 0; i < 100 && !mv.loaded; i++) await sleep(100);
+      const before = mv.getBoundingClientRect(), info0 = { loaded: !!mv.loaded, anims: mv.availableAnimations, name: mv.animationName, paused: mv.paused };
+      FW.Reveal.next(); await sleep(1500);
+      const mid = mv.getBoundingClientRect(), info1 = { name: mv.animationName, paused: mv.paused, t: mv.currentTime };
+      await sleep(1500); const info2 = { name: mv.animationName, paused: mv.paused, t: mv.currentTime }, after = mv.getBoundingClientRect();
+      assert(info0.anims.includes('Walk') && info0.anims.includes('Idle') && info0.name === 'Idle' && !info0.paused, 'antes del clic: de pie, respirando (Idle): ' + JSON.stringify(info0));
+      assert(info1.name === 'Walk' && !info1.paused && info2.t !== info1.t, 'al hacer clic: el clip Walk se reproduce: ' + JSON.stringify([info1, info2]));
+      assert(mid.x - before.x > 100 && after.x - mid.x > 100, 'y se desplaza por la diapositiva: ' + [before.x, mid.x, after.x].map(Math.round).join(' → '));
+    } finally { f.remove(); }
+  });
+
   await test('plantilla Baetulo: el romano y el legionario traen esqueleto y las animaciones que pide la plantilla (Idle y Walk)', async () => {
     reset(); const W = frame.contentWindow, A = await W.eval("import('/src/features/content/autorig.js')"), T = await W.eval("import('/src/features/content/templates/show_baetulo.js')");
     for (const id of ['baetulo-romano', 'baetulo-legionario']) {
