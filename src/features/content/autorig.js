@@ -213,7 +213,7 @@ export function proposeJoints(shape, kind = 'person', opts = {}) {
   const cx = (min[0] + max[0]) / 2, cz = (min[2] + max[2]) / 2, y = f => min[1] + H * f, J = {};
   if (kind === 'person') {
     const prof = profile(shape), found = personFromBody(prof, shape) || personFromProfile(prof, shape);
-    if (found) return found;
+    if (found) return found;   // (snapInside(shape, found, H) tidies the drawing but measured worse on the walk: 4,5 % → 4,9 % of stretched edges)
     const torso = slab(shape, 1, y(0.5), y(0.62)) || { min, max, mid: [cx, 0, cz] };
     const zc = torso.mid[2], tw = Math.min(torso.max[0] - torso.min[0], W);
     J.hips = [cx, y(0.52), zc]; J.spine = [cx, y(0.62), zc]; J.chest = [cx, y(0.72), zc]; J.neck = [cx, y(0.84), zc]; J.head = [cx, y(0.9), zc];
@@ -333,10 +333,10 @@ function personFromBody(prof, shape) {
     for (const [i, s] of [[0, 'L'], [1, 'R']]) {
       const a = lc[0][i], k = lc[1][i] || { x: a.x, z: a.z };
       J['foot' + s] = [a.x, y(P.ankle), a.z]; J['shin' + s] = [k.x, y(P.knee), k.z];
-      J['thigh' + s] = [J['thigh' + s][0] * 0.5 + (cx + (i ? -1 : 1) * Math.max(H * 0.05, Math.abs(k.x - cx) * 0.8)) * 0.5, y(P.thigh), J['thigh' + s][2]];
     }
-    // (If the legs came the wrong way round at the hips, the hip joints follow their own leg.)
-    if (J.thighL[0] < J.thighR[0]) { const t = J.thighL[0]; J.thighL[0] = J.thighR[0]; J.thighR[0] = t; }
+    // The hip joints are symmetric about the body's middle (a leg stepping out doesn't move its hip): as far from it as the legs' mean spread says.
+    const sp = [J.shinL[0] - cx, cx - J.shinR[0]].map(d => Math.max(H * 0.045, Math.min(H * 0.10, d * 0.8))), mean = (sp[0] + sp[1]) / 2;
+    J.thighL[0] = cx + 0.5 * mean + (1 - 0.5) * sp[0]; J.thighR[0] = cx - (0.5 * mean + (1 - 0.5) * sp[1]);
   }
   return J;
 }
@@ -880,6 +880,38 @@ export function heatWeights(pos, idx, nb, H, near, onFail = null) {
     for (let c = 0; c < 4; c++) { J2[k * 4 + c] = Math.max(0, best[c][0]); W2[k * 4 + c] = best[c][1] / sum; }
   }
   return { joints: J2, weights: W2 };
+}
+
+
+// Joints that fall outside the body (an arm joint at the edge of a shoulder, a hand beyond a cape) are brought to the nearest voxel
+// inside the model: a skeleton whose bones leave the mesh binds the cloth to the wrong bones.
+export function snapInside(shape, J, H) {
+  const { min, max } = shape.box, cell = H / 90, pad = 2;
+  const nx = Math.ceil((max[0] - min[0]) / cell) + 2 * pad + 1, ny = Math.ceil((max[1] - min[1]) / cell) + 2 * pad + 1, nz = Math.ceil((max[2] - min[2]) / cell) + 2 * pad + 1, N = nx * ny * nz;
+  if (N > 1.5e6) return J;
+  const ok = (i, j, k) => i >= 0 && j >= 0 && k >= 0 && i < nx && j < ny && k < nz, at = (i, j, k) => (i * ny + j) * nz + k;
+  const surf = new Uint8Array(N), mark = (x, y, z) => { const i = Math.floor((x - min[0]) / cell) + pad, j = Math.floor((y - min[1]) / cell) + pad, k = Math.floor((z - min[2]) / cell) + pad; if (ok(i, j, k)) surf[at(i, j, k)] = 1; };
+  for (const { pos, idx } of shape.parts) { if (!idx) continue;
+    for (let t = 0; t + 2 < idx.length; t += 3) { const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3, e = Math.max(Math.hypot(pos[a] - pos[b], pos[a + 1] - pos[b + 1], pos[a + 2] - pos[b + 2]), Math.hypot(pos[b] - pos[c], pos[b + 1] - pos[c + 1], pos[b + 2] - pos[c + 2]), Math.hypot(pos[c] - pos[a], pos[c + 1] - pos[a + 1], pos[c + 2] - pos[a + 2])), st = Math.max(1, Math.ceil(e / (cell * 0.6)));
+      for (let u = 0; u <= st; u++) for (let v = 0; v <= st - u; v++) { const fu = u / st, fv = v / st, fw = (st - u - v) / st; mark(pos[a] * fu + pos[b] * fv + pos[c] * fw, pos[a + 1] * fu + pos[b + 1] * fv + pos[c + 1] * fw, pos[a + 2] * fu + pos[b + 2] * fv + pos[c + 2] * fw); } } }
+  const outside = new Uint8Array(N), stack = new Int32Array(N); let sp = 0; stack[sp++] = 0; outside[0] = 1;
+  while (sp) { const c = stack[--sp], k = c % nz, j = ((c - k) / nz) % ny, i = ((c - k) / nz - j) / ny;
+    for (const [di, dj, dk] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) { const ii = i + di, jj = j + dj, kk = k + dk; if (!ok(ii, jj, kk)) continue; const o = at(ii, jj, kk); if (!outside[o] && !surf[o]) { outside[o] = 1; stack[sp++] = o; } } }
+  const inside = (i, j, k) => ok(i, j, k) && !outside[at(i, j, k)] && !surf[at(i, j, k)];       // (really inside: not on the skin)
+  let any = false; for (let i = 0; i < N; i++) if (!outside[i] && !surf[i]) { any = true; break; } if (!any) return J;   // (an open mesh has no inside)
+  const out = {};
+  for (const [name, p] of Object.entries(J)) {
+    if (!/^(arm|forearm|hand|shin|foot)/.test(name)) { out[name] = p; continue; }       // (the middle line — hips, spine, chest, neck, head — stays where the proportions put it)
+    const i0 = Math.floor((p[0] - min[0]) / cell) + pad, j0 = Math.floor((p[1] - min[1]) / cell) + pad, k0 = Math.floor((p[2] - min[2]) / cell) + pad;
+    if (inside(i0, j0, k0)) { out[name] = p; continue; }
+    let best = null;
+    for (let r = 1; r <= 4 && !best; r++) { let bd = Infinity;       // (at most 4 voxels ≈ 4 % of the height: a nudge, not a move)
+      for (let di = -r; di <= r; di++) for (let dj = -r; dj <= r; dj++) for (let dk = -r; dk <= r; dk++) { if (Math.max(Math.abs(di), Math.abs(dj), Math.abs(dk)) !== r) continue;
+        if (inside(i0 + di, j0 + dj, k0 + dk)) { const d = di * di + 2 * dj * dj + dk * dk; if (d < bd) { bd = d; best = [min[0] + (i0 + di - pad + 0.5) * cell, min[1] + (j0 + dj - pad + 0.5) * cell, min[2] + (k0 + dk - pad + 0.5) * cell]; } } } }
+    out[name] = best || p;
+  }
+  for (const k of Object.getOwnPropertyNames(J)) if (!(k in out)) Object.defineProperty(out, k, { value: J[k], enumerable: false });
+  return out;
 }
 
 // ---- Animations (made here) ------------------------------------------------------------------
