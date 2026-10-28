@@ -11,6 +11,7 @@ import { esc } from '../../core/text.js';
 import { openAccount } from './account.js';
 import { ready } from './ai.js';
 import { webModelApi } from '../../features/ai/model3dagent.js';
+import { api as accountApi, account, hasAccounts } from '../../io/cloud/account.js';
 import { alertDialog } from './dialog.js';
 import { t, currentLang } from '../../i18n/index.js';
 
@@ -18,7 +19,30 @@ const EXAMPLES = ['una taza de café de cerámica azul', 'una lámpara de escrit
 const ERRORS = { 'no credits': 'Te has quedado sin créditos.', 'ai failed': 'La IA no ha respondido.', 'ai paused': 'La IA está en pausa ahora mismo. Inténtalo más tarde.',
   internal: 'Algo ha fallado.' };
 const local = webModelApi();                            // (in the browser; its jobs kept while the page is open)
-let current = null;                                       // the job still open (to come back to it after closing the window)
+// The dialog's API: the browser's agent, plus — for someone with an account — the server's «Realista» (a texture-mapped model from a
+// picture the AI draws, by TRELLIS.2: server/cloudflare/trellis3d.js). A request marked realistic goes to the server and the
+// calls about that job (its status, model, cancel) go there too; everything else stays in the browser.
+export function modelApiWith(localApi, serverApi, { signedIn = () => true } = {}) {
+  const onServer = new Set();
+  return async (path, body) => {
+    if (path === '3d') {
+      const info = await localApi(path, body);
+      if (!info.ok || !signedIn()) return info;
+      try { const s = await serverApi('3d'); if (s.ok && s.realistic) return { ...info, realistic: true, realisticEstimate: s.realisticEstimate }; } catch {}
+      return info;
+    }
+    if (path === '3d/jobs') {
+      const { realistic, ...rest } = body || {};
+      if (!realistic) return localApi(path, rest);
+      const r = await serverApi(path, body); onServer.add(r.id); return r;
+    }
+    const m = /^3d\/jobs\/([^/]+)/.exec(path);
+    if (m && onServer.has(m[1])) { const r = await serverApi(path, body); if (/\/cancel$/.test(path)) onServer.delete(m[1]); return r; }
+    return localApi(path, body);
+  };
+}
+const hybrid = modelApiWith(local, accountApi, { signedIn: () => hasAccounts() && !!account() });
+let current = null, currentReal = false;                  // the job still open (to come back to it after closing the window), and whether it is a «Realista» one
 
 // (Built in the browser: available wherever the AI is — with an account or one's own key —, nothing to hide.)
 export function initModelAi() {}
@@ -33,8 +57,8 @@ async function photo(file) {
 }
 
 // opts.api / opts.interval: for the tests (a simulated server, quicker polling).
-export async function openModelAi({ api = local, interval = 2500 } = {}) {
-  const testing = api !== local;
+export async function openModelAi({ api = hybrid, interval = 2500 } = {}) {
+  const testing = api !== hybrid;
   if (!testing && !(await ready())) return;            // (the AI connected — account or own key — and its notice seen)
   let info;
   try { info = await api('3d'); } catch { info = { ok: false }; }
@@ -49,7 +73,7 @@ export async function openModelAi({ api = local, interval = 2500 } = {}) {
       <div class="m3a-examples">${EXAMPLES.map(x => `<button type="button" class="mini2 m3a-ex">${esc(t(x))}</button>`).join('')}</div>
       <label class="fr-l">${t('Fotos de referencia (opcional, hasta 3)')}<input type="file" class="m3a-photos" accept="image/jpeg,image/png" multiple></label>
       <p class="host-help m3a-realnote" hidden>${t('De momento, en el modo Realista no se pueden usar fotos propias, por la seguridad de los usuarios: estamos trabajando en ello.')}</p>
-      ${info.realistic && !info.local ? `<label class="fr-chk"><input type="checkbox" class="m3a-real" checked${info.blender === false ? ' disabled' : ''}> ${t('Realista (con textura, para objetos, animales y personas). Cuesta más y tarda un minuto; desmárcalo para formas geométricas sencillas con fotos propias.')}</label>` : ''}
+      ${info.realistic ? `<label class="fr-chk"><input type="checkbox" class="m3a-real" checked${info.blender === false ? ' disabled' : ''}> ${t('Realista (con textura, para objetos, animales y personas). Cuesta más y tarda un minuto; desmárcalo para formas geométricas sencillas con fotos propias.')}</label>` : ''}
       <p class="host-help">${info.local ? t('La descripción, las fotos de referencia y las fotos del modelo se envían al servicio de IA (OpenRouter y el proveedor del modelo). El modelo se construye en tu navegador.')
         : t('La descripción y las fotos se envían al servicio de IA (OpenRouter y el proveedor del modelo). El guion de Blender se ejecuta en un servidor de Revela y el trabajo se borra a las 24 horas.')}</p>
       <p class="host-help m3a-est">${info.local ? t('Cada ronda cuesta lo que cobra la IA por ella, normalmente muy poco.') : t('Hasta {n} créditos (se cobra lo que cuesta de verdad, normalmente bastante menos).').replace('{n}', info.estimate?.max ?? '?')}</p>
@@ -67,8 +91,11 @@ export async function openModelAi({ api = local, interval = 2500 } = {}) {
   document.body.appendChild(back);
   const q = s => back.querySelector(s);
   // «Realista» sends the picture to a service outside the EU: until the data-processing agreement is signed, no photos of their own.
+  const estText = n => t('Hasta {n} créditos (se cobra lo que cuesta de verdad, normalmente bastante menos).').replace('{n}', n);
   const sync = () => { const on = !!q('.m3a-real')?.checked, f = q('.m3a-photos'); if (on) f.value = ''; f.disabled = on; q('.m3a-realnote').hidden = !on;
-    const n = (on ? info.realisticEstimate : info.estimate)?.max; if (n != null && !info.local) q('.m3a-est').textContent = t('Hasta {n} créditos (se cobra lo que cuesta de verdad, normalmente bastante menos).').replace('{n}', n); };
+    if (on && info.realisticEstimate) q('.m3a-est').textContent = estText(info.realisticEstimate.max);
+    else if (info.local) q('.m3a-est').textContent = t('Cada ronda cuesta lo que cobra la IA por ella, normalmente muy poco.');
+    else if (info.estimate?.max != null) q('.m3a-est').textContent = estText(info.estimate.max); };
   q('.m3a-real')?.addEventListener('change', sync); sync();
   let timer = null, glb = null, closed = false;
   const close = () => { closed = true; clearTimeout(timer); back.remove(); };
@@ -87,11 +114,12 @@ export async function openModelAi({ api = local, interval = 2500 } = {}) {
     q('.m3a-rounds').innerHTML = s.rounds.map(r => `<li class="${r.ok ? 'ok' : 'ko'}">${r.preview ? `<img src="${esc(r.preview)}" alt="">` : '<i class="ms">error</i>'}
       <div><b>${t('Ronda')} ${r.n}</b>${r.note ? ` · ${esc(r.note)}` : ''}${r.ok ? '' : `<br><small>${esc(t(r.error === 'invalid answer' ? 'La IA no respondió bien; lo intenta otra vez.' : info.local ? 'El código falló; lo corrige en la siguiente ronda.' : 'El guion falló en Blender; lo corrige en la siguiente ronda.'))}</small>`}</div></li>`).join('');
     const running = s.status === 'running';
-    q('.m3a-status').innerHTML = running ? `<i class="ms m3a-spin">progress_activity</i> ${t('Ronda {n}: la IA está modelando y revisando el resultado…').replace('{n}', s.rounds.length + 1)}`
+    q('.m3a-rounds').hidden = currentReal;
+    q('.m3a-status').innerHTML = running ? `<i class="ms m3a-spin">progress_activity</i> ${currentReal ? t('Creando el modelo realista: suele tardar un minuto…') : t('Ronda {n}: la IA está modelando y revisando el resultado…').replace('{n}', s.rounds.length + 1)}`
       : s.status === 'done' ? t('Listo. Gíralo con el ratón para verlo por todos lados.')
       : s.status === 'failed' ? t('No ha conseguido un modelo válido. Pide cambios para intentarlo otra vez.')
       : t(ERRORS[s.error] || 'Algo ha fallado.');
-    q('.m3a-end').hidden = q('.m3a-endb').hidden = running;
+    q('.m3a-end').hidden = q('.m3a-endb').hidden = running || currentReal;   // (no changes to a realistic one: another is made)
     q('.m3a-insert').disabled = !s.glb; q('.m3a-more').disabled = s.total >= s.max;
     if (!running && s.glb && !glb) {
       glb = (await api(`3d/jobs/${current}/model`)).glb;
@@ -117,7 +145,7 @@ export async function openModelAi({ api = local, interval = 2500 } = {}) {
     try {
       const realistic = !!q('.m3a-real')?.checked;
       const images = realistic ? [] : (await Promise.all(files.map(photo))).filter(Boolean);
-      current = (await api('3d/jobs', { prompt, images, lang: currentLang(), ...(realistic && { realistic: true }) })).id; working();
+      current = (await api('3d/jobs', { prompt, images, lang: currentLang(), ...(realistic && { realistic: true }) })).id; currentReal = realistic; working();
     } catch (e) { fail(e); }
     finally { if (!closed) q('.m3a-go').disabled = false; }
   });

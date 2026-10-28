@@ -3601,6 +3601,20 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     W.localStorage.removeItem('rv-recent-designs');
   });
 
+  await test('Crear modelo 3D con IA: lo realista va al servidor y lo demás se queda en el navegador', async () => {
+    reset(); const W = frame.contentWindow, M = await W.eval("import('/src/ui/dialogs/model3dai.js')"), L = [], S = [];
+    const local = async (p, b) => { L.push([p, b]); return p === '3d' ? { ok: true, local: true, estimate: null } : p === '3d/jobs' ? { id: 'w1' } : { status: 'done', rounds: [] }; };
+    const server = async (p, b) => { S.push([p, b]); return p === '3d' ? { ok: true, realistic: true, realisticEstimate: { max: 60 } } : p === '3d/jobs' ? { id: 'srv-12345678901234' } : { status: 'done', rounds: [], glb: true }; };
+    let signed = true; const api = M.modelApiWith(local, server, { signedIn: () => signed });
+    let info = await api('3d'); assert(info.local && info.realistic && info.realisticEstimate.max === 60, 'con cuenta: el navegador y, además, Realista');
+    signed = false; S.length = 0; info = await api('3d'); assert(!info.realistic && !S.length, 'sin cuenta: solo el navegador, sin llamar al servidor'); signed = true;
+    await api('3d/jobs', { prompt: 'una taza', realistic: false }); assert(L.at(-1)[0] === '3d/jobs' && !('realistic' in L.at(-1)[1]) && !S.some(c => c[0] === '3d/jobs'), 'sin Realista: al navegador');
+    const r = await api('3d/jobs', { prompt: 'una jirafa', realistic: true }); assert(r.id === 'srv-12345678901234' && S.at(-1)[1].realistic === true, 'con Realista: al servidor');
+    await api('3d/jobs/srv-12345678901234'); assert(S.at(-1)[0] === '3d/jobs/srv-12345678901234', 'su estado se pregunta al servidor');
+    await api('3d/jobs/w1'); assert(L.at(-1)[0] === '3d/jobs/w1', 'el del navegador, al navegador');
+    await api('3d/jobs/srv-12345678901234/cancel', {}); await api('3d/jobs/srv-12345678901234'); assert(L.at(-1)[0] === '3d/jobs/srv-12345678901234', 'descartado: ya no es del servidor');
+  });
+
   await test('Crear modelo 3D con IA: el modo Realista, de momento sin fotos propias (y lo avisa)', async () => {
     reset(); const W = frame.contentWindow, M = await W.eval("import('/src/ui/dialogs/model3dai.js')"), calls = [];
     const api = async (path, body) => { calls.push([path, body]); return path === '3d' ? { ok: true, realistic: true, blender: true, estimate: { max: 104 }, realisticEstimate: { max: 60 } } : { id: 'job-realista-123456', estimate: { max: 40 } }; };
