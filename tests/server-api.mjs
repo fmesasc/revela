@@ -1130,6 +1130,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
         if (s === 'https://v3.fal.media/files/walk.glb') return new Response(Buffer.from('glTF-camina'));
         if (s === 'https://v3.fal.media/files/rig.glb') return new Response(Buffer.from('glTF-esqueleto'));
         return prevR(u, init); };
+      env.TRELLIS_RIG = '1';
       await acc('1212').fetch(new Request('https://do/grant', { method: 'POST', body: JSON.stringify({ credits: 2000, reason: 'grant', ref: 'trig' }) }));
       const run = async (prompt, mode) => { rigMode = mode; rigPolls = 0; rigCalls.length = 0; rwPolls = 0;
         const c0 = credits(), jr = await (await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt, realistic: true } })).json();
@@ -1149,6 +1150,10 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       await req('POST', '/api/3d/jobs/' + c.id + '/cancel', { headers: { Cookie: gil }, body: {} });
       const d = await run('una jirafa', 'ok'); ok(!rigCalls.length && d.st.animated === false, 'Esqueleto: lo que no es una persona no se manda a rigging');
       await req('POST', '/api/3d/jobs/' + d.id + '/cancel', { headers: { Cookie: gil }, body: {} });
+      // Sin TRELLIS_RIG (lo normal): la persona no se manda a fal; el navegador le pone el esqueleto.
+      delete env.TRELLIS_RIG; const e = await run('un médico con bata blanca', 'ok');
+      ok(e.st.status === 'done' && e.st.animated === false && e.st.animate === true && !rigCalls.length, 'Esqueleto: sin TRELLIS_RIG no se envía a fal y el estado dice que es una persona (animate): ' + JSON.stringify([e.st.status, e.st.animated, e.st.animate, rigCalls.length]));
+      await req('POST', '/api/3d/jobs/' + e.id + '/cancel', { headers: { Cookie: gil }, body: {} });
       env.FETCH = prevR; }
     // Saldo retenido por otras peticiones: reintenta a los 10 s y sale.
     rwReply = { data: [], errors: [{ code: 'concurrentRequestLimitExceeded' }] };

@@ -1895,6 +1895,13 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const w = A.bindWeights(new W.Float32Array([0.1, 0.3, 0, -0.1, 0.3, 0]), [{ name: 'shinL', a: [0.1, 0.5, 0], b: [0.1, 0, 0] }, { name: 'shinR', a: [-0.1, 0.5, 0], b: [-0.1, 0, 0] }], 1.8, 0);
     assert(w.joints[0] === 0 && w.joints[4] === 1 && w.weights[0] > 0.9 && w.weights[4] > 0.9, 'cada pierna sigue a su hueso');
     assert(g2.json.animations.some(a => a.name === 'Walk'), 'y se crea la animación de andar');
+    // The GLB of a rigged model has nothing left over (the original meshes are gone) and its weights are bytes.
+    const prim = g2.json.meshes[0].primitives[0], wacc = g2.json.accessors[prim.attributes.WEIGHTS_0];
+    eq(g2.json.meshes.length, 1, 'solo la malla unida a los huesos, no la original'); assert(wacc.componentType === 5121 && wacc.normalized === true, 'pesos en bytes');
+    // «Realista»: a person gets this skeleton in the browser; what isn't a standing person is left as it came.
+    const M = await W.eval("import('/src/ui/dialogs/model3dai.js')"), r1 = await M.withSkeleton(person), box = model([[0, 0, 0, 1, 1, 1]]), r2 = await M.withSkeleton(box);
+    assert(r1.animated === true && r1.glb !== person && (await A.readModel(r1.glb)).json.animations.some(a => a.name === 'Walk'), 'una persona sale con esqueleto y animación de andar');
+    assert(r2.animated === false && r2.glb === box, 'un objeto se queda como estaba');
   });
 
   await test('plantilla Baetulo: el romano y el legionario traen esqueleto y las animaciones que pide la plantilla (Idle y Walk)', async () => {
@@ -2023,7 +2030,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(D.querySelector('#rig-modal .rig-ai-msg .rig-ai-on') && !calls.length, 'sin IA: explica cómo conectarla');
       // With AI, privacy not yet accepted: asks first.
       W.localStorage.setItem(KEY, JSON.stringify({ key: 'sk-test' }));
-      D.querySelector('#rig-modal .rig-ai').click(); await sleep(30);
+      D.querySelector('#rig-modal .rig-ai').click(); for (let i = 0; i < 100 && !D.querySelector('.modal-backdrop:last-child .dlg-ok'); i++) await sleep(20);   // (polled: 30 ms were not always enough)
       const ok = D.querySelector('.modal-backdrop:last-child .dlg-ok'); assert(ok && /tres imágenes/.test(D.querySelector('.dlg-msg').textContent), 'avisa de lo que se envía');
       ok.click();
       for (let i = 0; i < 60 && dlg.kind === 'bird' && !/Coste/.test(D.querySelector('#rig-modal .rig-ai-msg').textContent); i++) await sleep(50);

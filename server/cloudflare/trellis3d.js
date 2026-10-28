@@ -29,7 +29,7 @@ export function trellisSettings(env) {
 // Qué motor hace un trabajo «realista»: Meshy si hay que animar (o si se pide por variable) y hay clave de fal; TRELLIS para el resto.
 export const realisticEngine = (env, animate) => (env.MESHY_ENABLED === '1' && env.FAL_KEY && (animate || String(env.REALISTIC_ENGINE || '').toLowerCase() === 'meshy') ? 'meshy' : 'trellis');   // (Meshy needs fal's key; without it, TRELLIS for everything)
 
-const DIRECTOR = `You are a 3D asset art director briefing an image model whose picture will be turned into a 3D model. Rewrite the user's idea (any language) into ONE English prompt of under 70 words: the SINGLE subject, its silhouette and distinct parts, the material of each part, one consistent style (photorealistic unless the user clearly asks for a stylized look). If the subject is a person: EXACTLY ONE person, a single full-body figure from head to feet (no close-up, no second view), standing in a neutral A-pose with the arms slightly away from the body and the legs slightly apart, no loose flowing cloth, nothing in the hands (it will be given a skeleton). If it is an animal, show it whole, never cropped. Always end with: "the whole object fully in frame, centered, three-quarter view, isolated on a pure white seamless background, even soft studio lighting, no floor, no shadow, no text, no second object". Output only the prompt, no quotes.`;
+const DIRECTOR = `You are a 3D asset art director briefing an image model whose picture will be turned into a 3D model. Rewrite the user's idea (any language) into ONE English prompt of under 70 words: the SINGLE subject, its silhouette and distinct parts, the material of each part, one consistent style (photorealistic unless the user clearly asks for a stylized look). If the subject is a person: EXACTLY ONE person, a single full-body figure from head to feet with BOTH feet and shoes completely visible and clear white space below them (never cropped at the knees or the ankles; no close-up, no second view), standing in a neutral A-pose with the arms slightly away from the body and the legs slightly apart, no loose flowing cloth, nothing in the hands (it will be given a skeleton). If it is an animal, show it whole, never cropped. Always end with: "the whole object fully in frame, centered, three-quarter view, isolated on a pure white seamless background, even soft studio lighting, no floor, no shadow, no text, no second object". Output only the prompt, no quotes.`;
 
 async function or(env, body) {
   const r = await F(env)('https://openrouter.ai/api/v1/chat/completions', { method: 'POST',
@@ -100,7 +100,8 @@ export async function trellisPoll(env, m) {
 
 // ---- A skeleton and a walk for a person (fal's Meshy rigging: from a GLB URL; humanoid; ~0,20 $) ----------------------
 const RIG = 'https://queue.fal.run/fal-ai/meshy/rigging';
-export const rigAvailable = env => !!env.FAL_KEY;
+// (Off unless TRELLIS_RIG=1: Revela gives a person a skeleton in the browser (features/content/autorig.js), at no cost; this is the paid one.)
+export const rigAvailable = env => !!env.FAL_KEY && env.TRELLIS_RIG === '1';
 export async function rigSubmit(env, glbUrl) {
   const r = await F(env)(RIG, { method: 'POST', headers: { 'Content-Type': 'application/json', ...auth(env) }, body: JSON.stringify({ model_url: glbUrl, height_meters: 1.7, enable_animation: false }) }).catch(() => null);
   if (!r || !r.ok) return { ok: false, error: 'rig submit ' + (r ? r.status : 'network') };

@@ -171,7 +171,7 @@ export class ModelJob {
     }
     const job = await st.get('job');
     if (!job || job.sub !== a.sub || Date.now() > job.expires) return this.json({ error: 'not found' }, 404);   // (someone else's: as if it didn't exist)
-    if (op === 'get') return this.json({ status: job.status, rounds: job.rounds, left: job.left, total: job.total, max: k.maxRounds, glb: job.glb, animated: !!job.animated, error: job.error || null, charged: job.charged, expires: job.expires });
+    if (op === 'get') return this.json({ status: job.status, rounds: job.rounds, left: job.left, total: job.total, max: k.maxRounds, glb: job.glb, animated: !!job.animated, animate: !!job.animate, error: job.error || null, charged: job.charged, expires: job.expires });
     if (op === 'model') { if (!job.glb) return this.json({ error: 'not ready' }, 404); return this.json({ glb: 'data:model/gltf-binary;base64,' + (await readParts(st, 'glb:')).join('') }); }
     if (op === 'can') return this.json(job.realistic ? { ok: false, error: 'not supported' } : job.status === 'running' ? { ok: false, error: 'running' } : job.total >= k.maxRounds ? { ok: false, error: 'round limit' } : { ok: true });
     if (op === 'feedback') {

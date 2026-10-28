@@ -5192,4 +5192,5 @@ export default {
   "Realista (con textura, para objetos, animales y personas). Cuesta más y tarda un minuto; desmárcalo para formas geométricas sencillas con fotos propias.": "Realista (con textura, para obxectos, animais e persoas). Custa máis e tarda un minuto; desmárcao para formas xeométricas sinxelas ou fotos propias.",
   "Creando el modelo realista: suele tardar un minuto…": "Creando o modelo realista: adoita tardar un minuto…",
   "Hasta {n} créditos; hasta {m} si es una persona, que además se anima con su esqueleto (se cobra lo que cuesta de verdad).": "Ata {n} créditos; ata {m} se é unha persoa, que ademais recibe esqueleto e se anima (cóbrase o custo real).",
+  "Poniéndole esqueleto para que ande…": "Poñéndolle un esqueleto para que ande…",
 };

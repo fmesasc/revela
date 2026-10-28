@@ -212,7 +212,5 @@ export async function openAutoRig(b, { onDone } = {}) {
     close(); onDone?.();
   });
   reset();
-  // A shape that doesn't say clearly what it is (an engine, a cell, a ship): the AI looks at it, if it is already connected and its notice accepted.
-  if (guess.confidence < 0.6 && aiConnected() && privacyAccepted()) q('.rig-ai').click();
   return { back, guess, get joints() { return J; }, get built() { return built; }, get kind() { return kind; }, get yaw() { return yaw; }, get view() { return view; } };
 }

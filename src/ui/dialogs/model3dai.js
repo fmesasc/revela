@@ -56,6 +56,19 @@ async function photo(file) {
   return null;
 }
 
+// A person made by the «Realista» mode comes without a skeleton: Revela's own automatic rig (features/content/autorig.js) gives it one,
+// here in the browser — nothing to pay. → { glb, animated }: the model as it came if it isn't clearly a standing person, or fails.
+export async function withSkeleton(glb) {
+  try {
+    const A = await import('../../features/content/autorig.js');
+    const g = await A.readModel(glb); let shape = A.modelShape(g, 0);
+    const guess = A.detectKind(shape); if (guess.kind !== 'person') return { glb, animated: false };
+    if (guess.yaw) shape = A.modelShape(g, guess.yaw);
+    const J = A.proposeJoints(shape, 'person', guess.opts || {});
+    return { glb: A.buildRig(g, shape, 'person', J), animated: true };
+  } catch { return { glb, animated: false }; }
+}
+
 // opts.api / opts.interval: for the tests (a simulated server, quicker polling).
 export async function openModelAi({ api = hybrid, interval = 2500 } = {}) {
   const testing = api !== hybrid;
@@ -123,6 +136,10 @@ export async function openModelAi({ api = hybrid, interval = 2500 } = {}) {
     q('.m3a-insert').disabled = !s.glb; q('.m3a-more').disabled = s.total >= s.max;
     if (!running && s.glb && !glb) {
       glb = (await api(`3d/jobs/${current}/model`)).glb; glbAnimated = !!s.animated;
+      if (!glbAnimated && currentReal && s.animate) {                    // (a person: its skeleton, made here)
+        q('.m3a-status').innerHTML = `<i class="ms m3a-spin">progress_activity</i> ${t('Poniéndole esqueleto para que ande…')}`;
+        const r = await withSkeleton(glb); glb = r.glb; glbAnimated = r.animated;
+      }
       if (closed) return;
       const mv = document.createElement('model-viewer');
       Object.assign(mv, { src: glb, alt: t('Modelo creado con IA') }); mv.setAttribute('camera-controls', ''); if (glbAnimated) mv.setAttribute('autoplay', ''); else mv.setAttribute('auto-rotate', '');

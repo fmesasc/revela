@@ -246,6 +246,41 @@ export function proposeJoints(shape, kind = 'person', opts = {}) {
   return J;
 }
 
+// Where each leg is at some heights, from the vertices themselves (x and z): two clusters if there are two legs there.
+// A silhouette from the front cannot tell the legs apart when the figure stands in mid-stride (one foot ahead of the other),
+// and then both feet land at the same place. → [{ x, z } | null, { x, z } | null] per level: L (the one at +X, or ahead) first.
+export function legCentres(shape, ys, H) {
+  const pts = ys.map(() => []);
+  for (const { pos } of shape.parts) for (let k = 0; k < pos.length; k += 3) for (let i = 0; i < ys.length; i++) if (Math.abs(pos[k + 1] - ys[i]) < H * 0.012) pts[i].push(pos[k], pos[k + 2]);
+  const two = (P) => {
+    const n = P.length / 2; if (n < 40) return null;
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (let i = 0; i < P.length; i += 2) { x0 = Math.min(x0, P[i]); x1 = Math.max(x1, P[i]); z0 = Math.min(z0, P[i + 1]); z1 = Math.max(z1, P[i + 1]); }
+    const ax = x1 - x0 >= z1 - z0 ? 0 : 1;                                  // split along the longer extent, then settle with 2-means
+    let a = [ax ? (x0 + x1) / 2 : x0 + (x1 - x0) * 0.25, ax ? z0 + (z1 - z0) * 0.25 : (z0 + z1) / 2], b = [ax ? (x0 + x1) / 2 : x0 + (x1 - x0) * 0.75, ax ? z0 + (z1 - z0) * 0.75 : (z0 + z1) / 2];
+    let na = 0, nb = 0;
+    for (let it = 0; it < 8; it++) {
+      let sa = [0, 0], sb = [0, 0]; na = nb = 0;
+      for (let i = 0; i < P.length; i += 2) { const da = (P[i] - a[0]) ** 2 + (P[i + 1] - a[1]) ** 2, db = (P[i] - b[0]) ** 2 + (P[i + 1] - b[1]) ** 2;
+        if (da <= db) { sa[0] += P[i]; sa[1] += P[i + 1]; na++; } else { sb[0] += P[i]; sb[1] += P[i + 1]; nb++; } }
+      if (!na || !nb) return null; a = [sa[0] / na, sa[1] / na]; b = [sb[0] / nb, sb[1] / nb];
+    }
+    const sep = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    return sep > H * 0.045 && Math.min(na, nb) / n > 0.25 ? [{ x: a[0], z: a[1] }, { x: b[0], z: b[1] }] : null;
+  };
+  const found = pts.map(two), out = [];
+  let prev = null;
+  // From the ground up, so each leg keeps its side: L is the one nearer the previous L (the first level: larger x, or the one ahead).
+  for (let i = 0; i < found.length; i++) {
+    const f = found[i]; if (!f) { out.push([null, null]); continue; }
+    let L, R;
+    if (!prev) { [L, R] = Math.abs(f[0].x - f[1].x) > H * 0.01 ? (f[0].x > f[1].x ? [f[0], f[1]] : [f[1], f[0]]) : (f[0].z > f[1].z ? [f[0], f[1]] : [f[1], f[0]]); }
+    else { const d = (p, q) => Math.hypot(p.x - q.x, p.z - q.z); [L, R] = d(f[0], prev[0]) + d(f[1], prev[1]) <= d(f[1], prev[0]) + d(f[0], prev[1]) ? [f[0], f[1]] : [f[1], f[0]]; }
+    out.push([L, R]); prev = [L, R];
+  }
+  return out;
+}
+
 // A standing person from the body's proportions, adjusted by what the silhouette shows. The slices alone (personFromProfile)
 // fail with loose clothes — a tunic or a dress hides the crotch, so hips, knees and arms land in the wrong places —; the
 // proportions of a body don't: head, shoulders, hips, knees and ankles are at known heights of a standing person, and the
@@ -288,6 +323,17 @@ function personFromBody(prof, shape) {
     J['thigh' + s] = [Math.abs(hx - cx) < H * 0.03 ? cx + sd * H * 0.05 : hx, y(P.thigh), hip?.z ?? zOf(P.thigh)];
     J['shin' + s] = [kx, y(P.knee), knee?.z ?? zOf(P.knee)];
     J['foot' + s] = [fx, y(P.ankle), foot?.z ?? zOf(0.06)];
+  }
+  // Legs seen from the vertices (a stride hides one from the front): knee and ankle at each leg's own centre.
+  const lc = legCentres(shape, [y(P.ankle + 0.015), y(P.knee)], H);
+  if (lc[0][0] && lc[0][1]) {
+    for (const [i, s] of [[0, 'L'], [1, 'R']]) {
+      const a = lc[0][i], k = lc[1][i] || { x: a.x, z: a.z };
+      J['foot' + s] = [a.x, y(P.ankle), a.z]; J['shin' + s] = [k.x, y(P.knee), k.z];
+      J['thigh' + s] = [J['thigh' + s][0] * 0.5 + (cx + (i ? -1 : 1) * Math.max(H * 0.05, Math.abs(k.x - cx) * 0.8)) * 0.5, y(P.thigh), J['thigh' + s][2]];
+    }
+    // (If the legs came the wrong way round at the hips, the hip joints follow their own leg.)
+    if (J.thighL[0] < J.thighR[0]) { const t = J.thighL[0]; J.thighL[0] = J.thighR[0]; J.thighR[0] = t; }
   }
   return J;
 }
@@ -594,8 +640,17 @@ export function detectKind(shape) {
   // Long and low: a snake, a worm, an eel.
   const thin = L / Math.max(B, H);
   if (thin > 3.5 && H < 0.45 * L) return out('snake', 0.55 + (thin - 3.5) * 0.05, yawFor(long, thicker(long)));
+  // What lies on the ground and isn't a creature: the points of contact of a ship, an engine or a cell are not feet. Feet are small
+  // (a person's two cover under 8 % of the footprint) and, with six or more legs, come in mirrored pairs.
+  const cell = Math.max(W, D) / 64, footArea = Math.max(0, ...feet.map(c => c.cells)) * cell * cell / (W * D || 1);
+  const mirrored = () => { const cx0 = feet.reduce((a, c) => a + c.x, 0) / n, cz0 = feet.reduce((a, c) => a + c.z, 0) / n, tol = L * 0.07;
+    const has = (x, z) => feet.some(c => Math.hypot(c.x - x, c.z - z) < tol);
+    const score = f => feet.filter(c => has(...f(c))).length / n;
+    return Math.max(score(c => [2 * cx0 - c.x, c.z]), score(c => [c.x, 2 * cz0 - c.z]), score(c => [2 * cx0 - c.x, 2 * cz0 - c.z])); };
+  if (n >= 5 && mirrored() < 0.75) return out('object', 0.5);
+  if (n === 2 && footArea > 0.09) return out('object', 0.5);
   if (n >= 5) {
-    if (n >= 9 || H > 0.7 * L) return out('octopus', 0.5 + (n >= 8 ? 0.1 : 0), 0, { arms: n >= 4 && n <= 12 ? n : 8 });
+    if (n >= 9 || H > 0.7 * L) return out('octopus', 0.45 + (n >= 8 ? 0.1 : 0), 0, { arms: n >= 4 && n <= 12 ? n : 8 });
     // Legs spread more across the body than along it; the abdomen is the thicker end.
     const across = spread(0) >= spread(1) ? 0 : 2, along = 2 - across;
     return out('spider', 0.65, yawFor(along, !thicker(along)), { legs: n >= 7 ? 8 : 6 });
@@ -671,6 +726,51 @@ export function bindWeights(pos, B, H, cx = null, hipY = null) {
   return { joints, weights };
 }
 
+
+// The surface as a graph of welded points (a model comes with every seam doubled): wid[k] is vertex k's point, and A[e]–B[e]
+// are the edges between points; len is their mean length.
+function weldGraph(pos, idx, q) {
+  const n = pos.length / 3, key = new Map(), wid = new Int32Array(n); let m = 0;
+  for (let k = 0; k < n; k++) {
+    const h = Math.round(pos[k * 3] / q) + ',' + Math.round(pos[k * 3 + 1] / q) + ',' + Math.round(pos[k * 3 + 2] / q);
+    let id = key.get(h); if (id === undefined) { id = m++; key.set(h, id); } wid[k] = id;
+  }
+  const seen = new Set(), A = [], B = []; let len = 0;
+  for (let t = 0; t + 2 < idx.length; t += 3) for (let e = 0; e < 3; e++) {
+    const i = idx[t + e], j = idx[t + (e + 1) % 3], a = wid[i], b = wid[j]; if (a === b) continue;
+    const k2 = a < b ? a * m + b : b * m + a; if (seen.has(k2)) continue; seen.add(k2); A.push(a); B.push(b);
+    len += Math.hypot(pos[i * 3] - pos[j * 3], pos[i * 3 + 1] - pos[j * 3 + 1], pos[i * 3 + 2] - pos[j * 3 + 2]);
+  }
+  return { wid, m, A, B, len: A.length ? len / A.length : 0 };
+}
+
+// Weights smoothed over the surface: a loose tunic, a skirt or a cape follows its neighbours instead of whichever bone is
+// nearest, so it opens with the legs instead of tearing or swelling. Welded by position (a model comes with every seam
+// doubled); `radius` (in model units) is how far along the surface the blend reaches.
+export function smoothWeights(pos, idx, joints, weights, nb, radius) {
+  const n = pos.length / 3; if (!idx || !idx.length || !n) return { joints, weights };
+  const { wid, m, A, B, len: step } = weldGraph(pos, idx, radius / 12 || 1e-4); if (!A.length) return { joints, weights };
+  const iters = Math.max(1, Math.min(60, Math.round((radius / step) ** 2 / 1.5)));
+  let cur = new Float32Array(m * nb), nxt = new Float32Array(m * nb); const cnt = new Float32Array(m);
+  for (let k = 0; k < n; k++) { const id = wid[k]; cnt[id]++; for (let c = 0; c < 4; c++) cur[id * nb + joints[k * 4 + c]] += weights[k * 4 + c]; }
+  for (let id = 0; id < m; id++) if (cnt[id] > 1) for (let b = 0; b < nb; b++) cur[id * nb + b] /= cnt[id];
+  const deg = new Float32Array(m); for (let e = 0; e < A.length; e++) { deg[A[e]]++; deg[B[e]]++; }
+  for (let it = 0; it < iters; it++) {
+    nxt.fill(0);
+    for (let e = 0; e < A.length; e++) { const a = A[e] * nb, b = B[e] * nb; for (let c = 0; c < nb; c++) { nxt[a + c] += cur[b + c]; nxt[b + c] += cur[a + c]; } }
+    for (let id = 0; id < m; id++) { const d = deg[id] || 1, o = id * nb; for (let c = 0; c < nb; c++) cur[o + c] = 0.5 * cur[o + c] + 0.5 * (deg[id] ? nxt[o + c] / d : cur[o + c]); }
+  }
+  // Back to four influences per vertex: the biggest, renormalised.
+  const J2 = new Uint8Array(n * 4), W2 = new Float32Array(n * 4);
+  for (let k = 0; k < n; k++) {
+    const o = wid[k] * nb, best = [[-1, 0], [-1, 0], [-1, 0], [-1, 0]];
+    for (let c = 0; c < nb; c++) { const w = cur[o + c]; if (w <= best[3][1]) continue; let at = 3; while (at > 0 && best[at - 1][1] < w) { best[at] = best[at - 1]; at--; } best[at] = [c, w]; }
+    let sum = 0; for (let c = 0; c < 4; c++) sum += best[c][1];
+    for (let c = 0; c < 4; c++) { J2[k * 4 + c] = Math.max(0, best[c][0]); W2[k * 4 + c] = sum ? best[c][1] / sum : (c ? 0 : 1); }
+  }
+  return { joints: J2, weights: W2 };
+}
+
 // ---- Animations (made here) ------------------------------------------------------------------
 // Each clip: seconds, and a pose at time t (0..1 of the loop) as world turns
 // per joint (by directions for limbs, so any rest pose works) plus a hip lift.
@@ -687,17 +787,21 @@ function personPose(J, clip, t, H) {
     P['shin' + s] = limbTo(J, 'shin' + s, 'foot' + s, shin);
     P['foot' + s] = P['shin' + s];
   };
+  // The foot doesn't follow the shin's tilt: it keeps flat on the ground, toe up a little at the heel strike (the shin leaning
+  // forward) and toe down as it pushes off (the shin leaning back).
+  const foot = (s, swing, knee) => { const a = swing - knee, pitch = a > 0 ? -0.4 * a : -0.75 * a; P['foot' + s] = Q.axis(X, Math.max(-18, Math.min(32, pitch))); };
   const arm = (s, dir, fore) => { P['arm' + s] = limbTo(J, 'arm' + s, 'forearm' + s, dir); P['forearm' + s] = limbTo(J, 'forearm' + s, 'hand' + s, fore || dir); P['hand' + s] = P['forearm' + s]; };
   const body = (bend = 0, twist = 0, side = 0) => { const q = Q.mul(Q.axis(Y, twist), Q.mul(Q.axis(X, bend), Q.axis(Z, side))); P.spine = q; P.chest = q; P.neck = q; P.head = q; };
   if (clip === 'Walk' || clip === 'Run') {
     const run = clip === 'Run', A = run ? 36 : 20, K = run ? 66 : 32;
     for (const [s, off] of [['L', 0], ['R', Math.PI]]) {
       const sw = A * Math.sin(ph + off), kn = K * Math.max(0, Math.sin(ph + off - Math.PI / 2 + 0.6)) * (run ? 1 : 0.9) + (run ? 12 : 4);
-      leg(s, sw, kn);
+      leg(s, sw, kn); foot(s, sw, kn);
       const armSw = -(run ? 40 : 22) * Math.sin(ph + off);
       arm(s, downOut(S[s], 10, armSw), downOut(S[s], 6, armSw + (run ? 70 : 20)));
     }
-    body(run ? 10 : 3, 6 * Math.sin(ph), 0);
+    body(run ? 10 : 3, run ? 6 * Math.sin(ph) : 4 * Math.sin(ph), run ? 0 : 1.5 * Math.sin(ph));
+    P.hips = Q.mul(Q.axis(Y, (run ? -6 : -5) * Math.sin(ph)), Q.axis(Z, (run ? 3 : 2.5) * Math.sin(ph)));   // the pelvis swings against the shoulders
     lift = H * (run ? 0.03 : 0.012) * Math.abs(Math.cos(ph));
   } else if (clip === 'Idle') {
     leg('L', 0, 2); leg('R', 0, 2);
@@ -868,13 +972,50 @@ function localTurns(list, P) {
   return L;
 }
 
+
+// Weights as normalised bytes (a quarter of the size, and glTF allows it), summing exactly to 255 for each vertex.
+function quantWeights(w) {
+  const q = new Uint8Array(w.length);
+  for (let k = 0; k < w.length; k += 4) {
+    let sum = 0, big = 0; for (let c = 0; c < 4; c++) { q[k + c] = Math.round(Math.max(0, w[k + c]) * 255); sum += q[k + c]; if (q[k + c] > q[k + big]) big = c; }
+    q[k + big] += 255 - sum;
+  }
+  return q;
+}
+// The GLB without what nothing uses any more (the model's own meshes that were flattened and bound, their accessors and buffers):
+// buildRig adds the skinned copy next to the original, which would double the file.
+function compactGLB(out) {
+  const { json, bin } = out, acc = json.accessors || [], bvs = json.bufferViews || [], usedA = new Set();
+  const useA = i => { if (i != null) usedA.add(i); };
+  for (const m of json.meshes || []) for (const p of m.primitives || []) { for (const a of Object.values(p.attributes || {})) useA(a); useA(p.indices); for (const t of p.targets || []) for (const a of Object.values(t)) useA(a); }
+  for (const sk of json.skins || []) useA(sk.inverseBindMatrices);
+  for (const an of json.animations || []) for (const sm of an.samplers || []) { useA(sm.input); useA(sm.output); }
+  const aMap = new Map(), accNew = []; [...usedA].sort((a, b) => a - b).forEach(i => { aMap.set(i, accNew.length); accNew.push(acc[i]); });
+  const usedB = new Set(); for (const a of accNew) { if (a.bufferView != null) usedB.add(a.bufferView); if (a.sparse) { usedB.add(a.sparse.indices.bufferView); usedB.add(a.sparse.values.bufferView); } }
+  for (const im of json.images || []) if (im.bufferView != null) usedB.add(im.bufferView);
+  const bMap = new Map(), bvNew = [], chunks = []; let off = 0;
+  [...usedB].sort((a, b) => a - b).forEach(i => {
+    const bv = bvs[i], len = Math.ceil(bv.byteLength / 4) * 4, c = new Uint8Array(len); c.set(bin.subarray(bv.byteOffset || 0, (bv.byteOffset || 0) + bv.byteLength));
+    bMap.set(i, bvNew.length); bvNew.push({ ...bv, byteOffset: off }); chunks.push(c); off += len;
+  });
+  const nb = new Uint8Array(off); let at = 0; for (const c of chunks) { nb.set(c, at); at += c.length; }
+  for (const a of accNew) { if (a.bufferView != null) a.bufferView = bMap.get(a.bufferView); if (a.sparse) { a.sparse.indices.bufferView = bMap.get(a.sparse.indices.bufferView); a.sparse.values.bufferView = bMap.get(a.sparse.values.bufferView); } }
+  for (const im of json.images || []) if (im.bufferView != null) im.bufferView = bMap.get(im.bufferView);
+  const R = i => (i == null ? i : aMap.get(i));
+  for (const m of json.meshes || []) for (const p of m.primitives || []) { for (const k of Object.keys(p.attributes || {})) p.attributes[k] = R(p.attributes[k]); p.indices = R(p.indices); for (const t of p.targets || []) for (const k of Object.keys(t)) t[k] = R(t[k]); if (p.indices == null) delete p.indices; }
+  for (const sk of json.skins || []) sk.inverseBindMatrices = R(sk.inverseBindMatrices);
+  for (const an of json.animations || []) for (const sm of an.samplers || []) { sm.input = R(sm.input); sm.output = R(sm.output); }
+  json.accessors = accNew; json.bufferViews = bvNew; return { json, bin: nb };
+}
+
 // ---- Putting it together ----------------------------------------------------------------------
 // The model with a skeleton at J (joints) and the animations: a GLB data URL.
 export function buildRig(g, shape, kind, J) {
   const json = structuredClone(g.json), out = { json, bin: g.bin.slice() }, list = skeletonOf(kind, J);
   const H = shape.box.max[1] - shape.box.min[1], B = bones(kind, J, list);
   delete json.skins; json.animations = [];
-  for (const n of json.nodes) { delete n.skin; delete n.weights; }          // (the old ones, left out of the scene)
+  for (const n of json.nodes) { delete n.skin; delete n.weights; delete n.mesh; }   // (the old ones, left out of the scene: their meshes are replaced by the skinned copies)
+  json.meshes = [];
   // Joints: nodes with only a position (their parent's offset).
   const base = json.nodes.length, idx = Object.fromEntries(list.map(([n], i) => [n, base + i]));
   list.forEach(([name, parent]) => json.nodes.push({ name, translation: parent ? sub(J[name], J[parent]) : J[name], children: list.filter(([, p]) => p === name).map(([n]) => idx[n]) }));
@@ -885,10 +1026,39 @@ export function buildRig(g, shape, kind, J) {
   // Every mesh, flattened into the model's space, bound to the bones.
   const meshNodes = [];
   shape.parts.forEach(({ prim, pos, nor }) => {
-    const { joints, weights } = bindWeights(pos, B, H, J.hips[0], kind === 'person' ? J.thighL?.[1] ?? null : null);
+    let { joints, weights } = bindWeights(pos, B, H, J.hips[0], kind === 'person' ? J.thighL?.[1] ?? null : null);
+    ({ joints, weights } = smoothWeights(pos, shape.parts[shape.parts.findIndex(x => x.pos === pos)]?.idx, joints, weights, B.length, H * 0.03));
+    if (kind === 'person' && J.footL && J.footR) {              // (the soles and heels follow only their foot: the shin and the foot turn differently, the shoe would stretch between them)
+      const fi = [B.findIndex(b => b.name === 'footL'), B.findIndex(b => b.name === 'footR')], top = Math.max(J.footL[1], J.footR[1]) + H * 0.04, nv = pos.length / 3;   // (the shoe rises above the ankle: all of it is the foot's)
+      const idxArr = shape.parts.find(x => x.pos === pos)?.idx;
+      if (fi[0] >= 0 && fi[1] >= 0) {
+        // Each shoe is a piece of the surface of its own: the one foot that most of its points lean to gets all of it (two shoes
+        // side by side in a stride would otherwise be shared out by distance to the bones, and each stretched towards the other).
+        let comp = null;
+        if (idxArr) {
+          const g = weldGraph(pos, idxArr, H * 0.0025), up = new Int32Array(g.m).map((_, i) => i), low = new Uint8Array(g.m);
+          const find = x => { while (up[x] !== x) { up[x] = up[up[x]]; x = up[x]; } return x; };
+          for (let k = 0; k < nv; k++) if (pos[k * 3 + 1] < top) low[g.wid[k]] = 1;
+          for (let e = 0; e < g.A.length; e++) if (low[g.A[e]] && low[g.B[e]]) up[find(g.A[e])] = find(g.B[e]);
+          const sum = new Map();
+          for (let k = 0; k < nv; k++) if (low[g.wid[k]]) {
+            const r = find(g.wid[k]), t = sum.get(r) || { l: 0, r: 0, x: 0, n: 0 };
+            for (let c = 0; c < 4; c++) { if (joints[k * 4 + c] === fi[0]) t.l += weights[k * 4 + c]; else if (joints[k * 4 + c] === fi[1]) t.r += weights[k * 4 + c]; }
+            t.x += pos[k * 3]; t.n++; sum.set(r, t);
+          }
+          comp = k => { const t = sum.get(find(g.wid[k])); return !t ? -1 : Math.abs(t.l - t.r) > 1e-6 * t.n ? (t.l > t.r ? 0 : 1) : (t.x / t.n > J.hips[0] ? 0 : 1); };
+        }
+        for (let k = 0; k < nv; k++) if (pos[k * 3 + 1] < top) {
+          const own = comp ? comp(k) : -1, side = own >= 0 ? own : pos[k * 3] > J.hips[0] ? 0 : 1, f = fi[side], fade = Math.min(1, (top - pos[k * 3 + 1]) / (H * 0.03));
+          // (a blend at the edge, so the ankle doesn't show a seam: the foot's share grows towards the ground)
+          for (let c = 0; c < 4; c++) { weights[k * 4 + c] *= 1 - fade; if (joints[k * 4 + c] === f) weights[k * 4 + c] += fade; }
+          if (![0, 1, 2, 3].some(c => joints[k * 4 + c] === f && weights[k * 4 + c] > 0)) { joints[k * 4 + 3] = f; weights[k * 4 + 3] = fade; }
+        }
+      }
+    }
     const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
     for (let k = 0; k < pos.length; k += 3) for (let c = 0; c < 3; c++) { mn[c] = Math.min(mn[c], pos[k + c]); mx[c] = Math.max(mx[c], pos[k + c]); }
-    const attributes = { ...prim.attributes, POSITION: addAccessor(out, pos, 'VEC3', { min: mn, max: mx }), JOINTS_0: addAccessor(out, joints, 'VEC4'), WEIGHTS_0: addAccessor(out, weights, 'VEC4') };
+    const attributes = { ...prim.attributes, POSITION: addAccessor(out, pos, 'VEC3', { min: mn, max: mx }), JOINTS_0: addAccessor(out, joints, 'VEC4'), WEIGHTS_0: addAccessor(out, quantWeights(weights), 'VEC4', { normalized: true }) };
     if (nor) attributes.NORMAL = addAccessor(out, nor, 'VEC3'); else delete attributes.NORMAL;
     delete attributes.TANGENT; delete attributes.JOINTS_1; delete attributes.WEIGHTS_1;
     json.meshes.push({ primitives: [{ ...prim, attributes, targets: undefined }] });
@@ -914,7 +1084,7 @@ export function buildRig(g, shape, kind, J) {
     if (size) channel(idx.hips, 'scale', size, 'VEC3');
     json.animations.push({ name: clip, samplers, channels });
   }
-  return writeGLB(out);
+  return writeGLB(compactGLB(out));
 }
 // A tiny preview of the pose (for tests and the editor): where a joint ends up at time t of a clip.
 export function posedJoints(kind, J, clip, t, H) {

@@ -5192,4 +5192,5 @@ export default {
   "Realista (con textura, para objetos, animales y personas). Cuesta más y tarda un minuto; desmárcalo para formas geométricas sencillas con fotos propias.": "Realistisch (met textuur, voor objecten, dieren en mensen). Kost meer en duurt ongeveer een minuut; vink uit voor eenvoudige geometrische vormen of eigen foto’s.",
   "Creando el modelo realista: suele tardar un minuto…": "Het realistische model wordt gemaakt: dat duurt meestal een minuut…",
   "Hasta {n} créditos; hasta {m} si es una persona, que además se anima con su esqueleto (se cobra lo que cuesta de verdad).": "Tot {n} credits; tot {m} als het een persoon is, die ook een skelet krijgt en beweegt (je betaalt wat het echt kost).",
+  "Poniéndole esqueleto para que ande…": "Het krijgt een skelet zodat het kan lopen…",
 };
