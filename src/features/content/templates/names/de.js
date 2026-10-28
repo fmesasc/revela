@@ -453,6 +453,8 @@ export default {"biz_board":["Quartalsergebnisse für den Vorstand","Dunkelblau 
 "show_anim_speech":["Rede: Retten wir die Bibliothek","Betonung im Takt einer Rede: Satz im Fokus und der Rest gedimmt, Durchstreichen, Hervorheben, handgezeichnete Unterstreichung und Kreis, Countdown"],
 "show_anim_tshirt":["Infografik: die Reise eines T-Shirts","Infografik, die sich enthüllt: Route, die sich mit ihren Stationen im Takt zeichnet, Tropfen-Piktogramm, das sich füllt, Wasserfall, Zahlen und Formel"],
 "show_baetulo":["Baetulo: Römer in Badalona","Lokalgeschichte mit sechs KI-3D-Modellen: ein spazierender Römer, ein Legionär, Amphore, Lampe, Schiff, Venus; mit Aufgaben"],
+"show_barcelona":["Barcelona: Gaudí, Barcino und Castells","Unterricht über Barcelona mit sechs KI-3D-Modellen: Sagrada Família, Drac, Batlló, Torre Glòries, eine Straßenlaterne und ein spazierender Casteller"],
+"show_madrid":["Madrid in fünf 3D-Stücken","Madrid für den Unterricht mit fünf KI-3D-Modellen: Sol, Alcalá, Cibeles, Debod und ein spazierender Chulapo; mit Fakten und Aufgaben"],
 "showcase_3d":["Katalog: 3D im Detail","3D-Modelle mit allen Optionen: Ansichten, Bewegungen beim Eintritt, Drehung, Ränder, Rand, Clips, Gehen und Ankunft mit Morphen"],
 "showcase_animations":["Katalog: Animationen","Alle Objektanimationen: Eingang, Betonung, Ausgang, Pfade, Zeichnen, verkettet, Klänge und mehrere an einem Objekt"],
 "showcase_charts":["Katalog: Diagramme","Die 15 Diagrammtypen, zwei pro Folie, mit Reihen, Kombination, Gitter, Beschriftungen und Achsentiteln, dazu die Optionstabelle"],

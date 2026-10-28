@@ -453,6 +453,8 @@ export default {"biz_board":["Kwartaalresultaten voor de raad","Donkerblauw en g
 "show_anim_speech":["Toespraak: red de bibliotheek","Nadruk op het ritme van een toespraak: zin in focus en de rest gedimd, doorstrepen, markeren, onderstreping en cirkel met de hand, aftellen"],
 "show_anim_tshirt":["Infographic: de reis van een T-shirt","Infographic die zich onthult: route die zich tekent met haar haltes op tijd, pictogram van druppels dat zich vult, waterval, cijfers en formule"],
 "show_baetulo":["Baetulo: Romeinen in Badalona","Lokale geschiedenis met zes AI-3D-modellen: een wandelende Romein, een legionair, amfoor, olielamp, schip, Venus; opdrachten"],
+"show_barcelona":["Barcelona: Gaudí, Barcino en castells","Les over Barcelona met zes 3D-modellen gemaakt met AI: Sagrada Família, Drac, Batlló, Torre Glòries, een straatlantaarn en een wandelende casteller"],
+"show_madrid":["Madrid in vijf 3D-stukken","Madrid voor de les met vijf 3D-modellen gemaakt met AI: Sol, Alcalá, Cibeles, Debod en een wandelende chulapo; met feiten en opdrachten"],
 "showcase_3d":["Catalogus: 3D tot in detail","3D-modellen met alle opties: weergaven, bewegingen bij binnenkomst, draaien, randen, marge, clips, lopen en aankomst met Morphen"],
 "showcase_animations":["Catalogus: animaties","Alle objectanimaties: ingang, nadruk, uitgang, bewegingspaden, tekenen, gekoppeld, geluiden en meerdere op één object"],
 "showcase_charts":["Catalogus: grafieken","De 15 grafiektypen, twee per dia, met reeksen, combinatie, raster, labels en astitels, plus de optietabel"],

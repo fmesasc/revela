@@ -453,6 +453,8 @@ export default {"biz_board":["Resultados trimestrais ao consello","Azul escuro e
 "show_anim_speech":["Discurso: salvemos a biblioteca","Énfase ao ritmo dun discurso: frase en foco e o resto atenuado, riscar, resaltar, subliñado e círculo a man, conta atrás"],
 "show_anim_tshirt":["Infografía: a viaxe dunha camiseta","Infografía que se revela: ruta que se debuxa coas súas paradas a tempo, pictograma de pingas que se enche, fervenza, cifras e fórmula"],
 "show_baetulo":["Baetulo: os romanos en Badalona","Historia local con seis modelos 3D feitos con IA: un romano que pasea, un legionario, ánfora, lucerna, barco e Venus; retos"],
+"show_barcelona":["Barcelona: Gaudí, Barcino e castells","Clase sobre Barcelona con seis modelos 3D feitos con IA: Sagrada Família, Drac, Batlló, Torre Glòries, un farol e un casteller que pasea"],
+"show_madrid":["Madrid en cinco pezas 3D","Madrid para a clase con cinco modelos 3D feitos con IA: Sol, Alcalá, Cibeles, Debod e un chulapo que pasea; con datos e retos"],
 "showcase_3d":["Catálogo: o 3D a fondo","Modelos 3D con todas as opcións: vistas, movementos ao entrar, xiro, bordos, marxe, clips, andar e chegada con Transformar"],
 "showcase_animations":["Catálogo: animacións","Todas as animacións de obxecto: entrada, énfase, saída, traxectorias, debuxar, encadeadas, sons e varias nun obxecto"],
 "showcase_charts":["Catálogo: gráficos","Os 15 tipos de gráfico, dous por diapositiva, con series, combinado, grade, etiquetas e títulos de eixos, e a táboa de opcións"],
