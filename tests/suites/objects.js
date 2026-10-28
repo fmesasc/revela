@@ -1795,9 +1795,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(prim.attributes.JOINTS_0 != null && prim.attributes.WEIGHTS_0 != null, 'la malla unida a los huesos');
     const w = A.bindWeights(shape.parts[0].pos, [{ a: J.thighL, b: J.shinL }, { a: J.chest, b: J.neck }], 1.8);
     assert(Math.abs(w.weights[0] + w.weights[1] + w.weights[2] + w.weights[3] - 1) < 1e-4, 'los pesos suman 1');
-    const st = A.posedJoints('person', J, 'Walk', 0.25, 1.8), st2 = A.posedJoints('person', J, 'Walk', 0.75, 1.8);
-    assert(st.footL[2] > J.footL[2] + 0.1 && st.footR[2] < J.footR[2] - 0.05, 'andando: un pie adelante y el otro atrás');
-    assert(st2.footR[2] > J.footR[2] + 0.1, 'y luego al revés');
+    const st = A.posedJoints('person', J, 'Walk', 0.0, 1.8), st2 = A.posedJoints('person', J, 'Walk', 0.5, 1.8);
+    assert(st.footL[2] > J.footL[2] + 0.1 && st.footR[2] < J.footR[2] - 0.05, 'andando: un pie adelante (el talón toca) y el otro atrás');
+    assert(st2.footR[2] > J.footR[2] + 0.1 && st2.footL[2] < J.footL[2] - 0.05, 'y medio ciclo después, al revés');
+    // The pelvis goes down when both feet are on the ground and up over the foot that carries it: the foot that is down never leaves the floor.
+    const low = [0, 0.25, 0.5, 0.75].map(t => { const q = A.posedJoints('person', J, 'Walk', t, 1.8); return Math.min(q.footL[1], q.footR[1]); });
+    assert(Math.max(...low) - Math.min(...low) < 0.02, 'el pie que apoya se queda en el suelo: ' + low.map(v => v.toFixed(3)).join(' '));
+    const kn = [0.05, 0.12, 0.3, 0.72].map(t => A.posedJoints('person', J, 'Walk', t, 1.8)), bend = q => Math.abs(q.footL[2] - q.shinL[2]);
+    assert(bend(kn[3]) > bend(kn[2]) + 0.05, 'la rodilla se dobla mucho al adelantar la pierna (fase de vuelo)');
     const wave = A.posedJoints('person', J, 'Wave', 0.3, 1.8); assert(wave.handR[1] > J.head[1], 'saludar: la mano derecha arriba');
     // An animal: body, head ahead, tail behind, four legs.
     const animal = model([[-0.15, 0.4, -0.5, 0.15, 0.7, 0.5], [-0.12, 0.55, 0.5, 0.12, 0.8, 0.8], [-0.03, 0.55, -0.9, 0.03, 0.62, -0.5],

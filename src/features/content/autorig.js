@@ -706,7 +706,7 @@ function bones(kind, J, list = skeletonOf(kind, J)) {
     if (main) end = J[main];
     else {                                                       // the ends: a tip beyond the joint
       const from = parent ? J[parent] : J[name], dir = sub(J[name], from), l = Math.hypot(...dir) || 1, d = norm(dir);
-      const reach = name === 'tail' ? 2 : /^(paw|foot)/.test(name) ? 0.4 : /^(tail|arm)\d/.test(name) ? 0.9 : /^bend/.test(name) ? 0.8 : 0.5;
+      const reach = name === 'tail' ? 2 : /^hem[FBLR]t$/.test(name) ? 0.05 : /^(paw|foot)/.test(name) ? 0.4 : /^(tail|arm)\d/.test(name) ? 0.9 : /^bend/.test(name) ? 0.8 : 0.5;
       end = name === 'head' ? add(J[name], kind === 'person' ? [0, l * 1.2, 0] : scale(d, l * (['animal', 'winged', 'bird', 'spider'].includes(kind) ? 1.5 : 0.8)))
         : add(J[name], scale(d, l * reach));
       if (/^foot[LR]$/.test(name)) end = add(J[name], [0, 0, l * 0.5]);
@@ -1006,7 +1006,29 @@ function personPose(J, clip, t, H) {
   const foot = (s, swing, knee) => { const a = swing - knee, pitch = a > 0 ? -0.4 * a : -0.75 * a; P['foot' + s] = Q.axis(X, Math.max(-18, Math.min(32, pitch))); };
   const arm = (s, dir, fore) => { P['arm' + s] = limbTo(J, 'arm' + s, 'forearm' + s, dir); P['forearm' + s] = limbTo(J, 'forearm' + s, 'hand' + s, fore || dir); P['hand' + s] = P['forearm' + s]; };
   const body = (bend = 0, twist = 0, side = 0) => { const q = Q.mul(Q.axis(Y, twist), Q.mul(Q.axis(X, bend), Q.axis(Z, side))); P.spine = q; P.chest = q; P.neck = q; P.head = q; };
-  if (clip === 'Walk' || clip === 'Run') {
+  if (clip === 'Walk') {
+    // A human gait, by its known curves (heel strike at the start of the cycle): the hip goes from flexed to extended and back; the knee
+    // bends a little to take the weight and a lot to bring the leg forward; the foot lands on its heel, rolls flat and leaves by the toes;
+    // the arms swing against the legs with the elbow more bent when they are forward; the pelvis turns against the shoulders and the
+    // head stays looking ahead. The pelvis is raised or lowered so the foot that is down is always on the ground (that gives the bob).
+    const bump = (x, c, w) => { const d = (((x - c + 0.5) % 1) + 1) % 1 - 0.5; return Math.exp(-(d * d) / (2 * w * w)); };
+    const hipA = f => 3 + 22 * Math.cos(2 * Math.PI * (f - 0.02));
+    const kneeA = f => 4 + 14 * bump(f, 0.12, 0.06) + 56 * bump(f, 0.72, 0.09);
+    const toeDown = f => -14 * bump(f, 0.0, 0.04) + 30 * bump(f, 0.58, 0.07) - 6 * bump(f, 0.82, 0.08);
+    for (const [s, off] of [['L', 0], ['R', 0.5]]) {
+      const f = (t + off) % 1, hv = hipA(f);
+      leg(s, hv, kneeA(f)); P['foot' + s] = Q.axis(X, toeDown(f));
+      const sw = -17 * Math.cos(2 * Math.PI * (f - 0.02)), flex = 14 + 14 * Math.max(0, sw / 17);
+      arm(s, downOut(S[s], 9, sw), downOut(S[s], 7, sw + flex));
+    }
+    const c = Math.cos(2 * Math.PI * (t - 0.02));
+    body(3, 5 * c, 1.5 * Math.sin(2 * Math.PI * t));
+    P.neck = Q.axis(Y, 2.5 * c); P.head = NONE;
+    P.hips = Q.mul(Q.axis(Y, -5 * c), Q.axis(Z, 2.5 * Math.sin(2 * Math.PI * t)));
+    const footY = s => { const T = add(J.hips, Q.rotate(P.hips, sub(J['thigh' + s], J.hips))), k = add(T, Q.rotate(P['thigh' + s], sub(J['shin' + s], J['thigh' + s])));
+      return add(k, Q.rotate(P['shin' + s], sub(J['foot' + s], J['shin' + s])))[1]; };
+    lift = Math.min(J.footL[1], J.footR[1]) - Math.min(footY('L'), footY('R'));
+  } else if (clip === 'Run') {
     const run = clip === 'Run', A = run ? 36 : 20, K = run ? 66 : 32;
     for (const [s, off] of [['L', 0], ['R', Math.PI]]) {
       const sw = A * Math.sin(ph + off), kn = K * Math.max(0, Math.sin(ph + off - Math.PI / 2 + 0.6)) * (run ? 1 : 0.9) + (run ? 12 : 4);
@@ -1266,6 +1288,12 @@ export function buildRig(g, shape, kind, J, opts = {}) {
         let at = -1; for (let c = 0; c < 4; c++) if (joints[k * 4 + c] === to) at = c;
         if (at < 0) { at = [0, 1, 2, 3].reduce((m, c) => (weights[k * 4 + c] < weights[k * 4 + m] ? c : m), 0); joints[k * 4 + at] = to; weights[k * 4 + at] = 0; }
         weights[k * 4 + at] += moved; }
+    }
+    if (kind === 'person' && J.hemF) {                                    // (below the hem the legs are bare: the cloth bones have no pull there)
+      const hem = B.map(b => /^hem[FBLR]t?$/.test(b.name)), below = J.crotchY - H * 0.012;
+      for (let k = 0; k < pos.length / 3; k++) { if (pos[k * 3 + 1] > below) continue;
+        let moved = 0, big = -1; for (let c = 0; c < 4; c++) { if (hem[joints[k * 4 + c]]) { moved += weights[k * 4 + c]; weights[k * 4 + c] = 0; } else if (big < 0 || weights[k * 4 + c] > weights[k * 4 + big]) big = c; }
+        if (moved && big >= 0) weights[k * 4 + big] += moved; }
     }
     if (kind === 'person' && !J.hemF && J.crotchY != null && J.hips[1] - J.crotchY > H * 0.04) {   // (a tunic or a dress covers the legs: loose cloth between the legs and the hips)
       // Cloth that wraps both legs would be torn apart as they part: it follows the pelvis, with only a part of the legs' pull.
