@@ -1,6 +1,7 @@
 // Rig quality, measured: poses a rigged GLB with linear blend skinning (as model-viewer does) at six times of a clip and counts the
 // mesh edges that stretch beyond 1.5x or squash under 0.55x (lower is better), with where they are (by tenths of the height).
 // node tools/rig-metrics.mjs model.rig.glb [Clip]   (2026-10: romano 6,6 %, legionario 2,0 %, mujer 4,9 %, caballero 5,7 %)
+import { readFileSync } from 'node:fs';
 const A = await import(new URL('../src/features/content/autorig.js', import.meta.url).href);
 const G = await import(new URL('../src/features/content/gltf.js', import.meta.url).href);
 export async function measure(glbPath, clip = 'Walk') {
