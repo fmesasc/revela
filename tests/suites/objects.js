@@ -1803,7 +1803,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(Math.max(...low) - Math.min(...low) < 0.02, 'el pie que apoya se queda en el suelo: ' + low.map(v => v.toFixed(3)).join(' '));
     const kn = [0.05, 0.12, 0.3, 0.72].map(t => A.posedJoints('person', J, 'Walk', t, 1.8)), bend = q => Math.abs(q.footL[2] - q.shinL[2]);
     assert(bend(kn[3]) > bend(kn[2]) + 0.05, 'la rodilla se dobla mucho al adelantar la pierna (fase de vuelo)');
-    const wave = A.posedJoints('person', J, 'Wave', 0.3, 1.8); assert(wave.handR[1] > J.head[1], 'saludar: la mano derecha arriba');
+    const wave = A.posedJoints('person', J, 'Wave', 0.3, 1.8); assert(wave.handR[1] > J.handR[1] + 0.3 && wave.handR[1] > wave.forearmR[1] && wave.handR[2] > J.handR[2] + 0.15, 'saludar: el antebrazo sube por delante y la mano queda arriba (' + (wave.handR[1] - J.handR[1]).toFixed(2) + ')');
     // An animal: body, head ahead, tail behind, four legs.
     const animal = model([[-0.15, 0.4, -0.5, 0.15, 0.7, 0.5], [-0.12, 0.55, 0.5, 0.12, 0.8, 0.8], [-0.03, 0.55, -0.9, 0.03, 0.62, -0.5],
       ...[[0.08, 0.35], [-0.12, 0.35], [0.08, -0.4], [-0.12, -0.4]].map(([x, z]) => [x, 0, z, x + 0.05, 0.4, z + 0.08])]);

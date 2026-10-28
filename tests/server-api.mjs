@@ -1155,6 +1155,21 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       ok(e.st.status === 'done' && e.st.animated === false && e.st.animate === true && !rigCalls.length, 'Esqueleto: sin TRELLIS_RIG no se envía a fal y el estado dice que es una persona (animate): ' + JSON.stringify([e.st.status, e.st.animated, e.st.animate, rigCalls.length]));
       await req('POST', '/api/3d/jobs/' + e.id + '/cancel', { headers: { Cookie: gil }, body: {} });
       env.FETCH = prevR; }
+    // Una persona: la imagen de referencia se comprueba (una persona, cuerpo entero, pies a la vista) y se rehace si no.
+    { const prevAi = aiReply; let qa = 0; const verdicts = [{ people: 2, feet_visible: true, whole_body: true }, { people: 1, feet_visible: false, whole_body: false }, { people: 1, feet_visible: true, whole_body: true }];
+      aiReply = () => { const b = aiCalls.at(-1).body, isQa = Array.isArray(b.messages?.[0]?.content) && b.messages[0].content.some(c => c.type === 'image_url');
+        if (isQa) return { status: 200, body: { choices: [{ message: { content: JSON.stringify(verdicts[Math.min(qa++, 2)]) } }], usage: { cost: 0.0003 } } };
+        return prevAi(); };
+      aiCalls = []; const c0 = credits();
+      const idQ = (await (await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una persona con bata', realistic: true } })).json()).id;
+      await tick(idQ); const images = aiCalls.filter(c => c.body.modalities).length, checks = aiCalls.filter(c => Array.isArray(c.body.messages?.[0]?.content)).length;
+      ok(images === 3 && checks === 3 && qa === 3, 'Persona: la imagen se rehace mientras no sea una persona entera con los pies a la vista (3 imágenes, 3 comprobaciones): ' + [images, checks, qa]);
+      ok(aiCalls.filter(c => c.body.modalities).slice(1).every(c => /ENTIRE body/.test(JSON.stringify(c.body.messages))), 'Persona: los reintentos piden cuerpo entero con más fuerza');
+      await req('POST', '/api/3d/jobs/' + idQ + '/cancel', { headers: { Cookie: gil }, body: {} });
+      // Un objeto no se comprueba (ahorra una llamada).
+      aiCalls = []; qa = 0; const idO = (await (await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una taza', realistic: true } })).json()).id; await tick(idO);
+      ok(!aiCalls.some(c => Array.isArray(c.body.messages?.[0]?.content) && !c.body.modalities) && qa === 0, 'Objeto: sin comprobación de cuerpo entero');
+      await req('POST', '/api/3d/jobs/' + idO + '/cancel', { headers: { Cookie: gil }, body: {} }); aiReply = prevAi; }
     // Saldo retenido por otras peticiones: reintenta a los 10 s y sale.
     rwReply = { data: [], errors: [{ code: 'concurrentRequestLimitExceeded' }] };
     const idT = (await (await req('POST', '/api/3d/jobs', { headers: { Cookie: gil }, body: { prompt: 'una taza', realistic: true } })).json()).id;

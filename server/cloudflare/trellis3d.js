@@ -24,6 +24,7 @@ export function trellisSettings(env) {
     imageUsd: num(env.TRELLIS_IMAGE_USD, 0.045),     // (lo que cuesta de verdad la imagen de referencia, para el gasto global)
     briefModel: env.TRELLIS_BRIEF_MODEL || 'google/gemini-2.5-flash',
     imageModel: env.TRELLIS_IMAGE_MODEL || env.AI_IMAGE_MODEL || 'bytedance-seed/seedream-4.5',
+    qaModel: env.TRELLIS_QA_MODEL || 'google/gemini-2.5-flash-lite',
   };
 }
 // Qué motor hace un trabajo «realista»: Meshy si hay que animar (o si se pide por variable) y hay clave de fal; TRELLIS para el resto.
@@ -39,15 +40,39 @@ async function or(env, body) {
 }
 
 // Pasos 1 y 2 → { ok, image (data URL), brief } | { ok:false, error }. Si el director falla, se usa el encargo tal cual (con el final fijo).
-export async function trellisReference(env, prompt) {
+// Is the picture what TRELLIS needs of a person: ONE person, the whole body, both feet seen? A cheap model with eyes (≈ 0,0003 $) says so.
+// Fail-open: if it can't tell (no answer, no JSON), the picture goes on. → { ok, why }
+export async function checkPerson(env, image) {
+  const k = trellisSettings(env);
+  const d = await or(env, { model: k.qaModel, max_tokens: 120, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: [
+    { type: 'text', text: 'Look at this picture. Answer only JSON: {"people": <how many people or figures>, "feet_visible": <true only if BOTH feet and shoes are completely visible, with space below them, not cropped by the picture edge or hidden>, "whole_body": <true if the head and the whole body are visible>}' },
+    { type: 'image_url', image_url: { url: image } }] }] });
+  const text = d?.choices?.[0]?.message?.content; let j = null;
+  try { j = JSON.parse(String(text || '').replace(/^```(?:json)?\s*|\s*```$/g, '')); } catch { return { ok: true, why: 'unknown' }; }
+  if (!j || typeof j !== 'object' || !('people' in j)) return { ok: true, why: 'unknown' };
+  if (+j.people !== 1) return { ok: false, why: 'people ' + j.people };
+  if (j.feet_visible === false || j.whole_body === false) return { ok: false, why: 'cropped' };
+  return { ok: true };
+}
+
+// Pasos 1 y 2 → { ok, image (data URL), brief, images } | { ok:false, error }. Si el director falla, se usa el encargo tal cual (con el final fijo).
+// person: the picture is checked (one person, whole body, feet seen) and made again, up to `tries` times, when it isn't.
+export async function trellisReference(env, prompt, { person = false, tries = 3 } = {}) {
   const k = trellisSettings(env), tail = ', the whole object fully in frame, centered, three-quarter view, isolated on a pure white seamless background, even soft studio lighting, no floor, no shadow, no text';
   const d = await or(env, { model: k.briefModel, max_tokens: 300, messages: [{ role: 'system', content: DIRECTOR }, { role: 'user', content: String(prompt).slice(0, 600) }] });
   const text = d?.choices?.[0]?.message?.content;
   const brief = (typeof text === 'string' && text.trim().length > 20 ? text.trim() : String(prompt).slice(0, 300) + tail).slice(0, 900);
-  const im = await or(env, { model: k.imageModel, modalities: ['image'], messages: [{ role: 'user', content: brief }] });
-  const image = im?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-  if (!/^data:image\//.test(image || '') && !/^https:\/\//.test(image || '')) return { ok: false, error: 'no reference image' };
-  return { ok: true, image, brief };
+  let made = 0, last = null, why = '';
+  for (let i = 0; i < (person ? tries : 1); i++) {
+    const ask = i ? brief + ' IMPORTANT: exactly one single person, standing, the ENTIRE body from the top of the head to the soles of both shoes, with white empty space under the feet; wide framing, small figure in the middle of the picture; no close-up.' : brief;
+    const im = await or(env, { model: k.imageModel, modalities: ['image'], messages: [{ role: 'user', content: ask }] }); made++;
+    const image = im?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (!/^data:image\//.test(image || '') && !/^https:\/\//.test(image || '')) continue;
+    last = image; if (!person) break;
+    const q = await checkPerson(env, image); why = q.why || ''; if (q.ok) return { ok: true, image, brief, images: made };
+  }
+  // (Out of tries: the last picture that came, rather than nothing: the person asked for it and paid for it.)
+  return last ? { ok: true, image: last, brief, images: made, warn: why } : { ok: false, error: 'no reference image' };
 }
 
 // Paso 3: envía la imagen. → { ok, provider, taskId, statusUrl?, responseUrl? } (fal) | { ok, provider, taskId } (Runware).

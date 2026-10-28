@@ -1029,30 +1029,32 @@ function personPose(J, clip, t, H) {
       return add(k, Q.rotate(P['shin' + s], sub(J['foot' + s], J['shin' + s])))[1]; };
     lift = Math.min(J.footL[1], J.footR[1]) - Math.min(footY('L'), footY('R'));
   } else if (clip === 'Run') {
-    const run = clip === 'Run', A = run ? 36 : 20, K = run ? 66 : 32;
-    for (const [s, off] of [['L', 0], ['R', Math.PI]]) {
-      const sw = A * Math.sin(ph + off), kn = K * Math.max(0, Math.sin(ph + off - Math.PI / 2 + 0.6)) * (run ? 1 : 0.9) + (run ? 12 : 4);
-      leg(s, sw, kn); foot(s, sw, kn);
-      const armSw = -(run ? 40 : 22) * Math.sin(ph + off);
-      arm(s, downOut(S[s], 10, armSw), downOut(S[s], 6, armSw + (run ? 70 : 20)));
+    // A run: a short flight with both feet in the air; the knee folds up behind during the swing, the arms are bent at the elbow and
+    // pump, the body leans forward, and the pelvis bounces (up in the flight, twice per cycle).
+    const bump = (x, c, w) => { const d = (((x - c + 0.5) % 1) + 1) % 1 - 0.5; return Math.exp(-(d * d) / (2 * w * w)); };
+    const hipA = f => 3 + 30 * Math.cos(2 * Math.PI * (f - 0.04));
+    const kneeA = f => 20 + 12 * bump(f, 0.1, 0.06) + 78 * bump(f, 0.8, 0.1);   // (the most folded as the thigh passes under the body, going forward)
+    const toeDown = f => -8 * bump(f, 0.0, 0.04) + 38 * bump(f, 0.55, 0.07) - 10 * bump(f, 0.85, 0.08);
+    for (const [s, off] of [['L', 0], ['R', 0.5]]) {
+      const f = (t + off) % 1; leg(s, hipA(f), kneeA(f)); P['foot' + s] = Q.axis(X, toeDown(f));
+      const sw = -38 * Math.cos(2 * Math.PI * (f - 0.04)); arm(s, downOut(S[s], 10, sw), downOut(S[s], 6, sw + 85));
     }
-    if (J.hemF) {                                          // the cloth: each side follows its leg a moment late, the front and the back sway with both
-      const sway = (s, a) => { P['hem' + s] = limbTo(J, 'hem' + s, 'hem' + s + 't', norm([0, -Math.cos(a * deg), Math.sin(a * deg)])); P['hem' + s + 't'] = P['hem' + s]; };
-      const swL = A * Math.sin(ph - 0.5), swR = A * Math.sin(ph + Math.PI - 0.5);
-      sway('L', swL * 0.55); sway('R', swR * 0.55); sway('F', Math.max(swL, swR) * 0.5); sway('B', Math.min(swL, swR) * 0.35);
-    }
-    body(run ? 10 : 3, run ? 6 * Math.sin(ph) : 4 * Math.sin(ph), run ? 0 : 1.5 * Math.sin(ph));
-    P.hips = Q.mul(Q.axis(Y, (run ? -6 : -5) * Math.sin(ph)), Q.axis(Z, (run ? 3 : 2.5) * Math.sin(ph)));   // the pelvis swings against the shoulders
-    lift = H * (run ? 0.03 : 0.012) * Math.abs(Math.cos(ph));
+    const c = Math.cos(2 * Math.PI * (t - 0.04));
+    body(10, 7 * c, 2 * Math.sin(2 * Math.PI * t)); P.neck = Q.axis(Y, 3 * c); P.head = Q.axis(X, -6);
+    P.hips = Q.mul(Q.axis(Y, -7 * c), Q.axis(Z, 3 * Math.sin(2 * Math.PI * t)));
+    lift = H * 0.045 * (0.5 + 0.5 * Math.cos(4 * Math.PI * (t - 0.04 - 0.25))) - H * 0.03;
   } else if (clip === 'Idle') {
     leg('L', 0, 2); leg('R', 0, 2);
     arm('L', downOut(1, 9 + 2 * Math.sin(ph)), downOut(1, 8, 12)); arm('R', downOut(-1, 9 + 2 * Math.sin(ph)), downOut(-1, 8, 12));
     body(1.5 * Math.sin(ph), 0, 1 * Math.sin(ph)); lift = H * 0.004 * Math.sin(ph);
   } else if (clip === 'Wave') {
-    leg('L', 0, 2); leg('R', 0, 2); arm('L', downOut(1, 9), downOut(1, 8, 10));
-    const w = 22 * Math.sin(ph * 2);
-    arm('R', norm([-0.55, 0.83, 0.1]), norm([-Math.sin(w * deg) * 0.9, Math.cos(w * deg), 0.1]));
-    body(0, 0, -3);
+    // The upper arm out to the side at about the shoulder's height, the forearm up and waving; the other arm relaxed, the weight shifting a little.
+    const sh = Math.sin(ph * 0.5);
+    leg('L', 2 * sh, 3 + 2 * Math.max(0, sh)); leg('R', -2 * sh, 3 + 2 * Math.max(0, -sh)); foot('L', 2 * sh, 3); foot('R', -2 * sh, 3);
+    arm('L', downOut(1, 9 + 2 * Math.sin(ph), 4 * sh), downOut(1, 7, 14));
+    const w = 26 * Math.sin(ph * 2);
+    arm('R', downOut(-1, 14, 12), norm([-0.15 - Math.sin(w * deg) * 0.6, 0.5 + 0.1 * Math.cos(w * deg), 0.85]));   // (a friendly wave: the upper arm stays down, the forearm rises in front and waves; a high arm drags the side of a tunic along)
+    body(0, 3 * Math.sin(ph * 0.5), -3); P.hips = Q.axis(Z, 2 * sh);
   } else if (clip === 'Jump') {
     const k = t < 0.3 ? t / 0.3 : t < 0.7 ? 1 - (t - 0.3) / 0.4 : 0, up = t > 0.3 && t < 0.7 ? Math.sin((t - 0.3) / 0.4 * Math.PI) : 0;
     const crouch = t < 0.3 ? Math.sin(t / 0.3 * Math.PI) : t > 0.7 ? Math.sin((t - 0.7) / 0.3 * Math.PI) * 0.6 : 0;
@@ -1281,11 +1283,27 @@ export function buildRig(g, shape, kind, J, opts = {}) {
       const arms = B.map(b => /^(arm|forearm|hand)[LR]$/.test(b.name)), sp = B.findIndex(b => b.name === 'spine'), hp = B.findIndex(b => b.name === 'hips'), ch = B.findIndex(b => b.name === 'chest');
       const half = Math.min(J.armL[0] - J.hips[0], J.hips[0] - J.armR[0]) - H * 0.03, top = J.armL[1] - H * 0.08, low = J.handL[1] - H * 0.02;
       if (sp >= 0 && hp >= 0 && ch >= 0 && half > H * 0.04) for (let k = 0; k < pos.length / 3; k++) { const y = pos[k * 3 + 1];
-        if (y > top || y < low || Math.abs(pos[k * 3] - J.hips[0]) > half) continue;
+        // (below the hand there is no arm: what the arms' weights spread down the cloth goes with the trunk — else the hem is dragged up with the hand)
+        if (y > top || (y >= low && Math.abs(pos[k * 3] - J.hips[0]) > half)) continue;
         const to = y > J.hips[1] ? sp : hp; let moved = 0;
         for (let c = 0; c < 4; c++) if (arms[joints[k * 4 + c]]) { moved += weights[k * 4 + c]; weights[k * 4 + c] = 0; }
         if (!moved) continue;
         let at = -1; for (let c = 0; c < 4; c++) if (joints[k * 4 + c] === to) at = c;
+        if (at < 0) { at = [0, 1, 2, 3].reduce((m, c) => (weights[k * 4 + c] < weights[k * 4 + m] ? c : m), 0); joints[k * 4 + at] = to; weights[k * 4 + at] = 0; }
+        weights[k * 4 + at] += moved; }
+    }
+    if (kind === 'person' && opts.armReach === true && J.armL && J.armR) {   // (off: measured worse on every clip)   // (cloth that is not within an arm's reach doesn't go up with it: the flap of a tunic beside a hanging arm)
+      const chain = [['armL', 'forearmL'], ['forearmL', 'handL'], ['handL', null], ['armR', 'forearmR'], ['forearmR', 'handR'], ['handR', null]], idxOf = n => B.findIndex(b => b.name === n);
+      const segs = chain.map(([a, b]) => ({ j: idxOf(a), A: J[a], D: b ? sub(J[b], J[a]) : [0, -H * 0.08, 0] })).filter(x => x.j >= 0), sp = idxOf('spine'), hp = idxOf('hips');
+      const R0 = H * 0.06, R1 = H * 0.10;
+      if (sp >= 0 && hp >= 0) for (let k = 0; k < pos.length / 3; k++) {
+        const px = pos[k * 3], py = pos[k * 3 + 1], pz = pos[k * 3 + 2]; let moved = 0;
+        for (let c = 0; c < 4; c++) { const sg = segs.find(x => x.j === joints[k * 4 + c]); if (!sg || !weights[k * 4 + c]) continue;
+          const L2 = sg.D[0] ** 2 + sg.D[1] ** 2 + sg.D[2] ** 2 || 1, t = Math.max(0, Math.min(1, ((px - sg.A[0]) * sg.D[0] + (py - sg.A[1]) * sg.D[1] + (pz - sg.A[2]) * sg.D[2]) / L2));
+          const d = Math.hypot(px - sg.A[0] - sg.D[0] * t, py - sg.A[1] - sg.D[1] * t, pz - sg.A[2] - sg.D[2] * t);
+          if (d > R0) { const keep = Math.max(0, 1 - (d - R0) / (R1 - R0)); moved += weights[k * 4 + c] * (1 - keep); weights[k * 4 + c] *= keep; } }
+        if (!moved) continue;
+        const to = py > J.hips[1] ? sp : hp; let at = -1; for (let c = 0; c < 4; c++) if (joints[k * 4 + c] === to) at = c;
         if (at < 0) { at = [0, 1, 2, 3].reduce((m, c) => (weights[k * 4 + c] < weights[k * 4 + m] ? c : m), 0); joints[k * 4 + at] = to; weights[k * 4 + at] = 0; }
         weights[k * 4 + at] += moved; }
     }

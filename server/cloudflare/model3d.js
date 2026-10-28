@@ -306,11 +306,11 @@ export class ModelJob {
     if (m.phase === 'prep') {   // (TRELLIS: brief + reference image; a minute at most)
       // (With a reference photo of their own, that is the picture: no brief, no image to pay for.)
       const own = job.images ? await st.get('img:0') : null;
-      const ref = own ? { ok: true, image: own } : await trellisReference(env, job.prompt);
+      const ref = own ? { ok: true, image: own } : await trellisReference(env, job.prompt, { person: !!job.animate });
       const cur = await st.get('job'); if (!cur || cur.run !== run || cur.status !== 'running') return;
       if (!ref.ok) { await this.settleMeshy(cur, 0); return this.finish(cur, 'failed', tag + ref.error); }
       await writeText(st, 'ref:', ref.image);   // (too big for one value; in parts, like the GLB)
-      cur.meshy = { phase: 'submit', started: Date.now() };
+      cur.meshy = { phase: 'submit', started: Date.now() }; cur.refImages = ref.images || 1;
       cur.nextTick = Date.now() + 1000; return st.put('job', cur);
     }
     if (m.phase === 'submit') {
@@ -366,7 +366,7 @@ export class ModelJob {
     if (!glb.ok) { await this.settleMeshy(cur, 0); return this.finish(cur, 'failed', tag + glb.error); }
     await writeText(st, 'glb:', glb.b64);
     const usd = trellis ? trellisSettings(env).usd + (res.rigged ? trellisSettings(env).rigUsd : 0) : meshyUsd(env, !!cur.animate);
-    await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'spend', { usd: trellis ? (res.cost || 0.03) + trellisSettings(env).imageUsd + (res.rigged ? 0.2 : 0) : usd });
+    await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'spend', { usd: trellis ? (res.cost || 0.03) + trellisSettings(env).imageUsd * (cur.refImages || 1) + (res.rigged ? 0.2 : 0) : usd });
     const r = await this.settleMeshy(cur, usd);
     cur = await st.get('job'); if (!cur || cur.run !== run || cur.status !== 'running') return;
     cur.glb = true; cur.animated = !!res.rigged; cur.charged += (r && r.used) || 0;
