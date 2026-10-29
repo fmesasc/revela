@@ -1275,6 +1275,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok((await A('POST', '/backup', { body: { reason: 'x', include: ['nada'] } })).status === 400, 'copia: una lista sin secciones válidas, no');
     ok((await A('GET', '/audit?limit=5')).j.entries.some(e => e.action === 'backup'), 'copia: queda en la auditoría');
     ok((await A('GET', '/access')).j.access.some(x => x.sub === '1414') && (await A('GET', '/access?day=2000-01-01')).j.access.length === 0, 'accesos: el registro de todos, y por día'); }
+  { const g = (await A('GET', '/growth?days=30')).j, last = g.days.at(-1); ok(g.days.length === 30 && last.day === new Date().toISOString().slice(0, 10) && last.total >= 1 && last.active >= 1 && g.days[0].active === null, 'crecimiento: 30 días, total de cuentas y activas de hoy (antes de empezar a contarlas: nulo)'); }
   ok((await A('GET', '/users?q=nadie')).j.users.length === 0, 'directorio: sin resultados');
   { // Any field, not only the email's start: the middle of the email, several words, accents and case, the plan, by pages.
     const mid = (await A('GET', '/users?q=' + encodeURIComponent('a@example'))).j.users, both = (await A('GET', '/users?q=' + encodeURIComponent('PÍA gratis 1414'))).j.users;

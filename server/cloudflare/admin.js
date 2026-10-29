@@ -18,6 +18,7 @@
 //   POST /api/admin/backup { reason, include?, auditLines? } → the copy to download: only what `include` lists of { accounts, accesses, config, newsletters, audit } (once per 20 min)
 //   GET  /api/admin/stats                  → { users, pro, blocked, ai: { month, usd, limit }, tickets: { open, waiting, closed },
 //                                          test: { accounts (billingTest), pro (Pro only from test mode), credits } }
+//   GET  /api/admin/growth?days=           → { days: [{ day, total, created, active }] }   (accounts over time, for the Resumen's chart)
 //   GET  /api/admin/users?q=&cursor=       → { users, cursor }   (q: words in any field; none: most recently seen)
 //   GET  /api/admin/users/:sub             → the account: profile, plan, credits and lots, ledger, sessions, docs, team
 //   POST /api/admin/credits                { sub, delta, reason, expiresDays?, notify? }   (ledger kind 'admin')
@@ -226,9 +227,24 @@ export class Directory {
         if (gone.length) await st.delete(gone);
         await st.put({ ['u:' + rec.sub]: rec, [seenKey(rec)]: rec.sub });
       }
+      // (Who was active each day, for the growth chart: 'da:<day>' → [subs], 400 days; counted from this deploy on.)
+      const dk = 'da:' + new Date(at).toISOString().slice(0, 10), act = (await st.get(dk)) || [];
+      if (!act.includes(String(a.sub))) { act.push(String(a.sub)); await st.put(dk, act); }
+      if (Math.random() < 0.02) { const olds = [...(await st.list({ prefix: 'da:', end: 'da:' + new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10) })).keys()]; if (olds.length) await st.delete(olds.slice(0, 128)); }
       const log = (await st.get('acc')) || [];
       await st.put('acc', [{ sub: String(a.sub), email: String(a.email || '').toLowerCase().slice(0, 200), at, how, ...(a.device && { device: String(a.device).slice(0, 60) }) }, ...log].slice(0, 500));
       return Response.json({ ok: true });
+    }
+    // Accounts over time: { days } → { days: [{ day, total, created, active }] } (total: accounts created up to that day, so
+    // one deleted since isn't counted; active: those who used Revela that day, known only since the directory began noting it → null before).
+    if (op === 'growth') {
+      const n = Math.min(400, Math.max(7, +a.days || 90)), DAY = 864e5, day = t => new Date(t).toISOString().slice(0, 10), from = day(Date.now() - (n - 1) * DAY);
+      const created = {}; let before = 0;
+      for (const [, r] of await st.list({ prefix: 'u:' })) { const c = r.created ? day(r.created) : null; if (!c || c < from) before++; else created[c] = (created[c] || 0) + 1; }
+      const act = new Map(); for (const [k, v] of await st.list({ prefix: 'da:', start: 'da:' + from })) act.set(k.slice(3), v.length);
+      const first = [...act.keys()].sort()[0] || null, out = []; let total = before;
+      for (let i = 0; i < n; i++) { const d = day(Date.now() - (n - 1 - i) * DAY); total += created[d] || 0; out.push({ day: d, total, created: created[d] || 0, active: first && d >= first ? act.get(d) || 0 : null }); }
+      return Response.json({ days: out });
     }
     if (op === 'access-list') {
       const log = (await st.get('acc')) || [], sub = a.sub ? String(a.sub) : '', day = a.day ? String(a.day) : '';
@@ -671,6 +687,7 @@ export async function handleAdmin(req, env, url) {
   const account = async sub => { if (!subOk(sub)) return null; const v = await call(acct(env, sub), 'admin-view'); return v.profile?.sub ? v : null; };
 
   if (GET && path === '/whoami') return json({ email: by });
+  if (GET && path === '/growth') return json(await call(D, 'growth', { days: +q.get('days') || 90 }));
   if (GET && path === '/stats') {
     const [u, ai, tickets, errors, openrouter, drive] = await Promise.all([call(D, 'stats'), env.BUDGET ? call(stub(env.BUDGET, 'global'), 'check', { usd: 0 }) : null, call(T, 'counts'),
       env.VISITS ? visitsCall(env, 'err-summary').catch(() => null) : null, openRouterCredits(env).catch(() => ({ error: 'fail' })),
