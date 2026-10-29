@@ -123,7 +123,7 @@ import { record, financeCall, financeSettings, cleanEntry, periodOk, dayOf, prom
 import { enc, dec, EMAIL, DAY } from './util.js';
 import { ALARMS, MIN_ALARM_MS, PAUSE_DEFER_MS, resetBrakesCache } from './brakes.js';
 import { quotaUsage, quotaConfigured, FREE_DAILY, QUOTA_ALERTS } from './quota.js';
-import { openRouterCredits } from './openrouterwatch.js';
+import { openRouterCredits, runwareCredits } from './openrouterwatch.js';
 import { newsAdmin } from './news.js';
 
 const pad = n => String(n).padStart(10, '0');
@@ -704,11 +704,11 @@ export async function handleAdmin(req, env, url) {
   if (GET && path === '/map') return json(await call(D, 'map', { days: +q.get('days') || 0 }));
   if (GET && path === '/growth') return json(await call(D, 'growth', { days: +q.get('days') || 90 }));
   if (GET && path === '/stats') {
-    const [u, ai, tickets, errors, openrouter, drive] = await Promise.all([call(D, 'stats'), env.BUDGET ? call(stub(env.BUDGET, 'global'), 'check', { usd: 0 }) : null, call(T, 'counts'),
+    const [u, ai, tickets, errors, openrouter, drive, runware] = await Promise.all([call(D, 'stats'), env.BUDGET ? call(stub(env.BUDGET, 'global'), 'check', { usd: 0 }) : null, call(T, 'counts'),
       env.VISITS ? visitsCall(env, 'err-summary').catch(() => null) : null, openRouterCredits(env).catch(() => ({ error: 'fail' })),
-      env.BUDGET ? call(stub(env.BUDGET, 'global'), 'drive-stats').catch(() => null) : null]);
+      env.BUDGET ? call(stub(env.BUDGET, 'global'), 'drive-stats').catch(() => null) : null, runwareCredits(env).catch(() => ({ error: 'fail' }))]);
     // (drive: per month, how many people saved in their Google Drive and how many saves — api.js /drive/seen.)
-    return json({ ...u, ai: ai && { month: new Date().toISOString().slice(0, 7), usd: ai.usd, limit: ai.limit }, tickets, errors, openrouter, health: healthOf(env), drive: drive?.months || [] });
+    return json({ ...u, ai: ai && { month: new Date().toISOString().slice(0, 7), usd: ai.usd, limit: ai.limit }, tickets, errors, openrouter, runware, health: healthOf(env), drive: drive?.months || [] });
   }
   // The latest accesses of everyone (or one account's, ?sub=; or one day's, ?day=AAAA-MM-DD), newest first: the last 500.
   if (GET && path === '/access') return json(await call(D, 'access-list', { sub: clip(q.get('sub'), 100), day: clip(q.get('day'), 10), limit: +q.get('limit') || 100 }));

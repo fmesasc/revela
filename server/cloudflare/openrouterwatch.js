@@ -48,3 +48,20 @@ export async function openRouterWatch(env, now = Date.now()) {
   ].join('\n'));
   return { checked: true, available: c.available, sent };
 }
+
+// Runware credit (the 3D «Realista» and its images: trellis3d.js): the prepaid balance of the server's RUNWARE_KEY, in USD, from
+// Runware's accountManagement task. Same shapes as openRouterCredits: { available, low } | { error } | null (no key).
+export const runwareLowUsd = env => Math.max(0, +env.RUNWARE_LOW_USD || 2);
+export async function runwareCredits(env) {
+  if (!env.RUNWARE_KEY) return null;
+  try {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), 4000);
+    const r = await (env.FETCH || fetch)('https://api.runware.ai/v1', { method: 'POST', signal: c.signal,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.RUNWARE_KEY}` },
+      body: JSON.stringify([{ taskType: 'accountManagement', taskUUID: crypto.randomUUID(), operation: 'getDetails' }]) });
+    clearTimeout(t);
+    if (!r.ok) return { error: r.status };
+    const b = (await r.json())?.data?.[0]?.balance;
+    return Number.isFinite(+b) && b !== null ? { available: Math.round(+b * 100) / 100, low: runwareLowUsd(env) } : { error: 'no balance' };
+  } catch (e) { return { error: String(e?.message || e).slice(0, 80) }; }
+}

@@ -58,6 +58,7 @@ env.FETCH = async (url, init = {}) => {
       user: { name: 'Ana Foto', links: { html: 'https://unsplash.com/@ana' } }, links: { download_location: 'https://api.unsplash.com/photos/abc123/download?ixid=M3x1' } }, { id: 'malo', urls: { small: 'javascript:alert(1)', regular: 'http://x/y.jpg' }, user: {} }, { id: 'otro9', urls: { small: 'https://images.unsplash.com/s2.jpg', regular: 'https://images.unsplash.com/r2.jpg' }, user: { name: 'Leo', links: { html: 'javascript:alert(1)' } }, links: { download_location: 'https://evil.example/photos/otro9/download' } }] }); }
   if (u.startsWith('https://openrouter.ai/api/v1/audio/speech')) { aiCalls.push({ u, body: JSON.parse(init.body), auth: init.headers.Authorization }); return new Response(new Uint8Array([73, 68, 51, 4, 0]), { headers: { 'Content-Type': 'audio/mpeg' } }); }
   if (u.startsWith('https://openrouter.ai/api/v1/credits')) return Response.json({ data: orBalance });
+  if (u.startsWith('https://api.runware.ai/v1') && init?.body && /accountManagement/.test(init.body)) return Response.json({ data: [{ balance: 0.8963 }] });
   if (u.startsWith('https://openrouter.ai/')) { aiCalls.push({ u, body: JSON.parse(init.body), auth: init.headers.Authorization }); const r = aiReply(u); return Response.json(r.body, { status: r.status }); }
   if (u.startsWith('https://blender.test/')) { blenderCalls.push({ u, body: init.body, sig: init.headers['X-Revela-Signature'] }); return blenderReply(JSON.parse(init.body)); }
   if (u.startsWith('https://api.stripe.com/')) { stripeCalls.push({ u, body: String(init.body), auth: init.headers?.Authorization }); return Response.json({ url: 'https://checkout.stripe.com/c/pay_x' }); }
@@ -1394,6 +1395,8 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   // Resumen: saldo real de OpenRouter (comprado − usado) y «¿falta algo?» (qué está configurado, nunca el valor del secreto).
   { const st = (await A('GET', '/stats')).j;
     ok(st.openrouter && st.openrouter.available === 7 && st.openrouter.used === 3 && st.openrouter.total === 10 && st.openrouter.low === 5, 'resumen: saldo de OpenRouter: ' + JSON.stringify(st.openrouter));
+    ok(st.runware === null, 'resumen: sin clave de Runware, sin saldo');
+    { env.RUNWARE_KEY = 'rw-saldo'; const rs = (await A('GET', '/stats')).j.runware; delete env.RUNWARE_KEY; ok(rs && rs.available === 0.9 && rs.low === 2, 'resumen: saldo de Runware: ' + JSON.stringify(rs)); }
     ok(st.health && st.health.openrouterKey === true && typeof st.health.mail === 'boolean' && 'realistic3d' in st.health && 'blender' in st.health && st.health.aiModels, 'resumen: salud del servicio: ' + JSON.stringify(st.health));
   }
   // Aviso por correo cuando queda poco saldo de OpenRouter: una vez al día (brakes-claim lo deduplica).
