@@ -422,7 +422,7 @@ export class Account {
     const at = { at: now, how, ...(place.device && { device: place.device }) };
     await this.put({ lastSeenAt: now, access: [at, ...(await this.get('access', []))].slice(0, 30) });
     const prof = await this.get('profile', null); if (!prof?.sub) return;
-    const x = { sub: prof.sub, email: prof.email, ...at };
+    const x = { sub: prof.sub, email: prof.email, ...at, ...(place.geo && { geo: place.geo }) };
     if (this.out) this.out.access = x; else await directoryAccess(this.env, x);
   }
   async idleFrom(day) {
@@ -1059,12 +1059,16 @@ export function deviceOf(ua = '') {
     : /Chrome\/|CriOS/.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '';
   return [br, os].filter(Boolean).join(' · ');
 }
-export const sessionClient = req => ({ device: deviceOf(req.headers.get('User-Agent') || ''), where: [req.cf?.city, req.cf?.country].filter(Boolean).join(', ') });
+// (geo: the approximate place Cloudflare reads from the IP address, at city level — two decimals, about a kilometre —, for the
+// administration's map of where the users come from; never the address itself.)
+const geoOf = cf => { const lat = +cf?.latitude, lon = +cf?.longitude; return cf?.country && Number.isFinite(lat) && Number.isFinite(lon) && cf.latitude !== '' ? { cc: String(cf.country).slice(0, 2), region: String(cf.region || '').slice(0, 60), city: String(cf.city || '').slice(0, 60), lat: Math.round(lat * 100) / 100, lon: Math.round(lon * 100) / 100 } : null; };
+export const sessionClient = req => ({ device: deviceOf(req.headers.get('User-Agent') || ''), where: [req.cf?.city, req.cf?.country].filter(Boolean).join(', '), geo: geoOf(req.cf) });
 // withImp: include the admin «view as user» sessions (kind 'impersonation'). Off by default, so a person's own
 // «Sesiones abiertas» never shows one — an admin view is only in the audit log. The admin account view asks for them.
 const sessionList = (all, mine = '', withImp = false) => Object.entries(all).filter(([, v]) => v.expires > Date.now() && (withImp || v.kind !== 'impersonation')).sort((x, y) => (y[1].last || y[1].created) - (x[1].last || x[1].created))
   .map(([h, v]) => ({ id: h.slice(0, 16), kind: v.kind, device: v.device || '', where: v.where || '', created: v.created, last: v.last || v.created, expires: v.expires, ...(v.kind === 'impersonation' && v.imp && { by: v.imp.by }), ...(h === mine && { current: true }) }));
-const sessionPlace = (a, before = {}) => ({ device: String(a.device || before.device || '').slice(0, 60), where: String(a.where || before.where || '').slice(0, 80) });
+const sessionPlace = (a, before = {}) => ({ device: String(a.device || before.device || '').slice(0, 60), where: String(a.where || before.where || '').slice(0, 80),
+  ...(a.geo && typeof a.geo.cc === 'string' && Number.isFinite(+a.geo.lat) && Number.isFinite(+a.geo.lon) && { geo: { cc: a.geo.cc.slice(0, 2), region: String(a.geo.region || '').slice(0, 60), city: String(a.geo.city || '').slice(0, 60), lat: +a.geo.lat, lon: +a.geo.lon } }) });
 
 async function sessionOf(req, env) {
   const bearer = (req.headers.get('Authorization') || '').replace(/^Bearer /, ''), fromCookie = cookieOf(req);

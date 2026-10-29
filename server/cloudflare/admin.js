@@ -18,6 +18,7 @@
 //   POST /api/admin/backup { reason, include?, auditLines? } → the copy to download: only what `include` lists of { accounts, accesses, config, newsletters, audit } (once per 20 min)
 //   GET  /api/admin/stats                  → { users, pro, blocked, ai: { month, usd, limit }, tickets: { open, waiting, closed },
 //                                          test: { accounts (billingTest), pro (Pro only from test mode), credits } }
+//   GET  /api/admin/map?days=              → { places: [{ cc, region, city, lat, lon, n, users }], unknown, total }   (where the users come from, for the Resumen's map)
 //   GET  /api/admin/growth?days=           → { days: [{ day, total, created, active }] }   (accounts over time, for the Resumen's chart)
 //   GET  /api/admin/users?q=&cursor=       → { users, cursor }   (q: words in any field; none: most recently seen)
 //   GET  /api/admin/users/:sub             → the account: profile, plan, credits and lots, ledger, sessions, docs, team
@@ -211,7 +212,7 @@ export class Directory {
       if (!a.sub) return Response.json({ error: 'bad request' }, { status: 400 });
       const old = await st.get('u:' + a.sub), rec = { sub: String(a.sub), email: String(a.email || '').toLowerCase(), name: a.name || null, plan: a.plan || 'free', until: +a.until || 0,
         credits: +a.credits || 0, created: +a.created || null, lastSeen: a.lastSeen || null, lastSeenAt: +a.lastSeenAt || null, team: a.team || null, blocked: !!a.blocked,
-        lang: a.lang ? String(a.lang).slice(0, 5) : null, news: !!a.news, newsAt: +a.newsAt || null, billingTest: !!a.billingTest, test: !!a.test, testCredits: Math.max(0, +a.testCredits || 0), bytes: Math.max(0, +a.bytes || 0), updated: Date.now() };
+        lang: a.lang ? String(a.lang).slice(0, 5) : null, news: !!a.news, newsAt: +a.newsAt || null, billingTest: !!a.billingTest, test: !!a.test, testCredits: Math.max(0, +a.testCredits || 0), bytes: Math.max(0, +a.bytes || 0), updated: Date.now(), ...((a.geo || old?.geo) && { geo: a.geo || old.geo }) };
       const gone = old ? [emailKey(old), seenKey(old), legacyKey(old)].filter(k => k !== emailKey(rec) && k !== seenKey(rec)) : [];
       if (gone.length) await st.delete(gone);
       await st.put({ ['u:' + rec.sub]: rec, [emailKey(rec)]: rec.sub, [seenKey(rec)]: rec.sub });
@@ -222,7 +223,7 @@ export class Directory {
     if (op === 'access') {
       const old = await st.get('u:' + a.sub), at = +a.at || Date.now(), how = a.how === 'login' ? 'login' : 'use';
       if (old && at >= (old.lastSeenAt || 0)) {
-        const rec = { ...old, lastSeen: new Date(at).toISOString().slice(0, 10) >= (old.lastSeen || '') ? new Date(at).toISOString().slice(0, 10) : old.lastSeen, lastSeenAt: at };
+        const rec = { ...old, lastSeen: new Date(at).toISOString().slice(0, 10) >= (old.lastSeen || '') ? new Date(at).toISOString().slice(0, 10) : old.lastSeen, lastSeenAt: at, ...(a.geo && { geo: a.geo }) };
         const gone = [seenKey(old), legacyKey(old)].filter(k => k !== seenKey(rec));
         if (gone.length) await st.delete(gone);
         await st.put({ ['u:' + rec.sub]: rec, [seenKey(rec)]: rec.sub });
@@ -245,6 +246,19 @@ export class Directory {
       const first = [...act.keys()].sort()[0] || null, out = []; let total = before;
       for (let i = 0; i < n; i++) { const d = day(Date.now() - (n - 1 - i) * DAY); total += created[d] || 0; out.push({ day: d, total, created: created[d] || 0, active: first && d >= first ? act.get(d) || 0 : null }); }
       return Response.json({ days: out });
+    }
+    // Where the users come from: { days? } (only those seen in the last days) → { places: [{ cc, region, city, lat, lon, n, users: [{ sub, email, name, plan, lastSeen }] }], unknown, total }.
+    // The place is the one Cloudflare read from the IP at their latest sign-in or use (city level); users seen before the directory
+    // noted it are «unknown» until they come back. Places are grouped by city; up to 60 users listed in each.
+    if (op === 'map') {
+      const since = +a.days > 0 ? new Date(Date.now() - a.days * 864e5).toISOString().slice(0, 10) : '', by = new Map(); let unknown = 0, total = 0;
+      for (const [, r] of await st.list({ prefix: 'u:', limit: 100000 })) {
+        if (since && (r.lastSeen || '') < since) continue; total++;
+        if (!r.geo) { unknown++; continue; }
+        const k = [r.geo.cc, r.geo.region, r.geo.city].join('|'), p = by.get(k) || by.set(k, { cc: r.geo.cc, region: r.geo.region, city: r.geo.city, lat: r.geo.lat, lon: r.geo.lon, n: 0, users: [] }).get(k);
+        p.n++; if (p.users.length < 60) p.users.push({ sub: r.sub, email: r.email, name: r.name || '', plan: r.plan, lastSeen: r.lastSeen || '' });
+      }
+      return Response.json({ places: [...by.values()].sort((x, y) => y.n - x.n), unknown, total });
     }
     if (op === 'access-list') {
       const log = (await st.get('acc')) || [], sub = a.sub ? String(a.sub) : '', day = a.day ? String(a.day) : '';
@@ -687,6 +701,7 @@ export async function handleAdmin(req, env, url) {
   const account = async sub => { if (!subOk(sub)) return null; const v = await call(acct(env, sub), 'admin-view'); return v.profile?.sub ? v : null; };
 
   if (GET && path === '/whoami') return json({ email: by });
+  if (GET && path === '/map') return json(await call(D, 'map', { days: +q.get('days') || 0 }));
   if (GET && path === '/growth') return json(await call(D, 'growth', { days: +q.get('days') || 90 }));
   if (GET && path === '/stats') {
     const [u, ai, tickets, errors, openrouter, drive] = await Promise.all([call(D, 'stats'), env.BUDGET ? call(stub(env.BUDGET, 'global'), 'check', { usd: 0 }) : null, call(T, 'counts'),
