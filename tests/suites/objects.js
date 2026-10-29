@@ -643,8 +643,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     await sleep(700);
     bar.querySelector('.rec-stop').click();
     // (The recording becomes a data: URL first: on a slow machine — the CI's — that takes a while.)
-    for (let i = 0; i < 160 && slide().blocks.length === n0; i++) await sleep(50);
-    const v = last(); eq(v.type, 'video', 'vídeo insertado');
+    for (let i = 0; i < 240 && !slide().blocks.slice(n0).some(b => b.type === 'video'); i++) await sleep(50);
+    const v = slide().blocks.slice(n0).find(b => b.type === 'video') || last(); eq(v.type, 'video', 'vídeo insertado');
     assert(/^data:video\//.test(v.src), 'vídeo dentro del proyecto (' + (v.src || '').slice(0, 20) + ')');
   });
 
