@@ -151,6 +151,7 @@ export function pasteSlides() {
 export function setBackgroundOptions(props, all = false) {
   commit(() => {
     const apply = s => {
+      if ('bgVideo' in props && (props.bgVideo || '') !== (s.bgVideo || '')) delete s.bgPoster;      // (the still picture belongs to its video)
       for (const [k, v] of Object.entries(props)) { if (v === '' || v == null || v === false && k !== 'bgVideoLoop' && k !== 'bgVideoMuted') delete s[k]; else s[k] = v; }
       if (props.bgFit && /url\(/.test(s.background || '')) {
         const u = /url\([^)]*\)/.exec(s.background)[0];

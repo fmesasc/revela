@@ -681,6 +681,22 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/data-background-video="https:\/\/ejemplo\.org\/v\.mp4" data-background-video-loop(?! data-background-video-muted)/.test(html), 'vídeo de fondo con sonido y en bucle');
     assert(/<div class="stage" style="background:transparent">/.test(html), 'la diapositiva deja ver el vídeo');
     assert(D.querySelector('#stage .bg-media video'), 'vídeo de fondo en el lienzo');
+    // Its still picture (bgPoster): behind the video in the export, and the video itself is taken off the page of a lean computer
+    // («reduce motion», light mode, data saver) — not downloaded; in the canvas, the video waits (preload none, no autoplay).
+    const LS = D.defaultView.localStorage, perf0 = LS.getItem('revela.perf');
+    try {
+      slide().bgPoster = 'https://ejemplo.org/p.jpg'; html = R.io.buildHTML();
+      assert(/data-background-image="https:\/\/ejemplo\.org\/p\.jpg" data-background-size="cover" data-background-video="/.test(html), 'la imagen fija va detrás del vídeo en el export');
+      assert(/removeAttribute\('data-background-video'\)/.test(html), 'el export quita el vídeo en un equipo ligero');
+      LS.setItem('revela.perf', 'lite');
+      R.slides.setBackgroundOptions({ bgVideo: 'https://ejemplo.org/v2.mp4' }); await sleep(10);
+      eq(slide().bgPoster, undefined, 'otro vídeo, otra imagen fija: la anterior ya no vale');
+      const vd = D.querySelector('#stage .bg-media video');
+      assert(vd && vd.preload === 'none' && !vd.autoplay, 'modo ligero: el vídeo del lienzo no se baja ni arranca');
+      LS.setItem('revela.perf', 'full');
+      R.slides.setBackgroundOptions({ bgVideo: 'https://ejemplo.org/v3.mp4' }); await sleep(10);
+      const vf = D.querySelector('#stage .bg-media video'); assert(vf && vf.autoplay && vf.preload !== 'none', 'modo completo: arranca como siempre');
+    } finally { if (perf0 == null) LS.removeItem('revela.perf'); else LS.setItem('revela.perf', perf0); }
     R.slides.setBackgroundOptions({ bgVideo: '', bgIframe: 'https://ejemplo.org', bgInteractive: true }); s.uncounted = true;
     html = R.io.buildHTML();
     assert(/data-background-iframe="https:\/\/ejemplo\.org" data-background-interactive/.test(html) && /class="stage pass"/.test(html), 'web interactiva de fondo');

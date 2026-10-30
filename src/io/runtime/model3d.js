@@ -48,6 +48,7 @@ export function model3dRuntime() {
   function setup(mv) {
     if (mv.__rv) return; mv.__rv = true;
     if (NOGL || GS.dead) { flat(mv); return; }
+    liteSrc(mv);
     mv.__spin = mv.hasAttribute('auto-rotate');             // (its own turning: an arrival "facing the audience" stops it, only there)
     // Its picture until it has loaded (a slow connection), in the model's own box.
     // (Not a photo — JPEG, with its own background: a grey box on the slide.)
@@ -219,6 +220,15 @@ export function model3dRuntime() {
   })());
   // (And once the page has lost a context: light too, from then on.)
   function lean() { return LEAN || (PERF !== 'full' && GS.lite); }
+  // Revela's own library models (assets/ai3d/<name>.glb) have a lighter twin (assets/ai3d/lite/<name>.glb: about half the
+  // weight — fewer triangles, quantized, 512–1024 px textures; the same pose, clips and look): the lean computer asks for that
+  // one. If it isn't there (a model added without its twin), the original.
+  function liteSrc(mv) {
+    if (mv.__lite || !lean()) return;
+    var s = mv.getAttribute('src'), m = s && /^(.*\/assets\/ai3d\/)([^\/?#]+\.glb)$/.exec(s); if (!m) return;
+    mv.__lite = s; mv.setAttribute('src', m[1] + 'lite/' + m[2]);
+    mv.addEventListener('error', function () { var o = mv.__lite; if (o && mv.getAttribute('src') !== o) { mv.__lite = null; mv.setAttribute('src', o); } }, { once: true });
+  }
   // The models of this slide and the next ones load now, not when they come into
   // view (model-viewer waits for that): else a slide arrives with an empty box.
   // On lean devices, only the current slide and the next (not the one before too).
@@ -229,6 +239,7 @@ export function model3dRuntime() {
   function preload(slide) {
     var all = window.Reveal ? Reveal.getSlides() : [], i = all.indexOf(slide), token = ++preToken;
     var win = lean() ? all.slice(i, i + 2) : all.slice(Math.max(0, i - 1), i + 3);
+    if (lean()) all.forEach(function (sl) { sl.querySelectorAll('model-viewer').forEach(liteSrc); });
     var eager = function (mv) { if (mv.getAttribute('loading') !== 'eager') mv.setAttribute('loading', 'eager'); };
     var mine = slide ? [].slice.call(slide.querySelectorAll('model-viewer')) : [];
     mine.forEach(eager);

@@ -931,6 +931,19 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       // Which computers get the lean mode: ?perf= and 'revela.perf' decide.
       W.localStorage.setItem('revela.perf', 'lite'); assert(RT.model3dRuntime().lean === true, 'perf=lite: ligero');
       W.localStorage.setItem('revela.perf', 'full'); assert(RT.model3dRuntime().lean === false, 'perf=full: completo');
+      // A lean computer asks for the lighter twin of a library model (assets/ai3d/lite/…), and for the original if that fails.
+      for (const [perf, want] of [['lite', 'https://x.org/assets/ai3d/lite/foo.glb'], ['full', 'https://x.org/assets/ai3d/foo.glb']]) {
+        W.localStorage.setItem('revela.perf', perf);
+        const rt2 = RT.model3dRuntime(), sc = D.createElement('section'), lm = D.createElement('model-viewer'), own = D.createElement('model-viewer');
+        lm.setAttribute('src', 'https://x.org/assets/ai3d/foo.glb'); own.setAttribute('src', 'https://x.org/mi/otro.glb'); sc.append(lm, own); D.body.appendChild(sc); made.push(sc);
+        const had2 = W.Reveal; W.Reveal = { getSlides: () => [sc] };
+        try {
+          rt2.preload(sc);
+          eq(lm.getAttribute('src'), want, perf + ': el modelo de la biblioteca pide ' + (perf === 'lite' ? 'su versión ligera' : 'el original'));
+          eq(own.getAttribute('src'), 'https://x.org/mi/otro.glb', 'un modelo de otro sitio no se toca');
+          if (perf === 'lite') { lm.dispatchEvent(new W.Event('error')); eq(lm.getAttribute('src'), 'https://x.org/assets/ai3d/foo.glb', 'sin su gemelo ligero, el original'); }
+        } finally { W.Reveal = had2; }
+      }
     } finally { W.HTMLCanvasElement.prototype.getContext = gc; W.localStorage.setItem('revela.perf', 'full'); made.forEach(x => x.remove()); D.querySelectorAll('model-viewer').forEach(x => { if (!x.closest('#stage-grid, #stage, .block')) x.remove(); }); }
   });
 

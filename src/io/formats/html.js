@@ -38,6 +38,7 @@ import { createCameraEngine, revelaCameraRuntime } from '../runtime/camera.js';
 import { modelAttrsHTML, bleedBox, edgeCSS } from '../../features/content/model3d.js';
 import { model3dRuntime } from '../runtime/model3d.js';
 import { fxRuntime, fxWords } from '../runtime/fx.js';
+import { videoLite } from '../../core/webgl.js';
 import { geoMapRuntime } from '../runtime/geomap.js';
 import { liveFrameRuntime } from '../runtime/liveframe.js';
 import { mapConfig, stopIndex, mapAlt, isClear, mapEdgeCSS, MAP_MASK, fadesOut, mapFrameHTML } from '../../features/content/geomap.js';
@@ -737,6 +738,7 @@ function slideHTML(s0, deck, figMap, plan = morphPlan(deck), fit = fitMode(deck)
   const solid = /^(#|rgb)/.test(s.background || '');
   // Media backgrounds (reveal.js): video, web page, plus the background's own transition.
   const bg = (solid ? ` data-background-color="${s.background}"` : '')
+    + (s.bgVideo && s.bgPoster ? ` data-background-image="${esc(s.bgPoster)}" data-background-size="cover"` : '')
     + (s.bgVideo ? ` data-background-video="${esc(s.bgVideo)}"${s.bgVideoLoop !== false ? ' data-background-video-loop' : ''}${s.bgVideoMuted !== false ? ' data-background-video-muted' : ''}` : '')
     + (s.bgIframe ? ` data-background-iframe="${esc(s.bgIframe)}"${s.bgInteractive ? ' data-background-interactive' : ''}` : '')
     + (s.bgTransition ? ` data-background-transition="${esc(s.bgTransition)}"` : '')
@@ -1044,6 +1046,7 @@ ${rv(deck).search !== false ? `<script src="${REVEAL}/plugin/search/search.js"><
 ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : ''}
 <script>
  ${hasCode ? `try{(${registerCodeLangs.toString()})(RevealHighlight().hljs);}catch(e){}` : ''}
+ ${/ data-background-video="/.test(slides) ? `try{if((${videoLite.toString()})())document.querySelectorAll('[data-background-video]').forEach(function(e){e.removeAttribute('data-background-video');e.removeAttribute('data-background-video-loop');e.removeAttribute('data-background-video-muted');});}catch(e){}` : ''}
  Reveal.initialize({ width:${w}, height:${h}, margin:0, minScale:0.05, maxScale:20, hash:${inApp ? 'false' : 'true'}, respondToHashChanges:true, loop:${deck.loop ? 'true' : 'false'},
    slideNumber:false,
    transition:${jsData(deck.defaultTransition)}, transitionSpeed:${jsData(deck.transitionSpeed)},

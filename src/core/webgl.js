@@ -28,3 +28,16 @@ if (typeof window !== 'undefined' && !window.__rvGSGuard) {
   window.addEventListener('error', e => { if (/model-viewer/.test(e.filename || '') || /reading 'xr'|Error creating WebGL context/.test(e.message || '')) { e.preventDefault(); gs().lite = true; } });
   window.addEventListener('unhandledrejection', e => { if (/Error creating WebGL context|reading 'xr'/.test(String(e.reason?.message || e.reason || ''))) { e.preventDefault(); gs().lite = true; } });
 }
+
+// Does this computer (or its owner) want a still picture where a video would play? «Reduce motion» in the system (unless the
+// user chose «every effect»), the light mode chosen by hand (?perf=lite, 'revela.perf'), or a connection that saves data
+// (not when «every effect» was chosen). The exported page carries this function as source (toString): it imports nothing.
+export function videoLite() {
+  try {
+    var q = /[?&]perf=(lite|full)\b/.exec(location.search), perf = q ? q[1] : localStorage.getItem('revela.perf') || '';
+    if (perf === 'lite') return true;
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches && localStorage.getItem('revela.motion') !== 'ignore') return true;
+    var c = navigator.connection;
+    return perf !== 'full' && !!(c && c.saveData);
+  } catch (e) { return false; }
+}

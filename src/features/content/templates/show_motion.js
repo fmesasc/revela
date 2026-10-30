@@ -25,7 +25,7 @@ const ink = (deck, color) => Object.assign(deck, { textColor: color });
 const scrim = (x, y, w, h, op = 55) => shape('rect', x, y, w, h, '#000000', { opacity: op });
 const AI = 'Vídeo generado con IA (ilustrativo)';
 const aiNote = (x, y, w, t = AI) => text(t, x, y, w, 28, { fontSize: 16, color: '#dfe5ec', letterSpacing: 1 });
-const vid = v => ({ bgVideo: `${AV}${v}.mp4`, bgVideoLoop: true, bgVideoMuted: true });
+const vid = v => ({ bgVideo: `${AV}${v}.mp4`, bgPoster: `${AV}${v}.jpg`, bgVideoLoop: true, bgVideoMuted: true });
 // The cover: a video, a dark panel on the left, a label, the title and a line.
 const cover = (T, v, label, title, sub, notes) => ({ layout: 'blank', bg: T.bg, ...vid(v), transition: 'fade', back: [scrim(0, 0, 860, 720, 52)], extra: [
   text(label, 80, 140, 740, 36, { fontSize: 22, letterSpacing: 3, color: T.ac, fontWeight: 700 }),

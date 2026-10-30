@@ -11,6 +11,7 @@ import { diagramOpts } from '../../features/document/blocks.js';
 import { openDiagramText } from '../dialogs/diagram.js';
 import { openFile } from '../../features/content/files.js';
 import { shortSig } from '../../core/text.js';
+import { videoLite } from '../../core/webgl.js';
 import { opacityOf } from '../../core/model.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
 import { cleanClasses } from '../../features/design/devmode.js';
@@ -166,7 +167,13 @@ function drawBgMedia(slide) {
   if (stage.firstChild !== el) stage.insertBefore(el, stage.firstChild);
   if (el.dataset.k === want) return;
   el.dataset.k = want; el.innerHTML = ''; el.style.cssText = '';
-  if (slide.bgVideo) { const v = document.createElement('video'); Object.assign(v, { src: slide.bgVideo, muted: true, loop: true, autoplay: true, playsInline: true }); el.appendChild(v); v.play?.().catch(() => {}); }
+  if (slide.bgVideo) {
+    // (Light mode / «reduce motion»: the still picture and no download until it is played; see core/webgl.js videoLite.)
+    const still = videoLite(), v = document.createElement('video');
+    Object.assign(v, { src: slide.bgVideo, muted: true, loop: true, autoplay: !still, playsInline: true, preload: still ? 'none' : 'auto' });
+    if (slide.bgPoster) v.poster = slide.bgPoster;
+    el.appendChild(v); if (!still) v.play?.().catch(() => {});
+  }
   else if (slide.bgIframe) { const f = document.createElement('iframe'); f.src = slide.bgIframe; f.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin'); f.setAttribute('sandbox', embedSandbox(slide.bgIframe, 'allow-scripts')); el.appendChild(f); }
   else { el.style.background = withBlobs(slide.background); el.style.opacity = slide.bgOpacity / 100; }
 }

@@ -49,7 +49,7 @@ export const safeCSS = v => typeof v !== 'string' || !/[<>"{};\\]|javascript:|ex
 const safeToken = v => typeof v !== 'string' || /^[\w .\/:%#-]*$/.test(v);
 
 const HTML_KEYS = new Set(['html']);                 // (other texts are escaped wherever they are shown)
-const URL_KEYS = new Set(['src', 'href', 'poster', 'url', 'dataUrl', 'link', 'bgVideo', 'bgIframe', 'image', 'logo', 'soundSrc']);
+const URL_KEYS = new Set(['src', 'href', 'poster', 'url', 'dataUrl', 'link', 'bgVideo', 'bgPoster', 'bgIframe', 'image', 'logo', 'soundSrc']);
 const CSS_KEYS = new Set(['fontFamily', 'color', 'fill', 'fill2', 'stroke', 'bg', 'background', 'borderColor', 'bullet', 'numStyle', 'highlight', 'textColor', 'lineColor', 'shadowColor', 'accent', 'fg']);
 const TOKEN_KEYS = new Set(['textLang', 'defaultTransition', 'transition', 'transitionOut', 'transitionSpeed', 'transitionDir', 'format', 'position', 'theme', 'effect', 'pathShape', 'start', 'dash', 'borderDash', 'fit', 'view', 'motion', 'gradType', 'device', 'until', 'goto', 'sound',
   'bgTransition', 'edge', 'ph', 'duration', 'delay', 'autoSlide', 'page', 'pages']);   // (numbers some files bring as text)
