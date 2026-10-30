@@ -124,7 +124,7 @@ export default {
  "Solo el título": "Alleen titel",
  "En blanco": "Leeg",
  "Catálogo: animaciones": "Catalogus: animaties",
- "Hasta las de la portada están animadas: el título entra al hacer clic y el resto lo sigue sin más clics («después de la anterior»).": "Zelfs die van de titeldia zijn geanimeerd: de titel komt binnen bij een klik en de rest volgt zonder verdere klikken («na de vorige»).",
+ "Hasta las de la portada están animadas: el título entra solo al aparecer la diapositiva y el resto lo sigue sin clics («después de la anterior»).": "Zelfs die van de titeldia zijn geanimeerd: de titel komt vanzelf binnen als de dia verschijnt en de rest volgt zonder klikken («na de vorige»).",
  "CATÁLOGO DE FUNCIONES · 2": "FUNCTIECATALOGUS · 2",
  "Animaciones": "Animaties",
  "Todas las que puede tener un objeto, con su nombre y cómo se escribe": "Alles wat een object kan hebben, met naam en hoe je het schrijft",

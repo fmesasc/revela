@@ -22,7 +22,7 @@ JS = r"""(async()=>{const R=window.__revela,E=R.examples,M=await import('/tools/
   const keys=%s,lang=%s,loud=%s,out=[];
   const list=Object.entries(E.EXAMPLES).filter(([k,v])=>!keys.length||keys.includes(k)||keys.includes(v.cat)||keys.includes(v.file||'')).map(([k])=>k);
   for(const k of list){const d=await E.loadExample(k,lang);if(!d){out.push([k,'no carga','','']);continue}
-    for(const [kind,where,what] of M.checkDeck(d,known))out.push([k,kind,where,what]);
+    for(const [kind,where,what] of M.checkDeck(d,known,k))out.push([k,kind,where,what]);
     if(loud){const dt=d.defaultTransition,n=d.slides.filter(s=>M.LOUD.has(s.transition||dt)).length;if(n>=3)out.push([k,'transiciones llamativas',n+' diapositivas',[...new Set(d.slides.map(s=>s.transition||dt).filter(t=>M.LOUD.has(t)))].join(', ')])}}
   const risky=[];for(const k of list){const d=await E.loadExample(k,lang);if(!d)continue;let m=0,a=0,v=0;for(const s of d.slides){if(s.bgVideo)v++;for(const b of s.blocks||[]){if(['map','model','embed','video'].includes(b.type))m++;a+=[b.animation,...(b.anims||[])].filter(Boolean).length}}if(m||v)risky.push(k)}
   return JSON.stringify({n:list.length,out,risky})})()"""

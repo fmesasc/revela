@@ -206,7 +206,7 @@ const EXAMPLES_DEF = {
     const sun = uid(), cardA = uid(), cardB = uid();
     return numbered(build({ name: 'Animaciones y efectos', palette: 'ocean', fonts: 'modern' }, [
       { layout: 'blank', extra: [
-        { ...text('Animaciones', 140, 220, 1000, 170, { fontSize: 120, textAlign: 'center', wordart: 'gold' }), animation: A('zoom-in', { duration: 900 }) },
+        { ...text('Animaciones', 140, 220, 1000, 170, { fontSize: 120, textAlign: 'center', wordart: 'gold' }), animation: A('zoom-in', { start: 'afterPrev', duration: 900 }) },
         { ...text('Pulsa → para ver cada efecto', 140, 420, 1000, 60, { fontSize: 32, textAlign: 'center' }), animation: A('fade-up', { start: 'afterPrev' }) }],
         notes: 'El título es Text Art (Insertar ▸ Text Art). Las dos animaciones van una tras otra sin clic («después de la anterior»).' },
       { title: 'Entrada, énfasis y salida', layout: 'titleOnly', extra: [

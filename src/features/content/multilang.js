@@ -22,7 +22,7 @@ export const EXAMPLES_ML = {
       { layout: 'blank', bg: BG, transition: 'zoom', extra: [
         ...stars, glow(820, -200, 760, '#3b4fd8', BG, 40),
         kicker('CIENCIAS · EL UNIVERSO', 90, 150, 600, GOLD),
-        { ...text('Ojos en el espacio', 84, 190, 680, 220, { fontSize: 104, fontWeight: 800, color: '#ffffff', lineHeight: 1 }), id: ttl, animation: A('zoom-in', { duration: 900 }) },
+        { ...text('Ojos en el espacio', 84, 190, 680, 220, { fontSize: 104, fontWeight: 800, color: '#ffffff', lineHeight: 1 }), id: ttl, animation: A('zoom-in', { start: 'afterPrev', duration: 900 }) },
         { ...text('De Hubble a Webb: cómo vemos el universo', 90, 430, 620, 100, { fontSize: 34, color: SKY }), animation: A('fade-up', { start: 'afterPrev' }) },
         { ...nasa('james-webb-space-telescope-a', 700, 110, 540, 500, { caption: '', alt: 'El telescopio espacial James Webb en 3D', autoRotate: false, view: 'three', motion: 'orbit', edge: 'fade' }), id: webb }],
         notes: 'El telescopio James Webb en 3D (NASA): da una vuelta al entrar y se puede girar con el ratón.' },
@@ -74,7 +74,7 @@ export const EXAMPLES_ML = {
     return numbered(build({ name: 'Cuento: el robot que quería hablar con todos', palette: 'warm', fonts: 'friendly', title: { color: INK } }, [
       { layout: 'blank', bg: SKYC, transition: 'zoom', extra: [
         ...scene(),
-        { ...text('El robot que quería hablar con todos', 70, 150, 640, 260, { fontSize: 66, fontWeight: 800, color: INK, lineHeight: 1.05 }), animation: A('zoom-in', { duration: 800 }) },
+        { ...text('El robot que quería hablar con todos', 70, 150, 640, 260, { fontSize: 66, fontWeight: 800, color: INK, lineHeight: 1.05 }), animation: A('zoom-in', { start: 'afterPrev', duration: 800 }) },
         { ...text('Un cuento para leer en tu idioma', 70, 420, 600, 60, { fontSize: 32, color: '#3d5a80' }), animation: A('fade-up', { start: 'afterPrev' }) },
         model('three-RobotExpressive', 780, 130, 380, 470, { clip: 'Wave', alt: 'Robo, el robot' })],
         notes: 'Arriba a la derecha de la vista compartida, cada alumno elige su idioma.' },

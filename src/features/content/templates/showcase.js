@@ -148,12 +148,12 @@ export default {
       { layout: 'blank', bg: BG, extra: [
         glow(760, -220, 760, C[0], BG, 50), glow(-260, 360, 640, C[5], BG, 35),
         kicker('CATÁLOGO DE FUNCIONES · 2', 90, 140, 600, C[2]),
-        { ...text('Animaciones', 84, 170, 900, 150, { fontFamily: H, fontSize: 120, wordart: 'gold' }), animation: A('zoom-in', { duration: 900 }) },
+        { ...text('Animaciones', 84, 170, 900, 150, { fontFamily: H, fontSize: 120, wordart: 'gold' }), animation: A('zoom-in', { start: 'afterPrev', duration: 900 }) },
         { ...text('Todas las que puede tener un objeto, con su nombre y cómo se escribe', 90, 330, 1100, 50, { fontSize: 30, color: W }), animation: A('fade-up', { start: 'afterPrev' }) },
         ...[['Entrada', 11], ['Énfasis', 8], ['Salida', 5], ['Trayectorias', 6], ['Dibujar', 1], ['Sonidos', 6]].map(([n, k], i) =>
           withAnims(pill(`<b>${n}</b> · ${k}`, 90 + i * 180, 430, 168, CARD, W, { fontSize: 19, borderColor: C[i] }), A('fade-up', { start: 'afterPrev', duration: 350 }))),
         text('Animaciones ▸ Añadir animación · el Panel de animación ordena, encadena y cambia la duración', 90, 520, 1000, 40, { fontSize: 22, color: DIM })],
-        notes: 'Hasta las de la portada están animadas: el título entra al hacer clic y el resto lo sigue sin más clics («después de la anterior»).' },
+        notes: 'Hasta las de la portada están animadas: el título entra solo al aparecer la diapositiva y el resto lo sigue sin clics («después de la anterior»).' },
       { title: 'Entrada: once maneras de aparecer', layout: 'titleOnly', bg: BG, extra: [
         ...IN.map(([n, v], i) => { const [x, y] = cell(i, 4, 90, 175, 280, 160); return withAnims(tile(n, `'${v}'`, x, y, 260, 140, C[i % 6]), A(v, { start: i ? 'afterPrev' : 'click', duration: 650 })); }),
         card('<b>Un solo clic</b><br>y todas en cadena, cada una «después de la anterior».', 930, 495, 260, 140, '#4a90d933', { fontSize: 20, color: W, vAlign: 'middle', textAlign: 'center' })],

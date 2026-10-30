@@ -124,7 +124,7 @@ export default {
  "Solo el título": "Title only",
  "En blanco": "Blank",
  "Catálogo: animaciones": "Catalogue: animations",
- "Hasta las de la portada están animadas: el título entra al hacer clic y el resto lo sigue sin más clics («después de la anterior»).": "Even the title slide is animated: the title comes in on click and the rest follows without further clicks (“after previous”).",
+ "Hasta las de la portada están animadas: el título entra solo al aparecer la diapositiva y el resto lo sigue sin clics («después de la anterior»).": "Even the title slide is animated: the title comes in by itself when the slide appears and the rest follows without clicks (“after previous”).",
  "CATÁLOGO DE FUNCIONES · 2": "FEATURE CATALOGUE · 2",
  "Animaciones": "Animations",
  "Todas las que puede tener un objeto, con su nombre y cómo se escribe": "Every animation an object can have, with its name and how it's written",

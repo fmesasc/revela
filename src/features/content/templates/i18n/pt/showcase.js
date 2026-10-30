@@ -124,7 +124,7 @@ export default {
  "Solo el título": "Só o título",
  "En blanco": "Em branco",
  "Catálogo: animaciones": "Catálogo: animações",
- "Hasta las de la portada están animadas: el título entra al hacer clic y el resto lo sigue sin más clics («después de la anterior»).": "Até as da capa estão animadas: o título entra ao clicar e o resto segue-o sem mais cliques («após a anterior»).",
+ "Hasta las de la portada están animadas: el título entra solo al aparecer la diapositiva y el resto lo sigue sin clics («después de la anterior»).": "Até as da capa estão animadas: o título entra sozinho quando o diapositivo aparece e o resto segue-o sem cliques («após a anterior»).",
  "CATÁLOGO DE FUNCIONES · 2": "CATÁLOGO DE FUNÇÕES · 2",
  "Animaciones": "Animações",
  "Todas las que puede tener un objeto, con su nombre y cómo se escribe": "Todas as que um objeto pode ter, com o nome e como se escreve",

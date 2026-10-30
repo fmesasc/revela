@@ -124,7 +124,7 @@ export default {
  "Solo el título": "Izenburua soilik",
  "En blanco": "Hutsik",
  "Catálogo: animaciones": "Katalogoa: animazioak",
- "Hasta las de la portada están animadas: el título entra al hacer clic y el resto lo sigue sin más clics («después de la anterior»).": "Azalekoak ere animatuta daude: izenburua klik egitean sartzen da eta gainerakoak klik gehiagorik gabe jarraitzen dio («aurrekoaren ondoren»).",
+ "Hasta las de la portada están animadas: el título entra solo al aparecer la diapositiva y el resto lo sigue sin clics («después de la anterior»).": "Azalekoak ere animatuta daude: izenburua bere kabuz sartzen da diapositiba agertzean eta gainerakoak klikik gabe jarraitzen dio («aurrekoaren ondoren»).",
  "CATÁLOGO DE FUNCIONES · 2": "FUNTZIOEN KATALOGOA · 2",
  "Animaciones": "Animazioak",
  "Todas las que puede tener un objeto, con su nombre y cómo se escribe": "Objektu batek izan ditzakeen guztiak, bere izenarekin eta nola idazten den",

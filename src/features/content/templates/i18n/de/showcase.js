@@ -124,7 +124,7 @@ export default {
  "Solo el título": "Nur Titel",
  "En blanco": "Leer",
  "Catálogo: animaciones": "Katalog: Animationen",
- "Hasta las de la portada están animadas: el título entra al hacer clic y el resto lo sigue sin más clics («después de la anterior»).": "Sogar die auf der Titelseite sind animiert: Der Titel erscheint beim Klicken, der Rest folgt ohne weitere Klicks („nach vorheriger“).",
+ "Hasta las de la portada están animadas: el título entra solo al aparecer la diapositiva y el resto lo sigue sin clics («después de la anterior»).": "Sogar die auf der Titelseite sind animiert: Der Titel erscheint von selbst, sobald die Folie angezeigt wird, der Rest folgt ohne Klicks („nach vorheriger“).",
  "CATÁLOGO DE FUNCIONES · 2": "FUNKTIONSKATALOG · 2",
  "Animaciones": "Animationen",
  "Todas las que puede tener un objeto, con su nombre y cómo se escribe": "Alle, die ein Objekt haben kann, mit Namen und Schreibweise",

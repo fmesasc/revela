@@ -1,11 +1,14 @@
 // What a presentation's motion does when it is played, read from the deck itself (no browser, no pictures): animations
 // that never play or leave the slide wrong, steps out of order, transitions and automatic advance that don't suit the
 // slide, links that lead nowhere, background videos and maps with nothing to show without a connection.
-// checkDeck(deck, known) → [[kind, "slide N", what]]. `known`: { effects: Set, transitions: Set, files: Set|null }
+// checkDeck(deck, known, key) → [[kind, "slide N", what]]. `known`: { effects: Set, transitions: Set, files: Set|null }
 // (files: the names found in assets/video, to see that a background video exists; null = not checked).
 // Used by tools/audit-motion.py (a report over every template) and by the tests (nothing new gets in with these faults).
 
 const W = 1280, H = 720;
+// Covers whose first click is on purpose (a sticker that pops in, a summary that builds up): the cover's picture on the
+// website lacks only that. Anything else on a cover has to be there when the slide appears.
+const COVER_CLICK_OK = new Set(['creative_brutalism', 'creative_comic', 'creative_retro_diner', 'sci_med_trial']);
 
 // What the app knows (animation effects, which of them exit or enter, transitions, the background videos in assets/video),
 // read from its own modules: in a page of the app. `withFiles`: also list assets/video (the server must show folders).
@@ -27,7 +30,7 @@ const words = s => (plain(s).match(/\S+/g) || []).length;
 // A block that carries something to read or look at (not a glow, a band or an icon on the master's side).
 const carries = b => !b.decorative && (b.type !== 'shape' || plain(b.html || b.text));
 
-export function checkDeck(deck, known) {
+export function checkDeck(deck, known, key = '') {
   const out = [];
   const add = (i, kind, what) => out.push([kind, 'diapositiva ' + (i + 1), what]);
   const ids = new Set(deck.slides.map(s => s.id));
@@ -54,6 +57,12 @@ export function checkDeck(deck, known) {
       const x = b.x + dx, y = b.y + dy;
       if (!isExit(last, known) && (x > W - 20 || y > H - 20 || x + b.w < 20 || y + b.h < 20) && (dx || dy)) add(i, 'acaba fuera de la diapositiva', `«${name}»`);
       // Entrance after an exit that leaves nothing in view is fine; an exit with nothing coming back leaves a hole.
+    }
+    // The first slide's picture (the template's cover on the website, a thumbnail) is taken before anyone clicks: an object
+    // that enters on a click is not in it. Something to read or look at that waits for the first click leaves it empty.
+    if (i === 0 && !COVER_CLICK_OK.has(key)) {
+      const hid = blocks.filter(b => carries(b) && b.type !== 'embed').filter(b => { const f = animsOf(b)[0]; return f && known.entrances.has(f.effect) && (f.start || 'click') === 'click'; });
+      if (hid.length) add(i, 'portada que espera un clic', hid.map(b => '«' + (plain(b.html) || b.alt || b.type).slice(0, 24) + '»').slice(0, 4).join(', ') + (hid.length > 4 ? ' y ' + (hid.length - 4) + ' más' : ''));
     }
     const shown = blocks.filter(b => carries(b) && b.type !== 'embed');
     if (shown.length && shown.every(b => { const l = animsOf(b); return l.length && isExit(l.at(-1), known) && !l.some(a => !isExit(a, known) && a.effect !== 'path'); }))

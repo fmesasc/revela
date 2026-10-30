@@ -124,7 +124,7 @@ export default {
  "Solo el título": "Només el títol",
  "En blanco": "En blanc",
  "Catálogo: animaciones": "Catàleg: animacions",
- "Hasta las de la portada están animadas: el título entra al hacer clic y el resto lo sigue sin más clics («después de la anterior»).": "Fins i tot les de la portada estan animades: el títol entra en fer clic i la resta el segueix sense més clics («després de l'anterior»).",
+ "Hasta las de la portada están animadas: el título entra solo al aparecer la diapositiva y el resto lo sigue sin clics («después de la anterior»).": "Fins i tot les de la portada estan animades: el títol entra tot sol quan apareix la diapositiva i la resta el segueix sense clics («després de l'anterior»).",
  "CATÁLOGO DE FUNCIONES · 2": "CATÀLEG DE FUNCIONS · 2",
  "Animaciones": "Animacions",
  "Todas las que puede tener un objeto, con su nombre y cómo se escribe": "Totes les que pot tenir un objecte, amb el seu nom i com s'escriu",

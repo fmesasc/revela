@@ -124,7 +124,7 @@ export default {
  "Solo el título": "العنوان فقط",
  "En blanco": "فارغة",
  "Catálogo: animaciones": "فهرس: الحركات",
- "Hasta las de la portada están animadas: el título entra al hacer clic y el resto lo sigue sin más clics («después de la anterior»).": "حتى شريحة العنوان متحركة: يدخل العنوان عند النقر ويتبعه الباقي دون نقرات أخرى («بعد السابق»).",
+ "Hasta las de la portada están animadas: el título entra solo al aparecer la diapositiva y el resto lo sigue sin clics («después de la anterior»).": "حتى شريحة العنوان متحركة: يدخل العنوان تلقائيًا عند ظهور الشريحة ويتبعه الباقي دون نقرات («بعد السابق»).",
  "CATÁLOGO DE FUNCIONES · 2": "فهرس الميزات · 2",
  "Animaciones": "الحركات",
  "Todas las que puede tener un objeto, con su nombre y cómo se escribe": "كل ما يمكن أن يحمله الكائن من حركات، باسمها وطريقة كتابتها",

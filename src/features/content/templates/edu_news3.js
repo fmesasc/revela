@@ -39,7 +39,7 @@ const cover = (T, kicker, title, sub, icons, notes, fs = 54) => slideOf(T, [
   glass(T, '', 70, 130, 700, 440, { glass: 22 }), label(T, kicker, 110, 172, 620),
   text(title, 104, 214, 640, 210, { fontSize: fs, fontWeight: 800, color: T.ink, lineHeight: 1.05, fontFamily: FF.head }),
   text(sub, 110, 430, 620, 130, { fontSize: 25, color: T.soft, lineHeight: 1.35 }),
-  ...icons.map(([id, alt, x, y, s], i) => seq(ico(id, x, y, s, alt), i, i ? 'zoom-in' : 'fade-up')), credit(T)], notes);
+  ...icons.map(([id, alt, x, y, s], i) => on(ico(id, x, y, s, alt), i ? 'zoom-in' : 'fade-up', { start: 'afterPrev' })), credit(T)], notes);   // (on their own when the cover appears: the cover's picture on the website shows them)
 
 // Three or four cards: a 3D icon over a title and a line, on glass.
 const cards = (T, title, items, notes, foot) => { const n = items.length, w = n === 4 ? 262 : 360, gap = (1140 - n * w) / (n - 1), big = n === 4 ? 140 : 190;

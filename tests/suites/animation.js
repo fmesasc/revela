@@ -1136,7 +1136,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const bad = [];
     for (const key of keys) {
       const d = await E.loadExample(key, 'es'); if (!d) { bad.push(key + ': no carga'); continue; }
-      for (const [kind, where, what] of M.checkDeck(d, known)) if (!M.INFO.has(kind)) bad.push(`${key} ${where}: ${kind} — ${what}`);
+      for (const [kind, where, what] of M.checkDeck(d, known, key)) if (!M.INFO.has(kind)) bad.push(`${key} ${where}: ${kind} — ${what}`);
     }
     eq(bad.slice(0, 20).join('\n'), '', 'fallos de movimiento en el catálogo (' + bad.length + ')');
     // Y el comprobador sabe ver lo que debe: un efecto inventado, un título tarde, un enlace roto.
@@ -1147,6 +1147,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(kinds(mk([tx('t', 'Título', { ph: 'title', animation: { effect: 'fade-up', order: 2 } }), tx('c', 'Un párrafo largo que sale primero, con bastante texto dentro.', { animation: { effect: 'fade-up', order: 1 } })])).includes('el título sale después del contenido'), 'título tarde');
     assert(kinds(mk([tx('l', 'x', { goto: 'nada' })])).includes('enlace a una diapositiva que no existe'), 'enlace roto');
     assert(kinds(mk([tx('v', 'x')], { bgVideo: '../../../../assets/video/no-existe.mp4' })).includes('vídeo de fondo que no existe'), 'vídeo que falta');
-    assert(!kinds(mk([tx('ok', 'x', { animation: { effect: 'fade-up', order: 1 } })], { transition: 'cube' })).length, 'lo correcto, sin avisos');
+    assert(kinds(mk([tx('p', 'Portada', { animation: { effect: 'fade-up', order: 1 } })])).includes('portada que espera un clic'), 'portada que espera un clic');
+    assert(!kinds(mk([tx('p', 'Portada', { animation: { effect: 'fade-up', order: 1, start: 'afterPrev' } })])).includes('portada que espera un clic'), 'portada que entra sola');
+    assert(!kinds(mk([tx('ok', 'x', { animation: { effect: 'fade-up', order: 1, start: 'afterPrev' } })], { transition: 'cube' })).length, 'lo correcto, sin avisos');
   });
 }
