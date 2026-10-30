@@ -11,6 +11,7 @@ import { animatedBlocks } from '../../features/animation/transitions.js';
 import { MOTIONS_3D, ARRIVALS_3D, modelAttrs } from '../../features/content/model3d.js';
 import { model3dRuntime } from '../../io/runtime/model3d.js';
 import { loadModelViewer } from '../../core/vendor.js';
+import { installFx } from './effects.js';
 import { t } from '../../i18n/index.js';
 import { moreHTML, footHTML } from './dlgkit.js';
 
@@ -68,7 +69,7 @@ export async function openModel3D(b) {
   const mv = document.createElement('model-viewer');
   mv.style.cssText = 'width:100%;height:100%';
   q('.m3d-view').appendChild(mv);
-  runtime ||= model3dRuntime();
+  installFx(); runtime ||= model3dRuntime();
   const current = () => ({ ...b, autoRotate: q('.m3d-rot').checked, spin: +q('.m3d-spin').value, clip: q('.m3d-clip').value || null,
     clipOnce: q('.m3d-once').checked, clipSpeed: +q('.m3d-speed').value, motion: q('.m3d-motion').value, arrive: q('.m3d-arrive').value,
     walk: q('.m3d-wclip').value ? { clip: q('.m3d-wclip').value, end: q('.m3d-wend').value, endOnce: q('.m3d-wonce').checked,

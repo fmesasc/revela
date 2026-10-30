@@ -70,6 +70,7 @@ import { openBrandKit } from '../dialogs/brandkit.js';
 import { openResize } from '../dialogs/resize.js';
 import { openSettings } from '../dialogs/settings.js';
 import { openAppearance } from '../shell/appearance.js';
+import { openEffects } from '../dialogs/effects.js';
 import { openDashboardDialog } from '../dialogs/data.js';
 import { playAnimations } from '../canvas/preview.js';
 import { togglePainter } from '../canvas/painter.js';
@@ -239,6 +240,7 @@ export const ACTIONS = {
   'resize-deck': () => openResize(),
   'deck-settings': () => openSettings(),
   'appearance': () => openAppearance(),
+  'effects': () => openEffects(),
   'slide-delete': () => slides.deleteSlide(),
   'section-add': () => slides.addSection(),   // creates + renames inline (no prompt)
   'insert-text': () => { blocks.addText(); requestAnimationFrame(() => editText(state.ui.selection)); },   // (ready to type, as in PowerPoint)

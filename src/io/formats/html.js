@@ -37,6 +37,7 @@ import { needsPlayer, mediaConfig, cameraSegment, cameraBoxCSS, cameraInnerHTML 
 import { createCameraEngine, revelaCameraRuntime } from '../runtime/camera.js';
 import { modelAttrsHTML, bleedBox, edgeCSS } from '../../features/content/model3d.js';
 import { model3dRuntime } from '../runtime/model3d.js';
+import { fxRuntime, fxWords } from '../runtime/fx.js';
 import { geoMapRuntime } from '../runtime/geomap.js';
 import { liveFrameRuntime } from '../runtime/liveframe.js';
 import { mapConfig, stopIndex, mapAlt, isClear, mapEdgeCSS, MAP_MASK, fadesOut, mapFrameHTML } from '../../features/content/geomap.js';
@@ -1061,6 +1062,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasLive ? liveDataJS() : ''}
  ${hasZoomable ? LIGHTBOX_JS : ''}
  ${canvas ? `${canvasRuntimeDeps()}\ncanvasRuntime(${JSON.stringify(groups.map(g => frameOf(g[0], deck.slides.indexOf(g[0]), deck.size)))}, ${w}, ${h});` : ''}
+ ${hasModel3d || / data-geomap="/.test(slides) ? `(${fxRuntime.toString()})(${jsData(fxWords(t))});` : ''}
  ${hasModel3d ? `(${model3dRuntime.toString()})();` : ''}
  ${hasLiveWeb ? `(${liveFrameRuntime.toString()})();` : ''}
  ${hasTimer ? `(${timerRuntime.toString()})();` : ''}

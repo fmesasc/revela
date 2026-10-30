@@ -4121,6 +4121,81 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { Object.defineProperty(W.Navigator.prototype, 'hardwareConcurrency', hc); W.localStorage.setItem('revela.perf', 'full'); }
   });
 
+  // What Revela takes away is said where it happens (Francisco, 2026-10-30: «el usuario tiene que saberlo, no puede ser que me
+  // quede con la duda»): «reduce motion», the light mode, no WebGL and no connection each put a badge in the map's corner that
+  // says why and offers what can be done; nothing at all in the normal case; the choice is also in Ver ▸ Efectos.
+  await test('avisos de efectos: movimiento reducido, modo ligero, sin WebGL y sin conexión se dicen en el mapa, con su acción; nada en el caso normal; ajustes', async () => {
+    reset(); const { G, W } = await mapSetup(); R.slides.addSlide('blank'); await sleep(10);
+    const clean = () => { for (const k of ['revela.perf', 'revela.motion']) W.localStorage.removeItem(k); W.sessionStorage.removeItem('rvfx.toast'); };
+    clean();
+    const mp = G.addMap({ route: 'geodesic', terrain: true, stops: [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 5 }, { name: 'París', lon: 2.35, lat: 48.86, zoom: 6 }] }); G.setMap(mp.id, { flyMs: 400 });
+    const html = R.io.buildHTML(R.state.deck, { inApp: true }), S = await W.eval("import('/src/core/vendor.js')");
+    const stubLib = u => 'data:text/javascript;charset=utf-8,' + encodeURIComponent(u) + '%2F%2F';
+    const PERF = v => `<script>try{localStorage.setItem('revela.perf','${v}')}catch(e){}</script>`;
+    const REDUCE = `<script>(function(){var m=window.matchMedia.bind(window);window.matchMedia=function(q){return /prefers-reduced-motion/.test(q)?{matches:true,media:q,addEventListener:function(){},removeEventListener:function(){},addListener:function(){},removeListener:function(){}}:m(q);};})()</script>`;
+    const play = async (head, lib, run) => {
+      const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+      try {
+        f.srcdoc = html.split(JSON.stringify(S.MAPLIBRE)).join(JSON.stringify(lib)).replace('<head>', '<head>' + head);
+        for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
+        const F = f.contentWindow; F.Reveal.slide(1); const el = F.document.querySelector('[data-geomap]');
+        await run(F, el, F.Reveal);
+      } finally { f.remove(); clean(); }
+    };
+    const ready = async el => { for (let k = 0; k < 60 && !el.classList.contains('rvm-on'); k++) await sleep(50); assert(el.classList.contains('rvm-on'), 'el mapa en vivo'); };
+    const badge = el => el.querySelector(':scope > .rvfx-badge'), pop = F => F.document.querySelector('.rvfx-pop');
+    const button = (F, text) => [...pop(F).querySelectorAll('button')].find(x => x.textContent === text);
+    const real = el => el._rvm.map.flights.filter(x => x.duration > 1);
+    // The normal case: every effect, and not a word about it.
+    await play(PERF('full'), stubLib(mapStub), async (F, el) => {
+      await ready(el); assert(!badge(el) && !F.document.querySelector('.rvfx-toast'), 'sin aviso cuando no se quita nada'); assert(el._rvm.map.terrain, 'con su relieve');
+    });
+    // «Reduce motion» in the system: the maps don't fly, and the badge says so; its button flies them all the same, and remembers.
+    await play(PERF('full') + REDUCE, stubLib(mapStub), async (F, el, RV) => {
+      await ready(el); const b = badge(el);
+      assert(b && b.textContent.includes('Movimiento reducido'), 'el aviso: movimiento reducido');
+      assert(F.document.querySelector('.rvfx-toast'), 'y una nota, una vez');
+      RV.next(); for (let k = 0; k < 40 && el._rvm.cur !== 1; k++) await sleep(50); eq(el._rvm.cur, 1, 'un clic: a París ' + JSON.stringify([RV.getIndices(), el.outerHTML.slice(0, 150), F.document.querySelectorAll('.fragment').length])); await sleep(300); eq(real(el).length, 0, 'sin vuelos: salta de una parada a otra');
+      b.click(); assert(pop(F) && /Reducir movimiento/.test(pop(F).textContent), 'dice por qué');
+      assert(button(F, 'Mostrar con todos los efectos') && button(F, 'Mostrar con todos los efectos').click, 'con su botón');
+      button(F, 'Mostrar con todos los efectos').click(); await sleep(100);
+      eq(F.localStorage.getItem('revela.motion'), 'ignore', 'se recuerda la elección'); assert(!pop(F), 'y se cierra');
+      assert(badge(el) && badge(el).textContent.includes('Efectos completos'), 'el aviso pasa a «Efectos completos»');
+      RV.slide(1, 0, -1); for (let k = 0; k < 40 && el._rvm.cur !== 0; k++) await sleep(50); RV.next(); for (let k = 0; k < 60 && !real(el).length; k++) await sleep(50);
+      assert(real(el).length > 0, 'con todos los efectos, vuela ' + JSON.stringify([el._rvm.cur, el._rvm.map.flights.map(x => x.duration), F.Reveal.getIndices(), F.localStorage.getItem('revela.motion'), F.matchMedia('(prefers-reduced-motion: reduce)').matches, !!F.__rvFX.reduced()]));
+      badge(el).click(); button(F, 'Volver al modo ligero').click(); await sleep(100);
+      eq(F.localStorage.getItem('revela.perf'), 'lite', 'volver al modo ligero'); assert(!el._rvm.map.terrain, 'sin relieve otra vez');
+    });
+    // The light mode: no relief, and the badge says so; «all effects» draws it at once.
+    await play(PERF('lite'), stubLib(mapStub), async (F, el) => {
+      await ready(el); assert(!el._rvm.map.terrain, 'sin relieve'); const b = badge(el);
+      assert(b && b.textContent.includes('Modo ligero') && /relieve 3D/.test(b.title), 'el aviso: modo ligero, sin relieve 3D');
+      b.click(); button(F, 'Mostrar con todos los efectos').click(); await sleep(100);
+      assert(el._rvm.map.terrain && el._rvm.map.terrain.source === 'rv-dem', 'con todos los efectos, el relieve vuelve al momento'); eq(F.localStorage.getItem('revela.perf'), 'full');
+    });
+    // No WebGL: the satellite picture, and the notice is the badge (the same element, not a second one).
+    await play(PERF('full'), stubLib('window.__rvGL=false;' + mapStub), async (F, el) => {
+      for (let k = 0; k < 60 && !el.querySelector('.rvm-static'); k++) await sleep(50);
+      const b = el.querySelector('.rvm-off.rvfx-badge'); assert(b && /satélite/.test(b.textContent), 'el aviso de siempre, ahora con su acción');
+      eq(el.querySelectorAll('.rvfx-badge').length, 1, 'uno solo'); b.click(); assert(button(F, 'Probar de nuevo'), 'con «Probar de nuevo»');
+    });
+    // No connection: the same.
+    await play(PERF('full'), 'https://127.0.0.1:9/no-maplibre', async (F, el) => {
+      for (let k = 0; k < 60 && !el.classList.contains('rvm-offline'); k++) await sleep(50);
+      const b = el.querySelector('.rvm-off.rvfx-badge'); assert(b && /Sin conexión/.test(b.textContent), 'sin conexión, con su acción'); b.click(); assert(button(F, 'Probar de nuevo'), 'con «Probar de nuevo»');
+    });
+    // The settings: four choices, what the computer is doing now, and the choice reaches the same keys.
+    const E = await W.eval("import('/src/ui/dialogs/effects.js')"); E.openEffects();
+    const M = () => D.querySelector('#fx-modal'), card = m => M().querySelector(`.fx-card[data-m="${m}"]`);
+    eq([...M().querySelectorAll('.fx-card')].map(x => x.dataset.m).join(), 'auto,full,lite,motion', 'cuatro opciones');
+    card('lite').click(); eq(W.localStorage.getItem('revela.perf'), 'lite'); assert(/modo ligero elegido por ti/.test(M().querySelector('.fx-now').textContent), 'dice cómo está ahora');
+    card('full').click(); eq([W.localStorage.getItem('revela.perf'), W.localStorage.getItem('revela.motion')].join(), 'full,ignore'); assert(card('full').classList.contains('on'));
+    card('motion').click(); eq([W.localStorage.getItem('revela.perf'), W.localStorage.getItem('revela.motion') || ''].join(), 'full,');
+    card('auto').click(); eq([W.localStorage.getItem('revela.perf') || '', W.localStorage.getItem('revela.motion') || ''].join(), ',');
+    M().remove(); clean(); W.localStorage.setItem('revela.perf', 'full');      // (as the tests around it leave it)
+    assert(D.querySelector('[data-action="effects"]'), 'en Ver ▸ Mostrar ▸ Efectos');
+  });
+
   // A computer whose browser refuses graphics contexts (Francisco, 2026-10-30): no uncaught errors, pictures instead, light
   // mode from then on, and never maps rebuilt over and over.
   await test('WebGL que falla: mapas y 3D caen a su imagen sin errores sin capturar; límite de mapas vivos; sin bucles', async () => {
@@ -4185,6 +4260,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const mvs = [...F.document.querySelectorAll('model-viewer')];
       assert(mvs.length === 4 && mvs.every(m => /url\(/.test(m.style.background) || /url\(/.test(m.style.backgroundImage)), 'cada 3D, con su imagen');
       assert(F.__rvNoGL === true && F.__rvGS.dead === true, 'recuerda que no hay gráficos');
+      assert(mvs.every(m => /Imagen en vez de 3D/.test(m.parentElement.querySelector(':scope > .rvfx-badge')?.textContent || '')), 'y cada 3D lo dice en su esquina');
     }, '<script>window.__errs=[];addEventListener("error",function(e){__errs.push(e.message)});addEventListener("unhandledrejection",function(e){__errs.push("rej:"+(e.reason&&e.reason.message||e.reason))});var gc=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(t){return /webgl/.test(t)?null:gc.apply(this,arguments)};</script>');
     W.localStorage.setItem('revela.perf', 'full');
   });

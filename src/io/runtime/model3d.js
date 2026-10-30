@@ -22,6 +22,9 @@ export function model3dRuntime() {
     var k = parseFloat(mv.getAttribute('data-bleed')) || 1;
     mv.style.setProperty('background', 'center / ' + (k > 1 ? (100 / k).toFixed(1) + '% auto' : 'contain') + ' no-repeat url("' + p.replace(/["\\]/g, '') + '")', 'important');
     mv.style.pointerEvents = 'none'; mv.setAttribute('role', 'img'); if (mv.getAttribute('alt')) mv.setAttribute('aria-label', mv.getAttribute('alt'));
+    // (Said in the model's corner, with a way to try again — io/runtime/fx.js; nothing of it where the model is drawn.)
+    var F = window.__rvFX, box = mv.parentElement;
+    if (F && box && !box.closest('.rv-dlg-thumb')) { if (getComputedStyle(box).position === 'static') box.style.position = 'relative'; F.mark(box, ['pic3d']); }
   }
   // A graphics context the browser took away (too many, a driver reset) and did not give back within 2.5 s: the models on
   // the page are asked for again — twice at most —, which makes model-viewer draw them on a fresh one.

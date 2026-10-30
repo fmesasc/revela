@@ -130,7 +130,7 @@ export function geoMapRuntime(lib, rtl, words) {
     } catch (e) {}
     return gpuProbe;
   }
-  var perfSet = function () { try { var q = /[?&]perf=(lite|full)\b/.exec(location.search); return q ? q[1] : (localStorage.getItem('revela.perf') || ''); } catch (e) { return ''; } };
+  var perfSet = function () { var F = window.__rvFX; if (F) return F.perf(); try { var q = /[?&]perf=(lite|full)\b/.exec(location.search); return q ? q[1] : (localStorage.getItem('revela.perf') || ''); } catch (e) { return ''; } };
   var weak = function () {
     var p = perfSet(); if (p === 'lite' || p === 'full') return p === 'lite';
     return !!(GS.lite || gpu().soft || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) || (navigator.deviceMemory && navigator.deviceMemory <= 4));
@@ -157,11 +157,11 @@ export function geoMapRuntime(lib, rtl, words) {
   // chip that is the processor itself, or a context lost. A laptop with four cores and a real graphics chip is «weak»
   // for the tiles — fewer workers, less fetched ahead — but keeps its relief: with the light mode it would have lost
   // the 3D of every map in its slides and in the exported page, which is what that page was made to show.)
-  var reliefOff = function () {
-    var p = perfSet(); if (p === 'lite') return true;
+  var reliefOff = function (forced) {
+    var p = forced === undefined ? perfSet() : forced; if (p === 'lite') return true;
     return !!(frail() || (p !== 'full' && (GS.lite || gpu().soft)));
   };
-  var reduced = function () { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); };
+  var reduced = function () { var F = window.__rvFX; if (F) return F.reduced(); return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); };
   var ease = function (f) { return f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2; };
   function esc(x) { return String(x).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
@@ -416,13 +416,38 @@ export function geoMapRuntime(lib, rtl, words) {
     if (window.ResizeObserver && !opts.capture) { c.ro = new ResizeObserver(function () { if (!c.dead) { if (c.staged) c.center(); else c.resize(); } }); c.ro.observe(el); }
     // (kind 'gl': this computer can't draw the live map — the satellite picture stands in; 'load': it is still loading.)
     function offline(on, kind) {
-      if (kind !== 'load') { c.failed = on; el.classList.toggle('rvm-offline', on); }
+      if (kind !== 'load') { c.failed = on; c.fk = on ? (kind === 'gl' ? 'gl' : 'offline') : ''; el.classList.toggle('rvm-offline', on); }
       var n = el.querySelector(':scope > .rvm-off');
       var text = kind === 'load' ? words.loading : kind === 'gl' ? (words.nogl || words.offline) : words.offline;
       if (on && text && !opts.quiet) { if (!n) { n = document.createElement('div'); n.className = 'rvm-off'; el.appendChild(n); } n.textContent = text; n.classList.toggle('rvm-loading', kind === 'load'); }
       if (!on && n) n.remove();
       if (on && kind !== 'load') staticMap();
+      if (kind !== 'load') fxNote(n);
     }
+    // What this computer has taken from the map, said in its corner (io/runtime/fx.js): no live map at all (no WebGL, no
+    // connection: its picture), no relief (light mode), no flights («reduce motion») — and, if the user asked for every
+    // effect on a computer that would have lost them, that this is so and how to go back. Nothing at all in the normal case.
+    function fxNote(anchor) {
+      var F = window.__rvFX; if (!F || opts.capture || c.dead) return;
+      var list = [];
+      if (c.fk) list.push({ k: c.fk, why: c.fk === 'gl' ? words.nogl : words.offline });
+      else if (el.classList.contains('rvm-on')) {
+        var flies = cfg.stops && cfg.stops.length > 1, noRelief = !!cfg.dem && reliefOff();
+        if (F.mode() === 'full') { if ((flies && F.system()) || (cfg.dem && reliefOff('') && !noRelief)) list.push('full'); }
+        else { if (flies && F.reduced()) list.push('motion'); if (noRelief) list.push('lite'); }
+      }
+      F.mark(el, list, list.length && c.fk ? (anchor || el.querySelector(':scope > .rvm-off:not(.rvm-loading)')) : null);
+    }
+    // The choice was changed (a badge's button, the settings): the relief and the badge follow, at once.
+    c.fx = function () {
+      if (c.dead) return;
+      var m = c.map;
+      if (m && el.classList.contains('rvm-on') && c.cfg.dem) try {
+        if (reliefOff()) m.setTerrain(null);
+        else { if (!m.getSource('rv-dem')) m.addSource('rv-dem', c.cfg.dem); m.setTerrain({ source: 'rv-dem', exaggeration: 1.3 }); }
+      } catch (e) {}
+      fxNote();
+    };
     // Without WebGL (or a map that would not start): the world's picture where the stop is, from the same satellite tiles
     // as the live look, laid out by hand — a handful of pictures, no graphics card needed.
     function staticMap() {
@@ -608,7 +633,7 @@ export function geoMapRuntime(lib, rtl, words) {
           }, navigator.onLine === false ? 0 : 20000);
         m.on('load', function () {
           done = true; clearTimeout(t); clearTimeout(wait); el._rvmTries = 0; loading(false); offline(false); var st = el.querySelector(':scope > .rvm-static'); if (st) st.remove();
-          el.classList.add('rvm-on'); if (!c.first) c.go(c.cur, false);
+          el.classList.add('rvm-on'); fxNote(); if (!c.first) c.go(c.cur, false);
           // (MapLibre opens its compact credits at first: closed to their ⓘ, the short line says who to thank.)
           var at = box.querySelector('.maplibregl-ctrl-attrib'); if (at) at.classList.remove('maplibregl-compact-show');
           credit.hidden = !cfg.short; ok(c);
@@ -963,13 +988,14 @@ export function geoMapRuntime(lib, rtl, words) {
     };
     c.resize = function () { bleed(); if (c.map) { try { c.map.setPixelRatio(pr()); } catch (e) {} c.map.resize(); } };
     c.destroy = function () {
-      c.dead = true; c.token++; motion(false); if (c.ro) c.ro.disconnect(); mounted = mounted.filter(function (x) { return x !== c; }); clearTimeout(c.at); job = null;
+      c.dead = true; c.token++; motion(false); if (window.__rvFX) window.__rvFX.subs = window.__rvFX.subs.filter(function (f) { return f !== c.fx; }); var fb = el.querySelector(':scope > .rvfx-badge:not(.rvm-off)'); if (fb) fb.remove(); if (c.ro) c.ro.disconnect(); mounted = mounted.filter(function (x) { return x !== c; }); clearTimeout(c.at); job = null;
       if (c.map) try { var cv = c.map.getCanvas(); c.map.remove(); release(cv); } catch (e) {}
       c.crash = null; window.__rvMapCrash = (window.__rvMapCrash || []).filter(function (f) { return f !== crash; });
       box.remove(); note.remove(); credit.remove(); el.classList.remove('rvm-on', 'rvm-offline', 'rvm-fade'); el.style.overflow = 'hidden'; el.removeAttribute('data-bled'); var n = el.querySelector(':scope > .rvm-off'); if (n) n.remove();
       el._rvm = null;
     };
     mounted.push(c);
+    if (window.__rvFX) window.__rvFX.subs.push(c.fx);
     return c;
   }
 

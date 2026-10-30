@@ -125,6 +125,7 @@ const SYN = {
   'a:resize-deck': 'tamaño|redimensionar|a4|cuadrado|vertical|instagram|historias|proporción|size|resize|aspect ratio|format|dimensions',
   'a:bg-advanced': 'fondo|imagen de fondo|vídeo de fondo|background|wallpaper|fond|hintergrund|sfondo',
   'a:brand-kit': 'marca|logo|logotipo|corporativo|identidad|brand|branding|corporate|marque|marke',
+  'a:effects': 'efectos|mapas lentos|modo ligero|reducir movimiento|animaciones|rendimiento|effects|light mode|reduce motion|performance|effets|mode léger|effekte|leichter modus',
   'a:appearance': 'modo oscuro|modo claro|tema oscuro|oscuro|claro|apariencia|dark mode|light mode|dark|appearance|mode sombre|dunkelmodus',
   'a:canvas-mode': 'prezi|lienzo|zoom|no lineal|canvas|infinite canvas',
   'a:anim-panel': 'panel de animación|orden de animaciones|línea de tiempo|animation pane|timeline',

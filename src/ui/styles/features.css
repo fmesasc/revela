@@ -406,6 +406,7 @@ body.master-view #navigator{display:flex}
 .titlebar .ap-btn{border:0;background:none;color:var(--txt2);cursor:pointer;padding:4px;border-radius:6px}
 .titlebar .ap-btn:hover{background:var(--line)}
 @media (max-width:860px){.ap-cards{grid-template-columns:repeat(2,1fr)}}
+.fx-cards{grid-template-columns:repeat(2,1fr)}.fx-card{padding:10px 8px;text-align:center}.fx-card small{font-size:11px;line-height:1.3;color:var(--txt2,var(--txt));opacity:.75}.fx-now span{display:block}
 /* Playback dialog (videos and GIFs) */
 .dk-aside .mp-view{height:280px}
 .mp-view{height:240px;border-radius:8px;overflow:hidden;background:repeating-conic-gradient(#ccc 0 25%,#fff 0 50%) 0 0/16px 16px}

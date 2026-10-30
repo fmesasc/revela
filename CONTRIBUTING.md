@@ -82,6 +82,12 @@ they also export and play the `showcase_*` catalogues and fail on any page error
 exported, put it in the test's exempt list with the reason. A new `showcase_*` catalogue for a new feature is the
 cheapest way to cover it.
 
+**Nothing is taken away in silence.** If a runtime drops or reduces something because of the computer or the settings
+(no WebGL, no connection, light mode, the system's «reduce motion»), it says so where it happens with
+`window.__rvFX.mark(box, causes)` (`src/io/runtime/fx.js`): a badge in the corner with the reason and a button to change it,
+and nothing at all in the normal case. The choice (Ver ▸ Efectos) is read through `__rvFX.perf()` / `__rvFX.reduced()`,
+not from `matchMedia` or `localStorage` directly. Test: `avisos de efectos` in `tests/suites/objects.js`.
+
 ## Coding style
 
 - Modern JavaScript (ES modules), no framework.

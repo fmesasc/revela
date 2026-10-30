@@ -15,9 +15,10 @@ import { deckTag } from '../../features/document/proofing.js';
 import { geoMapRuntime } from '../../io/runtime/geomap.js';
 import { t, currentLang } from '../../i18n/index.js';
 import { toast } from '../shell/toast.js';
+import { installFx } from './effects.js';
 
 let runtime = null;
-const rt = () => (runtime ||= geoMapRuntime(MAPLIBRE, MAPLIBRE_RTL, { offline: t('Sin conexión: el mapa no se puede cargar'), loading: t('Cargando el mapa…'), nogl: t('Este equipo no puede dibujar el mapa en vivo: se muestra la imagen de satélite') }));
+const rt = () => (installFx(), runtime ||= geoMapRuntime(MAPLIBRE, MAPLIBRE_RTL, { offline: t('Sin conexión: el mapa no se puede cargar'), loading: t('Cargando el mapa…'), nogl: t('Este equipo no puede dibujar el mapa en vivo: se muestra la imagen de satélite') }));
 const lang = () => deckTag(state.deck, currentLang()).split('-')[0];
 const SETTINGS = ['look', 'theme', 'route', 'routeColor', 'terrain', 'names', 'labels', 'showAll', 'curve', 'marker', 'arrive', 'past', 'motion', 'speed', 'start', 'pulse', 'transparent', 'mode', 'view', 'edge', 'frame'];
 const pick = b => Object.fromEntries(SETTINGS.filter(k => b[k] !== undefined).map(k => [k, structuredClone(b[k])]));
