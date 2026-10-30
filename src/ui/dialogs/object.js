@@ -346,6 +346,23 @@ export function openSlidePicker(b) {
   back.addEventListener('click', e => { if (e.target === back) close(); });
   back.querySelectorAll('.sp-item').forEach(x => x.addEventListener('click', () => { blocks.setSlideRefTarget(x.dataset.id); close(); }));
 }
+// «Continuar la web de otra diapositiva»: the other webs of the presentation, to take their page on (blocks.followEmbed).
+export function openWebPicker(b) {
+  if (document.getElementById('wp-modal')) return;
+  const back = document.createElement('div');
+  back.id = 'wp-modal'; back.className = 'modal-backdrop';
+  const host = u => { try { return new URL(u).host || u; } catch { return u; } };
+  const items = blocks.webChoices(b.id).map(c => `<button class="sp-item${c.live && c.live === b.live ? ' on' : ''}" data-id="${esc(c.id)}">${c.n}. ${esc(host(c.src))}</button>`).join('');
+  back.innerHTML = `<div class="modal" style="text-align:start;min-width:320px;max-width:min(520px,92vw);max-height:70vh;overflow:auto">
+    <button class="modal-close">✕</button><h3>${t('Continuar la web de otra diapositiva…')}</h3>
+    <p class="host-help">${t('Elige la web que seguirá aquí. Al presentar, continúa en la página donde la dejaste en la otra diapositiva, sin recargarse; cada una conserva su tamaño y su sitio.')}</p>
+    <div class="sp-list">${items}</div></div>`;
+  document.body.appendChild(back);
+  const close = () => back.remove();
+  back.querySelector('.modal-close').addEventListener('click', close);
+  back.addEventListener('click', e => { if (e.target === back) close(); });
+  back.querySelectorAll('.sp-item').forEach(x => x.addEventListener('click', () => { blocks.followEmbed(b.id, x.dataset.id); close(); }));
+}
 export function openCaption(b) {
   if (document.getElementById('cap-modal')) return;
   const back = document.createElement('div');

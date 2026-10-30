@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><title>Página con estado</title>
+<body style="font:28px sans-serif;margin:20px"><p id="o">cargando…</p><button id="b" style="font-size:28px">+1</button>
+<script>
+// A page with its own state, for the tests of «web viva»: a random id per load (a reload makes a new one) and a counter.
+var id = Math.random().toString(36).slice(2), n = 0;
+function say(k) { parent.postMessage({ rvStateful: k, id: id, n: n, href: location.href }, '*'); document.getElementById('o').textContent = id + ' · ' + n; }
+b.onclick = function () { n++; say('click'); };
+addEventListener('message', function (e) { if (e.data === 'rv-bump') n++; if (e.data === 'rv-ping' || e.data === 'rv-bump') say('pong'); });
+say('load');
+</script>

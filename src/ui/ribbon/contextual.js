@@ -30,7 +30,7 @@ import { openSaveAsPicture } from '../dialogs/picture.js';
 import { openPollEditor } from '../dialogs/poll.js';
 import { openCodeEditor } from '../dialogs/code.js';
 import { openLinkChart, refreshChart } from '../dialogs/data.js';
-import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
+import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openWebPicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle } from '../dialogs/object.js';
 import { alertDialog, promptDialog } from '../dialogs/dialog.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
 import { startMagnifyDraw } from '../canvas/magnifyview.js';
@@ -296,6 +296,8 @@ function groupsFor(b) {
   else if (b.type === 'icon') G.push(['Icono', [btn('interests', 'Cambiar icono', () => togglePopover(document.querySelector('#ribbon [data-page="ctx"] [data-ctx="icon-change"]'), 'icons', { replaceId: b.id }), null, 'icon-change'),
     btn('palette', 'Color del icono', () => openIconColor(b))]]);
   else if (b.type === 'embed') G.push(['Web', [btn(b.display === 'card' ? 'web' : 'link', b.display === 'card' ? 'Mostrar la web' : 'Mostrar como tarjeta', () => blocks.setEmbedDisplay(b.id, b.display === 'card' ? 'frame' : 'card')),
+    ...(b.display !== 'card' && blocks.isWebFrame(b) ? [btn('sync_alt', 'Web viva', () => blocks.setEmbedLive(b.id, !b.live), !!b.live),
+      ...(blocks.webChoices(b.id).length ? [btn('link', 'Continuar otra web', () => openWebPicker(b))] : [])] : []),
     ...(blocks.isVideoEmbed(b.src) ? [btn('content_cut', 'Fragmento del vídeo', () => askVideoClip(b))] : [])]]);
   else if (b.type === 'slideref') G.push(['Zoom', [btn('slideshow', 'Elegir diapositiva', () => openSlidePicker(b)), btn('undo', 'Volver aquí', () => blocks.toggleSlideRefReturn(), !!b.returnBack)]]);
   else if (b.type === 'camera') G.push(['Cámara', [btn('circle', 'Círculo', () => set(b, x => { x.shape = 'circle'; }), b.shape === 'circle'), btn('crop_square', 'Redondeada', () => set(b, x => { x.shape = 'rounded'; }), b.shape === 'rounded'),

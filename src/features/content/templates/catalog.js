@@ -466,6 +466,10 @@ export const CATALOG = {"biz_strategy":{"name":"Plan estratégico y OKR","summar
   "show_baetulo":{"name":"Baetulo: los romanos en Badalona","summary":"Historia local con seis modelos 3D hechos con IA: un romano que pasea, un legionario, ánfora, lucerna, barco y Venus; con retos para clase","cat":"showcase","file":"show_baetulo"},
   "show_barcelona":{"name":"Barcelona: Gaudí, Barcino y castells","summary":"Clase sobre Barcelona con seis modelos 3D hechos con IA: Sagrada Família, Drac, Batlló, Torre Glòries, un fanal y un casteller que pasea","cat":"showcase","file":"show_barcelona"},
   "show_madrid":{"name":"Madrid en cinco piezas 3D","summary":"Madrid para clase con cinco modelos 3D hechos con IA: Sol, Alcalá, Cibeles, Debod y un chulapo que pasea; con datos y retos","cat":"showcase","file":"show_madrid"},
+  "show_motion_earth":{"name":"La Tierra en movimiento: volcanes, olas, auroras y tormentas","summary":"Cuatro fenómenos de la Tierra con vídeos en bucle de fondo hechos con IA: volcanes (magma, erupciones y La Palma 2021), olas y tsunamis, auroras y tormentas con rayos; con dibujos, tablas, un cálculo, una actividad de observar y un cuestionario","cat":"showcase","file":"show_motion"},
+  "show_motion_nature":{"name":"Naturaleza en bucle: selva, agua dulce, arrecifes y bosque","summary":"Cuatro ecosistemas con vídeos en bucle de fondo hechos con IA: la selva y sus capas, el ciclo del agua y las cascadas, los arrecifes de coral y su simbiosis, y por qué cambian de color las hojas en otoño; con dibujos, gráfico, tablas y cuestionario","cat":"showcase","file":"show_motion"},
+  "show_motion_history":{"name":"Historia con atmósfera: Roma, castillos, pirámides y vikingos","summary":"Cuatro escenas de historia con vídeos en bucle de fondo hechos con IA (ambientación artística, no reconstrucciones exactas): el Foro romano, el castillo y el feudalismo, las pirámides de Giza y los barcos vikingos; con línea de tiempo, esquemas, tabla y cuestionario","cat":"showcase","file":"show_motion"},
+  "show_motion_space":{"name":"Viaje por el espacio: nebulosas, órbita, Marte y Saturno","summary":"Cuatro destinos del espacio con vídeos en bucle de fondo hechos con IA: una nebulosa y el nacimiento de las estrellas, la Tierra vista desde la órbita de la ISS, Marte (gravedad y rovers) y Saturno (sus anillos y su densidad); con cálculos, tablas, gráfico y cuestionario","cat":"showcase","file":"show_motion"},
   "showcase_transitions":{"name":"Catálogo: transiciones","summary":"Las 22 transiciones de diapositiva, una a una: entrada, salida distinta, direcciones, velocidad y avance automático","cat":"showcase","file":"showcase"},
   "showcase_animations":{"name":"Catálogo: animaciones","summary":"Todas las animaciones de objeto: entrada, énfasis, salida, trayectorias, dibujar, encadenadas, sonidos y varias en un objeto","cat":"showcase","file":"showcase"},
   "showcase_3d":{"name":"Catálogo: el 3D a fondo","summary":"Modelos 3D con todas sus opciones: vistas, movimientos al entrar, giro, bordes, margen, clips, andar y llegada con Transformar","cat":"showcase","file":"showcase"},
@@ -534,5 +538,6 @@ export const LOADERS = {
   "show_baetulo": () => import('./show_baetulo.js'),
   "show_barcelona": () => import('./show_barcelona.js'),
   "show_madrid": () => import('./show_madrid.js'),
+  "show_motion": () => import('./show_motion.js'),
   "showcase": () => import('./showcase.js'),
 };

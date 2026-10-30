@@ -136,6 +136,28 @@ export function setWebCard(id, props) {
   commit(() => { for (const [k, v] of Object.entries(props)) { if (v) b[k] = v; else delete b[k]; } });
 }
 
+// «Web viva»: web objects with the same `live` name are one page that keeps its place from slide to slide (io/runtime/
+// liveframe.js): the web shown on slide 3, navigated, goes on where it was left on slide 8. A web alone with a `live` name
+// keeps its place when we come back to its slide. Each object keeps its own size and position.
+const newLiveId = () => 'w' + Math.random().toString(36).slice(2, 9);
+const embedById = id => { for (const s of state.deck.slides) { const b = s.blocks.find(x => x.id === id && x.type === 'embed'); if (b) return b; } return null; };
+export const isWebFrame = b => b.type === 'embed' && b.srcdoc == null && b.display !== 'card' && /^https?:\/\//i.test(b.src || '');
+// The other webs of the presentation a web can follow: [{ id, n (its slide's number), src, live }].
+export function webChoices(excludeId) {
+  return state.deck.slides.flatMap((s, i) => s.blocks.filter(b => isWebFrame(b) && b.id !== excludeId).map(b => ({ id: b.id, n: i + 1, src: b.src, live: b.live || '' })));
+}
+// How many web objects share this one's page (itself included; 0 when it isn't live).
+export const liveShare = b => (b.live ? state.deck.slides.reduce((n, s) => n + s.blocks.filter(x => x.type === 'embed' && x.live === b.live).length, 0) : 0);
+export function setEmbedLive(id, on) {
+  const b = embedById(id); if (!b) return;
+  commit(() => { if (on) b.live = b.live || newLiveId(); else delete b.live; });
+}
+// This web goes on with the page of another one (on any slide): same page, kept where it was left.
+export function followEmbed(id, sourceId) {
+  const b = embedById(id), from = embedById(sourceId); if (!b || !from || b === from) return;
+  commit(() => { from.live = from.live || newLiveId(); b.live = from.live; b.src = from.src; delete b.display; });
+}
+
 // The address a site allows inside other pages: a video's normal page refuses
 // to be framed, its player doesn't. Other addresses are left as they are.
 export function embedUrl(input) {

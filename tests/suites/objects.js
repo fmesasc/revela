@@ -889,6 +889,51 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(/<div class="fragment rv-path" data-fragment-index="1" [^>]*--dx:480px[^>]*><span class="caption"/.test(R.io.buildHTML()), 'su pie de foto se mueve con él');
   });
 
+  await test('bibliotecas externas: si jsDelivr no responde, se prueba una vez con unpkg', async () => {
+    const W = frame.contentWindow, S = await W.eval("import('/src/core/vendor.js')"), urls = [];
+    const ob = new W.MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.tagName === 'SCRIPT') urls.push(n.src); })));
+    ob.observe(W.document.head, { childList: true });
+    const err = await S.loadScript('https://cdn.jsdelivr.net/npm/revela-no-existe-0.0.0/x.js').then(() => null, e => e);
+    ob.disconnect();
+    assert(err && /revela-no-existe/.test(err.message), 'sin biblioteca, el error de siempre');
+    eq(urls.join(), 'https://cdn.jsdelivr.net/npm/revela-no-existe-0.0.0/x.js,https://unpkg.com/revela-no-existe-0.0.0/x.js', 'primero jsDelivr y luego la copia de unpkg, una vez');
+  });
+
+  await test('3D en equipos flojos: sin WebGL su imagen (no una caja vacía), primero los modelos de la diapositiva, y uno que falla se pide otra vez', async () => {
+    const W = frame.contentWindow, RT = await W.eval("import('/src/io/runtime/model3d.js')");
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    const mk = (src, extra = {}) => { const m = D.createElement('model-viewer'); m.setAttribute('src', src); m.setAttribute('data-poster', png); m.style.cssText = 'position:fixed;left:0;top:0;width:50px;height:50px'; for (const [k, v] of Object.entries(extra)) m.setAttribute(k, v); D.body.appendChild(m); return m; };
+    const gc = W.HTMLCanvasElement.prototype.getContext, made = [];
+    try {
+      // No WebGL: the picture is the box's background and the viewer is never asked to draw.
+      W.HTMLCanvasElement.prototype.getContext = function (t, ...a) { return /webgl/.test(t) ? null : gc.call(this, t, ...a); };
+      const none = RT.model3dRuntime(); W.HTMLCanvasElement.prototype.getContext = gc;
+      assert(none.nogl === true, 'detecta que no hay WebGL');
+      const a = mk('x.glb'); made.push(a); none.enter(null);
+      assert(a.__flat && /url\(/.test(a.style.background) && /data:image\/png/.test(a.style.background), 'su imagen de fondo, en su caja (así siguen sus animaciones)');
+      // With WebGL: models of the slide first; the neighbours' once those are in (or have failed).
+      const rt = RT.model3dRuntime(); assert(rt.nogl === false, 'con WebGL, como siempre');
+      const s1 = D.createElement('section'), s2 = D.createElement('section'), cur = D.createElement('model-viewer'), next = D.createElement('model-viewer');
+      cur.setAttribute('src', 'a.glb'); next.setAttribute('src', 'b.glb'); s1.appendChild(cur); s2.appendChild(next); D.body.append(s1, s2); made.push(s1, s2);
+      const had = W.Reveal; W.Reveal = { getSlides: () => [s1, s2] };
+      try {
+        rt.preload(s1);
+        eq(cur.getAttribute('loading'), 'eager', 'el de la diapositiva, ya');
+        assert(next.getAttribute('loading') !== 'eager', 'el de la siguiente, esperando');
+        cur.dispatchEvent(new W.Event('load')); await sleep(20);
+        eq(next.getAttribute('loading'), 'eager', 'cargado el primero, empieza el siguiente');
+      } finally { W.Reveal = had; }
+      // A model that fails to load is asked for again (after 1.5 s), up to three times.
+      const m = mk('c.glb'); made.push(m); rt.enter(null);
+      m.dispatchEvent(new W.Event('error')); assert(m.getAttribute('src') === 'c.glb', 'en el momento, no cambia');
+      for (let i = 0; i < 60 && m.hasAttribute('src') && m.__tries < 2; i++) await sleep(50);
+      await sleep(200); eq(m.getAttribute('src'), 'c.glb', 'y lo vuelve a pedir');
+      // Which computers get the lean mode: ?perf= and 'revela.perf' decide.
+      W.localStorage.setItem('revela.perf', 'lite'); assert(RT.model3dRuntime().lean === true, 'perf=lite: ligero');
+      W.localStorage.setItem('revela.perf', 'full'); assert(RT.model3dRuntime().lean === false, 'perf=full: completo');
+    } finally { W.HTMLCanvasElement.prototype.getContext = gc; W.localStorage.setItem('revela.perf', 'full'); made.forEach(x => x.remove()); D.querySelectorAll('model-viewer').forEach(x => { if (!x.closest('#stage-grid, #stage, .block')) x.remove(); }); }
+  });
+
   // "Controlar con la cámara": a person seen by the camera (MediaPipe's 33 pose
   // landmarks, made up here: x right in the picture, y down, z away from it).
   const person = ({ armL = 'down', armR = 'down', headYaw = 0, lean = 0, hide = [] } = {}) => {
@@ -3968,6 +4013,56 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       RV.next(); await sleep(50); eq(vis(), '1', 'un clic: la de la segunda');
       RV.prev(); await sleep(50); eq(vis(), '0', 'y atrás');
     });
+  });
+
+  await test('mapa: sin WebGL, o si MapLibre no arranca, la imagen de satélite y un aviso (nunca una caja vacía); la detección de equipos flojos', async () => {
+    reset(); const { G, W } = await mapSetup(); R.slides.addSlide('blank'); await sleep(10);
+    const b = G.addMap({ route: 'none', stops: [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 5 }, { name: 'París', lon: 2.35, lat: 48.86, zoom: 6 }] });
+    const html = R.io.buildHTML(R.state.deck, { inApp: true }), S = await W.eval("import('/src/core/vendor.js')");
+    assert(/Cargando el mapa|Este equipo no puede dibujar el mapa en vivo/.test(html), 'la presentación lleva los avisos nuevos');
+    const play = async (lib, run) => {
+      const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+      try {
+        f.srcdoc = html.split(JSON.stringify(S.MAPLIBRE)).join(JSON.stringify(lib));
+        for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
+        await run(f.contentWindow, f.contentWindow.Reveal);
+      } finally { f.remove(); }
+    };
+    const stub = u => 'data:text/javascript;charset=utf-8,' + encodeURIComponent(u) + '%2F%2F';
+    // (No WebGL at all: the satellite tiles of the first stop, laid out by hand, and a word about it.)
+    await play(stub('window.__rvGL=false;' + mapStub), async (F, RV) => {
+      RV.slide(1); const el = F.document.querySelector('[data-geomap]');
+      for (let k = 0; k < 60 && !el.querySelector('.rvm-static'); k++) await sleep(50);
+      assert(el.classList.contains('rvm-offline') && el.querySelector('.rvm-off') && /satélite/.test(el.querySelector('.rvm-off').textContent), 'aviso de que este equipo no dibuja el mapa en vivo');
+      const imgs = [...el.querySelectorAll('.rvm-static img')];
+      assert(imgs.length >= 4 && imgs.length <= 64 && imgs.every(i => /tiles\.maps\.eox\.at\/wmts\/1\.0\.0\/s2cloudless-2024_3857\/default\/g\/\d+\/\d+\/\d+\.jpg$/.test(i.src)), 'su imagen de satélite, hecha de teselas: ' + imgs.length);
+      assert(!el._rvm.map && el._rvm.failed, 'sin mapa en vivo');
+      RV.next(); await sleep(50); assert(true, 'un clic sin mapa en vivo no rompe nada');
+    });
+    // (MapLibre there but unable to start its context: it throws; the same, not a blank box.)
+    await play(stub(mapStub.replace('function M(o){var t=this;', "function M(o){throw new Error('Failed to initialize WebGL');var t=this;")), async (F, RV) => {
+      RV.slide(1); const el = F.document.querySelector('[data-geomap]');
+      for (let k = 0; k < 60 && !el.querySelector('.rvm-static'); k++) await sleep(50);
+      assert(el.querySelector('.rvm-static') && el.classList.contains('rvm-offline'), 'si MapLibre no arranca, también');
+    });
+    // (A style that doesn't come: asked for again.)
+    await play(stub(mapStub.replace("W.maplibregl={Map:M", "W.__styles=0;var S0=M.prototype.setStyle;M.prototype.setStyle=function(s){W.__styles++;return S0.apply(this,arguments);};W.maplibregl={Map:M")), async (F, RV) => {
+      RV.slide(1); const el = F.document.querySelector('[data-geomap]');
+      for (let k = 0; k < 60 && !el.classList.contains('rvm-on'); k++) await sleep(50);
+      assert(el.classList.contains('rvm-on') && !el.querySelector('.rvm-off'), 'con WebGL, el mapa en vivo como siempre (sin aviso ni imagen aparte)');
+      assert(!el.querySelector('.rvm-static'), 'y sin la imagen de reserva');
+    });
+    // Which computers get the light mode: four cores or fewer, little memory or WebGL by software; ?perf= and 'revela.perf' decide.
+    const GM = await W.eval("import('/src/io/runtime/geomap.js')"), run = GM.geoMapRuntime('x', 'y', {});
+    W.localStorage.setItem('revela.perf', 'lite'); assert(run.weak() === true, 'perf=lite fuerza el modo ligero');
+    W.localStorage.setItem('revela.perf', 'full'); assert(run.weak() === false, 'perf=full lo quita, sea el equipo que sea');
+    const hc = Object.getOwnPropertyDescriptor(W.Navigator.prototype, 'hardwareConcurrency');
+    W.localStorage.removeItem('revela.perf');
+    try {
+      Object.defineProperty(W.Navigator.prototype, 'hardwareConcurrency', { get: () => 2, configurable: true }); assert(run.weak() === true, 'con 2 núcleos, ligero');
+      Object.defineProperty(W.Navigator.prototype, 'hardwareConcurrency', { get: () => 16, configurable: true });
+    } finally { Object.defineProperty(W.Navigator.prototype, 'hardwareConcurrency', hc); W.localStorage.setItem('revela.perf', 'full'); }
+    assert(typeof run.gpu().webgl === 'boolean' && typeof run.gpu().soft === 'boolean', 'sabe si hay WebGL y si lo dibuja el procesador');
   });
 
   // What the map does at a stop (motion), how its slide starts (from space, from the previous slide's map), ripples

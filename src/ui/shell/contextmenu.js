@@ -36,7 +36,7 @@ import { cameraLive, setCameraLive, setCameraBackground } from '../canvas/camera
 import { puppetTrying, tryPuppet, togglePuppet } from '../canvas/puppetview.js';
 import { openCameraEffects } from '../dialogs/media.js';
 import { spellAt, spellMenu } from './spellcheck.js';
-import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle, openCellShading } from '../dialogs/object.js';
+import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, openBoxStyle, openSlidePicker, openWebPicker, openCaption, openAlt, openImageCrop, removeBackground, openTableStyle, openCellShading } from '../dialogs/object.js';
 import { pasteAnything, canReadClipboard } from '../../features/document/syspaste.js';
 
 let menuEl, menuOpenedAt = 0;
@@ -354,6 +354,10 @@ function forBlock(b, cell = null) {
     items.push(
       b.display === 'card' ? ['Mostrar la web incrustada', () => blocks.setEmbedDisplay(b.id, 'frame')]
         : ['Mostrar como tarjeta con enlace', () => blocks.setEmbedDisplay(b.id, 'card')],
+      ...(b.display !== 'card' && blocks.isWebFrame(b) ? [
+        [b.live ? 'Dejar de mantener la web viva' : 'Mantener la web viva (sigue donde la dejé)', () => blocks.setEmbedLive(b.id, !b.live)],
+        ...(blocks.webChoices(b.id).length ? [['Continuar la web de otra diapositiva…', () => openWebPicker(b)]] : []),
+      ] : []),
       ...(b.display === 'card' ? [
         ['Título de la tarjeta…', () => promptDialog(t('Título de la tarjeta:'), b.cardTitle || '').then(v => { if (v !== null) blocks.setWebCard(b.id, { cardTitle: v.trim() }); })],
         ['Imagen de la tarjeta…', () => pickCardImage(b)],

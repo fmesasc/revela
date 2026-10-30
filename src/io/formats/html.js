@@ -38,6 +38,7 @@ import { createCameraEngine, revelaCameraRuntime } from '../runtime/camera.js';
 import { modelAttrsHTML, bleedBox, edgeCSS } from '../../features/content/model3d.js';
 import { model3dRuntime } from '../runtime/model3d.js';
 import { geoMapRuntime } from '../runtime/geomap.js';
+import { liveFrameRuntime } from '../runtime/liveframe.js';
 import { mapConfig, stopIndex, mapAlt, isClear, mapEdgeCSS, MAP_MASK, fadesOut, mapFrameHTML } from '../../features/content/geomap.js';
 import { puppetBones, puppetMorph, puppetSolve, puppetMirror, createPuppet, revelaPuppetRuntime } from '../runtime/puppet.js';
 import { timerRuntime } from '../runtime/timer.js';
@@ -135,6 +136,9 @@ const PDF_CSS = `.rv-pdf-bar{position:absolute;left:50%;bottom:10px;transform:tr
   + `.rv-pdf-bar span{min-width:52px;text-align:center;font-size:14px}`;
 // Attached files: a click downloads the file (a PDF's page opens it in a new
 // tab); the PDF viewer loads it in its frame. From their data, as blobs.
+// A web object that shares its page with others (or keeps it alive): see io/runtime/liveframe.js.
+export const isLiveWeb = b => b.type === 'embed' && typeof b.live === 'string' && /^[\w-]{1,40}$/.test(b.live) && b.display !== 'card' && b.srcdoc == null && /^https?:\/\//i.test(b.src || '');
+const LIVEWEB_CSS = '.rv-liveslot{display:flex;align-items:center;justify-content:center;box-sizing:border-box;background:#f3f5f8;border:1px dashed #b8c2d1} .rv-liveopen{font:600 22px/1.2 system-ui,sans-serif;color:#2563c8} .rv-liveframe{max-width:none}';
 const FILE_JS = `(function(){function blob(el){var s=el.getAttribute('data-src'),i=s.indexOf(','),m=s.slice(5,i).split(';')[0],b=atob(s.slice(i+1)),a=new Uint8Array(b.length);
 for(var k=0;k<b.length;k++)a[k]=b.charCodeAt(k);return URL.createObjectURL(new Blob([a],{type:m}));}
 function act(el){var u=blob(el);if(el.hasAttribute('data-open')){window.open(u,'_blank','noopener');}else{var a=document.createElement('a');a.href=u;a.download=el.getAttribute('data-name')||'';document.body.appendChild(a);a.click();a.remove();}}
@@ -444,6 +448,11 @@ function blockHTMLRaw(b, slide) {
     const clicks = Array.from({ length: aiAnimSteps(b) }, (_, k) => `<span class="fragment rv-aseg" data-aseg-of="${esc(b.id)}" data-aseg="${k}"${b.animation && !b.animation.trigger ? ` data-fragment-index="${b.animation.order + k + 1}"` : ''} style="display:none"></span>`).join('');
     return `<iframe${a}${b.aiAnim ? ` data-rv-anim="${esc(b.id)}"` : ''} srcdoc="${esc(pageOf(b))}" sandbox="allow-scripts allow-popups" style="${box(b)}border:0;background:${b.transparent ? 'transparent' : '#fff'}"${b.transparent ? ' allowtransparency="true"' : ''}></iframe>${clicks}`;
   }
+  // A live web (b.live: the same page on several slides, or one that keeps its place when we come back): here only its slot,
+  // the page itself is one frame for all of them (io/runtime/liveframe.js). Without scripts, or printed, the slot links to it.
+  if (isLiveWeb(b))
+    return `<div${a} class="rv-liveslot" data-live="${b.live}" data-src="${esc(b.src)}" data-sandbox="${embedSandbox(b.src)}" data-w="${Math.round(b.w)}" data-h="${Math.round(b.h)}" role="group" aria-label="${esc(b.alt || b.src)}" style="${box(b)}">`
+      + `<a class="rv-liveopen" href="${esc(b.src)}" target="_blank" rel="noopener">${t('Abrir la web')}</a></div>`;
   if (b.type === 'embed')
     return `<iframe${a} src="${esc(b.src || '')}" referrerpolicy="strict-origin-when-cross-origin"${b.refreshMin ? ` data-refresh-min="${+b.refreshMin}"` : ''} `
       + `sandbox="${embedSandbox(b.src)}" `
@@ -915,6 +924,7 @@ function buildHTMLRaw(deck, { inApp = false, selfPaced = false, noCopy = false, 
   const hasTimer = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'timer'));
   const hasLock = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'lock'));
   const hasModel3d = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'model'));
+  const hasLiveWeb = deck.slides.some(s => !s.hidden && s.blocks.some(isLiveWeb));
   const hasPuppet = deck.slides.some(s => !s.hidden && s.blocks.some(b => b.type === 'model' && b.puppet));   // (a model following the presenter: io/runtime/puppet.js)   // (also for a model that carries on to the next slide)
   const hasLive = deck.slides.some(s => s.blocks.some(b => (b.type === 'chart' && b.dataUrl) || (b.type === 'embed' && b.refreshMin)));
   const ft = deck.footer || { show: false };
@@ -1005,6 +1015,7 @@ ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></scr
  ${/ data-pdf[ >]/.test(slides) ? PDF_CSS : ''}
  ${hasTrig ? `[data-bid]{cursor:pointer} .rv-trig.rv-in:not(.on){opacity:0} ${EFFECT_KF_CSS.replace(/\n/g, ' ')}` : ''}
  ${INK_CSS}
+ ${hasLiveWeb ? LIVEWEB_CSS : ''}
  ${hasLock ? LOCK_CSS : ''}
  ${READING_CSS}
  ${canvas ? '' : fit === 'bands' ? '.reveal-viewport{background:#000!important} .reveal .slides section>.stage{clip-path:inset(0)}'
@@ -1045,6 +1056,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${hasZoomable ? LIGHTBOX_JS : ''}
  ${canvas ? `${canvasRuntimeDeps()}\ncanvasRuntime(${JSON.stringify(groups.map(g => frameOf(g[0], deck.slides.indexOf(g[0]), deck.size)))}, ${w}, ${h});` : ''}
  ${hasModel3d ? `(${model3dRuntime.toString()})();` : ''}
+ ${hasLiveWeb ? `(${liveFrameRuntime.toString()})();` : ''}
  ${hasTimer ? `(${timerRuntime.toString()})();` : ''}
  ${hasLock ? `window.rvLock=(${lockRuntime})(${lockSHA256}, ${lockNorm}, ${jsData({ title: t('Candado'), code: t('Código'), digit: t('Cifra {n}'), open: t('Abrir'), close: t('Cerrar'),
    opened: t('¡Abierto!'), wrong: t('Ese no es el código.'), left: t('Quedan {n} intentos'), noMore: t('No quedan intentos.'), gate: t('Abre el candado para seguir.') })}, ${!inApp || selfPaced});` : ''}
@@ -1053,7 +1065,7 @@ ${hasCode ? `<script src="${REVEAL}/plugin/highlight/highlight.js"></script>` : 
  ${/ data-tabs="/.test(slides) ? `(${tabRuntime.toString()})();` : ''}
  ${/ data-rv-anim="/.test(slides) ? `(${aiAnimRuntime.toString()})();` : ''}
  ${/ data-pdf[ >]/.test(slides) ? `(${pdfRuntime.toString()})(${JSON.stringify(PDFJS)});` : ''}
- ${/ data-geomap="/.test(slides) ? `(${geoMapRuntime.toString()})(${JSON.stringify(MAPLIBRE)}, ${JSON.stringify(MAPLIBRE_RTL)}, ${jsData({ offline: t('Sin conexión: imagen guardada del mapa') })});` : ''}
+ ${/ data-geomap="/.test(slides) ? `(${geoMapRuntime.toString()})(${JSON.stringify(MAPLIBRE)}, ${JSON.stringify(MAPLIBRE_RTL)}, ${jsData({ offline: t('Sin conexión: imagen guardada del mapa'), loading: t('Cargando el mapa…'), nogl: t('Este equipo no puede dibujar el mapa en vivo: se muestra la imagen de satélite') })});` : ''}
  ${bgmHTML ? BGM_JS : ''}
  ${/ data-rv-start[ >]/.test(slides) ? START_JS : ''}${/class="fragment draw"/.test(slides) ? DRAW_JS : ''}
  ${bd.layers.length || / data-rv-dur="/.test(slides) ? BD_JS : ''}

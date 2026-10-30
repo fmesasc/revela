@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <title>Revela · tests</title>
+  <!-- (The tests measure the full mode: this machine draws WebGL by software, which the app takes for a weak computer and runs light.) -->
+  <script>try { localStorage.setItem('revela.perf', 'full'); } catch (e) {}</script>
   <style>
     body{font-family:system-ui,sans-serif;margin:0;display:flex;height:100vh}
     #app{flex:1;border:0}

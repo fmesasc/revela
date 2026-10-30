@@ -73,7 +73,17 @@ export function loadScript(src, global, module = false) {
   if (!pending.has(src)) pending.set(src, whileBusy(new Promise((res, rej) => {
     const s = document.createElement('script'); s.src = src; s.async = true; if (module) s.type = 'module';
     s.onload = () => res(global ? window[global] : undefined);
-    s.onerror = () => { pending.delete(src); s.remove(); rej(new Error('No se pudo cargar ' + (src.split('/npm/')[1] || src))); };
+    // (From the other CDN once, if the first doesn't answer: unpkg serves the same npm packages.)
+    s.onerror = () => {
+      s.remove();
+      if (src.startsWith(NPM) && !s.dataset.mirror) {
+        const m = document.createElement('script'); m.src = 'https://unpkg.com/' + src.slice(NPM.length); m.async = true; if (module) m.type = 'module'; m.dataset.mirror = '1';
+        m.onload = () => res(global ? window[global] : undefined);
+        m.onerror = () => { pending.delete(src); m.remove(); rej(new Error('No se pudo cargar ' + (src.split('/npm/')[1] || src))); };
+        document.head.appendChild(m); return;
+      }
+      pending.delete(src); rej(new Error('No se pudo cargar ' + (src.split('/npm/')[1] || src)));
+    };
     document.head.appendChild(s);
   })));                                                   // (counted: someone waits for it — core/busy.js)
   return pending.get(src);

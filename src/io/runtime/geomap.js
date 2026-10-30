@@ -54,15 +54,20 @@ export function geoMapRuntime(lib, rtl, words) {
     var st = document.createElement('style'); st.id = 'rvm-css'; st.textContent = CSS; document.head.appendChild(st);
   }
   function load(cfg) {
-    if (!gl) gl = window.maplibregl ? Promise.resolve(window.maplibregl) : new Promise(function (ok, ko) {
-      if (lib && ![].some.call(document.querySelectorAll('link[rel=stylesheet]'), function (l) { return l.href === lib + '.css'; })) {
-        var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = lib + '.css'; document.head.appendChild(l);
-      }
-      var s = document.createElement('script'); s.src = lib + '.js';
-      s.onload = function () { window.maplibregl ? ok(window.maplibregl) : ko(new Error('maplibre')); };
-      s.onerror = function () { gl = null; s.remove(); ko(new Error('maplibre')); };
-      document.head.appendChild(s);
-    });
+    // (The library from jsDelivr, and if that doesn't answer — a network that blocks it, a bad moment — from unpkg's copy.)
+    var bases = [lib, lib.replace('https://cdn.jsdelivr.net/npm/', 'https://unpkg.com/')].filter(function (b, i, a) { return a.indexOf(b) === i; });
+    function attempt(i) {
+      return new Promise(function (ok, ko) {
+        if (![].some.call(document.querySelectorAll('link[rel=stylesheet]'), function (l) { return l.href === bases[i] + '.css'; })) {
+          var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = bases[i] + '.css'; document.head.appendChild(l);
+        }
+        var s = document.createElement('script'); s.src = bases[i] + '.js';
+        s.onload = function () { window.maplibregl ? ok(window.maplibregl) : ko(new Error('maplibre')); };
+        s.onerror = function () { s.remove(); if (i + 1 < bases.length) ok(attempt(i + 1)); else { gl = null; ko(new Error('maplibre')); } };
+        document.head.appendChild(s);
+      });
+    }
+    if (!gl) gl = window.maplibregl ? Promise.resolve(window.maplibregl) : attempt(0);
     return gl.then(function (ml) {
       // (MapLibre reads the tiles of streets and names in one worker, outside Safari: plenty for a map that stays put,
       // a queue in a flight, where each zoom level brings new ones — even with them all in the browser's cache, a
@@ -71,7 +76,7 @@ export function geoMapRuntime(lib, rtl, words) {
       // threads —, leaving one free for the page, up to four; two at most on a small device. Before its first map.)
       if (!ml.__rvWorkers && ml.setWorkerCount && ml.getWorkerCount && ml.getWorkerCount() < 2) {
         var cores = Math.floor((navigator.hardwareConcurrency || 4) / 2);
-        ml.__rvWorkers = 1; try { ml.setWorkerCount(Math.max(1, Math.min(small ? 2 : 4, cores - 1 || 1))); } catch (e) {}
+        ml.__rvWorkers = 1; try { ml.setWorkerCount(Math.max(1, Math.min(small || weak() ? 2 : 4, cores - 1 || 1))); } catch (e) {}
       }
       // (Arabic place names need their letters joined and laid right to left: MapLibre's plugin, once, when used.)
       if (cfg && cfg.lang === 'ar' && rtl && ml.getRTLTextPluginStatus && ml.getRTLTextPluginStatus() === 'unavailable') { try { ml.setRTLTextPlugin(rtl, true); } catch (e) {} }
@@ -89,6 +94,31 @@ export function geoMapRuntime(lib, rtl, words) {
   // (A phone or a computer with little memory: two workers, and the flight ahead fetched only as far as its first
   // half — the rest as it flies, over the floor where it must; see fetchAhead().)
   var small = !!((navigator.deviceMemory && navigator.deviceMemory <= 4) || (window.matchMedia && matchMedia('(pointer: coarse)').matches));
+  // ── What this computer is, found out once: whether it can draw WebGL at all, and whether that is done by the processor
+  // (SwiftShader, llvmpipe: no graphics card — or a driver Chrome has blocked), has four cores or fewer, or little memory.
+  // Such a computer gets the light mode below, as a phone does (Francisco, 2026-10-30: «en ordenadores menos potentes los
+  // mapas tardan en cargar o no cargan»). Settable: ?perf=lite|full in the address, or localStorage 'revela.perf'.
+  var gpuProbe = null;
+  function gpu() {
+    if (window.__rvGL === false) return { webgl: false, soft: false, renderer: '' };         // (the tests' way of having none)
+    if (gpuProbe) return gpuProbe;
+    gpuProbe = { webgl: false, soft: false, renderer: '' };
+    try {
+      var cv = document.createElement('canvas'), g = cv.getContext('webgl2') || cv.getContext('webgl') || cv.getContext('experimental-webgl');
+      if (g) {
+        gpuProbe.webgl = true;
+        var x = g.getExtension('WEBGL_debug_renderer_info'); gpuProbe.renderer = x ? String(g.getParameter(x.UNMASKED_RENDERER_WEBGL) || '') : '';
+        gpuProbe.soft = /swiftshader|llvmpipe|softpipe|software|basic render|microsoft basic/i.test(gpuProbe.renderer);
+        var lose = g.getExtension('WEBGL_lose_context'); if (lose) lose.loseContext();      // (the probe's context isn't kept)
+      }
+    } catch (e) {}
+    return gpuProbe;
+  }
+  var perfSet = function () { try { var q = /[?&]perf=(lite|full)\b/.exec(location.search); return q ? q[1] : (localStorage.getItem('revela.perf') || ''); } catch (e) { return ''; } };
+  var weak = function () {
+    var p = perfSet(); if (p === 'lite' || p === 'full') return p === 'lite';
+    return !!(gpu().soft || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) || (navigator.deviceMemory && navigator.deviceMemory <= 4));
+  };
   var later = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
   // (In the speaker view's previews — reveal.js loads the presentation there with ?receiver — nothing is fetched
   // ahead: the presentation itself does it, into the same browser.)
@@ -104,7 +134,7 @@ export function geoMapRuntime(lib, rtl, words) {
   var lite = function () {
     var sv = window.Reveal && Reveal.isScrollView && Reveal.isScrollView();
     var phone = window.matchMedia && matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 820;
-    return !!(sv || phone || (navigator.deviceMemory && navigator.deviceMemory <= 2));
+    return !!(sv || phone || (navigator.deviceMemory && navigator.deviceMemory <= 2) || weak());
   };
   var reduced = function () { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); };
   var ease = function (f) { return f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2; };
@@ -339,11 +369,48 @@ export function geoMapRuntime(lib, rtl, words) {
     // (Its box resized under it — a slide adapted to the screen's proportion stretches a map that spans it:
     // screenfit.js —: the map follows, its centre and zoom kept, so what is new is more map around.)
     if (window.ResizeObserver && !opts.capture) { c.ro = new ResizeObserver(function () { if (!c.dead) { if (c.staged) c.center(); else c.resize(); } }); c.ro.observe(el); }
-    function offline(on) {
-      c.failed = on; el.classList.toggle('rvm-offline', on);
+    // (kind 'gl': this computer can't draw the live map — the satellite picture stands in; 'load': it is still loading.)
+    function offline(on, kind) {
+      if (kind !== 'load') { c.failed = on; el.classList.toggle('rvm-offline', on); }
       var n = el.querySelector(':scope > .rvm-off');
-      if (on && !n && words.offline && !opts.quiet) { n = document.createElement('div'); n.className = 'rvm-off'; n.textContent = words.offline; el.appendChild(n); }
+      var text = kind === 'load' ? words.loading : kind === 'gl' ? (words.nogl || words.offline) : words.offline;
+      if (on && text && !opts.quiet) { if (!n) { n = document.createElement('div'); n.className = 'rvm-off'; el.appendChild(n); } n.textContent = text; n.classList.toggle('rvm-loading', kind === 'load'); }
       if (!on && n) n.remove();
+      if (on && kind !== 'load') staticMap();
+    }
+    // Without WebGL (or a map that would not start): the world's picture where the stop is, from the same satellite tiles
+    // as the live look, laid out by hand — a handful of pictures, no graphics card needed.
+    function staticMap() {
+      if (c.dead || el.querySelector(':scope > .rvm-static') || el.querySelector(':scope > .rv-map-shot')) return;
+      var s = place(c.cur) || s0, W = el.clientWidth || cfg.w, H = el.clientHeight || cfg.h, z = (s.z || 2) + zk();
+      var zt = Math.max(1, Math.min(12, Math.round(z) + 1)), ts = 256 * Math.pow(2, z + 1 - zt), n = Math.pow(2, zt), lat = Math.max(-85, Math.min(85, s.c[1]));
+      var fx = (s.c[0] + 180) / 360 * n, fy = (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n;
+      var cols = Math.ceil(W / ts) + 2, rows = Math.ceil(H / ts) + 2; if (cols * rows > 64 || !(ts > 4)) return;
+      var d = document.createElement('div'); d.className = 'rvm-static'; d.setAttribute('aria-hidden', 'true');
+      d.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;background:#05070d';
+      for (var dx = -Math.ceil(cols / 2); dx <= Math.ceil(cols / 2); dx++) for (var dy = -Math.ceil(rows / 2); dy <= Math.ceil(rows / 2); dy++) {
+        var tx = Math.floor(fx) + dx, ty = Math.floor(fy) + dy; if (ty < 0 || ty >= n) continue;
+        var im = document.createElement('img'); im.alt = ''; im.decoding = 'async'; im.draggable = false;
+        im.src = 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/' + zt + '/' + ty + '/' + (((tx % n) + n) % n) + '.jpg';
+        im.style.cssText = 'position:absolute;max-width:none;left:' + (W / 2 + (tx - fx) * ts).toFixed(1) + 'px;top:' + (H / 2 + (ty - fy) * ts).toFixed(1) + 'px;width:' + (ts + 1).toFixed(1) + 'px;height:' + (ts + 1).toFixed(1) + 'px';
+        im.onerror = function () { this.remove(); };
+        d.appendChild(im);
+      }
+      el.insertBefore(d, box); credit.textContent = (cfg.short ? cfg.short + ' · ' : '') + 'Sentinel-2 cloudless © EOX'; credit.hidden = false;
+    }
+    // The map a moment of waiting is told about (not shown at once: on a fast computer it is there before it would show).
+    function loading(on) {
+      var n = el.querySelector(':scope > .rvm-off.rvm-loading');
+      if (on && !c.failed && !n && !el.classList.contains('rvm-on')) offline(true, 'load');
+      if (!on && n) n.remove();
+    }
+    // Start again from nothing — a style that never came, a graphics context lost for good —, twice at most; then the picture.
+    function rebuild(why) {
+      var tries = el._rvmTries || 0, cur = c.cur; if (c.dead) return false;
+      if (tries >= 2 || !gpu().webgl) { offline(true, gpu().webgl ? '' : 'gl'); return false; }
+      el._rvmTries = tries + 1; c.destroy();
+      var n = ensure(el); if (n) n.ready.then(function () { if (!n.dead) n.go(cur, false); });
+      return true;
     }
     // Without the live map: the stop's picture (or the closest one before it).
     function shot(k) {
@@ -446,9 +513,14 @@ export function geoMapRuntime(lib, rtl, words) {
     c.ready = load(cfg).then(function (ml) {
       if (c.dead) return c;
       var v0 = c.first ? space() : { center: s0.c, zoom: s0.z + zk(), pitch: s0.p, bearing: s0.b };
-      var m = c.map = new ml.Map({ container: box, style: cfg.style, center: v0.center, zoom: v0.zoom, pitch: v0.pitch, bearing: v0.bearing, maxPitch: 85,
-        interactive: opts.interactive !== false, attributionControl: { compact: true }, pixelRatio: pr(), fadeDuration: opts.capture ? 0 : 300,
-        canvasContextAttributes: { antialias: true, preserveDrawingBuffer: !!opts.capture } });
+      // (No WebGL — or MapLibre can't start it —: not a blank box, a picture and a word about it.)
+      if (!opts.capture && !gpu().webgl) { offline(true, 'gl'); return c; }
+      var m;
+      try {
+        m = c.map = new ml.Map({ container: box, style: cfg.style, center: v0.center, zoom: v0.zoom, pitch: v0.pitch, bearing: v0.bearing, maxPitch: 85,
+          interactive: opts.interactive !== false, attributionControl: { compact: true }, pixelRatio: pr(), fadeDuration: opts.capture ? 0 : 300,
+          canvasContextAttributes: { antialias: true, preserveDrawingBuffer: !!opts.capture } });
+      } catch (e) { c.map = null; offline(true, 'gl'); return c; }
       if (!opts.keyboard && m.keyboard) m.keyboard.disable();            // (the arrows are the presentation's)
       paintBg();
       m.on('style.load', dress);
@@ -460,17 +532,37 @@ export function geoMapRuntime(lib, rtl, words) {
       var hold = function () { mo.rest = performance.now() + 2500; };
       box.addEventListener('pointerdown', hold); box.addEventListener('wheel', hold, { passive: true });
       markers(ml);
+      // (A graphics context the browser took away — too many, or a driver reset — and gave no way back: the map starts again.)
+      if (!opts.capture) {
+        var cv = m.getCanvas(), lost = 0;
+        cv.addEventListener('webglcontextlost', function () { lost = setTimeout(function () { lost = 0; if (!c.dead) rebuild('lost'); }, 2500); });
+        cv.addEventListener('webglcontextrestored', function () { clearTimeout(lost); lost = 0; });
+      }
       return new Promise(function (ok) {
-        var done = false, t = setTimeout(function () { if (!done) offline(true); }, navigator.onLine === false ? 0 : 12000);
+        var done = false, again = 0, wait = setTimeout(function () { if (!done) loading(true); }, 2500),
+          // (After 20 s: a style that never came starts over — but a style that is in and tiles that are only slow keep their wait.)
+          t = setTimeout(function check() {
+            if (done || c.dead) return;
+            if (navigator.onLine === false) { offline(true); return; }
+            if (m.isStyleLoaded && m.isStyleLoaded()) { t = setTimeout(check, 20000); return; }
+            if (!rebuild('slow')) offline(true);
+          }, navigator.onLine === false ? 0 : 20000);
         m.on('load', function () {
-          done = true; clearTimeout(t); offline(false); el.classList.add('rvm-on'); if (!c.first) c.go(c.cur, false);
+          done = true; clearTimeout(t); clearTimeout(wait); el._rvmTries = 0; loading(false); offline(false); var st = el.querySelector(':scope > .rvm-static'); if (st) st.remove();
+          el.classList.add('rvm-on'); if (!c.first) c.go(c.cur, false);
           // (MapLibre opens its compact credits at first: closed to their ⓘ, the short line says who to thank.)
           var at = box.querySelector('.maplibregl-ctrl-attrib'); if (at) at.classList.remove('maplibregl-compact-show');
           credit.hidden = !cfg.short; ok(c);
           // (Its first view loaded, the flight ahead: fetchAhead().)
           m.once('idle', function () { c.settled = true; floorOn(false); ahead(0); });
         });
-        m.on('error', function () { if (!done && navigator.onLine === false) offline(true); });
+        // (The style — the map's own description — that didn't come: MapLibre never asks again by itself.)
+        m.on('error', function (e) {
+          if (done) return;
+          if (navigator.onLine === false) { offline(true); return; }
+          if (e && e.tile) return;
+          var lag = [2500, 7000, 16000][again++]; if (lag) setTimeout(function () { if (!done && !c.dead) try { m.setStyle(cfg.style); } catch (x) {} }, lag);
+        });
       });
     }, function () { offline(true); return c; });
     shot(0);
@@ -516,7 +608,7 @@ export function geoMapRuntime(lib, rtl, words) {
         Object.keys(sets).forEach(function (id) {
           var tm = tms[id], list = sets[id];
           if (!tm || !list.length) return;
-          if (small) list = list.slice(0, Math.ceil(list.length / 2));      // (in the order the flight needs them)
+          if (small || weak()) list = list.slice(0, Math.ceil(list.length / 2));      // (in the order the flight needs them)
           tm._rvRoom = Math.ceil(list.length * 1.5);
           if (tm.transform) tm.updateCacheSize(tm.transform);
           fetchInto(tm, list, j);
@@ -959,5 +1051,5 @@ export function geoMapRuntime(lib, rtl, words) {
     });
     if (Reveal.isReady()) { if (Reveal.isScrollView && Reveal.isScrollView()) inView(); else inSlide(Reveal.getCurrentSlide()); }
   }
-  return { load: load, mount: mount, settle: settle, mounted: function () { return mounted.slice(); } };
+  return { load: load, mount: mount, settle: settle, mounted: function () { return mounted.slice(); }, gpu: gpu, weak: weak };
 }

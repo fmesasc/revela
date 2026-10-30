@@ -5,8 +5,42 @@
 // the camera movement each time its slide is shown (reveal.js events).
 export function model3dRuntime() {
   var timers = new WeakMap();
+  // The 3D library itself, from the other CDN if the first one hasn't answered after 8 s (a network that blocks jsDelivr).
+  setTimeout(function () {
+    if (window.customElements && !customElements.get('model-viewer') && document.querySelector('model-viewer') && !document.querySelector('script[data-rv-mirror]')) {
+      var m = document.createElement('script'); m.type = 'module'; m.setAttribute('data-rv-mirror', ''); m.src = 'https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js'; document.head.appendChild(m);
+    }
+  }, 8000);
+  // No WebGL at all (or none that works): model-viewer throws and leaves its box empty — its picture instead, never nothing.
+  var NOGL = (function () { try { var g = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl'); if (!g) return true; var l = g.getExtension('WEBGL_lose_context'); if (l) l.loseContext(); return false; } catch (e) { return true; } })();
+  // (Its own box, so that its animations — fragments, paths — go on working: the picture is its background.)
+  function flat(mv) {
+    if (mv.__flat) return; mv.__flat = true;
+    var p = mv.getAttribute('data-poster') || mv.getAttribute('poster'); if (!p) return;
+    var k = parseFloat(mv.getAttribute('data-bleed')) || 1;
+    mv.style.setProperty('background', 'center / ' + (k > 1 ? (100 / k).toFixed(1) + '% auto' : 'contain') + ' no-repeat url("' + p.replace(/["\\]/g, '') + '")', 'important');
+    mv.style.pointerEvents = 'none'; mv.setAttribute('role', 'img'); if (mv.getAttribute('alt')) mv.setAttribute('aria-label', mv.getAttribute('alt'));
+  }
+  // A graphics context the browser took away (too many, a driver reset) and did not give back within 2.5 s: the models on
+  // the page are asked for again — twice at most —, which makes model-viewer draw them on a fresh one.
+  (function () {
+    var timer = 0, times = 0;
+    document.addEventListener('webglcontextlost', function (e) {
+      if (!e.target || e.target.tagName !== 'CANVAS' || !document.querySelector('model-viewer')) return;
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        if (times++ >= 2) return;
+        [].forEach.call(document.querySelectorAll('model-viewer'), function (mv) {
+          var src = mv.getAttribute('src'); if (!src) return;
+          mv.removeAttribute('src'); setTimeout(function () { if (mv.isConnected && !mv.getAttribute('src')) mv.setAttribute('src', src); }, 80);
+        });
+      }, 2500);
+    }, true);
+    document.addEventListener('webglcontextrestored', function () { clearTimeout(timer); }, true);
+  })();
   function setup(mv) {
     if (mv.__rv) return; mv.__rv = true;
+    if (NOGL) { flat(mv); return; }
     mv.__spin = mv.hasAttribute('auto-rotate');             // (its own turning: an arrival "facing the audience" stops it, only there)
     // Its picture until it has loaded (a slow connection), in the model's own box.
     // (Not a photo — JPEG, with its own background: a grey box on the slide.)
@@ -16,6 +50,15 @@ export function model3dRuntime() {
       d.slot = 'poster'; d.style.cssText = 'position:absolute;inset:' + m + ';background:center/contain no-repeat;pointer-events:none';
       d.style.backgroundImage = 'url("' + p.replace(/["\\]/g, '') + '")'; mv.appendChild(d);
     }
+    // A model that failed to come (a connection that dropped, a server that was busy): asked for again, up to three times,
+    // each time after twice as long; meanwhile its picture stays where it is.
+    mv.addEventListener('error', function () {
+      var n = mv.__tries = (mv.__tries || 0) + 1, src = mv.getAttribute('src'); if (n > 3 || !src) return;
+      setTimeout(function () {
+        if (!mv.isConnected || mv.loaded || mv.getAttribute('src') !== src) return;
+        mv.removeAttribute('src'); setTimeout(function () { if (mv.isConnected && !mv.getAttribute('src')) mv.setAttribute('src', src); }, 60);
+      }, 1500 * Math.pow(2, n - 1));
+    });
     mv.addEventListener('load', function () {
       var sp = parseFloat(mv.getAttribute('data-speed')); if (sp) mv.timeScale = sp;
       if (mv.hasAttribute('data-once') && mv.hasAttribute('autoplay')) { mv.pause(); mv.play({ repetitions: 1 }); }
@@ -147,23 +190,48 @@ export function model3dRuntime() {
   // Phones and low-memory devices: each 3D model holds a live WebGL context, and iOS Safari kills the tab
   // ("this webpage was reloaded…") after a few at once. So there we load fewer around the current slide and
   // release the rest (they fall back to their poster until the slide is near again).
-  var LEAN = (function () {
+  // The same on a computer that is slow though it isn't a phone (Francisco, 2026-10-30: «en ordenadores menos potentes el 3D a
+  // veces se muestra y a veces no»): four cores or fewer, little memory, or WebGL drawn by the processor (SwiftShader,
+  // llvmpipe: no graphics card). Settable: ?perf=lite|full in the address, or localStorage 'revela.perf'.
+  var SOFT = (function () {
+    try {
+      var cv = document.createElement('canvas'), g = cv.getContext('webgl2') || cv.getContext('webgl'); if (!g) return false;
+      var x = g.getExtension('WEBGL_debug_renderer_info'), r = x ? String(g.getParameter(x.UNMASKED_RENDERER_WEBGL) || '') : '';
+      var l = g.getExtension('WEBGL_lose_context'); if (l) l.loseContext();
+      return /swiftshader|llvmpipe|softpipe|software|basic render|microsoft basic/i.test(r);
+    } catch (e) { return false; }
+  })();
+  var PERF = (function () { try { var q = /[?&]perf=(lite|full)\b/.exec(location.search); return q ? q[1] : (localStorage.getItem('revela.perf') || ''); } catch (e) { return ''; } })();
+  var LEAN = PERF === 'lite' || (PERF !== 'full' && (SOFT || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4))) || (PERF !== 'full' && (function () {
     try {
       return (navigator.deviceMemory && navigator.deviceMemory <= 4)
         || /iP(hone|od|ad)/.test(navigator.userAgent)
         || (/\bMac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)      // iPadOS pretends to be a Mac
         || (window.matchMedia && matchMedia('(pointer: coarse)').matches && Math.min(screen.width || 9999, screen.height || 9999) <= 820);
     } catch (e) { return false; }
-  })();
+  })());
   // The models of this slide and the next ones load now, not when they come into
   // view (model-viewer waits for that): else a slide arrives with an empty box.
   // On lean devices, only the current slide and the next (not the one before too).
+  // The current slide's models first: on a slow connection the next slides' (up to 20 MB of them) were taking the line
+  // from it, and the slide arrived with its pictures only. The next ones start when these are in (or have failed), or
+  // after 6 s — a model that never comes mustn't hold the others back.
+  var preToken = 0;
   function preload(slide) {
-    var all = window.Reveal ? Reveal.getSlides() : [], i = all.indexOf(slide);
+    var all = window.Reveal ? Reveal.getSlides() : [], i = all.indexOf(slide), token = ++preToken;
     var win = LEAN ? all.slice(i, i + 2) : all.slice(Math.max(0, i - 1), i + 3);
-    win.concat(slide ? [slide] : []).forEach(function (s) {
-      s.querySelectorAll('model-viewer:not([loading="eager"])').forEach(function (mv) { mv.setAttribute('loading', 'eager'); });
-    });
+    var eager = function (mv) { if (mv.getAttribute('loading') !== 'eager') mv.setAttribute('loading', 'eager'); };
+    var mine = slide ? [].slice.call(slide.querySelectorAll('model-viewer')) : [];
+    mine.forEach(eager);
+    var go = function () {
+      if (token !== preToken) return;
+      win.forEach(function (s) { s.querySelectorAll('model-viewer:not([loading="eager"])').forEach(eager); });
+    };
+    var waiting = mine.filter(function (mv) { return !mv.loaded && mv.getAttribute('src'); });
+    if (!waiting.length) { go(); return; }
+    var left = waiting.length, fin = function () { if (left > 0) { left = 0; go(); } };
+    waiting.forEach(function (mv) { var h = function () { if (--left === 0) go(); }; mv.addEventListener('load', h, { once: true }); mv.addEventListener('error', h, { once: true }); });
+    setTimeout(fin, 6000);
   }
   // Keep only the slides next to the current one with their models loaded; the rest give up their WebGL
   // context (src removed → the poster shows). When a slide comes back within reach, its models load again.
@@ -318,5 +386,5 @@ export function model3dRuntime() {
     (function wait(n) { if (begun) return; if (Reveal.isReady && Reveal.isReady()) begin(); else if (n < 300) setTimeout(function () { wait(n + 1); }, 50); })(0);
     Reveal.on('fragmentshown', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, true); }); });
     Reveal.on('fragmenthidden', function (e) { (e.fragments || [e.fragment]).forEach(function (f) { clipStep(f, false); }); }); }
-  return { enter: enter, handoff: handoff, start: start, stop: stop, move: move, step: clipStep, clip: function (mv, name, once) { playClip(mv, name, once); if (once) afterOnce(mv, function () { rest(mv); }); } };
+  return { enter: enter, handoff: handoff, start: start, stop: stop, move: move, step: clipStep, clip: function (mv, name, once) { playClip(mv, name, once); if (once) afterOnce(mv, function () { rest(mv); }); }, lean: LEAN, nogl: NOGL, preload: preload };
 }

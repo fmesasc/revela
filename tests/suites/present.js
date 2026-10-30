@@ -1006,7 +1006,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const mvs = () => [...doc.querySelectorAll('model-viewer')];
       for (let i = 0; i < 40 && !mvs()[0].__rv; i++) await sleep(50);
       assert(mvs().every(m => m.__rv), 'el 3D se activa al abrir la presentación (no en el primer cambio)');
-      eq(mvs()[1].getAttribute('loading'), 'eager', 'el modelo de la siguiente se carga por adelantado');
+      // (After the first one is in — or 6 s —: the current slide's models go first, so a slow connection doesn't give the line to the next.)
+      for (let i = 0; i < 80 && mvs()[1].getAttribute('loading') !== 'eager'; i++) await sleep(100);
+      eq(mvs()[1].getAttribute('loading'), 'eager', 'el modelo de la siguiente se carga por adelantado (cuando el de esta ya está)');
       for (let i = 0; i < 150 && !mvs().slice(0, 2).every(m => m.loaded); i++) await sleep(100);
       let bridged = null; win.Reveal.on('slidechanged', e => { bridged = e.currentSlide.querySelector('model-viewer .rv-bridge'); });
       win.Reveal.next(); await sleep(20);
@@ -1985,4 +1987,68 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     m.querySelector('.wm-on').checked = false; m.querySelector('.set-ok').click(); await sleep(20);
     assert(!R.state.deck.watermark && !/class="rv-wm"/.test(R.io.buildHTML()), 'y se quita desde ahí');
   });
+  await test('web viva: una web sola sigue donde la dejó al volver, y dos webs enlazadas son un solo marco que continúa en otra diapositiva', async () => {
+    reset(); const W = frame.contentWindow, url = location.origin + '/tests/fixtures/stateful.html', B = R.blocks;
+    const S = R.state.deck;
+    // A web on slide 1 and another on slide 4 (not next to each other), the second following the first.
+    B.addEmbed(url); R.slides.addSlide(); R.slides.addSlide(); R.slides.addSlide(); R.slides.goToSlide(3); await sleep(20); B.addEmbed(url);
+    const web = i => S.slides[i].blocks.find(b => b.type === 'embed');
+    const w1 = web(0), w4 = web(3); w4.w = 400; w4.h = 300; w4.x = 100; w4.y = 80;
+    assert(B.webChoices(w4.id).some(c => c.id === w1.id && c.n === 1), 'la lista de webs para continuar trae la de la diapositiva 1');
+    assert(!B.webChoices(w4.id).some(c => c.id === w4.id), 'y no se ofrece a sí misma');
+    B.followEmbed(w4.id, w1.id);
+    assert(w1.live && w1.live === w4.live && w4.src === w1.src, 'enlazadas: el mismo nombre y la misma dirección');
+    eq(B.liveShare(w1), 2, 'dos objetos comparten la página');
+    // Exported page: slots, one runtime; a card, other addresses and HTML objects aren't live.
+    const html = R.io.buildHTML(); eq((html.match(/class="rv-liveslot"/g) || []).length, 2, 'dos huecos en la página exportada');
+    assert(/rv-liveframe/.test(html) && /data-live="/.test(html) && !/<iframe[^>]*stateful/.test(html), 'el marco lo crea el guion, no está repetido en el HTML');
+    w4.display = 'card'; assert((R.io.buildHTML().match(/class="rv-liveslot"/g) || []).length === 1, 'una tarjeta no es un hueco'); delete w4.display;
+    const IO = await W.eval("import('/src/io/formats/html.js')"); assert(!IO.isLiveWeb({ type: 'embed', live: 'a', src: 'javascript:alert(1)' }) && !IO.isLiveWeb({ type: 'embed', live: 'a"x', src: 'https://a.b' }), 'ni una dirección ni un nombre raros');
+    // Presenting.
+    R.io.present({ fullscreen: false }); const f = D.querySelector('#present-overlay iframe'); let Rv = null;
+    for (let i = 0; i < 80 && !(Rv = f.contentWindow?.Reveal)?.isReady?.(); i++) await sleep(50);
+    try {
+      const fw = f.contentWindow, frames = () => [...f.contentDocument.querySelectorAll('iframe.rv-liveframe')], got = [];
+      fw.addEventListener('message', e => { if (e.data && e.data.rvStateful) got.push(e.data); });
+      const ask = async (msg) => { got.length = 0; frames()[0].contentWindow.postMessage(msg, '*'); for (let i = 0; i < 20 && !got.some(x => x.rvStateful === 'pong'); i++) await sleep(50); return got.filter(x => x.rvStateful === 'pong').pop(); };
+      for (let i = 0; i < 60 && !frames().length; i++) await sleep(50);
+      eq(frames().length, 1, 'un solo marco para las dos webs');
+      const vis = () => frames()[0].style.visibility, rect = () => frames()[0].getBoundingClientRect();
+      await sleep(400); eq(vis(), 'visible', 'en la diapositiva 1 se ve');
+      const slot1 = f.contentDocument.querySelector('.rv-liveslot').getBoundingClientRect(), r1 = rect();
+      assert(Math.abs(r1.left - slot1.left) < 2 && Math.abs(r1.width - slot1.width) < 2 && Math.abs(r1.height - slot1.height) < 2, 'encima de su hueco, con su tamaño');
+      const a0 = await ask('rv-bump'); eq(a0.n, 1, 'se navega por ella (cuenta 1)');
+      Rv.slide(1); await sleep(700); eq(vis(), 'hidden', 'en otra diapositiva sin web, oculto');
+      Rv.slide(3); await sleep(900); eq(vis(), 'visible', 'en la diapositiva 4 vuelve a verse');
+      const a1 = await ask('rv-ping'); eq(a1.id, a0.id, 'es el MISMO marco (no se recargó)'); eq(a1.n, 1, 'y sigue donde se dejó (cuenta 1, no 0)');
+      const slot4 = f.contentDocument.querySelectorAll('.rv-liveslot')[1].getBoundingClientRect(), r4 = rect();
+      assert(Math.abs(r4.left - slot4.left) < 2 && Math.abs(r4.top - slot4.top) < 2 && Math.abs(r4.width - slot4.width) < 2, 'ahora sobre el hueco de la diapositiva 4, con su propio tamaño y sitio: ' + [r4.left, slot4.left, r4.width, slot4.width]);
+      assert(r4.width < r1.width - 20, 'más pequeño que en la 1');
+      Rv.slide(2); await sleep(600); Rv.slide(0); await sleep(900); const a2 = await ask('rv-ping'); eq(a2.id, a0.id, 'y al volver a la 1, el mismo'); eq(a2.n, 1, 'con su cuenta');
+    } finally { D.querySelector('#present-close')?.click(); await sleep(30); }
+  });
+
+  await test('web viva: una web con su propia página viva conserva su sitio; dejar de mantenerla y lo que se guarda', async () => {
+    reset(); const W = frame.contentWindow, url = location.origin + '/tests/fixtures/stateful.html', B = R.blocks, S = R.state.deck;
+    B.addEmbed(url); R.slides.addSlide(); R.slides.addSlide();
+    const w = S.slides[0].blocks.find(b => b.type === 'embed');
+    eq(B.liveShare(w), 0, 'al principio, no es una web viva'); assert(!/rv-liveslot/.test(R.io.buildHTML()), 'y en la página es un marco normal');
+    B.setEmbedLive(w.id, true); assert(/^[\w-]{1,40}$/.test(w.live), 'se le da un nombre'); eq(B.liveShare(w), 1, 'ella sola');
+    const clean = (await W.eval("import('/src/features/document/sanitize.js')")).sanitizeDeck(JSON.parse(JSON.stringify(S)));
+    eq(clean.slides[0].blocks.find(b => b.type === 'embed').live, w.live, 'sobrevive a guardar y abrir');
+    R.io.present({ fullscreen: false }); const f = D.querySelector('#present-overlay iframe'); let Rv = null;
+    for (let i = 0; i < 80 && !(Rv = f.contentWindow?.Reveal)?.isReady?.(); i++) await sleep(50);
+    try {
+      const got = []; f.contentWindow.addEventListener('message', e => { if (e.data && e.data.rvStateful) got.push(e.data); });
+      const fr = () => f.contentDocument.querySelector('iframe.rv-liveframe'); for (let i = 0; i < 60 && !fr(); i++) await sleep(50);
+      const ask = async msg => { got.length = 0; fr().contentWindow.postMessage(msg, '*'); for (let i = 0; i < 20 && !got.some(x => x.rvStateful === 'pong'); i++) await sleep(50); return got.filter(x => x.rvStateful === 'pong').pop(); };
+      const a = await ask('rv-bump'); Rv.slide(2); await sleep(600); Rv.slide(0); await sleep(800); const b = await ask('rv-ping');
+      eq(b.id, a.id, 'misma página al volver'); eq(b.n, 1, 'en el mismo punto');
+    } finally { D.querySelector('#present-close')?.click(); await sleep(30); }
+    B.setEmbedLive(w.id, false); assert(!w.live, 'dejar de mantenerla'); assert(!/rv-liveslot/.test(R.io.buildHTML()), 'vuelve a ser un marco normal');
+    // The editor draws what it is, not a second page; and the options are in the menu and the ribbon.
+    B.setEmbedLive(w.id, true); R.slides.goToSlide(0); await sleep(60);
+    const blockEl = D.querySelector(`#stage .block[data-id="${w.id}"]`); assert(blockEl && blockEl.querySelector('.embed-live') && !blockEl.querySelector('iframe'), 'en el editor, un recuadro que lo explica y sin segunda página');
+  });
+
 }

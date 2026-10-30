@@ -12,6 +12,7 @@ import { tabRuntime } from '../../io/runtime/tabs.js';
 import { sizeText } from '../../features/content/files.js';
 import { fileIconHTML, imgFocus } from '../../render/svg.js';
 import { shortSig } from '../../core/text.js';
+import { webglInfo } from '../../core/webgl.js';
 import { esc } from '../../core/text.js';
 import { shownRows } from '../../core/formulas.js';
 import { embedSandbox } from '../../features/document/sanitize.js';
@@ -159,6 +160,12 @@ export function content(b) {
     return d;
   }
   if (b.type === 'model') {
+    // A computer that can't draw WebGL: its picture where the model would be, never an empty box.
+    if (!webglInfo().ok) {
+      const im = document.createElement('img'); im.className = 'mv-nogl'; im.alt = b.alt || ''; im.draggable = false; im.style.cssText = 'width:100%;height:100%;object-fit:contain;pointer-events:none';
+      if (b.poster) im.src = blobURL(b.poster); else { im.style.visibility = 'hidden'; }
+      return im;
+    }
     const mv = document.createElement('model-viewer');
     applyModelAttrs(mv, b);
     // While it loads: a small ring in its middle, instead of model-viewer's grey bar along its top edge.
@@ -328,6 +335,13 @@ export function embedContent(b) {
   asCard.addEventListener('pointerdown', e => e.stopPropagation());
   asCard.addEventListener('click', e => { e.stopPropagation(); setEmbedDisplay(b.id, 'card'); });
   bar.append(url, asCard, open);
+  // A live web (one page that goes on from slide to slide): the editor shows what it is, the page itself lives when presenting.
+  if (b.live && /^https?:\/\//i.test(b.src || '')) {
+    const live = document.createElement('div'); live.className = 'embed-live';
+    const n = document.createElement('b'); n.textContent = t('Web viva'); const d = document.createElement('span');
+    d.textContent = t('Al presentar, sigue en la misma página de una diapositiva a otra.');
+    live.append(n, d); wrap.append(bar, live); return wrap;
+  }
   const f = document.createElement('iframe');
   f.src = b.src || '';
   f.setAttribute('sandbox', embedSandbox(b.src));
@@ -599,7 +613,7 @@ async function capturePoster(mv, id) {
   } catch {}
 }
 export function setupModel(el) {
-  const mv = el.querySelector('model-viewer');
+  const mv = el.querySelector('model-viewer'); if (!mv) return;
   el.addEventListener('dblclick', () => { mv.style.pointerEvents = 'auto'; el.classList.add('editing'); });
   el.addEventListener('pointerleave', () => { mv.style.pointerEvents = 'none'; el.classList.remove('editing'); });
 }
