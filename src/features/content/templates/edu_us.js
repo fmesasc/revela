@@ -41,7 +41,7 @@ const slideOf = (T, extra, notes) => ({ layout: 'blank', bg: T.bg, back: lights(
 const cover = (T, kicker, title, sub, icons, notes) => slideOf(T, [glass('', 70, 150, 700, 430, { glass: 22 }),
   label(kicker, 110, 190, 620, T.ac), text(title, 104, 236, 640, 190, { fontSize: 52, fontWeight: 800, color: WH, lineHeight: 1.05, fontFamily: FF.head }),
   text(sub, 110, 440, 620, 110, { fontSize: 25, color: SOFT, lineHeight: 1.35 }),
-  ...icons.map(([id, x, y, s], i) => on(ico(id, x, y, s), i ? 'zoom' : 'fade-up', i ? { start: 'afterPrev' } : {})), credit(110, 610)], notes);
+  ...icons.map(([id, x, y, s], i) => on(ico(id, x, y, s), i ? 'zoom-in' : 'fade-up', i ? { start: 'afterPrev' } : {})), credit(110, 610)], notes);
 // Three or four cards [icon, title, line]: an icon over a title and a line, on glass.
 const tiles = (T, title, items, foot, notes) => { const n = items.length, w = n === 3 ? 340 : 260, gap = n === 3 ? 385 : 290, x0 = n === 3 ? 80 : 70, big = n === 3 ? 190 : 170;
   return slideOf(T, [heading(title), ...items.flatMap(([id, tt, ln], i) => { const x = x0 + i * gap, y = 300;
@@ -49,12 +49,12 @@ const tiles = (T, title, items, foot, notes) => { const n = items.length, w = n 
       x, y, w, 290, { vAlign: 'bottom', pad: [20, 20, 22, 20] }), 'fade-up', chain(i)), ico(id, x + (w - big) / 2, y - big * 0.28, big)]; }), note(foot, 630)], notes); };
 // Four steps in a row on one glass panel [icon, label, line], and a line under it.
 const steps = (T, title, items, foot, notes) => slideOf(T, [heading(title), glass('', 70, 160, 1140, 350, { glass: 20 }),
-  ...items.flatMap(([id, tt, ln], i) => [on(ico(id, 110 + i * 280, 180, 150), 'zoom', chain(i)),
+  ...items.flatMap(([id, tt, ln], i) => [on(ico(id, 110 + i * 280, 180, 150), 'zoom-in', chain(i)),
     text(`<div style="text-align:center"><b style="font-size:28px;color:${T.ac}">${tt}</b><br><span style="font-size:21px;color:${SOFT}">${ln}</span></div>`, 70 + i * 280, 340, 250, 160, { fontSize: 21 })]),
   glass(foot, 70, 535, 1140, 90, { fontSize: 24 })], notes);
 // A list on glass with an icon on the right.
 const bullets = (T, title, items, id, notes, foot) => slideOf(T, [heading(title), glass(ul(...items), 70, 150, 760, 440, { fontSize: 27, lineHeight: 1.35 }),
-  on(ico(id, 860, 160, 320), 'zoom'), ...(foot ? [glass(foot, 860, 480, 350, 110, { fontSize: 21 })] : []), credit()], notes);
+  on(ico(id, 860, 160, 320), 'zoom-in'), ...(foot ? [glass(foot, 860, 480, 350, 110, { fontSize: 21 })] : []), credit()], notes);
 // A table on glass with an icon on the right.
 const table = (T, title, rows, id, caption, notes, o = {}) => slideOf(T, [heading(title), glass('', 70, 150, o.w || 820, o.h || 470, { glass: 20 }),
   tbl(rows, 95, 175, (o.w || 820) - 50, (o.h || 470) - 50, o.table || {}), on(ico(id, 930, 160, 270), 'fade-up'),
@@ -62,7 +62,7 @@ const table = (T, title, rows, id, caption, notes, o = {}) => slideOf(T, [headin
 const quiz = (T, q, options, correct, notes) => ({ layout: 'blank', bg: T.bg, back: lights(T), transition: 'fade', extra: [quizBlock(q, options, correct)], notes });
 const close = (T, title, line, icons, notes) => slideOf(T, [text(title, 90, 170, 700, 150, { fontSize: 60, fontWeight: 800, color: WH, fontFamily: FF.head }),
   glass(line, 90, 340, 620, 160, { fontSize: 28, lineHeight: 1.35 }),
-  ...icons.map(([id, x, y, s], i) => on(ico(id, x, y, s), 'zoom', i ? { start: 'afterPrev' } : {})), credit(90, 640)], notes);
+  ...icons.map(([id, x, y, s], i) => on(ico(id, x, y, s), 'zoom-in', i ? { start: 'afterPrev' } : {})), credit(90, 640)], notes);
 const deck = (name, T, slides) => numbered(build({ name, palette: 'midnight', fonts: 'tech', title: { color: WH, size: 44 }, body: { color: WH } }, slides));
 
 const AUTUMN = { bg: '#2a1405', l: ['#f97316', '#b45309', '#facc15'], ac: '#fbbf24' };
@@ -125,7 +125,7 @@ export default {
         'Portada. Presentación neutral: explica el proceso, no pide el voto para nadie. El 3 de noviembre de 2026 hay elecciones de mitad de mandato (primer martes después del primer lunes de noviembre).'),
       tiles(T, 'Qué se vota en 2026', [['star', 'Cámara de Representantes', 'Los 435 escaños'], ['sheild', 'Senado', 'Un tercio de los escaños'], ['location', 'Estados y ciudades', 'Gobernadores y cargos locales']],
         'No se vota presidente: son las elecciones de mitad de mandato.', 'Las mid-terms se celebran a mitad del mandato presidencial de cuatro años. Los cargos exactos varían por estado: verificar la papeleta local.'),
-      steps(T, 'Cómo se vota', [['file-text', '1 · Registrarse', 'En la mayoría de los estados hay que registrarse'], ['zoom', '2 · Informarse', 'Conocer candidatos y propuestas'], ['tick', '3 · Votar', 'En persona o por correo, según el estado'], ['chart', '4 · Contar', 'Se cuentan y se certifican los resultados']],
+      steps(T, 'Cómo se vota', [['file-text', '1 · Registrarse', 'En la mayoría de los estados hay que registrarse'], ['zoom-in', '2 · Informarse', 'Conocer candidatos y propuestas'], ['tick', '3 · Votar', 'En persona o por correo, según el estado'], ['chart', '4 · Contar', 'Se cuentan y se certifican los resultados']],
         'Las reglas cambian de un estado a otro: se consultan en la web oficial de tu estado.', 'Cuatro pasos generales. Las reglas (registro, voto adelantado o por correo, documentos) las fija cada estado: comprobar las del estado del centro.'),
       table(T, 'Elecciones presidenciales y de mitad de mandato', [['', 'Presidenciales', 'De mitad de mandato'], ['Cada', '4 años', '2 años (Cámara)'], ['Se elige', 'Presidente y vicepresidente', 'Congreso y cargos locales'], ['Clave', '270 de 538 votos electorales', 'Mayorías en el Congreso']],
         'chart', 'El presidente se elige por el Colegio Electoral.', 'El Colegio Electoral tiene 538 electores y hacen falta 270 para ganar. La Cámara se renueva cada dos años.', { table: { fontSize: 21 } }),
@@ -210,7 +210,7 @@ export default {
         'Portada. La Hora del Código acompaña la Semana de la Educación en Ciencias de la Computación, en diciembre; comprobar las fechas del año.'),
       tiles(T, 'Tres ideas de programación', [['tool', 'Algoritmo', 'Pasos ordenados para resolver algo'], ['flash', 'Bucle', 'Repetir una acción varias veces'], ['puzzle', 'Condicional', 'Si pasa esto, hago aquello']],
         'Con estas tres ideas ya se pueden construir muchos programas.', 'Tres conceptos de pensamiento computacional.'),
-      steps(T, 'Un robot hace un sándwich', [['notebook', '1 · Escribe', 'Los pasos para hacerlo'], ['target', '2 · Prueba', 'Un compañero hace de robot'], ['zoom', '3 · Depura', 'Busca qué ha fallado'], ['star', '4 · Mejora', 'Escribe los pasos mejor']],
+      steps(T, 'Un robot hace un sándwich', [['notebook', '1 · Escribe', 'Los pasos para hacerlo'], ['target', '2 · Prueba', 'Un compañero hace de robot'], ['zoom-in', '3 · Depura', 'Busca qué ha fallado'], ['star', '4 · Mejora', 'Escribe los pasos mejor']],
         'Actividad sin ordenador: el robot solo hace lo que dice el papel.', 'Actividad clásica para entender que los ordenadores siguen instrucciones exactas.'),
       bullets(T, 'Un programa sencillo', ['<b>Repetir 4 veces</b>:', 'avanzar 10 pasos', 'girar a la derecha', '→ ¡Dibuja un cuadrado!'], 'computer', 'Ejemplo en pseudocódigo: un bucle que dibuja un cuadrado.'),
       bullets(T, 'Grace Hopper', ['Pionera de la computación (1906–1992).', 'Creó uno de los primeros <b>compiladores</b>.', 'Ayudó a que se programara en un lenguaje parecido al inglés.', 'Fue almirante de la Armada de EE. UU.'], 'medal', 'Datos a verificar: Grace Hopper nació el 9 de diciembre de 1906. La Semana de la Informática coincide con esa fecha.'),
