@@ -39,20 +39,20 @@ const cover = (T, kicker, title, sub, icons, notes, fs = 54) => slideOf(T, [
   glass(T, '', 70, 130, 700, 440, { glass: 22 }), label(T, kicker, 110, 172, 620),
   text(title, 104, 214, 640, 210, { fontSize: fs, fontWeight: 800, color: T.ink, lineHeight: 1.05, fontFamily: FF.head }),
   text(sub, 110, 430, 620, 130, { fontSize: 25, color: T.soft, lineHeight: 1.35 }),
-  ...icons.map(([id, alt, x, y, s], i) => seq(ico(id, x, y, s, alt), i, i ? 'zoom' : 'fade-up')), credit(T)], notes);
+  ...icons.map(([id, alt, x, y, s], i) => seq(ico(id, x, y, s, alt), i, i ? 'zoom-in' : 'fade-up')), credit(T)], notes);
 
 // Three or four cards: a 3D icon over a title and a line, on glass.
 const cards = (T, title, items, notes, foot) => { const n = items.length, w = n === 4 ? 262 : 360, gap = (1140 - n * w) / (n - 1), big = n === 4 ? 140 : 190;
   return slideOf(T, [heading(T, title), ...items.flatMap(([id, alt, t, d], i) => { const x = 70 + i * (w + gap);
     return [seq(glass(T, `<div style="text-align:center"><b style="font-size:${n === 4 ? 28 : 31}px;color:${tc(T, T.cols[i % 4])}">${t}</b><br><span style="font-size:${n === 4 ? 22 : 24}px;color:${T.soft}">${d}</span></div>`,
-      x, 270, w, 330, { vAlign: 'bottom', pad: [18, 18, 20, 18] }), i), along(ico(id, x + (w - big) / 2, 270 - big * 0.3, big, alt), 'zoom')]; }),
+      x, 270, w, 330, { vAlign: 'bottom', pad: [18, 18, 20, 18] }), i), along(ico(id, x + (w - big) / 2, 270 - big * 0.3, big, alt), 'zoom-in')]; }),
     ...(foot ? [note(T, foot, 618)] : []), credit(T)], notes); };
 const along = (b, effect, props = {}) => on(b, effect, { start: 'withPrev', ...props });
 
 // A glass panel with a list at the left and a big 3D icon at the right.
 const list = (T, title, items, id, alt, notes, foot) => slideOf(T, [heading(T, title),
   glass(T, ul(...items), 70, 150, 760, foot ? 370 : 380, { fontSize: 26, lineHeight: 1.35 }),
-  on(ico(id, 880, 190, 300, alt), 'zoom'), ...(foot ? [note(T, foot, 540, 70, 760)] : []), credit(T)], notes);
+  on(ico(id, 880, 190, 300, alt), 'zoom-in'), ...(foot ? [note(T, foot, 540, 70, 760)] : []), credit(T)], notes);
 
 // A table on glass, with a line under it if needed.
 const table = (T, title, rows, notes, o = {}) => slideOf(T, [heading(T, title),
@@ -69,7 +69,7 @@ const steps = (T, title, items, notes, foot) => { const n = items.length, gap = 
   return slideOf(T, [heading(T, title), shape('rect', 70, 217, 1140, 4, T.line, { opacity: 90 }),
     ...items.flatMap(([l, d], i) => { const x = 70 + i * (w + gap);
       return [seq(glass(T, `<b style="font-size:${ls}px;color:${tc(T, T.cols[i % 4])}">${l}</b><br><span style="font-size:${fs}px;color:${T.ink}">${d}</span>`, x, 245, w, 330, { pad: [18, 16, 16, 16], fontSize: fs, lineHeight: 1.3 }), i),
-        along(shape('ellipse', x + w / 2 - 11, 207, 22, 22, T.cols[i % 4]), 'zoom')]; }),
+        along(shape('ellipse', x + w / 2 - 11, 207, 22, 22, T.cols[i % 4]), 'zoom-in')]; }),
     ...(foot ? [note(T, foot, 600)] : []), credit(T)], notes); };
 
 // Two or three columns, each with a coloured title and a body (a list, a line…).
@@ -84,7 +84,7 @@ const reto = (T, title, body, notes, secs = 300, end = '¡Tiempo!') => slideOf(T
   timer(secs, 880, 190, 300, { color: T.acc, endText: end }), credit(T)], notes);
 // What to check before using the deck: every deck ends with this slide.
 const verify = (T, items, notes) => slideOf(T, [heading(T, 'Antes de presentarla: comprueba esto'), glass(T, ul(...items), 70, 150, 800, 320, { fontSize: 25, lineHeight: 1.35 }),
-  on(ico('tick', 910, 170, 260, 'Una marca de verificación'), 'zoom'), credit(T)], notes);
+  on(ico('tick', 910, 170, 260, 'Una marca de verificación'), 'zoom-in'), credit(T)], notes);
 
 export default {
 
@@ -130,7 +130,7 @@ export default {
           [['wallet', 'Una cartera', 800, 70, 320], ['euro', 'Una moneda de euro', 780, 400, 200], ['bag', 'Una bolsa de la compra', 1000, 420, 200]],
           'Portada. Tema de consumo responsable para ESO, Bachillerato y FP: economía personal, matemáticas y pensamiento crítico ante la publicidad.'),
         cards(T, 'Antes de gastar', [['calculator', 'Una calculadora', 'Presupuesto', 'Fija un tope total y otro por persona'], ['notebook', 'Un cuaderno', 'Lista', 'Anota a quién regalas y qué'],
-          ['zoom', 'Una lupa', 'Comparar', 'Mira el precio en varias tiendas'], ['money-bag', 'Una bolsa de dinero', 'Ahorro', 'Aparta algo cada mes del año']],
+          ['zoom-in', 'Una lupa', 'Comparar', 'Mira el precio en varias tiendas'], ['money-bag', 'Una bolsa de dinero', 'Ahorro', 'Aparta algo cada mes del año']],
           'Cuatro hábitos sencillos. Preguntar cuál hace falta primero y por qué.'),
         chart(T, 'Reparte tu presupuesto (ejemplo)', { chartType: 'doughnut', color: '#5eead4', data: [{ label: 'Regalos', value: 150, color: '#5eead4' }, { label: 'Comida y cena', value: 120, color: '#fcd34d' },
           { label: 'Decoración', value: 30, color: '#f9a8d4' }, { label: 'Desplazamientos', value: 80, color: '#93c5fd' }, { label: 'Imprevistos', value: 20, color: '#c4b5fd' }] },
@@ -349,7 +349,7 @@ export default {
         table(T, 'Qué dice la UE: el Reglamento de IA', [['Fecha', 'Qué ocurre'], ['1 de agosto de 2024', 'Entra en vigor el Reglamento (UE) 2024/1689'], ['2 de febrero de 2025', 'Prohíbe ciertas prácticas y exige formación básica en IA'],
           ['2 de agosto de 2025', 'Reglas para modelos de IA de uso general'], ['2 de agosto de 2026', 'Fecha prevista para los sistemas de alto riesgo, como algunos de educación']],
           'Fechas del texto original. Pueden haberse modificado por reformas posteriores: comprobarlas en el sitio oficial de la UE (EUR-Lex) y en el del Ministerio competente.', { colW: [1.6, 3.4], foot: 'Comprueba si las fechas se han aplazado.', footY: 500 }),
-        cards(T, 'Ética: cuatro preguntas', [['pencil', 'Un lápiz', '¿Es mío?', 'Autoría y honestidad'], ['zoom', 'Una lupa', '¿Es verdad?', 'Contrastar con fuentes'], ['heart', 'Un corazón', '¿Es justo?', 'Acceso igual para todos'], ['sheild', 'Un escudo', '¿Es seguro?', 'Privacidad y datos']],
+        cards(T, 'Ética: cuatro preguntas', [['pencil', 'Un lápiz', '¿Es mío?', 'Autoría y honestidad'], ['zoom-in', 'Una lupa', '¿Es verdad?', 'Contrastar con fuentes'], ['heart', 'Un corazón', '¿Es justo?', 'Acceso igual para todos'], ['sheild', 'Un escudo', '¿Es seguro?', 'Privacidad y datos']],
           'Cuatro preguntas para decidir en cada caso. Pedir un ejemplo de cada una.'),
         pollSlide(T, '¿Para qué has usado la IA este curso?', ['Para dudas de estudio', 'Para corregir textos', 'Para hacer trabajos', 'No la he usado'], 'Votación anónima. Sin juzgar: sirve para saber de dónde partimos.'),
         list(T, 'Cómo citar el uso de la IA', ['Para qué la usé: ______', 'Qué herramienta y cuándo: ______', 'Qué le pedí: ______', 'Qué cambié o comprobé yo: ______'],
