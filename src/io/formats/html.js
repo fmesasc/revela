@@ -397,6 +397,7 @@ function blockHTMLRaw(b, slide) {
       + `${b.numStyle ? `--num:${b.numStyle};` : ''}`
       + `${b.bg ? `background:${b.bg};` : ''}${b.borderColor ? `border:${borderCSS(b.borderColor, b.borderDash)};` : ''}`
       + `${b.radius ? `border-radius:${b.radius}px;` : ''}box-sizing:border-box;`
+      + `${b.glass > 0 ? `backdrop-filter:blur(${Math.min(60, +b.glass)}px);-webkit-backdrop-filter:blur(${Math.min(60, +b.glass)}px);` : ''}`   // (glass: what is behind it, blurred)
       + `${b.vAlign ? `align-content:${{ top: 'start', middle: 'center', bottom: 'end' }[b.vAlign]};` : ''}`   // (on the block itself: bold words stay in their line)
       + `${b.fontWeight ? `font-weight:${b.fontWeight};` : ''}${b.fontStyle ? `font-style:${b.fontStyle};` : ''}`
       + `${b.columns > 1 ? `column-count:${b.columns};column-gap:32px;` : ''}`
@@ -946,7 +947,12 @@ function buildHTMLRaw(deck, { inApp = false, selfPaced = false, noCopy = false, 
 ${googleFontLinks(deck)}
 ${hasCode ? `<link rel="stylesheet" href="${REVEAL}/plugin/highlight/monokai.css">` : ''}
 ${katexNeeded ? `<link rel="stylesheet" href="${KATEX}/katex.min.css">` : ''}
-<script type="module" src="${MODEL_VIEWER}"></script>
+<script>/* (3D: model-viewer is asked for only if this computer can make a graphics context — without one, each model fails with «Error creating WebGL context» and an uncaught error; their pictures stand in) */
+(function(){var ok=false;try{var c=document.createElement('canvas'),g=c.getContext('webgl2')||c.getContext('webgl');if(g){ok=true;var l=g.getExtension('WEBGL_lose_context');if(l)l.loseContext();}}catch(e){}
+window.__rvNoGL=!ok;var S=window.__rvGS=window.__rvGS||{fails:0,rebuilds:0,lite:false,dead:false};
+window.addEventListener('error',function(e){if(/model-viewer/.test(e.filename||'')||/reading 'xr'|Error creating WebGL context/.test(e.message||'')){e.preventDefault();S.lite=true;}});
+window.addEventListener('unhandledrejection',function(e){var m=String(e.reason&&e.reason.message||e.reason||'');if(/Error creating WebGL context|reading 'xr'/.test(m)){e.preventDefault();S.lite=true;}});
+if(ok){var s=document.createElement('script');s.type='module';s.src=${JSON.stringify(MODEL_VIEWER)};document.head.appendChild(s);}else S.dead=true;})();</script>
 ${katexNeeded ? `<script defer src="${KATEX}/katex.min.js"></script>` : ''}
 ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></script>` : ''}
 <style>

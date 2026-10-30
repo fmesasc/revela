@@ -5203,4 +5203,6 @@ export default {
   "Continuar la web de otra diapositiva…": "Beste diapositiba bateko weba jarraitu…",
   "Continuar otra web": "Beste web bat jarraitu",
   "Elige la web que seguirá aquí. Al presentar, continúa en la página donde la dejaste en la otra diapositiva, sin recargarse; cada una conserva su tamaño y su sitio.": "Aukeratu hemen jarraituko duen weba. Aurkezten denean, beste diapositibako orrian utzi zenuen lekutik jarraitzen du, birkargatu gabe; bakoitzak bere tamaina eta tokia gordetzen ditu.",
+  "Iconos 3D": "3D ikonoak",
+  "Iconos 3D de 3dicons.co (Vijay Verma, dominio público CC0): libro, lupa, cohete, trofeo… vienen con Revela, sin conexión. Se añaden como imagen con fondo transparente.": "3dicons.co-ren 3D ikonoak (Vijay Verma, jabari publikoa CC0): liburua, lupa, suziria, garaikurra… Revelarekin datoz, konexiorik gabe. Atzeko plano gardena duen irudi gisa gehitzen dira.",
 };

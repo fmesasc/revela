@@ -30,6 +30,7 @@ const TABS = [
   ['videos', 'Vídeos', 'movie', 'commonsvideo', 'Wikimedia Commons (commons.wikimedia.org)'],
   ['audio', 'Sonidos', 'music_note', 'openverse', 'Openverse (openverse.org)'],
   ['stickers', 'Stickers', 'add_reaction', null, null],
+  ['icons3d', 'Iconos 3D', 'view_in_ar', null, null],
   ['team', 'De mi equipo', 'groups', null, null],             // (the team's own pictures: server/cloudflare/teams.js; only in a team)
   ['anim3d', '3D con movimiento', 'view_in_ar', null, null],
   ['poly', 'Modelos 3D', 'deployed_code', 'poly', 'Poly Haven (polyhaven.com)'],
@@ -47,6 +48,7 @@ const HELP = {
   audio: 'Efectos de sonido (Freesound) y música (Jamendo) con licencias libres, vía Openverse. Escúchalos antes de añadirlos; se añade la atribución como pie.',
   team: 'Los logotipos e imágenes de tu equipo: lo que sube cualquier miembro lo pueden usar todos.',
   stickers: 'Emojis animados de Google (Noto, CC BY 4.0). Se pueden animar por tramos y quitar el fondo como cualquier GIF.',
+  icons3d: 'Iconos 3D de 3dicons.co (Vijay Verma, dominio público CC0): libro, lupa, cohete, trofeo… vienen con Revela, sin conexión. Se añaden como imagen con fondo transparente.',
   anim3d: 'Modelos 3D con licencia libre, varios con animaciones propias (andar, bailar…). Se guardan dentro de la presentación. Muévelos con clic derecho ▸ Movimiento 3D.',
   poly: 'Más de 500 modelos 3D de Poly Haven, de dominio público (CC0). Se guardan dentro de la presentación.',
   icosa: 'El archivo de Google Poly (Icosa Gallery): cientos de miles de modelos 3D —personas, animales, objetos…— casi todos CC BY; se añade la atribución (autor y licencia) como pie. Busca en inglés para más resultados.',
@@ -408,6 +410,8 @@ async function run(more = false) {
         async () => { const { data } = await api(`team/assets/${a.id}`); addImage(data); return currentSlide().blocks.at(-1); }]);
     } else if (tab === 'stickers') {
       list = R.searchStickers(term).map(s => [s.thumb, s.words, '', () => R.insertSticker(s.code, s.words)]);
+    } else if (tab === 'icons3d') {
+      list = R.searchIcons3D(term).map(i => [i.thumb, `${i.name} — 3dicons.co (CC0)`, i.name, () => R.insertIcon3D(i)]);
     } else if (tab === 'anim3d') {
       // (A model with a brand's logo on it: ™ on its tile, and why, in its title and once added.)
       list = R.searchLibrary3D(term, { animated: q('.el-onlyanim').checked }).map(m => { const mk = R.brandMarks(m), warn = mk && marksText(mk);

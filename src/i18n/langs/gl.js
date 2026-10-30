@@ -5203,4 +5203,6 @@ export default {
   "Continuar la web de otra diapositiva…": "Continuar a web doutra diapositiva…",
   "Continuar otra web": "Continuar outra web",
   "Elige la web que seguirá aquí. Al presentar, continúa en la página donde la dejaste en la otra diapositiva, sin recargarse; cada una conserva su tamaño y su sitio.": "Escolle a web que seguirá aquí. Ao presentar, continúa na páxina onde a deixaches na outra diapositiva, sen recargarse; cada unha conserva o seu tamaño e o seu sitio.",
+  "Iconos 3D": "Iconas 3D",
+  "Iconos 3D de 3dicons.co (Vijay Verma, dominio público CC0): libro, lupa, cohete, trofeo… vienen con Revela, sin conexión. Se añaden como imagen con fondo transparente.": "Iconas 3D de 3dicons.co (Vijay Verma, dominio público CC0): libro, lupa, foguete, trofeo… Veñen con Revela, sen conexión. Engádense como imaxe con fondo transparente.",
 };

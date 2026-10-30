@@ -47,6 +47,7 @@ export function blockPreview(b, slide, { small = false } = {}) {
       + `${b.vertical ? 'writing-mode:vertical-rl;' : ''}`
       + `${b.bg ? `background:${b.bg};` : ''}${b.borderColor ? `border:${borderCSS(b.borderColor, b.borderDash)};` : ''}`
       + `${b.radius ? `border-radius:${b.radius}px;` : ''}box-sizing:border-box;`
+      + `${b.glass > 0 ? `backdrop-filter:blur(${Math.min(60, +b.glass)}px);` : ''}`
       + `${b.fontWeight ? `font-weight:${b.fontWeight};` : ''}${b.fontStyle ? `font-style:${b.fontStyle};` : ''}`
       + `${b.columns > 1 ? `column-count:${b.columns};column-gap:32px;` : ''}`
       + `${b.wordart ? wordartCSS(b.wordart, b.wordartColor) : ''}">`

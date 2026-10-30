@@ -9,6 +9,8 @@ import { state, commit, amend, currentSlide } from '../../core/store.js';
 import { uid } from '../../core/model.js';
 import { searchImages, insertStockImage } from './stock.js';
 import { STICKERS, stickerURL, stickerThumb, STICKER_CREDIT } from './stickers.js';
+import { ICONS3D, ICONS3D_CREDIT, icon3dURL, icon3dName } from './icons3d.js';
+import { currentLang } from '../../i18n/index.js';
 import { LIBRARY_3D } from './library3d.js';
 import { NASA_3D } from './nasa3d.js';
 import { stlToGLB } from './stl.js';
@@ -32,6 +34,15 @@ export const searchStickers = q => (q ? STICKERS.filter(([, words]) => matches(w
 export async function insertSticker(code, words = '') {
   const src = await toDataURL(new Blob([await download(stickerURL(code))], { type: 'image/gif' }));
   return place({ id: uid(), type: 'image', src, fit: 'contain', alt: words.split(' ')[0] || '', credit: STICKER_CREDIT,
+    ...centred(240, 240), rotation: 0, animation: null });
+}
+
+// ---- 3D icons (3dicons.co, CC0): they travel with Revela, nothing is searched online ------
+export const searchIcons3D = q => ICONS3D.filter(r => !q || matches(r[1].join(' '), q))
+  .map(r => ({ id: r[0], name: icon3dName(r, currentLang()), thumb: icon3dURL(r[0]) }));
+export async function insertIcon3D(i) {
+  const src = await toDataURL(await download(i.thumb));
+  return place({ id: uid(), type: 'image', src, fit: 'contain', alt: i.name, credit: ICONS3D_CREDIT,
     ...centred(240, 240), rotation: 0, animation: null });
 }
 

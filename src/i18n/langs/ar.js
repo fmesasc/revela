@@ -5203,4 +5203,6 @@ export default {
   "Continuar la web de otra diapositiva…": "متابعة الويب من شريحة أخرى…",
   "Continuar otra web": "متابعة ويب آخر",
   "Elige la web que seguirá aquí. Al presentar, continúa en la página donde la dejaste en la otra diapositiva, sin recargarse; cada una conserva su tamaño y su sitio.": "اختر صفحة الويب التي ستُتابَع هنا. عند العرض تتابع من الصفحة التي تركتها عندها في الشريحة الأخرى دون إعادة تحميل؛ وتحتفظ كل واحدة بحجمها ومكانها.",
+  "Iconos 3D": "أيقونات ثلاثية الأبعاد",
+  "Iconos 3D de 3dicons.co (Vijay Verma, dominio público CC0): libro, lupa, cohete, trofeo… vienen con Revela, sin conexión. Se añaden como imagen con fondo transparente.": "أيقونات ثلاثية الأبعاد من 3dicons.co (فيجاي فيرما، ملكية عامة CC0): كتاب، عدسة مكبرة، صاروخ، كأس… تأتي مع Revela وتعمل دون اتصال. تُضاف كصورة بخلفية شفافة.",
 };

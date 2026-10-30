@@ -88,6 +88,7 @@ export function styleRich(rich, b) {
   rich.style.background = b.bg || '';
   rich.style.border = b.borderColor ? borderCSS(b.borderColor, b.borderDash) : '';
   rich.style.borderRadius = (b.radius || 0) + 'px';
+  rich.style.backdropFilter = b.glass > 0 ? `blur(${Math.min(60, +b.glass)}px)` : '';
   // (Vertical alignment on the block itself — align-content —, not as a flex column, where each bold word would be a line.)
   rich.style.alignContent = { top: 'start', middle: 'center', bottom: 'end' }[b.vAlign] || '';
   applyWordart(rich, b.wordart, b.wordartColor);

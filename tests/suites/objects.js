@@ -2230,6 +2230,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       return realFetch(url, o); };
     try {
       assert(Rz.searchStickers('').length > 80, 'catálogo de stickers'); assert(Rz.searchStickers('corazon').some(x => x.code === '2764_fe0f'), 'buscar sin tildes');
+      assert(Rz.searchIcons3D('').length >= 60 && Rz.searchIcons3D('cohete').some(i => i.id === 'rocket') && Rz.searchIcons3D('rakete').some(i => i.id === 'rocket') && Rz.searchIcons3D('صاروخ').length === 1, 'iconos 3D: se buscan en cualquier idioma');
+      const ic = await Rz.insertIcon3D(Rz.searchIcons3D('trofeo')[0]);
+      assert(ic.type === 'image' && /^data:image\/webp/.test(ic.src) && /CC0/.test(ic.credit) && ic.alt, 'el icono 3D es una imagen WebP con su crédito y su texto alternativo');
       const st = await Rz.insertSticker('1f389', 'fiesta confeti party');
       assert(st.type === 'image' && /^data:image\/gif/.test(st.src) && /CC BY 4\.0/.test(st.credit), 'el sticker es un GIF con su crédito');
       const { isGif, needsPlayer } = await W.eval("import('/src/features/live/media.js')");
@@ -2466,6 +2469,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   await test('rotación y volteo en el export', async () => {
     reset(); const b = newText(); b.rotation = 30; b.flipH = true;
     assert(/rotate\(30deg\) scaleX\(-1\)/.test(R.io.buildHTML()), 'transform con giro y volteo');
+  });
+
+  await test('cristal: un texto con `glass` desenfoca lo de detrás, en la página exportada', async () => {
+    reset(); const b = newText(); b.bg = 'rgba(255,255,255,0.1)'; b.glass = 18;
+    assert(/backdrop-filter:blur\(18px\)/.test(R.io.buildHTML()), 'backdrop-filter en la exportación');
+    b.glass = 0; assert(!/backdrop-filter:blur\(0/.test(R.io.buildHTML()), 'sin cristal, sin filtro');
   });
 
   await test('voltear y restablecer giro', async () => {
