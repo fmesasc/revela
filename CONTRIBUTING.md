@@ -98,6 +98,15 @@ said: maps whose pictures are taken on first view, an object that leaves the sli
 `tools/play-templates.py` plays them slide by slide in a browser. A new kind of motion that the checker cannot read goes
 into `tools/motioncheck.mjs`, not around it.
 
+## The website must stay findable
+
+`tests/seo-site.mjs` builds the site (needs `site/`, the private revela-site) and fails when a page loses what search engines need: its own
+title, description and heading within its language, a canonical address, versions in the other languages that point back (`hreflang`),
+a social card, structured data that parses (a video needs name, description, thumbnail, content and upload date), an entry in the
+sitemap (and no entry for a page that does not exist — a language the page lacks, for one), and no broken internal link. A page that
+cannot meet one has a reason written in the test, not an exception in silence. The sitemap carries no `<lastmod>`: it would be the
+day of the build for every page. Two templates may not have the same name in a language (`TELL` in `site/tools/pages.mjs`).
+
 ## Coding style
 
 - Modern JavaScript (ES modules), no framework.

@@ -170,14 +170,16 @@ export function translatePage(html, lang, dict, page) {
   return { html: res, missing: [...new Set(missing)] };
 }
 
-// The sitemap: every page in every language, each with its versions.
-export function sitemap(pages, extra, date) {
-  // (A page may exist in only some languages — [page, priority, imageOf, ['en']]: then only those, and the first is the default.)
-  const alt = (p, langs = SITE_LANGS) => langs.map(l => `<xhtml:link rel="alternate" hreflang="${l}" href="${pageUrl(p, l)}"/>`).join('')
+// The sitemap: every page in every language, each with its versions. A page may be in only some languages (a fourth
+// element: ['en']): it is listed in those and nowhere else — a sitemap with addresses that answer 404 costs the whole file its
+// credit with search engines. No <lastmod>: it would be the day of the build for all of them (a lie search engines learn to
+// ignore), and none of these pages keeps a real date of change.
+export function sitemap(pages, extra) {
+  const alt = (p, langs) => langs.map(l => `<xhtml:link rel="alternate" hreflang="${l}" href="${pageUrl(p, l)}"/>`).join('')
     + `<xhtml:link rel="alternate" hreflang="x-default" href="${pageUrl(p, langs.includes('es') ? 'es' : langs[0])}"/>`;
   // (A page may bring its picture in each language — a template's cover —: <image:image>, so Google Images finds it and ties it to the page.)
   const pic = (imageOf, l) => (typeof imageOf === 'function' ? `<image:image><image:loc>${imageOf(l)}</image:loc></image:image>` : '');
-  const rows = pages.flatMap(([p, prio, imageOf, only]) => (only || SITE_LANGS).map(l => `  <url><loc>${pageUrl(p, l)}</loc><lastmod>${date}</lastmod><priority>${prio}</priority>${alt(p, only || SITE_LANGS)}${pic(imageOf, l)}</url>`));
-  for (const p of extra) rows.push(`  <url><loc>${SITE}/${p}</loc><lastmod>${date}</lastmod><priority>0.2</priority></url>`);
+  const rows = pages.flatMap(([p, prio, imageOf, langs = SITE_LANGS]) => langs.map(l => `  <url><loc>${pageUrl(p, l)}</loc><priority>${prio}</priority>${alt(p, langs)}${pic(imageOf, l)}</url>`));
+  for (const p of extra) rows.push(`  <url><loc>${SITE}/${p}</loc><priority>0.2</priority></url>`);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${rows.join('\n')}\n</urlset>\n`;
 }

@@ -31,7 +31,8 @@
     // The header's and footer's words, in that language.
     document.querySelectorAll('[data-es]').forEach(function (el) { var t = el.getAttribute('data-' + lang) || el.getAttribute('data-es'); if (t) el.textContent = t; });
     var art = arts.filter(function (a) { return a.lang === lang; })[0], h1 = art.querySelector('h1');
-    if (h1) document.title = h1.textContent + ' · Revela';
+    if (art.getAttribute('data-title')) document.title = art.getAttribute('data-title');
+    else if (h1) document.title = h1.textContent + ' · Revela';
     // The index: the article's sections (each gets an id if it has none).
     if (toc) {
       toc.innerHTML = '';

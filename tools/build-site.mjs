@@ -211,12 +211,12 @@ function localize(out, more = []) {
     mkdirSync(dir, { recursive: true });
     for (const [p] of PAGES) {
       const r = translatePage(readFileSync(join(ROOT, 'site', p + '.html'), 'utf8'), l, dict, p);
-      writeFileSync(join(dir, p + '.html'), withFaq(r.html));
+      writeFileSync(join(dir, p + '.html'), withFaq(withVideos(r.html, out, l)));
       for (const k of r.missing) missing.push(`${l}/${p}: ${k}`);
     }
   }
   if (missing.length) throw new Error(`Untranslated texts on the website (site/i18n/):\n${missing.slice(0, 20).join('\n')}${missing.length > 20 ? `\n… and ${missing.length - 20} more` : ''}`);
-  writeFileSync(join(out, 'sitemap.xml'), sitemap(PAGES.concat(more), ['legal', 'privacy', 'terms', 'dpa', 'developers'], new Date().toISOString().slice(0, 10)));
+  writeFileSync(join(out, 'sitemap.xml'), sitemap(PAGES.concat(more), ['legal', 'privacy', 'terms', 'dpa', 'developers', 'bot']));
 }
 
 // A page's frequently asked questions (<details><summary>), also as FAQPage structured data, in
@@ -227,6 +227,38 @@ export function withFaq(html) {
   if (!qa.length) return html;
   const ld = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: qa.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
   return html.replace('</head>', `  <script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>\n</head>`);
+}
+
+// A page's videos, also as VideoObject structured data (Google can then show them in its video results): the guides' (a
+// <video> in a section, named by its heading and described by its steps) and the home's animation (data-video, which site.js
+// plays). Taken from the page once translated, so each language's carries its own words. When each was made:
+// site/tools/seo-videos.json (a video without a date there gets no data: uploadDate is required).
+export function mp4Seconds(buf) {
+  const i = buf.indexOf('mvhd'); if (i < 0) return 0;
+  const v = buf[i + 4], scale = buf.readUInt32BE(i + (v ? 24 : 16)), dur = v ? Number(buf.readBigUInt64BE(i + 28)) : buf.readUInt32BE(i + 20);
+  return scale ? Math.round(dur / scale) : 0;
+}
+const isoDuration = sec => `PT${sec >= 3600 ? Math.floor(sec / 3600) + 'H' : ''}${Math.floor(sec % 3600 / 60) ? Math.floor(sec % 3600 / 60) + 'M' : ''}${sec % 60 || !sec ? sec % 60 + 'S' : ''}`;
+export function withVideos(html, out, lang, site = SITE) {
+  const f = join(ROOT, 'site', 'tools', 'seo-videos.json'), dates = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : {};
+  const abs = u => (/^https?:/.test(u) ? u : site + '/' + u.replace(/^\/+/, ''));
+  const secs = u => { try { return mp4Seconds(readFileSync(join(out, u.replace(/^\/+/, '')))); } catch { return 0; } };
+  const cut = (t, n) => (t.length <= n ? t : t.slice(0, t.lastIndexOf(' ', n)).replace(/[,;:\s]+$/, '') + '…');
+  const vids = [];
+  for (const [sec] of html.matchAll(/<section\b[\s\S]*?<\/section>/g)) {
+    const v = /<video\b[^>]*\bposter="([^"]+)"[^>]*\bsrc="([^"]+)"/.exec(sec), h = /<h[23][^>]*>([\s\S]*?)<\/h[23]>/.exec(sec);
+    if (!v || !h) continue;
+    const steps = /<ol class="guide-steps">([\s\S]*?)<\/ol>/.exec(sec), name = plain(h[1]), date = dates[v[2].replace(/^\/+/, '')], s = secs(v[2]);
+    if (date && s) vids.push({ '@type': 'VideoObject', name, description: cut(plain(steps ? steps[1].replace(/<\/li>/g, ' ') : name), 300), thumbnailUrl: abs(v[1]), contentUrl: abs(v[2]), uploadDate: date, duration: isoDuration(s), inLanguage: lang });
+  }
+  const loop = /data-video="([^"]+)"[^>]*>\s*<img src="([^"]+)"[^>]*alt="([^"]*)"/.exec(html);
+  if (loop) {
+    const variant = /^(en|fr|de|nl|ar)$/.test(lang) ? 'en' : 'es', src = `${loop[1]}-${variant}.mp4`, before = html.slice(0, loop.index), h = [...before.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/g)].pop();
+    const date = dates[src.replace(/^\/+/, '')], s = secs(src);
+    if (date && s && h) vids.push({ '@type': 'VideoObject', name: plain(h[1]), description: plain(loop[3]), thumbnailUrl: abs(loop[2]), contentUrl: abs(src), uploadDate: date, duration: isoDuration(s), inLanguage: lang });
+  }
+  if (!vids.length) return html;
+  return html.replace('</head>', `  <script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': vids }).replace(/</g, '\\u003c')}</script>\n</head>`);
 }
 
 // The pages' icons, <i data-icon="name" class="…"></i>: drawn in place with the app's own (render/svg.js).

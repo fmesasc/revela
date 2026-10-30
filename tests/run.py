@@ -470,15 +470,18 @@ def site_checks(send, recv):
         # In other languages: each its own address, with links between them for search engines.
         check(ev("[...document.querySelectorAll('link[rel=alternate][hreflang]')].map(l=>l.hreflang).join()") == 'es,en,fr,de,it,pt,ca,gl,nl,eu,ar,x-default', 'hreflang en la portada')
         # (Plus the templates' pages, when the site makes them — site/tools/pages.mjs: the list and one page each, in every language.)
-        tdir = os.path.join(out, 'templates'); made = (['templates'] + os.listdir(tdir)) if os.path.isdir(tdir) else []
-        # (And the page for US teachers, English only — site/tools/seo-us.json —: one more address, not eleven.)
+        tdir = os.path.join(out, 'templates'); files = os.listdir(tdir) if os.path.isdir(tdir) else []
+        # (The page for US teachers, English only — site/tools/seo-us.json —: one address, not eleven; and the groups' own pages, templates/category/.)
         only_en = 1 if os.path.exists(os.path.join(out, 'en', 'templates', 'us-teachers.html')) else 0
-        check(ev("fetch('sitemap.xml').then(r=>r.text()).then(t=>(t.match(/<loc>/g)||[]).length)") == 115 + 11 * len(made) + only_en, f'sitemap: 10 páginas × 11 idiomas + 4 legales + desarrolladores + {len(made)} de plantillas × 11 + {only_en} solo en inglés')
+        tpl_pages = [f for f in files if f.endswith('.html') and f != 'us-teachers.html']
+        hubs = len(os.listdir(os.path.join(tdir, 'category'))) if os.path.isdir(os.path.join(tdir, 'category')) else 0
+        made = (['templates'] + tpl_pages + [None] * hubs) if files else []
+        check(ev("fetch('sitemap.xml').then(r=>r.text()).then(t=>(t.match(/<loc>/g)||[]).length)") == 116 + 11 * len(made) + only_en, f'sitemap: 10 páginas × 11 idiomas + 4 legales + desarrolladores + bot + {len(made)} de plantillas (la lista, {len(tpl_pages)} plantillas y {hubs} grupos) × 11 + {only_en} solo en inglés')
         if os.path.exists(os.path.join(ROOT, 'site', 'tools', 'pages.mjs')):
             check(len(made) > 100, f'las páginas de las plantillas: {len(made)}')
             recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/templates.html')); time.sleep(1.5)
             cards = ev("document.querySelectorAll('.tpl-card').length") or 0
-            check(cards == len(made) - 1 and ev("document.querySelectorAll('.tpl-group h2').length") >= 6, f'la lista de plantillas, por grupos: {cards}')
+            check(cards == len(tpl_pages) and ev("document.querySelectorAll('.tpl-group h2').length") >= 6, f'la lista de plantillas, por grupos: {cards}')
             bad = ev(r"""(async()=>{const u=[...new Set([...document.querySelectorAll('.tpl-card')].flatMap(a=>[a.getAttribute('href')+'.html',a.querySelector('img').getAttribute('src')]))];
               const bad=[];await Promise.all(u.map(h=>fetch(h).then(r=>{if(!r.ok)bad.push(h)})));return bad.join(',')})()""")
             check(bad == '', 'cada plantilla de la lista, con su página y su portada: ' + str(bad)[:300])

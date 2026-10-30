@@ -12,5 +12,5 @@ python3 tests/layers.py || exit 1
 # green while skipping half of it).
 command -v node >/dev/null || { echo 'Falta Node.js (22 o más): https://nodejs.org' >&2; exit 1; }
 node tools/build-news-starters.mjs --check || exit 1; node tests/server.mjs || exit 1; node tests/server-api.mjs || exit 1; node tests/server-lti.mjs || exit 1; node tests/server-blender.mjs || exit 1; node tests/server-brakes.mjs || exit 1
-node tests/client-account.mjs || exit 1; node tests/build-stamp.mjs || exit 1; node tests/templates-i18n.mjs || exit 1; node tools/template-texts.mjs --check || exit 1
+node tests/client-account.mjs || exit 1; node tests/build-stamp.mjs || exit 1; node tests/seo-site.mjs || exit 1; node tests/templates-i18n.mjs || exit 1; node tools/template-texts.mjs --check || exit 1
 exec python3 tests/run.py "$@"
