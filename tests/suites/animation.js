@@ -1,6 +1,6 @@
 // Animations and transitions: timeline, triggers, motion paths, auto-animate, code steps, rehearsal.
 
-export default async function ({ R, D, frame, test, sleep, assert, eq, reset, slide, last, select, richOf, newText }) {
+export default async function ({ R, D, frame, test, sleep, waitFor, assert, eq, reset, slide, last, select, richOf, newText }) {
   await test('transiciones nuevas: cubo, cubrir, página, galería, caer, desde arriba, remolino, encoger, desenfocar y destello', async () => {
     reset(); const T = await frame.contentWindow.eval("import('/src/features/animation/transitions.js')");
     const names = ['cube', 'cover', 'page', 'gallery', 'fall', 'drop', 'swirl', 'shrink', 'blur', 'flash'];
@@ -663,9 +663,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const el = () => f.contentDocument.querySelector(`section.present [data-id="${key}"]`);
       const turn = () => { const cs = f.contentWindow.getComputedStyle(el()), m = new f.contentWindow.DOMMatrix(cs.transform === 'none' ? undefined : cs.transform), r = parseFloat(cs.rotate) || 0;
         return Math.round((((Math.atan2(m.b, m.a) * 180 / Math.PI) + r) % 360 + 360) % 360); };
-      RV.slide(last - 1); await sleep(200); eq(turn(), 270, 'antes: hacia arriba');
-      RV.slide(last); await sleep(600); eq(turn(), 0, 'después: recta');
-      RV.slide(last - 1); await sleep(1400); eq(turn(), 270, 'al volver atrás: hacia arriba otra vez (antes se quedaba recta)');
+      RV.slide(last - 1); await waitFor(() => turn() === 270); eq(turn(), 270, 'antes: hacia arriba');
+      RV.slide(last); await waitFor(() => turn() === 0); eq(turn(), 0, 'después: recta');
+      RV.slide(last - 1); await waitFor(() => turn() === 270); eq(turn(), 270, 'al volver atrás: hacia arriba otra vez (antes se quedaba recta)');
       const r = el().getBoundingClientRect(); assert(r.height > r.width, 'y en su sitio, de pie: ' + JSON.stringify([r.width, r.height]));
     } finally { f.remove(); }
   });
@@ -827,10 +827,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       RV.next(); await sleep(500);
       eq([st().s, st().x, st().y].join(), '2,0.25,0.25', 'siguiente: zoom a la zona');
       assert(/scale\(2(\.0+)?\)/.test(el._pdf.layer.style.transform), 'ampliada: ' + el._pdf.layer.style.transform);
-      RV.prev(); await sleep(300); eq([st().page, st().s].join(), '2,1', 'atrás: sin zoom');
-      RV.prev(); await sleep(600); eq(st().page, 1, 'atrás: página 1');
+      RV.prev(); await waitFor(() => [st().page, st().s].join() === '2,1'); eq([st().page, st().s].join(), '2,1', 'atrás: sin zoom');
+      RV.prev(); await waitFor(() => st().page === 1); eq(st().page, 1, 'atrás: página 1');
       // The bar: next page, zoom in, fit.
-      el._pdf.bar.querySelector('[data-a="next"]').click(); await sleep(600); eq(st().page, 2, 'la barra pasa de página');
+      el._pdf.bar.querySelector('[data-a="next"]').click(); await waitFor(() => st().page === 2); eq(st().page, 2, 'la barra pasa de página');
       el._pdf.bar.querySelector('[data-a="in"]').click(); await sleep(100); eq(st().s, 1.5, 'y amplía');
       el._pdf.bar.querySelector('[data-a="fit"]').click(); await sleep(100); eq(st().s, 1, 'y encaja');
       eq(el._pdf.bar.querySelector('span').textContent, '2 / 3', 'con su número de página');

@@ -1,6 +1,6 @@
 // Objects: shapes, icons, charts, diagrams, tables, images, equations, code, media, grouping, clipboard.
 
-export default async function ({ R, D, frame, test, sleep, assert, eq, reset, slide, last, select, richOf, newText }) {
+export default async function ({ R, D, frame, test, sleep, waitFor, assert, eq, reset, slide, last, select, richOf, newText }) {
   await test('3D creado en el navegador: el código de la IA, aislado (sin red, sin el editor, cortado si no acaba), da un GLB y sus tres vistas', async () => {
     const W = frame.contentWindow, M = await W.eval("import('/src/features/content/model3dweb.js')");
     const code = `const body = h.mesh(new THREE.CylinderGeometry(0.04, 0.035, 0.09, 32), h.mat('#2f5fbf', { rough: 0.3 }), 'Taza');
@@ -605,14 +605,14 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(liveBtn().classList.contains('on'), 'el botón, encendido');
     const tr = v.srcObject.getTracks()[0];
     const M = await frame.contentWindow.eval("import('/src/features/live/media.js')"); M.setCameraLook(id, { bg: 'blur' });
-    await sleep(30);
+    await waitFor(() => el().querySelector('canvas[width="260"]'));
     assert(el().querySelector('canvas[width="260"]'), 'con fondo desenfocado: su lienzo');
-    R.store.commit(() => { slide().blocks.find(x => x.id === id).w = 300; }); await sleep(30);
+    R.store.commit(() => { slide().blocks.find(x => x.id === id).w = 300; }); await waitFor(() => el().querySelector('canvas[width="300"]'));
     assert(el().querySelector('canvas[width="300"]'), 'al cambiar de tamaño, el lienzo también');
-    R.slides.addSlide(); await sleep(60);
+    R.slides.addSlide(); await waitFor(() => tr.readyState === 'ended');
     eq(tr.readyState, 'ended', 'en otra diapositiva la cámara se apaga');
     R.store.undo(); await sleep(60);
-    const cv = await frame.contentWindow.eval("import('/src/ui/canvas/cameraview.js')"); cv.setCameraLive(false); await sleep(30);
+    const cv = await frame.contentWindow.eval("import('/src/ui/canvas/cameraview.js')"); cv.setCameraLive(false); await waitFor(() => !el().querySelector('video'));
     assert(!el().querySelector('video'), 'apagada: otra vez el marcador');
     D.querySelector('[data-tab="home"]').click();
   });
@@ -628,9 +628,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const W = f.contentWindow, v = f.contentDocument.querySelector('video[data-camera]');
       for (let i = 0; i < 60 && (v.paused || !v.srcObject); i++) await sleep(50);
       assert(v.srcObject && !v.paused, 'en directo en su diapositiva');
-      W.Reveal.slide(1); await sleep(300); assert(v.paused, 'pausada en otra diapositiva');
-      W.Reveal.slide(0); await sleep(300);
-      const t0 = v.currentTime; await sleep(400);
+      W.Reveal.slide(1); await waitFor(() => v.paused); assert(v.paused, 'pausada en otra diapositiva');
+      W.Reveal.slide(0); await waitFor(() => !v.paused);
+      const t0 = v.currentTime; await waitFor(() => v.currentTime > t0);
       assert(!v.paused && v.currentTime > t0, 'al volver se sigue moviendo');
     } finally { f.remove(); }
   });
@@ -640,8 +640,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     D.querySelector('[data-action="record-camera"]').click();
     let bar; for (let i = 0; i < 40 && !(bar = D.getElementById('rec-bar')); i++) await sleep(50);
     assert(bar, 'barra de grabación (cámara falsa del navegador de pruebas)');
-    await sleep(700);
-    bar.querySelector('.rec-stop').click();
+    bar.querySelector('.rec-stop').click();   // (right away: stopping before the first piece of video arrives must still give a video)
     // (The recording becomes a data: URL first: on a slow machine — the CI's — that takes a while.)
     for (let i = 0; i < 240 && !slide().blocks.slice(n0).some(b => b.type === 'video'); i++) await sleep(50);
     const v = slide().blocks.slice(n0).find(b => b.type === 'video') || last(); eq(v.type, 'video', 'vídeo insertado');
@@ -4017,7 +4016,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(F.document.querySelector('.rvm-note.rvm-show') && /Torre Eiffel/.test(F.document.querySelector('.rvm-note').textContent), 'su nota, al llegar');
       const mk = [...el.querySelectorAll('.rvm-mk')];
       eq(mk.map(x => x.classList.contains('rvm-hide') ? 0 : 1).join(), '1,1,0', 'los marcadores de las paradas visitadas; la siguiente, aún no');
-      RV.next(); await sleep(700); eq(el._rvm.cur, 2, 'otro: a Roma');
+      RV.next(); await waitFor(() => el._rvm.cur === 2); eq(el._rvm.cur, 2, 'otro: a Roma');
       RV.prev(); await sleep(100); eq(el._rvm.cur, 1, 'atrás: de vuelta a París');
       for (let k = 0; k < 60 && real().at(-1).center.join() !== '2.35,48.86'; k++) await sleep(50);
       eq(map.c.join(), '2.35,48.86');
@@ -4333,7 +4332,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       await sleep(150); const m2 = el2._rvm.map;
       assert(Math.abs(m2.c[0] - map.c[0]) < 3 && Math.abs(m2.c[1] - 41.9) < 0.01, `la diapositiva siguiente sigue el mapa donde estaba: ${was} → ${m2.c}`);
       assert(!m2.flights.some(x => x.duration > 1), 'sin volar: era la misma parada');
-      const l2 = m2.c[0]; await sleep(500); assert(m2.c[0] < l2, 'y sigue girando');
+      const l2 = m2.c[0]; await waitFor(() => m2.c[0] < l2); assert(m2.c[0] < l2, 'y sigue girando');
     } finally { f.remove(); }
   });
 

@@ -1,6 +1,6 @@
 // Presenting: full-screen overlay, reveal.js options, ink, live captions, polls, live data, phone remote.
 
-export default async function ({ R, D, frame, test, sleep, assert, eq, reset, slide, last, select, richOf, newText }) {
+export default async function ({ R, D, frame, test, sleep, waitFor, assert, eq, reset, slide, last, select, richOf, newText }) {
   await test('presentar: crea una capa a pantalla completa y se cierra', async () => {
     const W_op = el => frame.contentWindow.getComputedStyle(el).opacity;
     reset(); R.io.present(); await sleep(40);
@@ -536,7 +536,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const bar = w.document.getElementById('ink-bar'), move = (x, y) => w.document.dispatchEvent(new w.MouseEvent('mousemove', { clientX: x, clientY: y, bubbles: true }));
       move(320, 180); await sleep(500); assert(!bar.classList.contains('show'), 'mover el ratón (o el puntero) por la pantalla no saca la barra');
       move(30, 340); assert(!bar.classList.contains('show'), 'ni al pasar de largo por la esquina');
-      await sleep(450); assert(bar.classList.contains('show'), 'sale al dejarlo un momento abajo a la izquierda');
+      await waitFor(() => bar.classList.contains('show')); assert(bar.classList.contains('show'), 'sale al dejarlo un momento abajo a la izquierda');
       move(320, 180); await sleep(750); assert(!bar.classList.contains('show'), 'y se va al salir de la esquina');
       const rv = w.document.querySelector('.reveal');
       w.document.querySelector('#ink-bar [data-z="1"]').click(); eq(rv.style.scale, '1.25', 'acercar desde la barra');
@@ -1569,7 +1569,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       D.querySelector('[data-action="prompter"]').click(); await sleep(150);
       const pd = pop.contentWindow.document, txt = () => pd.getElementById('in').textContent, box = pd.getElementById('txt');
       assert(/^Primera línea/.test(txt()), 'muestra las notas de la diapositiva que se edita');
-      const y0 = box.scrollTop; await sleep(700); assert(box.scrollTop > y0, 'y avanzan solas');
+      const y0 = box.scrollTop; await waitFor(() => box.scrollTop > y0); assert(box.scrollTop > y0, 'y avanzan solas');
       pd.dispatchEvent(new pop.contentWindow.KeyboardEvent('keydown', { key: ' ', bubbles: true })); const y1 = box.scrollTop; await sleep(400);
       eq(box.scrollTop, y1, 'espacio: se para');
       const fs = parseFloat(pd.getElementById('in').style.fontSize); pd.querySelector('[data-k="bigger"]').click(); await sleep(50);
@@ -1741,7 +1741,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     };
     // The teacher presenting: no gate.
     let f = await open(R.io.buildHTML(R.state.deck, { inApp: true }));
-    try { f.contentWindow.Reveal.next(); await sleep(200); eq(f.contentWindow.Reveal.getIndices().h, 1, 'quien presenta pasa sin abrirlo'); } finally { f.remove(); }
+    try { f.contentWindow.Reveal.next(); await waitFor(() => f.contentWindow.Reveal.getIndices().h === 1); eq(f.contentWindow.Reveal.getIndices().h, 1, 'quien presenta pasa sin abrirlo'); } finally { f.remove(); }
     // Self-paced (as a pupil's own copy, the viewer or SCORM): kept on the slide until it is opened.
     f = await open(R.io.buildHTML(R.state.deck, { inApp: true, selfPaced: true }));
     try {
@@ -1749,7 +1749,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(W.getComputedStyle(doc.querySelector('[data-lock-hide="lk"]')).visibility === 'hidden', 'el premio, oculto');
       key(doc.body, 'ArrowRight'); await sleep(150); eq(W.Reveal.getIndices().h, 0, 'la flecha no pasa');
       assert(doc.querySelector('.rv-lock-note.on') && /Abre el candado/.test(doc.querySelector('.rv-lock-note').textContent), 'y dice por qué');
-      W.Reveal.slide(2); await sleep(300); eq(W.Reveal.getIndices().h, 0, 'ni saltando: vuelve al candado');
+      W.Reveal.slide(2); await waitFor(() => W.Reveal.getIndices().h === 0); eq(W.Reveal.getIndices().h, 0, 'ni saltando: vuelve al candado');
       doc.querySelector('[data-lock-id="lk"]').click(); await sleep(50);
       const box = doc.querySelector('.rv-lock-box'), wheels = [...box.querySelectorAll('.rv-w-d')];
       assert(box && /El año/.test(box.textContent), 'el candado se abre con su pista'); eq(wheels.length, 4, 'y cuatro ruedas');
@@ -1776,7 +1776,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(/No quedan intentos/.test(b2.textContent) && inp.disabled, 'se acabaron los intentos');
       key(inp, 'Escape'); await sleep(20); assert(!doc.querySelector('.rv-lock'), 'Esc lo cierra');
       eq(W.rvLock.ask && W.rvLock.open.lk, true, 'recuerda lo abierto');
-      W.Reveal.slide(2); await sleep(300); eq(W.Reveal.getIndices().h, 2, 'abierto, ya se puede pasar');
+      W.Reveal.slide(2); await waitFor(() => W.Reveal.getIndices().h === 2); eq(W.Reveal.getIndices().h, 2, 'abierto, ya se puede pasar');
       W.rvLock.ask(doc.querySelector('[data-lock-id="lk2"]')); await sleep(20);
       const b3 = doc.querySelector('.rv-lock-box'); assert(b3.querySelector('.rv-lock-go').disabled, 'sin intentos al volver a abrirlo');
       b3.querySelector('.rv-lock-txt').value = 'roma'; b3.querySelector('.rv-lock-go').click(); await sleep(30);
@@ -2014,12 +2014,12 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       for (let i = 0; i < 60 && !frames().length; i++) await sleep(50);
       eq(frames().length, 1, 'un solo marco para las dos webs');
       const vis = () => frames()[0].style.visibility, rect = () => frames()[0].getBoundingClientRect();
-      await sleep(400); eq(vis(), 'visible', 'en la diapositiva 1 se ve');
+      await waitFor(() => vis() === 'visible'); eq(vis(), 'visible', 'en la diapositiva 1 se ve');
       const slot1 = f.contentDocument.querySelector('.rv-liveslot').getBoundingClientRect(), r1 = rect();
       assert(Math.abs(r1.left - slot1.left) < 2 && Math.abs(r1.width - slot1.width) < 2 && Math.abs(r1.height - slot1.height) < 2, 'encima de su hueco, con su tamaño');
       const a0 = await ask('rv-bump'); eq(a0.n, 1, 'se navega por ella (cuenta 1)');
-      Rv.slide(1); await sleep(700); eq(vis(), 'hidden', 'en otra diapositiva sin web, oculto');
-      Rv.slide(3); await sleep(900); eq(vis(), 'visible', 'en la diapositiva 4 vuelve a verse');
+      Rv.slide(1); await waitFor(() => vis() === 'hidden'); eq(vis(), 'hidden', 'en otra diapositiva sin web, oculto');
+      Rv.slide(3); await waitFor(() => vis() === 'visible'); eq(vis(), 'visible', 'en la diapositiva 4 vuelve a verse');
       const a1 = await ask('rv-ping'); eq(a1.id, a0.id, 'es el MISMO marco (no se recargó)'); eq(a1.n, 1, 'y sigue donde se dejó (cuenta 1, no 0)');
       const slot4 = f.contentDocument.querySelectorAll('.rv-liveslot')[1].getBoundingClientRect(), r4 = rect();
       assert(Math.abs(r4.left - slot4.left) < 2 && Math.abs(r4.top - slot4.top) < 2 && Math.abs(r4.width - slot4.width) < 2, 'ahora sobre el hueco de la diapositiva 4, con su propio tamaño y sitio: ' + [r4.left, slot4.left, r4.width, slot4.width]);

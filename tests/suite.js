@@ -46,7 +46,10 @@ export async function run(frame, only = null, grep = '') {
   const richOf = b => D.querySelector(`.block[data-id="${b.id}"] .rich`);
   const newText = () => { R.blocks.addText(); const b = last(); select(b); return b; };
 
-  const ctx = { R, D, frame, test, sleep, assert, eq, reset, slide, last, select, richOf, newText };
+  // Waits for a condition (up to `ms`, so a slow machine only makes it longer) instead of a fixed pause; returns its last value.
+  const waitFor = async (fn, ms = 10000) => { let v; for (let t0 = Date.now(); Date.now() - t0 < ms && !(v = fn()); ) await sleep(30); return v; };
+
+  const ctx = { R, D, frame, test, sleep, waitFor, assert, eq, reset, slide, last, select, richOf, newText };
   for (area of AREAS.filter(a => !only || only.includes(a)))
     await (await import(`./suites/${area}.js`)).default(ctx);
 

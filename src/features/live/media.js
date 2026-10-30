@@ -43,18 +43,24 @@ export async function startRecording(kind = 'camera', { audio = true } = {}) {
     sources.push(cam); stream = cam;
   }
   const chunks = [], rec = new MediaRecorder(stream, pickMime() ? { mimeType: pickMime() } : undefined);
-  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  // The first piece of video can take a while to arrive (a slow machine, the camera warming up): stopping before it would give an
+  // empty file and nothing inserted, so stop() waits for it (a few seconds at most).
+  let gotData; const firstData = new Promise(res => { gotData = res; });
+  rec.ondataavailable = e => { if (e.data && e.data.size) { chunks.push(e.data); gotData(); } };
   rec.start(250);
   const release = () => sources.forEach(s => s.getTracks().forEach(tr => tr.stop()));
   // If the user stops sharing from the browser's own bar, finish too.
   const ended = new Promise(res => stream.getVideoTracks()[0]?.addEventListener('ended', res));
   return {
     stream, ended,
-    stop: () => new Promise(res => {
-      if (rec.state === 'inactive') { release(); return res(new Blob(chunks, { type: rec.mimeType || 'video/webm' })); }
-      rec.onstop = () => { release(); res(new Blob(chunks, { type: rec.mimeType || 'video/webm' })); };
-      rec.stop();
-    }),
+    stop: async () => {
+      if (rec.state !== 'inactive' && !chunks.length) await Promise.race([firstData, new Promise(r => setTimeout(r, 4000))]);
+      return new Promise(res => {
+        if (rec.state === 'inactive') { release(); return res(new Blob(chunks, { type: rec.mimeType || 'video/webm' })); }
+        rec.onstop = () => { release(); res(new Blob(chunks, { type: rec.mimeType || 'video/webm' })); };
+        rec.stop();
+      });
+    },
     cancel: () => { try { rec.stop(); } catch {} release(); },
   };
 }
