@@ -89,7 +89,12 @@ export function loadScript(src, global, module = false) {
   return pending.get(src);
 }
 // <model-viewer>, unless the page has it already (it is an ES module: as a classic script it fails).
-export const loadModelViewer = () => (customElements.get('model-viewer') ? Promise.resolve() : loadScript(MODEL_VIEWER, null, true));
+// (A graphics context, tried once: the page's own answer, or a throw-away canvas.)
+let gl3d = null;
+const canDrawGL = () => gl3d ??= !window.__rvGS?.dead && (() => { try { const c = document.createElement('canvas'), g = c.getContext('webgl2') || c.getContext('webgl'); g?.getExtension('WEBGL_lose_context')?.loseContext(); return !!g; } catch { return false; } })();
+export const loadModelViewer = () => (customElements.get('model-viewer') ? Promise.resolve()
+  : !canDrawGL() ? Promise.reject(new Error('no WebGL'))      // (without a graphics context every model fails with an uncaught error)
+  : loadScript(MODEL_VIEWER, null, true));
 // A stylesheet, once.
 export function loadStyle(href) {
   if (![...document.querySelectorAll('link[rel=stylesheet]')].some(l => l.href === href)) {

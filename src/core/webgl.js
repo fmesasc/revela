@@ -4,6 +4,7 @@
 // (The runtimes of the exported page carry their own copy of this: they import nothing — io/runtime/model3d.js, geomap.js.)
 let info = null;
 export function webglInfo() {
+  if (window.__rvGS?.dead) return { ok: false, soft: false, renderer: '' };      // (the page has lost its contexts for good: see io/runtime/geomap.js)
   if (info) return info;
   info = { ok: false, soft: false, renderer: '' };
   try {
@@ -16,4 +17,14 @@ export function webglInfo() {
     }
   } catch {}
   return info;
+}
+
+// A computer whose graphics are off (GPU disabled by the browser: «Error creating WebGL context», then «reading 'xr'» once
+// per <model-viewer>): not an uncaught error for each, the light mode from then on (what io/runtime/geomap.js and
+// model3d.js read from window.__rvGS).
+if (typeof window !== 'undefined' && !window.__rvGSGuard) {
+  window.__rvGSGuard = true;
+  const gs = () => (window.__rvGS ||= { fails: 0, rebuilds: 0, lite: false, dead: false });
+  window.addEventListener('error', e => { if (/model-viewer/.test(e.filename || '') || /reading 'xr'|Error creating WebGL context/.test(e.message || '')) { e.preventDefault(); gs().lite = true; } });
+  window.addEventListener('unhandledrejection', e => { if (/Error creating WebGL context|reading 'xr'/.test(String(e.reason?.message || e.reason || ''))) { e.preventDefault(); gs().lite = true; } });
 }

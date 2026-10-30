@@ -15,6 +15,22 @@
 export function geoMapRuntime(lib, rtl, words) {
   words = words || {};
   var gl = null, mounted = [], left = null;           // (left: where the last map shown was left — c.state())
+  // ── What this page has seen of its graphics, shared with the 3D models (io/runtime/model3d.js reads it): a context the
+  // browser refused or took away. After the first, the light mode for the rest of the page; after the third, no live
+  // maps at all — pictures (Francisco, 2026-10-30: «Web page caused context loss and was blocked»: Chrome shuts a page's
+  // WebGL when it loses contexts over and over, so nothing is built again and again here: budget below, and rebuild()).
+  var GS = window.__rvGS = window.__rvGS || { fails: 0, rebuilds: 0, lite: false, dead: false };
+  var glFail = function () { GS.fails++; GS.lite = true; if (GS.fails > 2) GS.dead = true; };
+  if (!GS.guard) {
+    GS.guard = 1;
+    // (MapLibre throws its «could not create a context» from inside a promise: not an uncaught error, the maps' picture.)
+    window.addEventListener('unhandledrejection', function (e) {
+      var r = e && e.reason, m = String((r && r.message) || r || '');
+      if (!/webglcontextcreationerror|Failed to initialize WebGL|Could not create a WebGL context/.test(m)) return;
+      e.preventDefault(); glFail();
+      (window.__rvMapCrash || []).forEach(function (f) { f(); });
+    });
+  }
   var CSS = '.rvm-live{position:absolute;inset:0;opacity:0;transition:opacity .5s}.rvm-on>.rvm-live{opacity:1}.rvm-on>.rv-map-shot{visibility:hidden!important}'
     // (The credits: a short line always in sight, the whole of them behind MapLibre's ⓘ — never a wide bar over the map.)
     // (A box whose edges fade (--rvm-mask: features/content/geomap.js mapEdgeCSS): the map and its markers fade, not
@@ -100,7 +116,7 @@ export function geoMapRuntime(lib, rtl, words) {
   // mapas tardan en cargar o no cargan»). Settable: ?perf=lite|full in the address, or localStorage 'revela.perf'.
   var gpuProbe = null;
   function gpu() {
-    if (window.__rvGL === false) return { webgl: false, soft: false, renderer: '' };         // (the tests' way of having none)
+    if (window.__rvGL === false || GS.dead) return { webgl: false, soft: false, renderer: '' };         // (the tests' way of having none)
     if (gpuProbe) return gpuProbe;
     gpuProbe = { webgl: false, soft: false, renderer: '' };
     try {
@@ -117,7 +133,7 @@ export function geoMapRuntime(lib, rtl, words) {
   var perfSet = function () { try { var q = /[?&]perf=(lite|full)\b/.exec(location.search); return q ? q[1] : (localStorage.getItem('revela.perf') || ''); } catch (e) { return ''; } };
   var weak = function () {
     var p = perfSet(); if (p === 'lite' || p === 'full') return p === 'lite';
-    return !!(gpu().soft || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) || (navigator.deviceMemory && navigator.deviceMemory <= 4));
+    return !!(GS.lite || gpu().soft || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) || (navigator.deviceMemory && navigator.deviceMemory <= 4));
   };
   var later = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
   // (In the speaker view's previews — reveal.js loads the presentation there with ?receiver — nothing is fetched
@@ -310,11 +326,31 @@ export function geoMapRuntime(lib, rtl, words) {
     });
   }
 
+  // ── Browsers allow only so many live maps (each is a WebGL context), and take the oldest away without telling when
+  // there are more: four at once, two on a computer in light mode. Room for one more is made by letting go of the
+  // farthest from the slide in view (never a map of that slide, the dialog's, or one taking a picture).
+  var MAXLIVE = function () { return weak() ? 2 : 4; };
+  function room(me) {
+    var live = mounted.filter(function (x) { return x !== me && x.map && !x.dead; });
+    if (live.length < MAXLIVE()) return true;
+    var all = window.Reveal && Reveal.getSlides ? Reveal.getSlides() : [], cur = window.Reveal && Reveal.getCurrentSlide ? Reveal.getCurrentSlide() : null, ci = all.indexOf(cur);
+    var dist = function (x) { var s = x.el.closest && x.el.closest('section'), i = s ? all.indexOf(s) : -1; return i < 0 || ci < 0 ? 0 : Math.abs(i - ci); };
+    var d0 = dist(me);
+    var spare = live.filter(function (x) { return !x.keep && dist(x) > d0; }).sort(function (a, b) { return dist(b) - dist(a); });
+    while (live.length >= MAXLIVE() && spare.length) { var old = spare.shift(); live = live.filter(function (x) { return x !== old; }); old.destroy(); }
+    return live.length < MAXLIVE() || d0 === 0;       // (one for a slide further on than all those alive waits for its turn)
+  }
+  // (A context given back at once, not when the garbage is collected: a map let go of keeps its slot until then.)
+  function release(cv) {
+    try { var g = cv && (cv.getContext('webgl2') || cv.getContext('webgl')), l = g && g.getExtension('WEBGL_lose_context'); if (l && !g.isContextLost()) l.loseContext(); } catch (e) {}
+  }
+
   // One map in its box: { el, cfg, cur, map, ready, go(k, animate, dur), view(), update(cfg), capture(k), destroy() }.
   // opts: interactive (drag, zoom, turn), keyboard, capture (keeps its picture to be read), onMove(view).
   function mount(el, cfg, opts) {
     opts = opts || {}; styles();
-    var c = { el: el, cfg: cfg, cur: 0, map: null, failed: false, dead: false, markers: [], token: 0, warms: opts.warm !== false && !opts.capture };
+    var c = { el: el, cfg: cfg, cur: 0, map: null, failed: false, dead: false, markers: [], token: 0, warms: opts.warm !== false && !opts.capture,
+      keep: !!(opts.capture || (el.closest && el.closest('.rv-dlg-map')) || !(el.closest && el.closest('section'))) };
     var box = document.createElement('div'); box.className = 'rvm-live'; box.setAttribute('aria-hidden', 'true');
     box.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%';      // (MapLibre's own CSS makes its box position:relative)
     // (Behind the map, what shows while its tiles come: none for a globe without its space — cfg.clear: the slide.)
@@ -407,11 +443,22 @@ export function geoMapRuntime(lib, rtl, words) {
     // Start again from nothing — a style that never came, a graphics context lost for good —, twice at most; then the picture.
     function rebuild(why) {
       var tries = el._rvmTries || 0, cur = c.cur; if (c.dead) return false;
-      if (tries >= 2 || !gpu().webgl) { offline(true, gpu().webgl ? '' : 'gl'); return false; }
-      el._rvmTries = tries + 1; c.destroy();
+      if (tries >= 2 || GS.rebuilds >= 4 || !gpu().webgl) { offline(true, gpu().webgl ? '' : 'gl'); return false; }      // (never a loop: four starts again in all, for the page)
+      el._rvmTries = tries + 1; GS.rebuilds++; c.destroy();
       var n = ensure(el); if (n) n.ready.then(function () { if (!n.dead) n.go(cur, false); });
       return true;
     }
+    // A context that could not be made: no map, its picture; and once more a few seconds later — if the page hasn't given up.
+    function retry() {
+      if (c.dead || GS.dead || el._rvmRetried) return;
+      el._rvmRetried = true; setTimeout(function () { if (!c.dead && el.isConnected && !el.classList.contains('rvm-on')) rebuild('create'); }, 4000);
+    }
+    function crash() {
+      if (c.dead || el.classList.contains('rvm-on')) return;
+      var m = c.map; c.map = null; if (m) try { var cv = m.getCanvas(); m.remove(); release(cv); } catch (e) {}
+      glFail(); offline(true, 'gl'); retry();
+    }
+    c.crash = crash; (window.__rvMapCrash = window.__rvMapCrash || []).push(crash);
     // Without the live map: the stop's picture (or the closest one before it).
     function shot(k) {
       var list = [].slice.call(el.querySelectorAll(':scope > .rv-map-shot')), best = null;
@@ -516,11 +563,14 @@ export function geoMapRuntime(lib, rtl, words) {
       // (No WebGL — or MapLibre can't start it —: not a blank box, a picture and a word about it.)
       if (!opts.capture && !gpu().webgl) { offline(true, 'gl'); return c; }
       var m;
+      if (!opts.capture && !room(c)) { c.destroy(); return c; }
       try {
         m = c.map = new ml.Map({ container: box, style: cfg.style, center: v0.center, zoom: v0.zoom, pitch: v0.pitch, bearing: v0.bearing, maxPitch: 85,
           interactive: opts.interactive !== false, attributionControl: { compact: true }, pixelRatio: pr(), fadeDuration: opts.capture ? 0 : 300,
           canvasContextAttributes: { antialias: true, preserveDrawingBuffer: !!opts.capture } });
-      } catch (e) { c.map = null; offline(true, 'gl'); return c; }
+      } catch (e) { c.map = null; glFail(); offline(true, 'gl'); retry(); return c; }
+      // (The context refused after all — the constructor doesn't always say so —: the picture, and once more later.)
+      box.addEventListener('webglcontextcreationerror', function () { if (!c.dead) crash(); }, true);
       if (!opts.keyboard && m.keyboard) m.keyboard.disable();            // (the arrows are the presentation's)
       paintBg();
       m.on('style.load', dress);
@@ -905,7 +955,8 @@ export function geoMapRuntime(lib, rtl, words) {
     c.resize = function () { bleed(); if (c.map) { try { c.map.setPixelRatio(pr()); } catch (e) {} c.map.resize(); } };
     c.destroy = function () {
       c.dead = true; c.token++; motion(false); if (c.ro) c.ro.disconnect(); mounted = mounted.filter(function (x) { return x !== c; }); clearTimeout(c.at); job = null;
-      if (c.map) try { c.map.remove(); } catch (e) {}
+      if (c.map) try { var cv = c.map.getCanvas(); c.map.remove(); release(cv); } catch (e) {}
+      c.crash = null; window.__rvMapCrash = (window.__rvMapCrash || []).filter(function (f) { return f !== crash; });
       box.remove(); note.remove(); credit.remove(); el.classList.remove('rvm-on', 'rvm-offline', 'rvm-fade'); el.style.overflow = 'hidden'; el.removeAttribute('data-bled'); var n = el.querySelector(':scope > .rvm-off'); if (n) n.remove();
       el._rvm = null;
     };

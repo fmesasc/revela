@@ -7,12 +7,14 @@ export function model3dRuntime() {
   var timers = new WeakMap();
   // The 3D library itself, from the other CDN if the first one hasn't answered after 8 s (a network that blocks jsDelivr).
   setTimeout(function () {
-    if (window.customElements && !customElements.get('model-viewer') && document.querySelector('model-viewer') && !document.querySelector('script[data-rv-mirror]')) {
+    if (!window.__rvNoGL && window.customElements && !customElements.get('model-viewer') && document.querySelector('model-viewer') && !document.querySelector('script[data-rv-mirror]')) {
       var m = document.createElement('script'); m.type = 'module'; m.setAttribute('data-rv-mirror', ''); m.src = 'https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js'; document.head.appendChild(m);
     }
   }, 8000);
   // No WebGL at all (or none that works): model-viewer throws and leaves its box empty — its picture instead, never nothing.
-  var NOGL = (function () { try { var g = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl'); if (!g) return true; var l = g.getExtension('WEBGL_lose_context'); if (l) l.loseContext(); return false; } catch (e) { return true; } })();
+  // (What the page has seen of its graphics — shared with the maps, io/runtime/geomap.js: a context refused or taken away.)
+  var GS = window.__rvGS = window.__rvGS || { fails: 0, rebuilds: 0, lite: false, dead: false };
+  var NOGL = (function () { if (window.__rvNoGL !== undefined) return window.__rvNoGL; try { var g = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl'); if (!g) return true; var l = g.getExtension('WEBGL_lose_context'); if (l) l.loseContext(); return false; } catch (e) { return true; } })();
   // (Its own box, so that its animations — fragments, paths — go on working: the picture is its background.)
   function flat(mv) {
     if (mv.__flat) return; mv.__flat = true;
@@ -28,8 +30,10 @@ export function model3dRuntime() {
     document.addEventListener('webglcontextlost', function (e) {
       if (!e.target || e.target.tagName !== 'CANVAS' || !document.querySelector('model-viewer')) return;
       clearTimeout(timer);
+      GS.lite = true;
       timer = setTimeout(function () {
-        if (times++ >= 2) return;
+        // (A third time: the browser won't give one back — their pictures, not boxes left empty; and no more tries.)
+        if (times++ >= 2) { GS.fails++; if (GS.fails > 2) GS.dead = true; [].forEach.call(document.querySelectorAll('model-viewer'), flat); return; }
         [].forEach.call(document.querySelectorAll('model-viewer'), function (mv) {
           var src = mv.getAttribute('src'); if (!src) return;
           mv.removeAttribute('src'); setTimeout(function () { if (mv.isConnected && !mv.getAttribute('src')) mv.setAttribute('src', src); }, 80);
@@ -40,7 +44,7 @@ export function model3dRuntime() {
   })();
   function setup(mv) {
     if (mv.__rv) return; mv.__rv = true;
-    if (NOGL) { flat(mv); return; }
+    if (NOGL || GS.dead) { flat(mv); return; }
     mv.__spin = mv.hasAttribute('auto-rotate');             // (its own turning: an arrival "facing the audience" stops it, only there)
     // Its picture until it has loaded (a slow connection), in the model's own box.
     // (Not a photo — JPEG, with its own background: a grey box on the slide.)
@@ -210,6 +214,8 @@ export function model3dRuntime() {
         || (window.matchMedia && matchMedia('(pointer: coarse)').matches && Math.min(screen.width || 9999, screen.height || 9999) <= 820);
     } catch (e) { return false; }
   })());
+  // (And once the page has lost a context: light too, from then on.)
+  function lean() { return LEAN || (PERF !== 'full' && GS.lite); }
   // The models of this slide and the next ones load now, not when they come into
   // view (model-viewer waits for that): else a slide arrives with an empty box.
   // On lean devices, only the current slide and the next (not the one before too).
@@ -219,7 +225,7 @@ export function model3dRuntime() {
   var preToken = 0;
   function preload(slide) {
     var all = window.Reveal ? Reveal.getSlides() : [], i = all.indexOf(slide), token = ++preToken;
-    var win = LEAN ? all.slice(i, i + 2) : all.slice(Math.max(0, i - 1), i + 3);
+    var win = lean() ? all.slice(i, i + 2) : all.slice(Math.max(0, i - 1), i + 3);
     var eager = function (mv) { if (mv.getAttribute('loading') !== 'eager') mv.setAttribute('loading', 'eager'); };
     var mine = slide ? [].slice.call(slide.querySelectorAll('model-viewer')) : [];
     mine.forEach(eager);
@@ -236,7 +242,7 @@ export function model3dRuntime() {
   // Keep only the slides next to the current one with their models loaded; the rest give up their WebGL
   // context (src removed → the poster shows). When a slide comes back within reach, its models load again.
   function trim(slide) {
-    if (!LEAN || !window.Reveal) return;
+    if (!lean() || !window.Reveal) return;
     var all = Reveal.getSlides(), i = all.indexOf(slide);
     all.forEach(function (s, k) {
       var near = Math.abs(k - i) <= 1;

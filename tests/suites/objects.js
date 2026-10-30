@@ -4074,6 +4074,74 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(typeof run.gpu().webgl === 'boolean' && typeof run.gpu().soft === 'boolean', 'sabe si hay WebGL y si lo dibuja el procesador');
   });
 
+  // A computer whose browser refuses graphics contexts (Francisco, 2026-10-30): no uncaught errors, pictures instead, light
+  // mode from then on, and never maps rebuilt over and over.
+  await test('WebGL que falla: mapas y 3D caen a su imagen sin errores sin capturar; límite de mapas vivos; sin bucles', async () => {
+    reset(); const { G, W } = await mapSetup();
+    const S = await W.eval("import('/src/core/vendor.js')");
+    const stub = u => 'data:text/javascript;charset=utf-8,' + encodeURIComponent(u) + '%2F%2F';
+    const play = async (html, lib, run, head = '') => {
+      const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+      try {
+        let src = lib ? html.split(JSON.stringify(S.MAPLIBRE)).join(JSON.stringify(lib)) : html;
+        src = src.replace('<head>', '<head>' + head);
+        f.srcdoc = src;
+        for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
+        await run(f.contentWindow, f.contentWindow.Reveal);
+      } finally { f.remove(); }
+    };
+    // (1) The context is refused after MapLibre was built: an event on the canvas and a rejected promise nobody awaits.
+    R.slides.addSlide('blank'); await sleep(10);
+    G.addMap({ route: 'none', stops: [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 5 }, { name: 'París', lon: 2.35, lat: 48.86, zoom: 6 }] });
+    const html = R.io.buildHTML(R.state.deck, { inApp: true });
+    const bad = mapStub.replace("setTimeout(function(){t.fire('style.load');t.fire('load');t.fire('idle');},10);}",
+      "setTimeout(function(){t.cv.dispatchEvent(new Event('webglcontextcreationerror'));Promise.reject(new Error('{\"type\":\"webglcontextcreationerror\",\"message\":\"Failed to initialize WebGL\"}'));},10);}");
+    assert(bad !== mapStub, 'el simulacro de contexto rechazado');
+    await play(html, stub(bad), async (F, RV) => {
+      F.__rej = F.__rej || [];
+      const seen = F.__rej.map(e => e.defaultPrevented);
+      RV.slide(1); const el = F.document.querySelector('[data-geomap]');
+      for (let k = 0; k < 60 && !el.querySelector('.rvm-static'); k++) await sleep(50);
+      assert(el.querySelector('.rvm-static') && el.classList.contains('rvm-offline'), 'la imagen de satélite y el aviso, no una caja vacía');
+      assert(seen.length && seen.every(Boolean), 'el rechazo de MapLibre no queda como error sin capturar: ' + seen.join());
+      assert(F.__rvGS.lite === true, 'modo ligero para el resto de la página');
+      await sleep(5500);
+      const n = (F.__maps || []).length;
+      assert(n >= 1 && n <= 3, 'a lo sumo un reintento, nunca un bucle: ' + n);
+      await sleep(1500); eq((F.__maps || []).length, n, 'y se queda así');
+      assert(F.__rvGS.rebuilds <= 4, 'con tope en la página: ' + F.__rvGS.rebuilds);
+    }, '<script>window.__rej=[];addEventListener("unhandledrejection",function(e){__rej.push(e)})</script>');
+    // (2) Many maps on three slides: only so many alive at once, the slide in view always with its own.
+    reset(); await mapSetup(); const G2 = (await mapSetup()).G;
+    for (let i = 0; i < 3; i++) {
+      R.slides.addSlide('blank'); await sleep(10);
+      for (let j = 0; j < 3; j++) G2.addMap({ route: 'none', x: 50 + j * 300, y: 100, w: 280, h: 200, stops: [{ name: 'A' + i + j, lon: i * 10 + j, lat: 40, zoom: 4 }, { name: 'B', lon: 5, lat: 41, zoom: 5 }] });
+    }
+    W.localStorage.setItem('revela.perf', 'full');
+    await play(R.io.buildHTML(R.state.deck, { inApp: true }), stub(mapStub), async (F, RV) => {
+      const live = () => [...F.document.querySelectorAll('[data-geomap]')].filter(e => e._rvm && e._rvm.map && !e._rvm.dead);
+      for (const i of [0, 1, 2, 3, 2, 1]) {
+        RV.slide(i); await sleep(1800);
+        const cur = [...RV.getCurrentSlide().querySelectorAll('[data-geomap]')];
+        assert(live().length <= Math.max(4, cur.length), `diapositiva ${i}: ${live().length} mapas vivos (como mucho 4)`);
+        assert(cur.every(e => e._rvm && e._rvm.map && !e._rvm.dead), `diapositiva ${i}: los de la diapositiva que se ve, vivos`);
+      }
+    });
+    // (3) No graphics at all, several 3D models: model-viewer is not even asked for, their pictures stand in, no errors.
+    reset(); R.slides.addSlide('blank'); await sleep(10);
+    const poster = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    R.store.commit(() => { const sl = R.state.deck.slides.at(-1); for (let i = 0; i < 4; i++) sl.blocks.push({ id: 'nogl' + i, type: 'model', src: 'data:model/gltf-binary;base64,AAAA', poster, x: 20 + i * 220, y: 100, w: 200, h: 200, rotation: 0, animation: null }); });
+    await play(R.io.buildHTML(R.state.deck, { inApp: true }), null, async (F, RV) => {
+      await sleep(1200);
+      eq(F.__errs.length, 0, 'ningún error sin capturar: ' + F.__errs.join(' | '));
+      assert(!F.customElements.get('model-viewer') && !F.document.querySelector('script[src*="model-viewer"]'), 'model-viewer ni se pide');
+      const mvs = [...F.document.querySelectorAll('model-viewer')];
+      assert(mvs.length === 4 && mvs.every(m => /url\(/.test(m.style.background) || /url\(/.test(m.style.backgroundImage)), 'cada 3D, con su imagen');
+      assert(F.__rvNoGL === true && F.__rvGS.dead === true, 'recuerda que no hay gráficos');
+    }, '<script>window.__errs=[];addEventListener("error",function(e){__errs.push(e.message)});addEventListener("unhandledrejection",function(e){__errs.push("rej:"+(e.reason&&e.reason.message||e.reason))});var gc=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(t){return /webgl/.test(t)?null:gc.apply(this,arguments)};</script>');
+    W.localStorage.setItem('revela.perf', 'full');
+  });
+
   // What the map does at a stop (motion), how its slide starts (from space, from the previous slide's map), ripples
   // on its markers, a click on a marker (io/runtime/geomap.js motion(), c.begin(), c.visit()).
   await test('mapa: gira en cada parada, empieza desde el espacio o sigue desde el mapa anterior, ondas y clic en un marcador', async () => {
