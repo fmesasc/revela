@@ -88,6 +88,16 @@ cheapest way to cover it.
 and nothing at all in the normal case. The choice (Ver ▸ Efectos) is read through `__rvFX.perf()` / `__rvFX.reduced()`,
 not from `matchMedia` or `localStorage` directly. Test: `avisos de efectos` in `tests/suites/objects.js`.
 
+## Templates must move sensibly
+
+`plantillas: el movimiento de todas …` in `tests/suites/animation.js` reads every template of the catalogue with
+`tools/motioncheck.mjs` and fails on an animation effect the app does not know (it would not play), a title that comes
+after its content, a link to a slide that does not exist, an empty page embed or a background video that is not in
+`assets/video/`. `tools/audit-motion.py` prints the same for every template and language (plus the things that are only
+said: maps whose pictures are taken on first view, an object that leaves the slide on purpose, loud transitions), and
+`tools/play-templates.py` plays them slide by slide in a browser. A new kind of motion that the checker cannot read goes
+into `tools/motioncheck.mjs`, not around it.
+
 ## Coding style
 
 - Modern JavaScript (ES modules), no framework.

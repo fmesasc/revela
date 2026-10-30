@@ -280,7 +280,7 @@ export default {
  "Ventas 2026": "Umsatz 2026",
  "La cifra entra sola con un redoble al llegar a la diapositiva (después de la anterior, con sonido).": "Die Zahl erscheint beim Aufrufen der Folie von selbst mit einem Trommelwirbel (nach vorheriger, mit Ton).",
  "OBJETIVO 2027": "ZIEL 2027",
- "14,5 M€": "14,5 Mio. €",
+ "14,5 M€": "14,5 M€",
  "+17 % sobre 2026 · escenario base": "+17 % gegenüber 2026 · Basisszenario",
  "<ul><li>Dos tiendas nuevas en marzo</li><li>Exportación: 25 % de las ventas</li><li>Ticket medio de 410 €</li></ul>": "<ul><li>Zwei neue Filialen im März</li><li>Export: 25 % des Umsatzes</li><li>Durchschnittsbon von 410 €</li></ul>",
  "Bienvenida a Tándem": "Willkommen bei Tándem",

@@ -3,7 +3,7 @@
    «next» to the end — and reports what goes wrong: script errors, files that don't load, steps that don't move on,
    slides that come out blank, objects that end up off the slide. One sheet of pictures per presentation (every
    step, in order), to look at.
-   python3 tools/play-templates.py [GROUP_OR_KEY …] [--lang XX] [--out DIR] [--wait S] [--gpu] [--resume]
+   python3 tools/play-templates.py [GROUP_OR_KEY …] [--lang XX] [--out DIR] [--wait S] [--gpu] [--resume] [--max N]
    DIR (default tmp/play): report.json, and KEY.jpg per presentation. Prints one line per problem.
    (Chrome: one at a time — run it through tmp/chrome-slot.sh. --gpu: the computer's graphics card, as a person's
    browser has it — maps and 3D at their real speed —; without it, software drawing.)"""
@@ -13,7 +13,7 @@ args = sys.argv[1:]
 def opt(name, d=None):
     if name in args: i = args.index(name); v = args[i + 1]; del args[i:i + 2]; return v
     return d
-LANG = opt('--lang', 'es'); OUT = os.path.abspath(opt('--out', os.path.join(ROOT, 'tmp', 'play'))); WAIT = float(opt('--wait', '1.4'))
+MAX = int(opt('--max', '0')); LANG = opt('--lang', 'es'); OUT = os.path.abspath(opt('--out', os.path.join(ROOT, 'tmp', 'play'))); WAIT = float(opt('--wait', '1.4'))
 GPU = '--gpu' in args; RESUME = '--resume' in args; args = [a for a in args if a not in ('--gpu', '--resume')]
 os.makedirs(OUT, exist_ok=True); HTML = os.path.join(ROOT, 'tmp', 'play-html'); os.makedirs(HTML, exist_ok=True)
 
@@ -58,8 +58,11 @@ def main():
     keys = ev("""(async()=>{const E=await import('/src/features/content/examples.js');const {CATALOG}=await import('/src/features/content/templates/catalog.js');
       const want=%s;return Object.keys(CATALOG).filter(k=>!want.length||want.some(w=>k===w||k.startsWith(w+'_')||CATALOG[k].file===w||CATALOG[k].cat===w))})()""" % json.dumps(args))['result']['value']
     report = json.load(open(os.path.join(OUT, 'report.json'))) if os.path.exists(os.path.join(OUT, 'report.json')) else {}
+    done = 0
     for key in keys:
         if RESUME and key in report: continue          # (--resume: the ones already played, left as they were)
+        if MAX and done >= MAX: break                  # (--max N: at most N presentations this run, so the browser is free in between)
+        done += 1
         html = ev("""(async()=>{const R=window.__revela,E=await import('/src/features/content/examples.js');const d=await E.loadExample(%s,%s);if(!d)return '';
           return R.io.buildHTML(d,{inApp:false})})()""" % (json.dumps(key), json.dumps(LANG)), 180).get('result', {}).get('value') or ''
         if not html: print(f'{key}\tno se pudo generar', flush=True); continue
@@ -100,8 +103,12 @@ def play(sid, ev, key):
     while len(shots) < 160 and time.time() - t0 < 240:
         time.sleep(WAIT)
         idx = ev('JSON.stringify(Reveal.getIndices())').get('result', {}).get('value')
-        label = (lambda i: f"{i['h'] + 1}" + (f".{i['f'] + 1}" if i.get('f') is not None and i.get('f') >= 0 else ''))(json.loads(idx))
-        for p in ev(CHECK).get('result', {}).get('value') or []: problems.append(f'diapositiva {label}: {p}')
+        label = (lambda i: f"{i['h'] + 1}" + (f"v{i['v'] + 1}" if i.get('v') else '') + (f".{i['f'] + 1}" if i.get('f') is not None and i.get('f') >= 0 else ''))(json.loads(idx))
+        found = ev(CHECK).get('result', {}).get('value') or []
+        # (What goes past the edge is looked at again a moment later: a transition or a fly-in may still be on its way.)
+        if any(q.startswith('se sale') for q in found):
+            time.sleep(1.6); found = [q for q in (ev(CHECK).get('result', {}).get('value') or []) if q in found or not q.startswith('se sale')]
+        for p in found: problems.append(f'diapositiva {label}: {p}')
         img = base64.b64decode(recv(send('Page.captureScreenshot', sid, format='jpeg', quality=60))['result']['data'])
         shots.append((label, img))
         if idx in seen: stuck += 1
@@ -129,7 +136,8 @@ def play(sid, ev, key):
             rid = next((m['params']['requestId'] for m in events if m['method'] == 'Network.loadingFailed' and m['params'].get('errorText') in q), None)
             if rid in urls: problems[i] = q + ' ' + urls[rid][:90]
     problems = [q for q in dict.fromkeys(problems) if not re.search(r'tiles\.|openfreemap|/tiles/|mapterhorn|eox\.at|favicon|nominatim', q)]
-    if total and len({s[0].split('.')[0] for s in shots}) < total: problems.append(f'solo se vieron {len({s[0].split(".")[0] for s in shots})} de {total} diapositivas')
+    seen_slides = {re.sub(r'\..*', '', s[0]) for s in shots}      # (a slide of a vertical stack is «16v2»)
+    if total and len(seen_slides) < total: problems.append(f'solo se vieron {len(seen_slides)} de {total} diapositivas')
     sheet(key, shots)
     return {'steps': len(shots), 'slides': total, 'problems': problems, 'seconds': round(time.time() - t0)}
 

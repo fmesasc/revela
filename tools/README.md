@@ -20,6 +20,7 @@ itself in its first lines.
 | `template-names.mjs` | Adds translations of the examples' names and summaries. |
 | `template-texts.mjs` | The examples' texts for translating them; `--check` (run by the tests) fails if a language lacks any. |
 | `audit-templates.py` | How the examples look in the editor, slide by slide: text that doesn’t fit, objects off the slide, overlaps, low contrast; exits with 1 if there are any. |
+| `audit-motion.py` | What every example's motion does, read from the decks (`motioncheck.mjs`): effects that don’t exist, a title after its content, broken links, missing background videos, steps with holes; `--loud` also lists loud transitions, `--risky` the presentations most worth playing. |
 | `shot-template.py` | Pictures of an example's slides in one sheet, to look at them. |
 
 ## App data

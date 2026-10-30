@@ -1,7 +1,7 @@
 export default {
  "Festival de Cine de Orilla": "Orilla Zinemaldia",
  "Portada a la suiza: rejilla de seis columnas a la vista, todo alineado a la izquierda y un único color fuerte. El bloque rojo y el número entran solos al empezar (con sonido de barrido). Datos del festival inventados para la plantilla.": "Azala suitzar erara: sei zutabeko sareta agerian, dena ezkerrean lerrokatuta eta kolore bizi bakarra. Bloke gorria eta zenbakia berez sartzen dira hastean (ekorketa-soinuarekin). Jaialdiaren datuak txantiloirako asmatuak dira.",
- "PROGRAMA OFICIAL · 9—18 OCTUBRE 2026": "PROGRAMA OFIZIALA · 2026KO URRIAREN 9—18",
+ "PROGRAMA OFICIAL · 9—18 OCTUBRE 2026": "PROGRAMA · 2026KO URRIAK 9—18",
  "14.ª EDICIÓN": "14. EDIZIOA",
  "FESTIVAL DE CINE<br>DE ORILLA": "ORILLA<br>ZINEMALDIA",
  "9—18 octubre 2026": "2026ko urriaren 9—18",

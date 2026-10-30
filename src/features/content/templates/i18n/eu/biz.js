@@ -410,7 +410,7 @@ export default {
  "Boutique": "Boutique",
  "Club premium": "Premium kluba",
  "Pulso": "Pulso",
- "Hueco: buena experiencia a precio medio": "Hutsunea: esperientzia ona prezio ertainean",
+ "Hueco: buena experiencia a precio medio": "Hutsunea: esperientzia ona, prezio ertaina",
  "Barras agrupadas con tres series: ganamos en clases, perdemos claramente en la app. Encuesta a 1.900 socios (datos de ejemplo).": "Barra taldekatuak hiru seriekin: eskoletan irabazten dugu, aplikazioan argi galtzen. 1.900 bazkideri egindako inkesta (adibide-datuak).",
  "Cómo nos puntúan los socios (sobre 10)": "Nola puntuatzen gaituzten bazkideek (10etik)",
  "Precio": "Prezioa",

@@ -1,7 +1,7 @@
 export default {
  "Festival de Cine de Orilla": "Filmfestival von Orilla",
  "Portada a la suiza: rejilla de seis columnas a la vista, todo alineado a la izquierda y un único color fuerte. El bloque rojo y el número entran solos al empezar (con sonido de barrido). Datos del festival inventados para la plantilla.": "Titelseite im Schweizer Stil: sichtbares Sechs-Spalten-Raster, alles linksbündig und eine einzige kräftige Farbe. Der rote Block und die Zahl erscheinen zu Beginn von selbst (mit Wisch-Sound). Festivaldaten für die Vorlage erfunden.",
- "PROGRAMA OFICIAL · 9—18 OCTUBRE 2026": "OFFIZIELLES PROGRAMM · 9.—18. OKTOBER 2026",
+ "PROGRAMA OFICIAL · 9—18 OCTUBRE 2026": "PROGRAMM · 9.—18. OKT. 2026",
  "14.ª EDICIÓN": "14. AUSGABE",
  "FESTIVAL DE CINE<br>DE ORILLA": "FILMFESTIVAL<br>VON ORILLA",
  "9—18 octubre 2026": "9.—18. Oktober 2026",

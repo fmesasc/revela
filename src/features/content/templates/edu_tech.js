@@ -354,8 +354,8 @@ export default {
         notes: 'IP = número de teléfono del aparato; DNS = agenda de contactos. La analogía del teléfono es la más clara: nadie memoriza IPs, como nadie memoriza números.' },
       { title: 'De router en router', layout: 'titleOnly', bg: BG, extra: [
         img(net(), 50, 200, 840, 340, 'Una red de routers'),
-        after(withAnims(img(packet(1, CY), 120, 360, 64, 64, 'Un paquete saltando por la red'),
-          path([[220, -90], [400, -10], [560, -90], [700, -30]], { duration: 2600 })), 'none'),
+        withAnims(img(packet(1, CY), 120, 360, 64, 64, 'Un paquete saltando por la red'),
+          path([[220, -90], [400, -10], [560, -90], [700, -30]], { duration: 2600 })),
         nasa('communication-and-navigation-outage-forecast-system-cnofs', 910, 170, 310, 300, { autoRotate: true, alt: 'Un satélite de comunicaciones', caption: 'Satélite de comunicaciones — NASA' }),
         text('Algunos saltos cruzan el mundo por <b style="color:#ffd166">satélite</b>.', 900, 500, 320, 90, { fontSize: 23, color: DIM, textAlign: 'center' })],
         notes: 'El paquete salta de nodo en nodo; cada router decide el siguiente salto hacia el destino. Algunos tramos largos van por satélite: el modelo 3D se puede girar. Nadie planea toda la ruta de antemano.' },

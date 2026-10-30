@@ -1126,4 +1126,27 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     // Chosen: the real one.
     item.click(); await sleep(20); eq(slide().blocks[0].animation?.effect, 'spin', 'al elegirlo, se añade');
   });
+
+  await test('plantillas: el movimiento de todas (animaciones, pasos, avance automático, enlaces, vídeos de fondo) no tiene fallos que se vean al presentar', async () => {
+    // tools/motioncheck.mjs lee cada presentación del catálogo: un efecto que la aplicación no conoce (no se ve), un
+    // título que sale después de su contenido, un paso sin nada, un enlace a ninguna parte, un vídeo de fondo que falta…
+    const W = frame.contentWindow, M = await W.eval("import('/tools/motioncheck.mjs')"), E = await W.eval("import('/src/features/content/examples.js')");
+    const known = await M.knownFor(), keys = Object.keys(E.EXAMPLES);
+    assert(keys.length > 400 && known.effects.size > 50 && known.transitions.has('cube'), 'se leyó el catálogo: ' + keys.length + ' / ' + known.effects.size);
+    const bad = [];
+    for (const key of keys) {
+      const d = await E.loadExample(key, 'es'); if (!d) { bad.push(key + ': no carga'); continue; }
+      for (const [kind, where, what] of M.checkDeck(d, known)) if (!M.INFO.has(kind)) bad.push(`${key} ${where}: ${kind} — ${what}`);
+    }
+    eq(bad.slice(0, 20).join('\n'), '', 'fallos de movimiento en el catálogo (' + bad.length + ')');
+    // Y el comprobador sabe ver lo que debe: un efecto inventado, un título tarde, un enlace roto.
+    const mk = (blocks, extra = {}) => ({ slides: [{ id: 's1', blocks, ...extra }, { id: 's2', blocks: [] }] });
+    const tx = (id, html, props = {}) => ({ id, type: 'text', x: 100, y: 100, w: 500, h: 100, html, ...props });
+    const kinds = d => M.checkDeck(d, known).map(r => r[0]);
+    assert(kinds(mk([tx('a', 'x', { animation: { effect: 'zoom', order: 1 } })])).includes('efecto desconocido'), 'efecto inventado');
+    assert(kinds(mk([tx('t', 'Título', { ph: 'title', animation: { effect: 'fade-up', order: 2 } }), tx('c', 'Un párrafo largo que sale primero, con bastante texto dentro.', { animation: { effect: 'fade-up', order: 1 } })])).includes('el título sale después del contenido'), 'título tarde');
+    assert(kinds(mk([tx('l', 'x', { goto: 'nada' })])).includes('enlace a una diapositiva que no existe'), 'enlace roto');
+    assert(kinds(mk([tx('v', 'x')], { bgVideo: '../../../../assets/video/no-existe.mp4' })).includes('vídeo de fondo que no existe'), 'vídeo que falta');
+    assert(!kinds(mk([tx('ok', 'x', { animation: { effect: 'fade-up', order: 1 } })], { transition: 'cube' })).length, 'lo correcto, sin avisos');
+  });
 }
