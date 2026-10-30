@@ -147,10 +147,19 @@ export function geoMapRuntime(lib, rtl, words) {
   // transition showed nothing where the map would be, and Morph had no Earth to carry (Francisco, the same day); and no relief (the heaviest: its heights and a picture of each tile drawn on them). The
   // floor under the world (coarser: zoom 1) and the next flight's tiles (half of them: small) stay — without them the
   // flights showed holes filling in on the way (Francisco, the same day): they weigh little.
-  var lite = function () {
+  var frail = function () {
     var sv = window.Reveal && Reveal.isScrollView && Reveal.isScrollView();
     var phone = window.matchMedia && matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 820;
-    return !!(sv || phone || (navigator.deviceMemory && navigator.deviceMemory <= 2) || weak());
+    return !!(sv || phone || (navigator.deviceMemory && navigator.deviceMemory <= 2));
+  };
+  var lite = function () { return !!(frail() || weak()); };
+  // (The relief is the one effect that is dropped only where it can't be drawn: a phone, the scroll view, a graphics
+  // chip that is the processor itself, or a context lost. A laptop with four cores and a real graphics chip is «weak»
+  // for the tiles — fewer workers, less fetched ahead — but keeps its relief: with the light mode it would have lost
+  // the 3D of every map in its slides and in the exported page, which is what that page was made to show.)
+  var reliefOff = function () {
+    var p = perfSet(); if (p === 'lite') return true;
+    return !!(frail() || (p !== 'full' && (GS.lite || gpu().soft)));
   };
   var reduced = function () { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); };
   var ease = function (f) { return f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2; };
@@ -536,7 +545,7 @@ export function geoMapRuntime(lib, rtl, words) {
       try { m.setProjection({ type: cf.proj }); } catch (e) {}
       if (cf.proj === 'globe') try { m.setSky({ 'sky-color': '#0b1d33', 'horizon-color': '#9cc3ff', 'fog-color': '#ffffff', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.9,
         'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0] }); } catch (e) {}
-      if (cf.dem && !lite()) try { if (!m.getSource('rv-dem')) m.addSource('rv-dem', cf.dem); m.setTerrain({ source: 'rv-dem', exaggeration: 1.3 }); } catch (e) {}
+      if (cf.dem && !reliefOff()) try { if (!m.getSource('rv-dem')) m.addSource('rv-dem', cf.dem); m.setTerrain({ source: 'rv-dem', exaggeration: 1.3 }); } catch (e) {}
       localNames(m, cf.lang);
       // (Raster tiles cross-fade with the coarser ones under them, which fades those out — the floor too: shown at once.)
       (m.getStyle().layers || []).forEach(function (l) { if (l.type === 'raster') try { m.setPaintProperty(l.id, 'raster-fade-duration', 0); } catch (e) {} });
@@ -1102,5 +1111,5 @@ export function geoMapRuntime(lib, rtl, words) {
     });
     if (Reveal.isReady()) { if (Reveal.isScrollView && Reveal.isScrollView()) inView(); else inSlide(Reveal.getCurrentSlide()); }
   }
-  return { load: load, mount: mount, settle: settle, mounted: function () { return mounted.slice(); }, gpu: gpu, weak: weak };
+  return { load: load, mount: mount, settle: settle, mounted: function () { return mounted.slice(); }, gpu: gpu, weak: weak, reliefOff: reliefOff };
 }

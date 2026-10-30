@@ -4074,6 +4074,53 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(typeof run.gpu().webgl === 'boolean' && typeof run.gpu().soft === 'boolean', 'sabe si hay WebGL y si lo dibuja el procesador');
   });
 
+  // The map's effects, on the page that «Exportar HTML» writes (Francisco, 2026-10-30: «los efectos de los mapas no iban»): every
+  // option of the dialog reaches the page as data, and the relief — the effect the light mode drops — is drawn on a computer
+  // with four cores and a real graphics chip, and dropped only where it can't be (phone, scroll view, graphics by software).
+  await test('mapa: cada efecto del diálogo llega a la página exportada, y el relieve se dibuja salvo donde no se puede', async () => {
+    reset(); const { G, W } = await mapSetup(); R.slides.addSlide('blank'); await sleep(10);
+    const b = G.addMap({ look: 'globe', route: 'arc', routeColor: '#ffd400', terrain: true, motion: 'orbit', speed: 'slow', start: 'space', pulse: 'all', arrive: 'grow', past: 'dim', edge: 'soft', frame: { width: 8, color: '#ffd400' },
+      marker: { kind: 'number', color: '#2a9d8f', size: 1.4 }, curve: 2, names: false,
+      stops: [{ name: 'Madrid', lon: -3.7, lat: 40.4, zoom: 5, note: 'Salida' }, { name: 'Zermatt', lon: 7.75, lat: 46.02, zoom: 11, pitch: 65, bearing: 40 }] });
+    G.setMap(b.id, { flyMs: 1200 });
+    const H = await W.eval("import('/src/io/formats/html.js')"), Me = await W.eval("import('/src/core/mediastore.js')");
+    const page = new DOMParser().parseFromString(H.htmlParts(await Me.portable(R.state.deck)).html, 'text/html'), el = page.querySelector('[data-geomap]');
+    assert(el, 'el mapa, en la página exportada');
+    const c = JSON.parse(el.getAttribute('data-geomap'));
+    eq([c.proj, c.route, c.color, c.motion, c.speed, c.start, c.pulse, c.arrive, c.dim, c.fade, c.curve].join(), 'globe,arc,#ffd400,orbit,0.5,space,all,grow,true,true,2', 'sus opciones, como datos');
+    eq(c.dem && c.dem.type + ' ' + /mapterhorn/.test(c.dem.tiles[0]), 'raster-dem true', 'el relieve, con sus teselas');
+    eq(c.stops.map(s => [s.p, s.b, s.z].join()).join(' '), '0,0,5 65,40,11', 'la inclinación, el giro y el zoom de cada parada');
+    assert(c.stops[0].t === 'Salida' && c.stops[0].m && c.stops[0].m.svg, 'la nota y el marcador de la parada');
+    assert(c.segs.length === 1 && c.segs[0].length > 2, 'la línea de la ruta, en arco');
+    assert(el.getAttribute('data-edge') === 'soft' && /mask/.test(el.getAttribute('style')), 'bordes desvanecidos');
+    // On the page: the relief at the view's first stop, where the computer can draw it.
+    const html = R.io.buildHTML(R.state.deck, { inApp: true }), S = await W.eval("import('/src/core/vendor.js')");
+    const play = async (perf, run) => {
+      const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+      try {
+        f.srcdoc = html.split(JSON.stringify(S.MAPLIBRE)).join(JSON.stringify('data:text/javascript;charset=utf-8,' + encodeURIComponent(mapStub) + '%2F%2F'))
+          .replace('<head>', `<head><script>try{localStorage.setItem('revela.perf','${perf}')}catch(e){}</script>`);
+        for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
+        const F = f.contentWindow, el = F.document.querySelector('[data-geomap]');
+        F.Reveal.slide(1); for (let k = 0; k < 60 && !el.classList.contains('rvm-on'); k++) await sleep(50);
+        await run(F, el);
+      } finally { f.remove(); try { W.localStorage.removeItem('revela.perf'); } catch (e) {} }
+    };
+    await play('full', async (F, el) => { const m = el._rvm.map; assert(m.terrain && m.terrain.source === 'rv-dem', 'perf=full: con su relieve'); eq(m.proj, 'globe'); });
+    await play('lite', async (F, el) => { assert(!el._rvm.map.terrain, 'perf=lite: sin relieve'); });
+    // Which computers lose it: not for its four cores, but for a processor that draws the graphics, a failed context or a phone.
+    const GM = await W.eval("import('/src/io/runtime/geomap.js')"), run = GM.geoMapRuntime('x', 'y', {});
+    const hc = Object.getOwnPropertyDescriptor(W.Navigator.prototype, 'hardwareConcurrency');
+    try {
+      W.localStorage.removeItem('revela.perf');
+      Object.defineProperty(W.Navigator.prototype, 'hardwareConcurrency', { get: () => 2, configurable: true });
+      eq(run.weak(), true, 'con 2 núcleos, ligero para las teselas');
+      eq(run.reliefOff(), !!(run.gpu().soft || W.__rvGS.lite), 'pero el relieve no depende de los núcleos');
+      W.localStorage.setItem('revela.perf', 'full'); eq(run.reliefOff(), false, 'perf=full: con relieve');
+      W.localStorage.setItem('revela.perf', 'lite'); eq(run.reliefOff(), true, 'perf=lite: sin relieve');
+    } finally { Object.defineProperty(W.Navigator.prototype, 'hardwareConcurrency', hc); W.localStorage.setItem('revela.perf', 'full'); }
+  });
+
   // A computer whose browser refuses graphics contexts (Francisco, 2026-10-30): no uncaught errors, pictures instead, light
   // mode from then on, and never maps rebuilt over and over.
   await test('WebGL que falla: mapas y 3D caen a su imagen sin errores sin capturar; límite de mapas vivos; sin bucles', async () => {
