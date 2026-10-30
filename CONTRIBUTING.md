@@ -70,6 +70,18 @@ Objects. `tests/index.html` also runs in a normal browser
 To move a file or split a module without breaking imports, use
 `tools/move.py old=new` and `tools/extract.py SRC DEST "comment" names…`.
 
+## Exporting HTML must keep up with the editor
+
+«Export ▸ Web page (.html)», Present and the shared viewer are the **same code**: `buildHTML` in
+`src/io/formats/html.js` builds the page (the runtimes in `src/io/runtime/` are copied into it with
+`.toString()`, so they must import nothing). When you add something the editor can do — a slide transition, an object
+animation, a type of object, a runtime — add its half in `html.js` in the same change. The tests
+`exportar HTML: …` in `tests/suites/io.js` read the editor's own registries (the ribbon's transitions, the effects
+catalogue, the types the canvas draws, the files in `io/runtime/`) and fail if the exported page does not handle one;
+they also export and play the `showcase_*` catalogues and fail on any page error. If something truly cannot be
+exported, put it in the test's exempt list with the reason. A new `showcase_*` catalogue for a new feature is the
+cheapest way to cover it.
+
 ## Coding style
 
 - Modern JavaScript (ES modules), no framework.

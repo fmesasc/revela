@@ -1708,4 +1708,89 @@ Una ecuación\\: 2 \\= 1 \\+ 1 y unas llaves \\{\\} {=sí ~no}
     M.querySelector('.st-slides').click(); assert(/3 fichas/.test(M.textContent), 'y con las diapositivas, una más');
     M.querySelector('.modal-close').click();
   });
+
+  // ── Exportar HTML = presentar: lo que el editor ofrece, la página exportada lo trae ─────────────────────────────────
+  // «Al exportar el HTML faltaban transiciones, mapas…»: cada función nueva del editor se añadía y el export se quedaba atrás.
+  // Estas pruebas leen LOS REGISTROS (la cinta, el catálogo de efectos, lo que pinta el lienzo, los runtimes), no una lista
+  // a mano: una transición, animación, tipo de objeto o runtime nuevos sin soporte en el export hacen fallar la suite.
+  // (Si una función de verdad no se exporta, va en la lista de exentas de abajo, con su porqué.)
+  await test('exportar HTML: cada transición de la cinta (y sus opciones) llega a la página con su efecto', async () => {
+    reset(); const T = await frame.contentWindow.eval("import('/src/features/animation/transitions.js')");
+    const REVEAL_OWN = ['none', 'fade', 'slide', 'convex', 'concave', 'zoom'];         // (las que trae reveal.js)
+    const names = new Set([...D.querySelectorAll('[data-slide-transition]')].map(e => e.dataset.slideTransition));
+    D.querySelectorAll('[data-slide-trans-out] option').forEach(o => names.add(o.value));
+    names.delete('inherit'); names.delete('default'); names.delete('fast'); names.delete('slow'); names.delete('');
+    for (const [kind, dirs] of Object.entries(T.TRANSITION_DIRS)) dirs.forEach(d => names.add(T.transitionName(kind, d)));
+    assert(names.size >= 20, 'la cinta ofrece transiciones: ' + names.size);
+    const missing = [];
+    for (const n of names) {
+      if (REVEAL_OWN.includes(n)) continue;
+      if (!T.CUSTOM_TRANSITIONS[n] && !T.isShapeTransition(n)) { missing.push(n + ' (ni CSS propio ni forma)'); continue; }
+      reset(); R.slides.addSlide(); R.slides.goToSlide(1);
+      const [kind, dir] = n.split('-'); R.trans.setSlideTransition(T.TRANSITION_DIRS[kind] ? kind : n);
+      if (T.TRANSITION_DIRS[kind] && dir) R.trans.setSlideTransOptions({ transitionDir: dir });
+      const html = R.io.buildHTML();
+      if (!new RegExp(`data-transition="${n}"`).test(html) || !new RegExp(`section\\[data-transition=${n}\\]\\.(past|future)`).test(html)) missing.push(n + ' (sin su CSS en la página)');
+    }
+    eq(missing.join(', '), '', 'transiciones de la cinta que la página exportada no sabe hacer');
+    // Y la salida: la lista de «salida de esta diapositiva» sale de las mismas.
+    assert([...D.querySelectorAll('[data-slide-trans-out] option')].map(o => o.value).filter(v => v && !['none', 'default'].includes(v)).every(v => names.has(v)), 'salidas = transiciones');
+  });
+
+  await test('exportar HTML: cada animación de objetos (catálogo y cinta) tiene su efecto en la página', async () => {
+    reset(); const T = await frame.contentWindow.eval("import('/src/features/animation/transitions.js')"), X = await frame.contentWindow.eval("import('/src/features/animation/fxcatalog.js')");
+    const REVEAL_OWN = ['fade-in', 'fade-out', 'fade-up', 'fade-down', 'fade-left', 'fade-right', 'fade-in-then-out', 'fade-in-then-semi-out', 'grow', 'shrink', 'strike', 'highlight-red', 'highlight-green', 'highlight-blue', 'highlight-current-red', 'highlight-current-green', 'highlight-current-blue', 'semi-fade-out', 'current-visible', 'zoom-in'];       // (reveal.js 5.1.0: dist/reveal.css)
+    const effects = new Set([...D.querySelectorAll('[data-animation]')].map(e => e.dataset.animation));
+    Object.keys(X.FX).forEach(e => effects.add(e)); T.EMPHASIS_FX.forEach(e => effects.add(e));
+    assert(effects.size >= 50, 'el catálogo de efectos: ' + effects.size);
+    reset(); R.blocks.addText(); const b = last(); const html0 = R.io.buildHTML();
+    const missing = [];
+    for (const e of effects) {
+      if (['path', 'draw', 'mapfly', 'pdfview', 'clip3d', 'spin360'].includes(e) || T.MEDIA_FX.includes(e)) continue;     // (los de un tipo de objeto concreto, con sus pruebas)
+      R.store.commit(() => { b.animation = { effect: e, order: 1, start: 'click', duration: 500, delay: 0 }; });
+      const html = R.io.buildHTML(), at = html.indexOf(`class="fragment ${e}"`);
+      if (at < 0) { missing.push(e + ' (el objeto no la lleva)'); continue; }
+      if (REVEAL_OWN.includes(e)) continue;
+      if (!html.includes(`.fragment.${e}`) && !html.includes(`fragment.${e}.`) && !(T.EFFECT_KF[e] && html.includes('@keyframes ' + T.EFFECT_KF[e]))) missing.push(e + ' (sin su CSS)');
+    }
+    eq(missing.join(', '), '', 'animaciones que la página exportada no sabe hacer');
+  });
+
+  await test('exportar HTML: cada tipo de objeto que pinta el lienzo, y cada runtime, tiene su parte en la página', async () => {
+    const get = async u => (await fetch(u)).text();
+    const types = src => new Set([...src.matchAll(/(?:type === |case |type: )'([a-z][a-z0-9-]*)'/g)].map(m => m[1]));
+    const canvas = new Set([...types(await get('/src/ui/canvas/content.js')), ...types(await get('/src/ui/canvas/canvas.js'))]);
+    const html = types(await get('/src/io/formats/html.js'));
+    const EXEMPT = { placeholder: 'marcador de sitio del editor: vacío, no se exporta' };
+    const missing = [...canvas].filter(t => !html.has(t) && !EXEMPT[t]);
+    eq(missing.join(', '), '', 'tipos de objeto del lienzo que html.js no conoce (añádelo al export, o a EXEMPT con su porqué)');
+    assert(canvas.size >= 20 && html.size >= 20, 'se leyeron los registros: ' + canvas.size + '/' + html.size);
+    // Cada archivo de io/runtime/ va dentro de la página (html.js lo importa) o es de otra cosa (lista con porqué).
+    const src = await get('/src/io/formats/html.js'), list = await get('/src/io/runtime/');
+    const files = [...list.matchAll(/href="([a-z0-9]+\.js)"/g)].map(m => m[1]);
+    const RT_EXEMPT = { 'unseal.js': 'lo usa el visor para abrir lo cifrado, no la página exportada' };
+    if (files.length) eq(files.filter(f => !src.includes('runtime/' + f) && !RT_EXEMPT[f]).join(', '), '', 'runtimes que html.js no mete en la página');
+  });
+
+  await test('exportar HTML: los catálogos (transiciones, mapas, 3D, animaciones, Transformar, texto) se reproducen exportados sin errores de la página', async () => {
+    const E = await frame.contentWindow.eval("import('/src/features/content/examples.js')");
+    const bad = [];
+    for (const key of ['showcase_transitions', 'showcase_maps', 'showcase_3d', 'showcase_animations', 'showcase_morph', 'showcase_text']) {
+      const d = await E.loadExample(key, 'es'); assert(d, key + ' existe');
+      const html = R.io.buildHTML(d, { inApp: false });
+      const hook = '<script>window.__errs=[];addEventListener("error",function(e){__errs.push(String(e.message))});addEventListener("unhandledrejection",function(e){__errs.push(String(e.reason&&e.reason.message||e.reason))})</script>';
+      const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:960px;height:540px;visibility:hidden'; D.body.appendChild(f);
+      try {
+        f.src = URL.createObjectURL(new Blob([html.replace('<head>', '<head>' + hook).replace('hash:true', 'hash:false')], { type: 'text/html' }));
+        let Rv = null; for (let i = 0; i < 160 && !(Rv = f.contentWindow?.Reveal)?.isReady?.(); i++) await sleep(100);
+        if (!Rv?.isReady?.()) { bad.push(key + ': no arranca'); continue; }
+        const total = Rv.getTotalSlides(); let moved = 0;
+        for (let i = 0; i < total; i++) { Rv.slide(i, 0, -1); await sleep(220); moved++; }
+        const errs = (f.contentWindow.__errs || []).filter(m => !/ResizeObserver|Script error\.?$|tile|Failed to fetch|NetworkError|Load failed/i.test(m));
+        if (errs.length) bad.push(key + ': ' + [...new Set(errs)].slice(0, 3).join(' | '));
+        eq(moved, total, key + ': recorridas todas las diapositivas');
+      } finally { f.remove(); }
+    }
+    eq(bad.join('\n'), '', 'errores de la página exportada');
+  });
 }
