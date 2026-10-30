@@ -2010,14 +2010,17 @@ export default async function ({ R, D, frame, test, sleep, waitFor, assert, eq, 
     try {
       const fw = f.contentWindow, frames = () => [...f.contentDocument.querySelectorAll('iframe.rv-liveframe')], got = [];
       fw.addEventListener('message', e => { if (e.data && e.data.rvStateful) got.push(e.data); });
-      const ask = async (msg) => { got.length = 0; frames()[0].contentWindow.postMessage(msg, '*'); for (let i = 0; i < 20 && !got.some(x => x.rvStateful === 'pong'); i++) await sleep(50); return got.filter(x => x.rvStateful === 'pong').pop(); };
+      // (A page that is still loading drops what it is sent, and a slow machine takes seconds: «rv-ping» is asked again until
+      // it answers — it changes nothing —, so «rv-bump» is only sent to a page that is already up.)
+      const ask = async (msg) => { got.length = 0; const pong = () => got.filter(x => x.rvStateful === 'pong').pop();
+        for (let i = 0; i < 200 && !pong(); i++) { if (i % 5 === 0) frames()[0]?.contentWindow?.postMessage(i ? 'rv-ping' : msg, '*'); await sleep(50); } return pong(); };
       for (let i = 0; i < 60 && !frames().length; i++) await sleep(50);
       eq(frames().length, 1, 'un solo marco para las dos webs');
       const vis = () => frames()[0].style.visibility, rect = () => frames()[0].getBoundingClientRect();
       await waitFor(() => vis() === 'visible'); eq(vis(), 'visible', 'en la diapositiva 1 se ve');
       const slot1 = f.contentDocument.querySelector('.rv-liveslot').getBoundingClientRect(), r1 = rect();
       assert(Math.abs(r1.left - slot1.left) < 2 && Math.abs(r1.width - slot1.width) < 2 && Math.abs(r1.height - slot1.height) < 2, 'encima de su hueco, con su tamaño');
-      const a0 = await ask('rv-bump'); eq(a0.n, 1, 'se navega por ella (cuenta 1)');
+      await ask('rv-ping'); const a0 = await ask('rv-bump'); eq(a0?.n, 1, 'se navega por ella (cuenta 1)');
       Rv.slide(1); await waitFor(() => vis() === 'hidden'); eq(vis(), 'hidden', 'en otra diapositiva sin web, oculto');
       Rv.slide(3); await waitFor(() => vis() === 'visible'); eq(vis(), 'visible', 'en la diapositiva 4 vuelve a verse');
       const a1 = await ask('rv-ping'); eq(a1.id, a0.id, 'es el MISMO marco (no se recargó)'); eq(a1.n, 1, 'y sigue donde se dejó (cuenta 1, no 0)');
