@@ -45,7 +45,7 @@ export default {
  "Lo que necesito en la mochila": "Ce dont j'ai besoin dans mon cartable",
  "Un cuaderno": "Un cahier",
  "<b>Cuaderno</b>": "<b>Cahier</b>",
- "<b>Lápiz</b>": "<b>Stylo</b>",
+ "<b>Lápiz</b>": "<b>Crayon</b>",
  "Una calculadora": "Une calculatrice",
  "<b>Calculadora</b>": "<b>Calculatrice</b>",
  "Un ordenador": "Un ordinateur",
