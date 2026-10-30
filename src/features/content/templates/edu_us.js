@@ -41,7 +41,7 @@ const slideOf = (T, extra, notes) => ({ layout: 'blank', bg: T.bg, back: lights(
 const cover = (T, kicker, title, sub, icons, notes) => slideOf(T, [glass('', 70, 150, 700, 430, { glass: 22 }),
   label(kicker, 110, 190, 620, T.ac), text(title, 104, 236, 640, 190, { fontSize: 52, fontWeight: 800, color: WH, lineHeight: 1.05, fontFamily: FF.head }),
   text(sub, 110, 440, 620, 110, { fontSize: 25, color: SOFT, lineHeight: 1.35 }),
-  ...icons.map(([id, x, y, s], i) => on(ico(id, x, y, s), i ? 'zoom-in' : 'fade-up', i ? { start: 'afterPrev' } : {})), credit(110, 610)], notes);
+  ...icons.map(([id, x, y, s], i) => on(ico(id, x, y, s), i ? 'zoom-in' : 'fade-up', { start: 'afterPrev' })), credit(110, 610)], notes);   // (on their own when the cover appears: the cover's picture on the website shows them)
 // Three or four cards [icon, title, line]: an icon over a title and a line, on glass.
 const tiles = (T, title, items, foot, notes) => { const n = items.length, w = n === 3 ? 340 : 260, gap = n === 3 ? 385 : 290, x0 = n === 3 ? 80 : 70, big = n === 3 ? 190 : 170;
   return slideOf(T, [heading(title), ...items.flatMap(([id, tt, ln], i) => { const x = x0 + i * gap, y = 300;
