@@ -2041,8 +2041,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     try {
       const got = []; f.contentWindow.addEventListener('message', e => { if (e.data && e.data.rvStateful) got.push(e.data); });
       const fr = () => f.contentDocument.querySelector('iframe.rv-liveframe'); for (let i = 0; i < 60 && !fr(); i++) await sleep(50);
-      const ask = async msg => { got.length = 0; fr().contentWindow.postMessage(msg, '*'); for (let i = 0; i < 20 && !got.some(x => x.rvStateful === 'pong'); i++) await sleep(50); return got.filter(x => x.rvStateful === 'pong').pop(); };
-      const a = await ask('rv-bump'); Rv.slide(2); await sleep(600); Rv.slide(0); await sleep(800); const b = await ask('rv-ping');
+      // (A page that is still loading drops what it is sent, and a slow machine takes seconds: «rv-ping» is asked again
+      // until it answers — it changes nothing —, and the counter is bumped once it has.)
+      const ask = async msg => { got.length = 0; const pong = () => got.filter(x => x.rvStateful === 'pong').pop();
+        for (let i = 0; i < 100 && !pong(); i++) { if (i % 5 === 0) fr()?.contentWindow?.postMessage(i ? 'rv-ping' : msg, '*'); await sleep(50); } return pong(); };
+      await ask('rv-ping'); const a = await ask('rv-bump'); Rv.slide(2); await sleep(600); Rv.slide(0); await sleep(800); const b = await ask('rv-ping');
       eq(b.id, a.id, 'misma página al volver'); eq(b.n, 1, 'en el mismo punto');
     } finally { D.querySelector('#present-close')?.click(); await sleep(30); }
     B.setEmbedLive(w.id, false); assert(!w.live, 'dejar de mantenerla'); assert(!/rv-liveslot/.test(R.io.buildHTML()), 'vuelve a ser un marco normal');

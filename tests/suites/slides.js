@@ -653,7 +653,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     reset(); R.slides.addSlide(); R.slides.addSlide(); R.slides.addSlide();          // 4 diapositivas
     R.slides.goToSlide(2); D.querySelector('[data-action="slide-vertical"]').click(); // la 3 bajo la 2
     R.slides.toggleVertical(3);                                                         // la 4 también
-    await sleep(10);
+    await sleep(10); R.flushThumbs?.();                                                 // (las miniaturas se rehacen al estar libre el navegador: ahora)
     assert(D.querySelectorAll('#navigator .thumb.is-vertical').length === 2, 'sangradas en el navegador');
     eq([...R.io.slidePathsFor(R.state.deck).values()].join(), '0/0,1/0,1/1,1/2', 'posiciones h/v');
     const html = R.io.buildHTML();
