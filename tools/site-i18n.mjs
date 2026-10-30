@@ -97,7 +97,7 @@ export function pageTexts(html) {
 }
 
 // Structured data (JSON-LD): the texts people may see in search results.
-const LD_KEYS = ['description', 'applicationSubCategory', 'name'];
+const LD_KEYS = ['description', 'applicationSubCategory', 'name', 'featureList'];
 function ldTexts(html) {
   const found = [];
   const walk = (o, k) => { if (typeof o === 'string') { if (LD_KEYS.includes(k) && hasWords(o)) found.push(o); }
@@ -139,7 +139,7 @@ export function translatePage(html, lang, dict, page) {
     for (const a of readAttrs(t)) toks[i] = toks[i].replace(`${a.name}="${a.value}"`, `${a.name}="${tr(a.value).replace(/"/g, '&quot;')}"`);
   }
   for (const { key, at: [a, b] } of out) { toks[a] = tr(key); for (let i = a + 1; i <= b; i++) toks[i] = ''; }
-  let res = toks.join('').replace(/<[a-zA-Z][^>]*>/g, tag => tag.replace(/\s(href|src|data-src|data-buy-month|data-buy-year)="([^"]*)"/g, (m, n, v) => ` ${n}="${relink(v, lang)}"`)
+  let res = toks.join('').replace(/<[a-zA-Z][^>]*>/g, tag => tag.replace(/\s(href|src|data-src|poster|data-buy-month|data-buy-year)="([^"]*)"/g, (m, n, v) => ` ${n}="${relink(v, lang)}"`)
     // (A picture's sizes — img/x-sm.webp 800w, img/x.webp 1600w —: each one, in this language if it has its own.)
     .replace(/\ssrcset="([^"]*)"/g, (m, v) => ` srcset="${v.split(',').map(x => { const [u, w] = x.trim().split(/\s+/); return relink(u, lang) + (w ? ' ' + w : ''); }).join(', ')}"`));
   // Structured data, in this language and with its addresses.
