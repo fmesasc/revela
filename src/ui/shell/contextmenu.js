@@ -46,7 +46,7 @@ const CAMERA_BG_ITEMS = { '': 'Fondo normal', blur: 'Desenfocar el fondo', remov
 export function initContextMenu() {
   menuEl = document.createElement('div');
   menuEl.id = 'context-menu';
-  menuEl.hidden = true;
+  menuEl.hidden = true; menuEl.setAttribute('role', 'menu');
   document.body.appendChild(menuEl);
   document.addEventListener('click', () => { if (Date.now() - menuOpenedAt > 400) hide(); });   // not the click that ends a long press
   document.addEventListener('scroll', () => hide(), true);
@@ -497,10 +497,11 @@ function open(x, y, items) {
   // No separators at the ends or twice in a row.
   items = items.filter((it, i, a) => it || (i > 0 && a[i - 1] && a.slice(i + 1).some(Boolean)));
   for (const item of items) {
-    if (!item) { const sep = document.createElement('div'); sep.className = 'ctx-sep'; menuEl.appendChild(sep); continue; }
+    if (!item) { const sep = document.createElement('div'); sep.className = 'ctx-sep'; sep.setAttribute('role', 'separator'); menuEl.appendChild(sep); continue; }
     const [label, fn, opt = {}] = item;                    // (opt.raw: shown as it is — a spelling suggestion —, not translated)
     const row = document.createElement('button');
-    row.className = 'ctx-item' + (opt.cls ? ' ' + opt.cls : ''); row.textContent = opt.raw ? label : t(label); row.disabled = !fn;
+    row.setAttribute('role', 'menuitem'); row.className = 'ctx-item' + (opt.cls ? ' ' + opt.cls : ''); row.textContent = opt.raw ? label : t(label); row.disabled = !fn;
+    { const k = KEYS[label]; if (k && !opt.raw) row.dataset.key = k(); }
     if (fn) row.addEventListener('click', () => { hide(); fn(); });
     menuEl.appendChild(row);
   }
@@ -515,4 +516,7 @@ function open(x, y, items) {
   top = Math.max(8, Math.min(top, innerHeight - r.height - 8));
   menuEl.style.left = left + 'px'; menuEl.style.top = top + 'px';
 }
+// The keys that do the same as an entry, shown at its side (the page of shortcuts has them all).
+const ctrl = () => t('Ctrl+Z para deshacer').split('+')[0];
+const KEYS = { Copiar: () => ctrl() + '+C', Cortar: () => ctrl() + '+X', Pegar: () => ctrl() + '+V', Duplicar: () => ctrl() + '+D', Eliminar: () => t('Supr'), Agrupar: () => ctrl() + '+G' };
 function hide() { if (menuEl) menuEl.hidden = true; }

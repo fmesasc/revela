@@ -7,6 +7,7 @@
   border-radius:5px;cursor:pointer;color:var(--txt);font-size:13px}
 .ctx-item:hover:not(:disabled){background:var(--accent-bg)}
 .ctx-item:disabled{opacity:.35;cursor:default}
+.ctx-item[data-key]::after{content:attr(data-key);float:inline-end;margin-inline-start:22px;opacity:.55;font-size:11px}
 .ctx-sep{height:1px;background:var(--line);margin:4px 6px}
 /* Spelling: a suggestion on a misspelt word (ui/shell/spellcheck.js), in bold as in Word. */
 .ctx-item.ctx-sugg{font-weight:700}
@@ -246,10 +247,12 @@
 .tb-play button{width:30px;height:28px;border:1px solid var(--line2);border-radius:7px;background:var(--panel);color:var(--accent);cursor:pointer;display:grid;place-items:center}
 .tb-play button:first-child{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .tb-play button:hover{filter:brightness(1.08)}.tb-play .ms{font-size:20px}
+.tb-play button:first-child{width:auto;padding:0 10px 0 7px;gap:5px;display:flex;align-items:center;font:inherit;font-size:13px;font-weight:600}.tb-play .tb-play-text{white-space:nowrap}
 /* The play triangle: drawn, so its weight sits in the middle (the font's glyph leans right). */
 .tb-tri{width:16px;height:16px;fill:currentColor;display:block}
 #zoom-slider{width:110px;vertical-align:middle;accent-color:var(--accent)}
 /* (Phones: "Present" stays, the one way there in sight; the second button goes.) */
+@media (max-width:1180px){.tb-play .tb-play-text{display:none}.tb-play button:first-child{width:30px;padding:0;justify-content:center}}
 @media (max-width:600px){#zoom-slider,.tb-play button+button{display:none}.tb-play{margin-inline-start:2px;flex-shrink:0}}
 /* A shared presentation opening (?doc=): covers the empty editor until it's there. */
 /* A small spinner inside a button or a status line (saving…). */

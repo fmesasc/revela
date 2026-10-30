@@ -387,10 +387,12 @@ export function renderRibbon(change) {
   syncSelectionTips();
   syncMasterRibbon();            // (before the tabs: entering the master view opens its tab)
   if (doc) ensureDeckFonts(state.deck);   // load any Google fonts the deck uses
-  document.querySelectorAll('[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === state.ui.activeTab));
+  document.querySelectorAll('[data-tab]').forEach(t => { const on = t.dataset.tab === state.ui.activeTab; t.classList.toggle('active', on); t.setAttribute('role', 'tab'); t.setAttribute('aria-selected', String(on)); });
+  document.querySelector('#ribbon .tabs')?.setAttribute('role', 'tablist');
+  if (!change || labelsDirty) nameIconButtons();
   // (On a narrow screen the tabs scroll: keep the active one in view.)
   { const at = document.querySelector('#ribbon .tabs .active'); if (at && at !== lastActiveTab) { lastActiveTab = at; at.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); } }
-  document.querySelectorAll('.ribbon-page').forEach(p => p.classList.toggle('active', p.dataset.page === state.ui.activeTab));
+  document.querySelectorAll('.ribbon-page').forEach(p => { p.classList.toggle('active', p.dataset.page === state.ui.activeTab); p.setAttribute('role', 'tabpanel'); });
   const docName = $('.doc-name');
   const shownName = isUntitled(state.deck.name) ? t(UNTITLED) : state.deck.name;
   if (docName && document.activeElement !== docName && docName.textContent !== shownName) docName.textContent = shownName;
@@ -483,11 +485,24 @@ const TOGGLES = ['[data-action^="toggle-"]:not([data-action="toggle-autoanimate"
   .map(a => (a.startsWith('[') ? `#ribbon ${a}` : `#ribbon [data-action="${a}"]`)).concat('#ribbon [data-draw]').join(',');
 // (Found again only when the ribbon's buttons change — the object's tab is new with each selection —: looking for
 // them through the whole ribbon was half of a redraw's time.)
-let toggles = null, ribbonMO = null;
+let toggles = null, ribbonMO = null, labelsDirty = true;
 function toggleButtons() {
   const rb = document.getElementById('ribbon'); if (!rb) return [];
-  if (!ribbonMO) { ribbonMO = new MutationObserver(() => { toggles = null; }); ribbonMO.observe(rb, { childList: true, subtree: true }); }
-  if (ribbonMO.takeRecords().length) toggles = null;
+  if (!ribbonMO) { ribbonMO = new MutationObserver(() => { toggles = null; labelsDirty = true; }); ribbonMO.observe(rb, { childList: true, subtree: true }); }
+  if (ribbonMO.takeRecords().length) { toggles = null; labelsDirty = true; }
   return (toggles ||= [...document.querySelectorAll(TOGGLES)]);
 }
 function syncValue(sel, val) { const el = $(sel); if (el && el.value !== val) el.value = val; }
+
+// A button with only an icon (and lists and fields with no label) says what it does to a screen reader: its tooltip.
+// (What the tooltip said on the last pass is what it's compared to: another language rewrites it.)
+function nameIconButtons() {
+  labelsDirty = false;
+  const withText = b => [...b.childNodes].some(n => (n.nodeType === 3 && n.textContent.trim()) || (n.nodeType === 1 && !n.matches('i.ms, svg, kbd')));
+  document.querySelectorAll('#ribbon [title]').forEach(el => {
+    if (el.hasAttribute('aria-label') && !el.dataset.al) return;
+    const tip = el.getAttribute('title'); if (!tip) return;
+    if (el.matches('button, a') ? withText(el) : !el.matches('select, input')) return;
+    el.setAttribute('aria-label', tip); el.dataset.al = '1';
+  });
+}

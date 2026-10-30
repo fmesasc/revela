@@ -53,8 +53,8 @@
       <button id="onedrive-status" class="drive-status" type="button" hidden></button>
       <span id="save-state" class="save-state" hidden role="button" tabindex="0" title="Solo está en este navegador (se guarda con cada cambio). Haz clic para guardarla en Google Drive o en tu nube."><i class="ms">computer</i> <span>En este navegador</span></span>
       <span class="tb-play">
-        <button data-action="present" type="button" title="Presentar desde el principio (F5)"><svg class="tb-tri" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 6.2v11.6a1.1 1.1 0 0 0 1.66.95l9.2-5.8a1.1 1.1 0 0 0 0-1.9l-9.2-5.8A1.1 1.1 0 0 0 7.5 6.2z"/></svg></button>
-        <button data-action="present-current" type="button" title="Presentar desde esta diapositiva (Mayús + F5)"><i class="ms">slideshow</i></button>
+        <button data-action="present" type="button" title="Presentar desde el principio (F5)"><svg class="tb-tri" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 6.2v11.6a1.1 1.1 0 0 0 1.66.95l9.2-5.8a1.1 1.1 0 0 0 0-1.9l-9.2-5.8A1.1 1.1 0 0 0 7.5 6.2z"/></svg><span class="tb-play-text">Presentar</span></button>
+        <button data-action="present-current" type="button" title="Presentar desde esta diapositiva (Mayús + F5)"><i class="ms">play_lesson</i></button>
       </span>
       <button id="cmd-search" class="cmd-search" type="button" aria-haspopup="dialog" aria-expanded="false" title="Pulsa / para buscar comandos y opciones (Ctrl+K)"><i class="ms" aria-hidden="true">search</i><span class="cmd-search-text">Buscar…</span><kbd>Ctrl+K</kbd></button>
       <button data-action="ai-assistant" class="tb-ai" type="button" title="Asistente de IA: pide cambios con tus palabras, adjunta fotos o documentos"><i class="ms">auto_awesome</i><span>Asistente</span></button>
@@ -109,8 +109,8 @@
         <div class="group">
           <div class="row">
             <button data-action="export" class="lg"><i class="ms">download</i><span>Exportar<br>HTML</span></button>
-            <button data-action="export-pptx" class="lg"><i class="ms">slideshow</i><span>Exportar<br>PowerPoint</span></button>
-            <button data-action="export-odp" class="lg" title="OpenDocument: LibreOffice, OnlyOffice"><i class="ms">slideshow</i><span>Exportar<br>ODP</span></button>
+            <button data-action="export-pptx" class="lg"><i class="ms">co_present</i><span>Exportar<br>PowerPoint</span></button>
+            <button data-action="export-odp" class="lg" title="OpenDocument: LibreOffice, OnlyOffice"><i class="ms">description</i><span>Exportar<br>ODP</span></button>
             <button data-action="export-pdf" class="lg" title="Un archivo PDF con una página por diapositiva, tal como se ven"><i class="ms">picture_as_pdf</i><span>Exportar<br>PDF</span></button>
             <button data-action="print" class="lg" title="Imprimir, o guardar como PDF desde el navegador con el texto seleccionable"><i class="ms">print</i><span>Imprimir</span></button>
             <button data-action="export-handout" class="lg" title="Imprimir documentos (varias diapositivas por página) o páginas de notas"><i class="ms">print</i><span>Documentos<br>y notas</span></button>
@@ -194,7 +194,7 @@
           <div class="row">
             <button data-palettes-open title="Colores del tema: la base de los estilos de texto que usan un color del tema"><i class="ms">palette</i><span>Colores</span></button>
             <button data-fontpairs-open title="Fuentes del tema: la de los títulos y la del cuerpo, que usan los estilos de texto"><i class="ms">text_fields</i><span>Fuentes</span></button>
-            <button data-action="master-ai" title="La IA te propone tres diseños de la plantilla (colores, fuentes, fondo y adornos) a partir de lo que describas o de tu logo"><i class="ms">auto_awesome</i><span>Diseñar con IA</span></button>
+            <button data-action="master-ai" title="La IA te propone tres diseños de la plantilla (colores, fuentes, fondo y adornos) a partir de lo que describas o de tu logo"><i class="ms">auto_awesome</i><span>Diseñar plantilla<br>con IA</span></button>
             <button data-action="master-styles" title="Los colores y fuentes del tema son la base; los estilos de texto deciden qué usa cada nivel (título, subtítulo y 5 niveles de texto) en el patrón y todos sus diseños"><i class="ms">format_size</i><span>Estilos de texto</span></button>
           </div><label>Tema y estilos de texto</label>
         </div>
@@ -218,7 +218,7 @@
         <div class="group">
           <div class="row">
             <button data-action="slide-add"><i class="ms">add_to_photos</i><span>Nueva</span></button><button data-newslide-open class="caret" title="Nueva diapositiva con otro diseño"><i class="ms">expand_more</i></button>
-            <button data-action="slide-duplicate"><i class="ms">content_copy</i><span>Duplicar</span></button>
+            <button data-action="slide-duplicate"><i class="ms">difference</i><span>Duplicar</span></button>
             <button data-action="slide-delete"><i class="ms">delete</i><span>Eliminar</span></button>
             <button data-action="slide-vertical" title="Colocar esta diapositiva debajo de la anterior (diapositivas verticales de reveal.js)"><i class="ms">subdirectory_arrow_right</i><span>Vertical</span></button>
             <button data-layout-open title="Cambiar el diseño de la diapositiva"><i class="ms">dashboard</i><span>Diseño</span></button>
@@ -361,9 +361,12 @@
         </div>
         <div class="group">
           <div class="row">
-            <div class="shape-gallery" data-shape-gallery></div>
-            <button data-shapes-open class="shape-more" title="Todas las formas: básicas, flechas, estrellas, bocadillos, diagrama de flujo y matemáticas"><i class="ms">category</i><span>Más<br>formas</span></button>
-          </div><label>Formas</label>
+            <button data-action="insert-video" class="lg"><i class="ms">movie</i><span>Vídeo</span></button>
+            <button data-action="insert-audio" class="lg"><i class="ms">music_note</i><span>Audio</span></button>
+            <button data-action="record-screen" class="lg" title="Grabar la pantalla e insertar el vídeo"><i class="ms">screen_record</i><span>Grabar<br>pantalla</span></button>
+            <button data-action="record-camera" class="lg" title="Grabar con la cámara e insertar el vídeo"><i class="ms">video_camera_front</i><span>Grabar<br>cámara</span></button>
+            <button data-action="insert-camera" class="lg" title="Imagen en directo de la cámara durante la presentación"><i class="ms">videocam</i><span>Cámara en<br>directo</span></button>
+          </div><label>Multimedia</label>
         </div>
         <div class="group">
           <div class="row">
@@ -375,11 +378,25 @@
         </div>
         <div class="group">
           <div class="row">
-            <button data-diagrams-open class="lg go" title="Listas, procesos, ciclos, organigramas, Venn, matrices, pirámides…"><i class="ms">schema</i><span>Diagrama</span></button>
-            <button data-diagram="process" class="lg"><i class="ms">arrow_right_alt</i><span>Proceso</span></button>
-            <button data-diagram="cycle" class="lg"><i class="ms">cycle</i><span>Ciclo</span></button>
-            <button data-diagram="hierarchy" class="lg"><i class="ms">account_tree</i><span>Jerarquía</span></button>
-          </div><label>Diagramas</label>
+            <button data-action="insert-poll" class="lg go" title="Pregunta al público: votan con el móvil escaneando un QR y los resultados se ven en directo"><i class="ms">how_to_vote</i><span>Votación<br>en directo</span></button>
+            <button data-action="import-questions" class="lg" title="Preguntas de Moodle (XML o GIFT), Kahoot (Excel) o CSV, cada una en su diapositiva"><i class="ms">quiz</i><span>Importar<br>preguntas</span></button>
+            <button data-action="insert-timer" class="lg" title="Cuenta atrás para actividades o descansos: empieza al llegar a la diapositiva y suena al acabar"><i class="ms">timer</i><span>Cuenta<br>atrás</span></button>
+            <button data-action="insert-lock" class="lg" title="Un candado que se abre con un código (números o palabras): para escape rooms y retos"><i class="ms">lock</i><span>Candado</span></button>
+            <button data-action="insert-embed" class="lg" title="Una página web en vivo dentro de la diapositiva (o como tarjeta)"><i class="ms">public</i><span>Página<br>web</span></button>
+            <button data-action="insert-html" class="lg" title="Un objeto con tu propio HTML, CSS y JavaScript, aislado del resto (modo desarrollador)"><i class="ms">html</i><span>HTML</span></button>
+            <button data-action="insert-file" class="lg" title="Un PDF (una página, el documento para hojearlo o una diapositiva por página) u otro archivo para descargar"><i class="ms">attach_file</i><span>PDF o<br>archivo</span></button>
+          </div><label>Interactivo</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <div class="shape-gallery" data-shape-gallery></div>
+            <button data-shapes-open class="shape-more" title="Todas las formas: básicas, flechas, estrellas, bocadillos, diagrama de flujo y matemáticas"><i class="ms">category</i><span>Más<br>formas</span></button>
+          </div><label>Formas</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <button data-action="insert-map" class="lg" title="Un mapa que vuela de un lugar a otro al presentar, un clic cada vez: ciudades, rutas, viajes (mapa, globo 3D o satélite)"><i class="ms">map</i><span>Mapa</span></button>
+          </div><label>Mapas</label>
         </div>
         <div class="group">
           <div class="row">
@@ -391,28 +408,11 @@
         </div>
         <div class="group">
           <div class="row">
-            <button data-action="insert-map" class="lg" title="Un mapa que vuela de un lugar a otro al presentar, un clic cada vez: ciudades, rutas, viajes (mapa, globo 3D o satélite)"><i class="ms">map</i><span>Mapa</span></button>
-          </div><label>Mapas</label>
-        </div>
-        <div class="group">
-          <div class="row">
-            <button data-action="insert-video" class="lg"><i class="ms">movie</i><span>Vídeo</span></button>
-            <button data-action="insert-audio" class="lg"><i class="ms">music_note</i><span>Audio</span></button>
-            <button data-action="record-screen" class="lg" title="Grabar la pantalla e insertar el vídeo"><i class="ms">screen_record</i><span>Grabar<br>pantalla</span></button>
-            <button data-action="record-camera" class="lg" title="Grabar con la cámara e insertar el vídeo"><i class="ms">video_camera_front</i><span>Grabar<br>cámara</span></button>
-            <button data-action="insert-camera" class="lg" title="Imagen en directo de la cámara durante la presentación"><i class="ms">videocam</i><span>Cámara en<br>directo</span></button>
-          </div><label>Multimedia</label>
-        </div>
-        <div class="group">
-          <div class="row">
-            <button data-action="insert-poll" class="lg go" title="Pregunta al público: votan con el móvil escaneando un QR y los resultados se ven en directo"><i class="ms">how_to_vote</i><span>Votación<br>en directo</span></button>
-            <button data-action="import-questions" class="lg" title="Preguntas de Moodle (XML o GIFT), Kahoot (Excel) o CSV, cada una en su diapositiva"><i class="ms">quiz</i><span>Importar<br>preguntas</span></button>
-            <button data-action="insert-timer" class="lg" title="Cuenta atrás para actividades o descansos: empieza al llegar a la diapositiva y suena al acabar"><i class="ms">timer</i><span>Cuenta<br>atrás</span></button>
-            <button data-action="insert-lock" class="lg" title="Un candado que se abre con un código (números o palabras): para escape rooms y retos"><i class="ms">lock</i><span>Candado</span></button>
-            <button data-action="insert-embed" class="lg" title="Una página web en vivo dentro de la diapositiva (o como tarjeta)"><i class="ms">public</i><span>Página<br>web</span></button>
-            <button data-action="insert-html" class="lg" title="Un objeto con tu propio HTML, CSS y JavaScript, aislado del resto (modo desarrollador)"><i class="ms">html</i><span>HTML</span></button>
-            <button data-action="insert-file" class="lg" title="Un PDF (una página, el documento para hojearlo o una diapositiva por página) u otro archivo para descargar"><i class="ms">attach_file</i><span>PDF o<br>archivo</span></button>
-          </div><label>Interactivo</label>
+            <button data-diagrams-open class="lg go" title="Listas, procesos, ciclos, organigramas, Venn, matrices, pirámides…"><i class="ms">schema</i><span>Diagrama</span></button>
+            <button data-diagram="process" class="lg"><i class="ms">arrow_right_alt</i><span>Proceso</span></button>
+            <button data-diagram="cycle" class="lg"><i class="ms">cycle</i><span>Ciclo</span></button>
+            <button data-diagram="hierarchy" class="lg"><i class="ms">account_tree</i><span>Jerarquía</span></button>
+          </div><label>Diagramas</label>
         </div>
         <div class="group">
           <div class="row">
@@ -440,6 +440,7 @@
             <button data-action="template-save" title="Guardar esta diapositiva como plantilla: aparece en Inicio ▸ Diseño"><i class="ms">bookmark_add</i><span>Guardar<br>plantilla</span></button>
           </div><label>Diseño de esta diapositiva</label>
         </div>
+
       </section>
 
       <!-- IA -->
@@ -455,7 +456,7 @@
             <button data-action="ai-generate" class="lg"><i class="ms">add_to_photos</i><span>Crear<br>diapositivas</span></button>
             <button data-action="ai-image" class="lg"><i class="ms">imagesmode</i><span>Crear<br>imagen</span></button>
             <button data-action="ai-anim" class="lg" title="Una animación explicativa dibujada por la IA que se reproduce por fases: cada clic, una fase"><i class="ms">animation</i><span>Animación<br>con IA</span></button>
-            <button data-action="master-ai" class="lg" title="La IA te propone tres diseños de la plantilla (colores, fuentes, fondo y adornos) a partir de lo que describas o de tu logo"><i class="ms">palette</i><span>Diseñar<br>plantilla</span></button>
+            <button data-action="master-ai" class="lg" title="La IA te propone tres diseños de la plantilla (colores, fuentes, fondo y adornos) a partir de lo que describas o de tu logo"><i class="ms">palette</i><span>Diseñar plantilla<br>con IA</span></button>
           </div><label>Generar</label>
         </div>
         <div class="group">
@@ -477,12 +478,12 @@
             <button data-action="ai-livequiz" class="lg" title="Preguntas y actividades sobre la presentación que el público responde desde el móvil"><i class="ms">quiz</i><span>Cuestionario<br>en directo</span></button>
             <button data-action="ai-quiz" class="lg"><i class="ms">help_center</i><span>Preguntas<br>de repaso</span></button>
             <button data-action="ai-lessonplan" class="lg" title="La IA escribe, a partir de la presentación, el plan de clase (objetivos, tiempos, actividades, diversidad y evaluación) o una guía de estudio para el alumnado"><i class="ms">assignment</i><span>Plan de clase<br>y guía</span></button>
-            <button data-action="ai-voiceover" class="lg" title="Una voz lee las notas de cada diapositiva: suena al presentar y va en el vídeo exportado"><i class="ms">record_voice_over</i><span>Voz<br>en off</span></button>
+            <button data-action="ai-voiceover" class="lg" title="Una voz lee las notas de cada diapositiva: suena al presentar y va en el vídeo exportado"><i class="ms">mic</i><span>Voz<br>en off</span></button>
             <button data-action="ai-notes" class="lg"><i class="ms">sticky_note_2</i><span>Notas de esta<br>diapositiva</span></button>
             <button data-action="ai-notes-all" class="lg"><i class="ms">library_books</i><span>Notas de<br>todas</span></button>
             <button data-action="ai-alt" class="lg"><i class="ms">image_search</i><span>Texto<br>alternativo</span></button>
             <button data-action="ai-translate-deck" class="lg"><i class="ms">g_translate</i><span>Traducir<br>presentación</span></button>
-            <button data-action="languages" class="lg" title="La presentación en varios idiomas: una tabla con cada texto en cada idioma, que la IA completa; cada persona la ve en el suyo"><i class="ms">language</i><span>Multilingüe</span></button>
+            <button data-action="languages" class="lg" title="La presentación en varios idiomas: una tabla con cada texto en cada idioma, que la IA completa; cada persona la ve en el suyo"><i class="ms">translate</i><span>Idiomas</span></button>
             <button data-action="ai-level" class="lg" title="Reescribe los textos para otra edad o para lectura fácil, sin cambiar los datos"><i class="ms">school</i><span>Nivel de<br>lectura</span></button>
           </div><label>Mejorar la presentación</label>
         </div>
@@ -579,6 +580,34 @@
 
       <!-- TRANSICIONES -->
       <section class="ribbon-page" data-page="transitions">
+        <div class="group">
+          <div class="row">
+            <select data-slide-trans-dir title="Opciones de efecto">
+              <option value="">Opciones de efecto</option>
+              <option value="right">Desde la derecha</option><option value="left">Desde la izquierda</option><option value="bottom">Desde abajo</option><option value="top">Desde arriba</option>
+              <option value="vertical">Vertical</option><option value="horizontal">Horizontal</option>
+            </select>
+            <select data-slide-trans-out title="Salida de esta diapositiva">
+              <option value="">Salida: igual</option><option value="none">Salida: ninguna</option><option value="fade">Salida: fundido</option>
+              <option value="slide">Salida: deslizar</option><option value="convex">Salida: convexa</option>
+              <option value="concave">Salida: cóncava</option><option value="zoom">Salida: zoom</option>
+              <option value="flip">Salida: voltear</option><option value="push">Salida: empujar</option><option value="wipe">Salida: barrido</option><option value="rise">Salida: elevar</option>
+              <option value="split">Salida: dividir</option><option value="circle">Salida: círculo</option><option value="diamond">Salida: rombo</option>
+              <option value="cube">Salida: cubo</option><option value="page">Salida: página</option><option value="gallery">Salida: galería</option><option value="fall">Salida: caer</option>
+              <option value="swirl">Salida: remolino</option><option value="shrink">Salida: encoger</option><option value="blur">Salida: desenfocar</option><option value="flash">Salida: destello</option>
+            </select>
+            <select data-slide-speed title="Velocidad de esta diapositiva">
+              <option value="">Velocidad: heredar</option><option value="default">Normal</option><option value="fast">Rápida</option><option value="slow">Lenta</option>
+            </select>
+            <button data-action="trans-apply-all" title="Aplicar la transición de esta diapositiva a todas"><i class="ms">select_all</i><span>Aplicar a<br>todas</span></button>
+          </div><label>Opciones</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <input data-autoslide type="number" min="0" step="1" class="size-input" style="width:64px"
+              title="Segundos hasta avanzar (0 = manual)" value="0">
+          </div><label>Avance automático (s)</label>
+        </div>
         <div class="group wide">
           <div class="row">
             <button data-slide-transition="inherit" title="Usar la transición de toda la presentación"><i class="ms">settings_backup_restore</i><span>Heredar</span></button>
@@ -609,28 +638,6 @@
         </div>
         <div class="group">
           <div class="row">
-            <select data-slide-trans-dir title="Opciones de efecto">
-              <option value="">Opciones de efecto</option>
-              <option value="right">Desde la derecha</option><option value="left">Desde la izquierda</option><option value="bottom">Desde abajo</option><option value="top">Desde arriba</option>
-              <option value="vertical">Vertical</option><option value="horizontal">Horizontal</option>
-            </select>
-            <select data-slide-trans-out title="Salida de esta diapositiva">
-              <option value="">Salida: igual</option><option value="none">Salida: ninguna</option><option value="fade">Salida: fundido</option>
-              <option value="slide">Salida: deslizar</option><option value="convex">Salida: convexa</option>
-              <option value="concave">Salida: cóncava</option><option value="zoom">Salida: zoom</option>
-              <option value="flip">Salida: voltear</option><option value="push">Salida: empujar</option><option value="wipe">Salida: barrido</option><option value="rise">Salida: elevar</option>
-              <option value="split">Salida: dividir</option><option value="circle">Salida: círculo</option><option value="diamond">Salida: rombo</option>
-              <option value="cube">Salida: cubo</option><option value="page">Salida: página</option><option value="gallery">Salida: galería</option><option value="fall">Salida: caer</option>
-              <option value="swirl">Salida: remolino</option><option value="shrink">Salida: encoger</option><option value="blur">Salida: desenfocar</option><option value="flash">Salida: destello</option>
-            </select>
-            <select data-slide-speed title="Velocidad de esta diapositiva">
-              <option value="">Velocidad: heredar</option><option value="default">Normal</option><option value="fast">Rápida</option><option value="slow">Lenta</option>
-            </select>
-            <button data-action="trans-apply-all" title="Aplicar la transición de esta diapositiva a todas"><i class="ms">select_all</i><span>Aplicar a<br>todas</span></button>
-          </div><label>Opciones</label>
-        </div>
-        <div class="group">
-          <div class="row">
             <select data-deck-transition title="Transición por defecto">
               <option value="none">Ninguna</option><option value="fade">Fundido</option>
               <option value="slide">Deslizar</option><option value="convex">Convexa</option>
@@ -647,12 +654,6 @@
             <button data-action="toggle-anim-bg" title="Animar el fondo con la transición. Desactivado, entre diapositivas con el mismo fondo (su color o imagen y los objetos del patrón) el fondo se queda quieto y solo cambia el contenido."><i class="ms">wallpaper</i><span>Animar el fondo</span></button>
             <button data-action="deck-settings" title="Configuración de la presentación: flechas, progreso, navegación, vista de desplazamiento, rueda del ratón, parallax, Morph…"><i class="ms">settings</i><span>Configuración</span></button>
           </div><label>Toda la presentación</label>
-        </div>
-        <div class="group">
-          <div class="row">
-            <input data-autoslide type="number" min="0" step="1" class="size-input" style="width:64px"
-              title="Segundos hasta avanzar (0 = manual)" value="0">
-          </div><label>Avance automático (s)</label>
         </div>
         <div class="group">
           <div class="row">
@@ -711,7 +712,7 @@
             <button data-action="anim-play"><i class="ms">play_circle</i><span>Reproducir</span></button>
             <button data-action="anim-panel" title="Orden, inicio, duración y retraso de las animaciones de la diapositiva"><i class="ms">tune</i><span>Panel de animación</span></button>
             <button data-action="anim-paint" title="Copiar la animación: haz clic y luego en otro objeto"><i class="ms">format_paint</i><span>Copiar<br>animación</span></button>
-            <button data-action="obj-anim-clear"><i class="ms">animation</i><span>Sin<br>animación</span></button>
+            <button data-action="obj-anim-clear"><i class="ms">motion_photos_off</i><span>Sin<br>animación</span></button>
           </div><label>Animación avanzada</label>
         </div>
       </section>
@@ -721,7 +722,7 @@
         <div class="group">
           <div class="row">
             <button data-action="present" class="lg go" title="Desde el principio (F5)"><i class="ms">play_arrow</i><span>Presentar</span></button>
-            <button data-action="present-current" class="lg" title="Desde la diapositiva actual (Mayús + F5)"><i class="ms">slideshow</i><span>Desde esta<br>diapositiva</span></button>
+            <button data-action="present-current" class="lg" title="Desde la diapositiva actual (Mayús + F5)"><i class="ms">play_lesson</i><span>Desde esta<br>diapositiva</span></button>
             <button data-action="record-show" class="lg" title="Presentar grabando la pestaña y el micrófono; al salir se descarga el vídeo (.webm)"><i class="ms">radio_button_checked</i><span>Grabar<br>presentación</span></button>
             <button data-action="prompter" class="lg" title="Las notas de cada diapositiva, grandes y desplazándose solas, en una ventana aparte: ponla junto a la cámara al grabar o en una videollamada"><i class="ms">subtitles</i><span>Apuntador</span></button>
             <button data-action="present-live" class="lg accounts-only" title="Para un público grande: quien abra el enlace sigue tus diapositivas y tu puntero en su navegador, sin cuenta (cientos o miles de personas)"><i class="ms">cell_tower</i><span>Emitir en<br>directo</span></button>
@@ -730,21 +731,6 @@
             <button data-action="coach" class="lg" title="Ensayar con el entrenador: ritmo, muletillas y repeticiones"><i class="ms">record_voice_over</i><span>Ensayar con<br>entrenador</span></button>
             <button data-action="connect-mobile" class="lg"><i class="ms">smartphone</i><span>Conectar<br>móvil</span></button>
           </div><label>Presentación</label>
-        </div>
-        <div class="group">
-          <div class="row">
-            <button data-action="slide-sorter" class="lg" title="Clasificador de diapositivas: todas en cuadrícula para ordenarlas arrastrando, duplicarlas u ocultarlas (doble clic: editar una)"><i class="ms">grid_view</i><span>Clasificador</span></button>
-            <button data-action="toggle-nav" class="lg" title="Mostrar u ocultar el panel de diapositivas (como la tira de Google Presentaciones)"><i class="ms">view_sidebar</i><span>Panel de<br>diapositivas</span></button>
-            <button data-action="canvas-view" class="lg" title="Ver y colocar los marcos en el lienzo (modo lienzo, tipo Prezi)"><i class="ms">hub</i><span>Vista de<br>lienzo</span></button>
-            <button data-action="master-edit" class="lg" title="Fondo, objetos, estilos de texto y diseños comunes a todas las diapositivas"><i class="ms">dashboard_customize</i><span>Patrón de<br>diapositivas</span></button>
-          </div><label>Vistas</label>
-        </div>
-        <div class="group">
-          <div class="row">
-            <button data-action="view-classic" data-view-set="classic" class="lg" title="La cinta con sus pestañas y las diapositivas a la izquierda, como en PowerPoint"><i class="ms">view_compact</i><span>Clásica</span></button>
-            <button data-action="view-studio" data-view-set="studio" class="lg" title="Una barra de iconos grandes a la izquierda, como en Canva: diseño, plantillas, elementos, texto, subir…"><i class="ms">space_dashboard</i><span>Creativa</span></button>
-            <button data-action="view-simple" data-view-set="simple" class="lg" title="Solo lo esencial, como en slides.com: una columna de objetos para añadir y las herramientas al seleccionar algo"><i class="ms">crop_free</i><span>Minimalista</span></button>
-          </div><label>Interfaz</label>
         </div>
         <div class="group">
           <div class="row">
@@ -758,6 +744,25 @@
         </div>
         <div class="group">
           <div class="row">
+            <button data-action="comments" class="lg"><i class="ms">comment</i><span>Comentarios</span></button>
+            <button data-action="review-panel" class="lg" title="Registrar cada cambio con su autor para aceptarlo o rechazarlo después"><i class="ms">rate_review</i><span>Control de<br>cambios</span></button>
+            <button data-action="a11y-check" class="lg"><i class="ms">accessibility_new</i><span>Comprobar<br>accesibilidad</span></button>
+            <button data-action="languages" class="lg" title="La presentación en varios idiomas: una tabla con cada texto en cada idioma, que la IA completa; cada persona la ve en el suyo"><i class="ms">translate</i><span>Idiomas</span></button>
+            <button data-action="spelling" class="lg" title="Revisar la ortografía de todas las diapositivas (F7)"><i class="ms">spellcheck</i><span>Ortografía</span></button>
+            <button data-action="autocorrect" class="lg" title="Sustituir al escribir: -- → —, -> → →, (c) → ©…"><i class="ms">spellcheck</i><span>Autocorrección</span></button>
+            <button data-action="reading-order" class="lg"><i class="ms">format_list_numbered</i><span>Orden de<br>lectura</span></button>
+          </div><label>Revisar</label>
+        </div>
+        <div class="group">
+          <div class="row">
+            <button data-action="slide-sorter" class="lg" title="Clasificador de diapositivas: todas en cuadrícula para ordenarlas arrastrando, duplicarlas u ocultarlas (doble clic: editar una)"><i class="ms">grid_view</i><span>Clasificador</span></button>
+            <button data-action="toggle-nav" class="lg" title="Mostrar u ocultar el panel de diapositivas (como la tira de Google Presentaciones)"><i class="ms">view_sidebar</i><span>Panel de<br>diapositivas</span></button>
+            <button data-action="canvas-view" class="lg" title="Ver y colocar los marcos en el lienzo (modo lienzo, tipo Prezi)"><i class="ms">hub</i><span>Vista de<br>lienzo</span></button>
+            <button data-action="master-edit" class="lg" title="Fondo, objetos, estilos de texto y diseños comunes a todas las diapositivas"><i class="ms">dashboard_customize</i><span>Patrón de<br>diapositivas</span></button>
+          </div><label>Vistas</label>
+        </div>
+        <div class="group">
+          <div class="row">
             <button data-action="toggle-guides" title="Mostrar la cuadrícula y las guías"><i class="ms">grid_on</i><span>Guías</span></button>
             <button data-action="toggle-ruler" title="Mostrar las reglas"><i class="ms">straighten</i><span>Regla</span></button>
             <button data-action="toggle-snap" title="Al mover un objeto, se ajusta a los bordes y al centro de la diapositiva, a las guías y a los demás objetos"><i class="ms">grid_goldenratio</i><span>Ajustar</span></button>
@@ -768,21 +773,17 @@
         </div>
         <div class="group">
           <div class="row">
+            <button data-action="view-classic" data-view-set="classic" class="lg" title="La cinta con sus pestañas y las diapositivas a la izquierda, como en PowerPoint"><i class="ms">view_compact</i><span>Clásica</span></button>
+            <button data-action="view-studio" data-view-set="studio" class="lg" title="Una barra de iconos grandes a la izquierda, como en Canva: diseño, plantillas, elementos, texto, subir…"><i class="ms">space_dashboard</i><span>Creativa</span></button>
+            <button data-action="view-simple" data-view-set="simple" class="lg" title="Solo lo esencial, como en slides.com: una columna de objetos para añadir y las herramientas al seleccionar algo"><i class="ms">crop_free</i><span>Minimalista</span></button>
+          </div><label>Interfaz</label>
+        </div>
+        <div class="group">
+          <div class="row">
             <select data-fit style="max-width:150px" title="Ajuste a la pantalla: qué se ve cuando la pantalla no tiene la proporción de las diapositivas (por ejemplo, un portátil 16:10 con diapositivas 16:9)">
               <option value="bands">Franjas negras</option><option value="fill">Rellenar con el fondo</option><option value="adapt">Adaptar a la pantalla</option>
             </select>
           </div><label>Ajuste a la pantalla</label>
-        </div>
-        <div class="group">
-          <div class="row">
-            <button data-action="comments" class="lg"><i class="ms">comment</i><span>Comentarios</span></button>
-            <button data-action="review-panel" class="lg" title="Registrar cada cambio con su autor para aceptarlo o rechazarlo después"><i class="ms">rate_review</i><span>Control de<br>cambios</span></button>
-            <button data-action="a11y-check" class="lg"><i class="ms">accessibility_new</i><span>Comprobar<br>accesibilidad</span></button>
-            <button data-action="languages" class="lg" title="La presentación en varios idiomas: una tabla con cada texto en cada idioma, que la IA completa; cada persona la ve en el suyo"><i class="ms">translate</i><span>Idiomas</span></button>
-            <button data-action="spelling" class="lg" title="Revisar la ortografía de todas las diapositivas (F7)"><i class="ms">spellcheck</i><span>Ortografía</span></button>
-            <button data-action="autocorrect" class="lg" title="Sustituir al escribir: -- → —, -> → →, (c) → ©…"><i class="ms">spellcheck</i><span>Autocorrección</span></button>
-            <button data-action="reading-order" class="lg"><i class="ms">format_list_numbered</i><span>Orden de<br>lectura</span></button>
-          </div><label>Revisar</label>
         </div>
         <div class="group">
           <div class="row">

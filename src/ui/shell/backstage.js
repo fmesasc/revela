@@ -25,14 +25,18 @@ const SECTIONS = [
     C('cloud-dropbox', 'inventory_2', 'Dropbox', 'Abrir desde Dropbox.'),
     C('community-browse', 'diversity_3', 'Comunidad', 'Presentaciones que publican otros docentes.'),
     C('reuse-slides', 'library_add', 'Reutilizar diapositivas', 'Añadir diapositivas de otra presentación a esta.'),
-    C('import-md', 'article', 'Importar Markdown', 'Un texto con títulos y listas, en diapositivas.')] },
+    C('import-md', 'article', 'Importar Markdown', 'Un texto con títulos y listas, en diapositivas.'),
+    C('import-questions', 'quiz', 'Importar preguntas', 'Preguntas de Moodle (XML o GIFT), Kahoot (Excel) o CSV, cada una en su diapositiva')] },
   { id: 'save', icon: 'save', title: 'Guardar', cards: [
     C('save', 'save', 'Guardar', 'Donde vive: Drive, tu nube o, si solo está en este navegador, donde elijas.'),
     C('gdrive-save-as', 'drive_file_move', 'Guardar en Drive como…', 'Una copia nueva: carpeta, nombre y formato.'),
     C('onedrive-save', 'cloud_upload', 'Guardar en OneDrive', 'La presentación (se guarda sola mientras trabajas), o una copia en PDF o PowerPoint.'),
     C('download-project', 'download', 'Descargar una copia', 'Un archivo (.revela) que guardas tú.'),
     C('versions', 'history', 'Versiones', 'Las copias anteriores, para volver a una.'),
-    C('gdrive-html', 'cloud_sync', 'Página web en Drive', 'La presentación como página, publicada en tu Drive.')] },
+    C('gdrive-html', 'cloud_sync', 'Página web en Drive', 'La presentación como página, publicada en tu Drive.'),
+    C('storage', 'storage', 'Espacio ocupado', 'Espacio que ocupa Revela en este navegador y cómo liberarlo'),
+    C('open-desktop', 'desktop_windows', 'App de escritorio', 'Abrir esta presentación en la aplicación de escritorio de Revela, sin los límites del navegador'),
+    C('gdrive-config', 'settings', 'Google Cloud propio (avanzado)', 'Usar tu propio proyecto de Google para Drive. No hace falta para usar Drive.')] },
   { id: 'share', icon: 'share', title: 'Compartir', cards: [
     C('cloud-share', 'person_add', 'Con personas', 'Cada una con su permiso: ver, comentar o editar.'),
     C('share', 'link', 'Un enlace o un archivo', 'Para quien lo tenga, con contraseña si quieres; también para insertar en una web.'),
@@ -48,15 +52,15 @@ const SECTIONS = [
     C('export-scorm', 'school', 'SCORM (Moodle, Canvas…)', 'Cada alumno la recorre a su ritmo y la plataforma recibe su nota.'),
     C('export-png', 'image', 'Imágenes', 'Cada diapositiva como PNG o JPG.'),
     C('export-video', 'movie', 'Vídeo', 'MP4 o GIF animado, pasando sola.'),
-    C('save-picture', 'photo_size_select_large', 'Selección como imagen', 'Los objetos seleccionados, como imagen.')] },
-  { id: 'print', icon: 'print', title: 'Imprimir', cards: [
+    C('save-picture', 'photo_size_select_large', 'Selección como imagen', 'Los objetos seleccionados, como imagen.'),
+    C('export-questions', 'quiz', 'Exportar preguntas', 'Los cuestionarios y actividades como banco de preguntas: Moodle XML, GIFT, Kahoot (Excel) o CSV'),
+    C('export-study', 'style', 'Fichas y práctica', 'Una página para estudiar por tu cuenta: fichas que se dan la vuelta y práctica de los cuestionarios, también sin internet'),
     C('print', 'print', 'Imprimir', 'Las diapositivas, o guardarlas como PDF desde el navegador con el texto seleccionable.'),
     C('export-handout', 'view_module', 'Documentos y notas', 'Varias diapositivas por página, o páginas con notas.')] },
   { id: 'protect', icon: 'lock', title: 'Proteger', cards: [
     C('save-protected', 'password', 'Con contraseña', 'Una copia cifrada que solo se abre con la contraseña.'),
     C('mark-final', 'verified', 'Marcar como final', 'Para que nadie la cambie sin querer.'),
-    C('signatures', 'draw', 'Firmas', 'Firmarla, o comprobar quién la firmó.'),
-    C('gdrive-config', 'settings', 'Google Cloud propio (avanzado)', 'Usar tu propio proyecto de Google para Drive. No hace falta para usar Drive.')] },
+    C('signatures', 'draw', 'Firmas', 'Firmarla, o comprobar quién la firmó.')] },
 ];
 
 // Whether this edition has the action (its ribbon button exists and isn't hidden); not what takes it out, when

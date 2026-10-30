@@ -1114,12 +1114,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
   await test('Archivo: una página con secciones y tarjetas (no una cinta de 35 botones), Esc vuelve', async () => {
     reset(); D.querySelector('#ribbon [data-tab="file"]').click(); await sleep(20);
     const bs = D.getElementById('backstage'); assert(bs, 'se abre la página de Archivo');
-    eq([...bs.querySelectorAll('.bs-tab')].map(b => b.dataset.sec).join(), 'new,open,save,share,export,print,protect', 'sus secciones');
+    eq([...bs.querySelectorAll('.bs-tab')].map(b => b.dataset.sec).join(), 'new,open,save,share,export,protect', 'sus secciones (Imprimir, dentro de Exportar)');
     eq(R.state.ui.activeTab !== 'file', true, 'la cinta no cambia de pestaña');
     assert(bs.querySelectorAll('.bs-gal .gal-examples .gal-item').length > 100 && bs.querySelector('.bs-gal .gal-q'), 'Nuevo: las plantillas y los ejemplos ahí mismo, con su buscador');
     const hs = [...bs.querySelectorAll('.bs-cards .bs-card')].map(c => c.offsetHeight); assert(Math.max(...hs) - Math.min(...hs) <= 1, 'tarjetas iguales: ' + hs.join(','));
     bs.querySelector('[data-sec="export"]').click(); await sleep(10);
     assert(bs.querySelector('[data-bs-action="export-pdf"] small').textContent.length > 10, 'cada tarjeta dice qué hace');
+    for (const x of ['export-questions', 'export-study', 'print', 'export-handout']) assert(bs.querySelector(`[data-bs-action="${x}"]`), 'Exportar tiene la tarjeta ' + x);
+    bs.querySelector('[data-sec="save"]').click(); await sleep(10);
+    for (const x of ['storage', 'open-desktop', 'gdrive-config']) assert(bs.querySelector(`[data-bs-action="${x}"]`), 'Guardar tiene la tarjeta ' + x);
+    {
+      const tabs = [...D.querySelectorAll('#ribbon .tabs [data-tab]')];
+      assert(D.querySelector('#ribbon .tabs').getAttribute('role') === 'tablist' && tabs.every(t => t.getAttribute('role') === 'tab'), 'la cinta: pestañas con su papel');
+      eq(tabs.filter(t => t.getAttribute('aria-selected') === 'true').length, 1, 'una sola pestaña seleccionada');
+      const icono = [...D.querySelectorAll('#ribbon button[title]')].filter(b => ![...b.childNodes].some(n => (n.nodeType === 3 && n.textContent.trim()) || (n.nodeType === 1 && !n.matches('i.ms, svg, kbd')))); 
+      assert(icono.length > 10 && icono.every(b => b.getAttribute('aria-label')), 'los botones de solo icono tienen nombre: ' + icono.filter(b => !b.getAttribute('aria-label')).map(b => b.title).slice(0, 3));
+      const ins = [...D.querySelectorAll('#ribbon [data-page="insert"] .group > label')].map(l => l.textContent).slice(0, 5).join();
+      eq(ins, 'Texto,Imágenes,Multimedia,Tablas y gráficos,Interactivo', 'Insertar: primero lo que más se usa');
+    }
     bs.querySelector('[data-sec="save"]').click(); await sleep(10);
     bs.querySelector('[data-bs-action="versions"]').click(); await sleep(40);
     assert(!D.getElementById('backstage') && D.querySelector('.modal-backdrop'), 'una tarjeta hace lo suyo (Versiones) y la página se cierra');
@@ -1149,6 +1161,9 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const st = D.getElementById('stage').getBoundingClientRect();
     D.getElementById('stage').dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: st.left + 5, clientY: st.top + 5 })); await sleep(10);
     assert(!D.getElementById('context-menu').hidden, 'el menú contextual se abre');
+    eq(D.getElementById('context-menu').getAttribute('role'), 'menu', 'el menú contextual es un menú');
+    assert([...D.querySelectorAll('#context-menu .ctx-item')].every(x => x.getAttribute('role') === 'menuitem'), 'y sus filas, opciones');
+    assert([...D.querySelectorAll('#context-menu .ctx-item')].some(x => x.dataset.key), 'con las teclas al lado donde las hay');
     press('Escape'); assert(D.getElementById('context-menu').hidden, 'Esc lo cierra');
   });
 

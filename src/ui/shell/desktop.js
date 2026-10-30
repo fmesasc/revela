@@ -33,8 +33,8 @@ const SEP = '-';
 // The menu bar: [label, [items]] where an item is [label, action] — an action of the ribbon (ACTIONS) or one of
 // these (DESK) —, a submenu [label, [items]], or SEP. Labels in Spanish: translated with t() when built.
 export const MENU = [
-  ['Archivo', [['Nuevo', 'new'], ['Abrir…', 'open'], ['Mis presentaciones en la nube', 'cloud-docs'], SEP,
-    ['Guardar', 'save'], ['Descargar el proyecto (.revela)', 'download-project'], ['Historial de versiones', 'versions'], ['Espacio ocupado', 'storage'], SEP,
+  ['Archivo', [['Nuevo', 'new'], ['Abrir…', 'open'], ['Mi nube de Revela', 'cloud-docs'], SEP,
+    ['Guardar', 'save'], ['Descargar una copia', 'download-project'], ['Versiones', 'versions'], ['Espacio ocupado', 'storage'], SEP,
     ['Importar', [['PowerPoint u OpenDocument…', 'import-pptx'], ['Reutilizar diapositivas…', 'reuse-slides'], ['Markdown…', 'import-md'], ['Importar preguntas', 'import-questions']]],
     ['Exportar', [['PDF', 'export-pdf'], ['PowerPoint', 'export-pptx'], ['ODP', 'export-odp'], ['HTML', 'export'], ['Insertar en Moodle o en una web', 'export-embed'], ['Imágenes', 'export-png'], ['Vídeo', 'export-video'],
       ['SCORM', 'export-scorm'], SEP, ['Exportar preguntas', 'export-questions'], ['Fichas y práctica', 'export-study']]],
@@ -42,12 +42,12 @@ export const MENU = [
   ['Editar', [['Deshacer', 'desk:undo'], ['Rehacer', 'desk:redo'], SEP, ['Duplicar', 'obj-duplicate'], ['Eliminar', 'obj-delete'], SEP,
     ['Buscar y reemplazar', 'find-replace'], ['Buscar comandos…', 'desk:palette']]],
   ['Ver', [['Presentar desde el principio', 'present'], ['Presentar desde la diapositiva actual', 'present-current'], ['Ensayar', 'rehearse'], SEP,
-    ['Clasificador de diapositivas', 'slide-sorter'], ['Panel de diapositivas', 'toggle-nav'], ['Notas', 'toggle-notes'], ['Regla', 'toggle-ruler'], ['Guías', 'toggle-guides'], SEP,
+    ['Clasificador', 'slide-sorter'], ['Panel de diapositivas', 'toggle-nav'], ['Notas', 'toggle-notes'], ['Regla', 'toggle-ruler'], ['Guías', 'toggle-guides'], SEP,
     ['Acercar', 'zoom-in'], ['Alejar', 'zoom-out'], ['Ajustar a la ventana', 'zoom-fit'], ['Tamaño real', 'zoom-reset'], SEP, ['Pantalla completa', 'desk:fullscreen'],
     ['Mostrar siempre la barra de menús', 'desk:menubar']]],
   ['Insertar', [['Nueva diapositiva', 'slide-add'], SEP, ['Cuadro de texto', 'insert-text'], ['Imagen', 'insert-image'], ['Tabla', 'insert-table'], ['Gráfico', 'insert-chart'],
     ['Ecuación', 'insert-math'], ['Código', 'insert-code'], ['Vídeo', 'insert-video'], ['Audio', 'insert-audio'], ['Modelo 3D', 'insert-model'], ['Mapa', 'insert-map'], SEP,
-    ['Votación en directo', 'insert-poll'], ['Candado', 'insert-lock'], ['Temporizador', 'insert-timer']]],
+    ['Votación en directo', 'insert-poll'], ['Candado', 'insert-lock'], ['Cuenta atrás', 'insert-timer']]],
   ['Ayuda', [['Guías en vídeo', 'desk:guides'], ['Atajos de teclado', 'shortcuts'], ['Buscar comandos…', 'desk:palette'], ['Informar de un problema', 'report-problem'], SEP,
     ['Buscar actualizaciones', 'desk:update'], ['Acerca de Revela', 'desk:about']]],
 ];
