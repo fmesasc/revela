@@ -467,10 +467,13 @@ export function setupTable(el, b) {
   // (The caret moved to another cell with the keyboard — Tab, arrows —: that cell.)
   el.addEventListener('focusin', e => { const at = cellOf(e); if (at && !dragging && el.classList.contains('editing') && !inPicked(at)) { anchor = at; pick(at[0], at[1]); } });
   el.addEventListener('dblclick', e => {
-    if (!e.target.closest('td')) return;
+    // (The block took the pointer when it was pressed — to drag it —, and a browser that follows the spec sends the
+    // click and the double-click to the element that held it, not to the cell: the cell is the one under the pointer.)
+    const td = e.target.closest('td') || document.elementFromPoint(e.clientX, e.clientY)?.closest('td');
+    if (!td || !el.contains(td)) return;
     el.classList.add('editing');
-    el.querySelectorAll('.tbl td').forEach(td => (td.contentEditable = 'true'));
-    const td = e.target.closest('td'); td.focus();
+    el.querySelectorAll('.tbl td').forEach(c => (c.contentEditable = 'true'));
+    td.focus();
     if (e.isTrusted) selectWordAt(td, e.clientX, e.clientY);
   });
   // A formula cell shows its formula while the caret is in it, and the results come back when it leaves.

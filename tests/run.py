@@ -276,6 +276,30 @@ def mouse_checks(send, recv, port):
         got = ev("window.__revela.store.currentSlide().blocks.map(b=>b.id==='m1'?'o'+b.x:'c'+b.x).join()")
         check(got == 'o200,c450', f'Alt+arrastrar con el ratón deja el original y suelta una copia ({got!r})')
     else: check(False, 'objeto de prueba en la diapositiva')
+    # A table: a single click selects it; a double-click on a cell lets you write in that cell. (Pressing a block
+    # gives it the pointer to drag it, and the click and double-click then reach the block, not the cell: the cell is
+    # the one under the pointer.)
+    def typ(txt):
+        for ch in txt:
+            recv(send('Input.dispatchKeyEvent', sid, type='keyDown', text=ch, key=ch, unmodifiedText=ch))
+            recv(send('Input.dispatchKeyEvent', sid, type='keyUp', key=ch))
+    cell = lambda r, c: _j.loads(ev(f"""(()=>{{const q=document.querySelector('#stage .block .tbl td[data-r="{r}"][data-c="{c}"]'),r=q.getBoundingClientRect();return JSON.stringify({{x:r.left+r.width/2,y:r.top+r.height/2}})}})()""") or 'null')
+    ev("(()=>{const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.blocks.addTable();R.store.setSelection(null);R.render();return 1})()"); time.sleep(0.4)
+    at = cell(1, 1)
+    if at:
+        click(at['x'], at['y'], 1); time.sleep(0.3)
+        check(ev("!!document.querySelector('#stage .block.selected .tbl')") and not ev("!!document.querySelector('#stage .block.editing')"), 'un clic en una celda selecciona la tabla, sin editarla')
+        click(at['x'], at['y'], 2); time.sleep(0.4)
+        check(ev("!!document.querySelector('#stage .block.editing .tbl') && document.activeElement?.tagName==='TD'"), 'doble clic en una celda de la tabla: se puede editar (el foco está en la celda)')
+        typ('Hola'); time.sleep(0.3)
+        got = ev("JSON.stringify(window.__revela.store.currentSlide().blocks.at(-1).rows)")
+        check(got is not None and _j.loads(got)[1][1] == 'Hola', f'y lo que se escribe queda en esa celda ({got!r})')
+        at2 = cell(0, 2)
+        click(at2['x'], at2['y'], 1); time.sleep(0.3)
+        typ('Z'); time.sleep(0.3)
+        got = _j.loads(ev("JSON.stringify(window.__revela.store.currentSlide().blocks.at(-1).rows)") or 'null')
+        check(got and got[0][2] == 'Z' and got[1][1] == 'Hola', f'con la tabla en edición, un clic pasa a otra celda ({got!r})')
+    else: check(False, 'tabla de prueba en la diapositiva')
     recv(send('Target.closeTarget', targetId=tid))
     return fails
 
