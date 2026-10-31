@@ -118,7 +118,7 @@ export default {
 
   edu_c_fp_cocina: tpl({ name: 'FP de Hostelería: la brigada de cocina', cat: 'edu', summary: 'Entender cómo funciona una cocina profesional: roles de la brigada, la mise en place, seguridad alimentaria, tiempos de servicio, un menú de ejemplo y las salidas de los ciclos de hostelería',
     palette: 'mostaza', fonts: 'friendly', bg: '#fdf6e7', ink: '#33220f', panel: '#ffffff', muted: '#6e5a3a', acc: ['#d5731c', '#2a8a7a', '#c1415a', '#6e8f2e'], decor: 'band',
-    cover: { variant: 'right', label: 'FORMACIÓN PROFESIONAL · HOSTELERÍA', title: 'Una cocina<br>es un equipo', size: 70, sub: 'Cada persona sabe qué hace y cuándo: así sale el plato a tiempo y caliente.', art: 'flask', alt: 'Un matraz' },
+    cover: { variant: 'right', label: 'FORMACIÓN PROFESIONAL · HOSTELERÍA', title: 'Una cocina<br>es un equipo', size: 70, sub: 'Cada persona sabe qué hace y cuándo: así sale el plato a tiempo y caliente.', art: 'hands', alt: 'Manos' },
     slides: [
       { k: 'cards', t: 'La brigada de cocina', items: [['Jefe de cocina', 'Dirige, diseña la carta y coordina.'], ['Segundo de cocina', 'Sustituye al jefe y organiza al equipo.'], ['Jefes de partida', 'Responsables de cada sección: salsas, carnes, pescados…'], ['Cocineros y ayudantes', 'Preparan y apoyan cada partida.']], n: 'En cocinas pequeñas una misma persona hace varios papeles. La estructura clásica es un modelo.' },
       { k: 'steps', t: 'La mise en place', items: ['Lee el menú del día', 'Reúne ingredientes y utensilios', 'Lava, pela y corta con antelación', 'Prepara bases y salsas', 'Ordena tu puesto antes del servicio'], layout: 'process', h: 330, n: 'Significa «poner en su sitio». Una buena mise en place hace que el servicio fluya.' },
