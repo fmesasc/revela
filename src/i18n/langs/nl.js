@@ -425,6 +425,7 @@ export default {
   "O basarla en documentos o fotos (PDF, textos, fotos de apuntes o de una pizarra) o en texto pegado": "Of baseer hem op documenten of foto’s (pdf, tekst, foto’s van aantekeningen of een whiteboard) of op geplakte tekst",
   "Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.": "Dit account heeft geen betaald abonnement om te beheren: de Pro komt uit de testmodus, een cadeau of een team.",
   "Los pagos no están disponibles ahora mismo. Inténtalo más tarde.": "Betalingen zijn nu niet beschikbaar. Probeer het later opnieuw.",
+  "No se ha podido abrir el navegador desde la aplicación. Abre revelaslides.com/app en tu navegador, inicia sesión con la misma cuenta y hazlo desde allí.": "De browser kon niet vanuit de app worden geopend. Open revelaslides.com/app in je browser, log in met hetzelfde account en doe het daar.",
   "Tema de la presentación": "Thema van de presentatie",
   "Los colores y las fuentes de todas las diapositivas, en un solo sitio. Nada cambia hasta que pulses «Aplicar»; se deshace con Ctrl+Z.": "De kleuren en lettertypen van alle dia’s op één plek. Er verandert niets tot je op ‘Toepassen’ drukt; Ctrl+Z maakt het ongedaan.",
   "Describe el tema": "Beschrijf het thema",

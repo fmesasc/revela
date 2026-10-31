@@ -4,7 +4,7 @@
 
 import { record, financeSettings } from './finance.js';
 import { campaignPurchase } from './crm.js';
-import { enc, DAY } from './util.js';
+import { enc, DAY, b64url, unb64, hmac } from './util.js';
 import { credits } from './ai.js';
 import { hex, settings, trialConfig, acct, call } from './api.js';
 
@@ -31,7 +31,28 @@ export async function trialOffer(env, A, mode) {
   const tc = await trialConfig(env);
   return tc.trialDays > 0 && (await call(A, 'trial-ok', { test: mode === 'test', once: tc.trialOncePerAccount })).ok ? tc.trialDays : 0;
 }
-export async function checkout(env, s, me, A, body, json) {
+// ---- Stripe's pages for the desktop app --------------------------------------------------------------------
+// The app opens links in the system browser only for revelaslides.com (its Tauri permission, compiled in: apps already
+// installed keep it). So for a request that comes from the app (its Origin, never a web page's) the Stripe URL goes
+// inside a short-lived link of ours, /api/go?t=…, signed by this server, that redirects to it. Only https URLs of
+// Stripe's two payment hosts, made by this server, are ever signed — and checked again before redirecting — so it
+// can't be turned into an open redirect.
+const PAY_HOSTS = ['checkout.stripe.com', 'billing.stripe.com'], PAY_MINUTES = 15;
+const payOk = u => { try { const x = new URL(u); return x.protocol === 'https:' && !x.username && !x.password && PAY_HOSTS.includes(x.hostname); } catch { return false; } };
+export async function payLink(env, s, stripeUrl, fromDesktop, now = Date.now()) {
+  if (!fromDesktop || !env.MAIL_SECRET || !payOk(stripeUrl)) return stripeUrl;
+  const body = b64url(enc.encode(JSON.stringify({ u: stripeUrl, x: now + PAY_MINUTES * 6e4 })));
+  return `${s.site}/api/go?t=${body}.${await hmac(env.MAIL_SECRET, 'pay:' + body)}`;
+}
+export async function payRedirect(env, url, now = Date.now()) {
+  const [b, sig] = String(url.searchParams.get('t') || '').split('.');
+  let d = null;
+  if (b && sig && env.MAIL_SECRET && (await hmac(env.MAIL_SECRET, 'pay:' + b)) === sig) { try { d = JSON.parse(unb64(b)); } catch {} }
+  const headers = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Robots-Tag': 'noindex' };
+  if (!d || !(d.x > now) || !payOk(d.u)) return new Response('This link has expired. Go back to Revela and try again.', { status: 410, headers: { ...headers, 'Content-Type': 'text/plain; charset=utf-8' } });
+  return new Response(null, { status: 302, headers: { ...headers, Location: d.u } });
+}
+export async function checkout(env, s, me, A, body, json, fromDesktop = false) {
   const p = s.products[body.product], c = await call(A, 'customer'), mode = billingMode(env, c.billingTest), conf = stripeConf(env, mode);
   if (mode === 'test' && !conf.ok) return json({ error: 'billing test not configured' }, 503);
   const price = conf.prices[body.product], customer = mode === 'test' ? c.customerTest : c.customer;
@@ -65,9 +86,9 @@ export async function checkout(env, s, me, A, body, json) {
     locale: 'auto' };
   const r = await stripe(env, conf.key, 'checkout/sessions', params);
   const d = await r.json().catch(() => ({}));
-  return d.url ? json({ url: d.url, ...(mode === 'test' && { test: true }), ...(trial && { trialDays: trial }) }) : json({ error: 'billing failed' }, 502);
+  return d.url ? json({ url: await payLink(env, s, d.url, fromDesktop), ...(mode === 'test' && { test: true }), ...(trial && { trialDays: trial }) }) : json({ error: 'billing failed' }, 502);
 }
-export async function portal(env, s, A, json) {
+export async function portal(env, s, A, json, fromDesktop = false) {
   const c = await call(A, 'customer'), mode = billingMode(env, c.billingTest), conf = stripeConf(env, mode);
   let customer = mode === 'test' ? c.customerTest : c.customer;
   // (An admin of a team who didn't pay it themselves: the team's subscription and invoices.)
@@ -80,7 +101,7 @@ export async function portal(env, s, A, json) {
   // (Nothing paid in this mode — a Pro from test mode, a gift or a team —: no Stripe customer to manage.)
   if (!customer) return json({ error: 'no customer' }, 404);
   const d = await (await stripe(env, conf.key, 'billing_portal/sessions', { customer, return_url: `${s.site}/app/` })).json().catch(() => ({}));
-  return d.url ? json({ url: d.url }) : json({ error: 'billing failed' }, 502);
+  return d.url ? json({ url: await payLink(env, s, d.url, fromDesktop) }) : json({ error: 'billing failed' }, 502);
 }
 // Stripe's signature: HMAC-SHA256 of "timestamp.body" with the webhook secret, at most 5 minutes old.
 export async function verifyStripe(body, header, secret, now = Date.now()) {

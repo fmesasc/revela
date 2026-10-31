@@ -150,6 +150,10 @@ export const cloudAi = {
 
 // ---- Payments: the server makes the Stripe page; prices are Stripe's ----
 // (In the desktop app, Stripe's page opens in the browser.)
-const go = url => (EDITION === 'desktop' ? openInBrowser(url) : location.assign(url));
-export async function buy(product, extra = {}) { const { url } = await api('billing/checkout', { product, ...extra }); go(url); }
-export async function manageBilling() { const { url } = await api('billing/portal', {}); go(url); }
+// (A browser that won't open: the app's permission to open links, or none at all —: 'OPEN_FAILED', for the dialogs to explain.)
+const go = async url => {
+  if (EDITION !== 'desktop') return location.assign(url);
+  try { await openInBrowser(url); } catch (e) { throw Object.assign(new Error('OPEN_FAILED'), { cause: e }); }
+};
+export async function buy(product, extra = {}) { const { url } = await api('billing/checkout', { product, ...extra }); await go(url); }
+export async function manageBilling() { const { url } = await api('billing/portal', {}); await go(url); }

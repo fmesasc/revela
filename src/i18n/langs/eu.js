@@ -425,6 +425,7 @@ export default {
   "O basarla en documentos o fotos (PDF, textos, fotos de apuntes o de una pizarra) o en texto pegado": "Edo oinarritu dokumentu edo argazkietan (PDF, testuak, apunteen edo arbel baten argazkiak) edo itsatsitako testuan",
   "Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.": "Kontu honek ez du kudeatzeko ordainpeko harpidetzarik: bere Pro proba-modutik, opari batetik edo talde batetik dator.",
   "Los pagos no están disponibles ahora mismo. Inténtalo más tarde.": "Ordainketak ez daude erabilgarri une honetan. Saiatu geroago.",
+  "No se ha podido abrir el navegador desde la aplicación. Abre revelaslides.com/app en tu navegador, inicia sesión con la misma cuenta y hazlo desde allí.": "Ezin izan da nabigatzailea aplikaziotik ireki. Ireki revelaslides.com/app zure nabigatzailean, hasi saioa kontu berarekin eta egin hortik.",
   "Tema de la presentación": "Aurkezpenaren gaia",
   "Los colores y las fuentes de todas las diapositivas, en un solo sitio. Nada cambia hasta que pulses «Aplicar»; se deshace con Ctrl+Z.": "Diapositiba guztien koloreak eta letra-tipoak, leku bakarrean. Ez da ezer aldatzen «Aplikatu» sakatu arte; Ctrl+Z desegiten du.",
   "Describe el tema": "Deskribatu gaia",

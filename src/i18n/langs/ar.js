@@ -425,6 +425,7 @@ export default {
   "O basarla en documentos o fotos (PDF, textos, fotos de apuntes o de una pizarra) o en texto pegado": "أو استنِد إلى مستندات أو صور (PDF، نصوص، صور ملاحظات أو سبورة) أو إلى نص ملصق",
   "Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.": "لا يوجد في هذا الحساب اشتراك مدفوع لإدارته: اشتراك Pro فيه من وضع الاختبار أو هدية أو فريق.",
   "Los pagos no están disponibles ahora mismo. Inténtalo más tarde.": "المدفوعات غير متاحة الآن. حاول لاحقًا.",
+  "No se ha podido abrir el navegador desde la aplicación. Abre revelaslides.com/app en tu navegador, inicia sesión con la misma cuenta y hazlo desde allí.": "تعذّر فتح المتصفح من التطبيق. افتح revelaslides.com/app في متصفحك، وسجّل الدخول بالحساب نفسه، وأكمل من هناك.",
   "Tema de la presentación": "سمة العرض التقديمي",
   "Los colores y las fuentes de todas las diapositivas, en un solo sitio. Nada cambia hasta que pulses «Aplicar»; se deshace con Ctrl+Z.": "ألوان وخطوط جميع الشرائح في مكان واحد. لا يتغير شيء حتى تضغط «تطبيق»؛ ويمكن التراجع بـ Ctrl+Z.",
   "Describe el tema": "صِف السمة",

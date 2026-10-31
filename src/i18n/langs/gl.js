@@ -425,6 +425,7 @@ export default {
   "O basarla en documentos o fotos (PDF, textos, fotos de apuntes o de una pizarra) o en texto pegado": "Ou baseala en documentos ou fotos (PDF, textos, fotos de apuntamentos ou dun encerado) ou en texto pegado",
   "Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.": "Esta conta non ten ningunha subscrición de pago que xestionar: o seu Pro vén do modo de proba, dun agasallo ou dun equipo.",
   "Los pagos no están disponibles ahora mismo. Inténtalo más tarde.": "Os pagamentos non están dispoñibles agora mesmo. Téntao máis tarde.",
+  "No se ha podido abrir el navegador desde la aplicación. Abre revelaslides.com/app en tu navegador, inicia sesión con la misma cuenta y hazlo desde allí.": "Non se puido abrir o navegador desde a aplicación. Abre revelaslides.com/app no teu navegador, inicia sesión coa mesma conta e fai-o desde alí.",
   "Tema de la presentación": "Tema da presentación",
   "Los colores y las fuentes de todas las diapositivas, en un solo sitio. Nada cambia hasta que pulses «Aplicar»; se deshace con Ctrl+Z.": "As cores e as fontes de todas as diapositivas, nun só sitio. Nada cambia ata que premas «Aplicar»; desfaise con Ctrl+Z.",
   "Describe el tema": "Describe o tema",

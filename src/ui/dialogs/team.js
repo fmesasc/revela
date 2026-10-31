@@ -18,6 +18,7 @@ const errorText = e => (e.status === 402 && e.data?.error === 'no seats' ? t('No
   : e.status === 403 ? t('Solo la administración del equipo puede hacer esto.') : e.data?.error === 'last admin' ? t('El equipo necesita al menos una persona que lo administre.')
   : e.data?.error === 'no customer' ? t('Esta cuenta no tiene ninguna suscripción de pago que gestionar: su Pro viene del modo de prueba, de un regalo o de un equipo.')
   : /^billing (not available|failed)$/.test(e.message) ? t('Los pagos no están disponibles ahora mismo. Inténtalo más tarde.')
+  : e.message === 'OPEN_FAILED' ? t('No se ha podido abrir el navegador desde la aplicación. Abre revelaslides.com/app en tu navegador, inicia sesión con la misma cuenta y hazlo desde allí.')
   : `${t('Algo ha fallado:')} ${e.message}`);
 
 export async function openTeam() {

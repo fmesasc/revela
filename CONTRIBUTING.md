@@ -49,7 +49,7 @@ npm run test:server         # only the server's tests (Node.js, no browser)
 
 `tests/run.sh` runs, in order: the architecture check (`tests/layers.py`); the
 Node.js tests — the server (`server.mjs`, `server-api.mjs`, `server-lti.mjs`,
-`server-blender.mjs`), the account client, the example presentations'
+`server-blender.mjs`), the account client (web and desktop editions), the example presentations'
 translations and `tools/template-texts.mjs --check`; then `tests/run.py`, which
 drives the real app in headless Chrome: the suite in `tests/suites/*.js`, real
 touch checks on a phone-sized page, the equation keyboard and mouse checks (and

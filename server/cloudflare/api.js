@@ -88,7 +88,7 @@ import { keyOp, handleKeys, handleV1, handleMcp, handleOAuth, connectInfo, conne
 import { APP_VERSION } from '../../src/core/config.js';
 import { credits, aiChat, aiImage, aiSpeech } from './ai.js';
 import { brandFromSite } from './brand.js';
-import { stripeConf, billingMode, trialOffer, checkout, portal, stripeWebhook } from './billing.js';
+import { stripeConf, billingMode, trialOffer, checkout, portal, stripeWebhook, payRedirect } from './billing.js';
 
 export const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 
@@ -1120,6 +1120,8 @@ export async function handleApi(req, env, url) {
   if (path.startsWith('/lti/')) return handleLti(req, env, url, s.site);
   // Single sign-on with a team's own identity provider (sso.js): no session yet, the browser goes and comes back.
   if (path === '/sso/start' && req.method === 'GET') return ssoStart(env, url);
+  // The desktop app's way to Stripe's payment pages: a signed, short-lived link on this site that redirects there (billing.js).
+  if (path === '/go' && req.method === 'GET') return payRedirect(env, url);
   if (path === '/sso/callback' && req.method === 'GET') {
     const bound = (req.headers.get('Cookie') || '').split(/;\s*/).map(c => c.split('=')).find(([k]) => k === 'rv_sso')?.[1] || '';
     const who = await ssoCallback(env, url, bound), back = q => Response.redirect(`${s.site}/app/?sso=${q}`, 302);
@@ -1457,8 +1459,8 @@ export async function handleApi(req, env, url) {
     case '/brand/site': return req.method === 'POST' ? brandFromSite(env, A, body, json) : json({ error: 'POST' }, 405);
     case '/stock/search': return stockSearch(env, A, url, json);
     case '/stock/used': return stockUsed(env, body, json);
-    case '/billing/checkout': return checkout(env, s, me, A, body, json);
-    case '/billing/portal': return portal(env, s, A, json);
+    case '/billing/checkout': return checkout(env, s, me, A, body, json, desktopOrigin);
+    case '/billing/portal': return portal(env, s, A, json, desktopOrigin);
   }
   return json({ error: 'not found' }, 404);
 }

@@ -9,7 +9,7 @@ import { verifyAccess, resetAccessCerts, resetPromoCache, ticketsDue } from '../
 import { ticketToken, render } from '../server/cloudflare/mail.js';
 import { verifyBody } from '../server/blender/gate.js';
 import { shortCode, settings, deviceOf } from '../server/cloudflare/api.js';
-import { verifyStripe, stripeConf, billingMode } from '../server/cloudflare/billing.js';
+import { verifyStripe, stripeConf, billingMode, payLink, payRedirect } from '../server/cloudflare/billing.js';
 import { sha256, voterOf } from '../server/cloudflare/util.js';
 import { relayHeaders, PHONE_RATE, UP_MS, joinLive, joinVote, FIRST_RELAY, PTR_GAP } from '../server/cloudflare/broadcast.js';
 
@@ -267,6 +267,26 @@ r = await req('POST', '/api/billing/checkout', { headers: { Cookie: bob }, body:
 ok(r.status === 200 && (await r.json()).url.startsWith('https://checkout.stripe.com/') && /client_reference_id=222/.test(stripeCalls.at(-1).body), 'pago con Stripe Checkout, ligado a la cuenta');
 ok((await req('POST', '/api/billing/checkout', { headers: { Cookie: bob }, body: { product: 'gratis-para-siempre' } })).status === 503, 'productos inventados: no');
 ok(!/unit_amount|price_data/.test(stripeCalls.at(-1).body), 'el precio lo pone Stripe, no el navegador');
+// The desktop app can only open revelaslides.com links: the Stripe page goes inside a signed, short-lived link of ours
+// (only for the app's Origin, never for a web page), that redirects there and can't be turned into an open redirect.
+{
+  const desk = { origin: 'tauri://localhost', headers: { Authorization: 'Bearer ' + bob.split('=')[1] }, body: { product: 'pro-month' } };
+  r = await req('POST', '/api/billing/checkout', desk);
+  const link = (await r.json()).url;
+  ok(r.status === 200 && link.startsWith(SITE + '/api/go?t='), 'app de escritorio: el pago llega en un enlace de revelaslides.com: ' + link);
+  const go = await req('GET', link.slice(SITE.length), { origin: '' });
+  ok(go.status === 302 && go.headers.get('Location') === 'https://checkout.stripe.com/c/pay_x' && go.headers.get('Referrer-Policy') === 'no-referrer', 'ese enlace lleva a Stripe Checkout');
+  const t = new URL(link).searchParams.get('t');
+  ok((await req('GET', '/api/go?t=' + t.slice(0, -2) + 'xx', { origin: '' })).status === 410, 'un enlace manipulado no vale');
+  ok((await req('GET', '/api/go', { origin: '' })).status === 410 && (await req('GET', '/api/go?t=abc.def', { origin: '' })).status === 410, 'sin enlace, o con basura: caducado');
+  ok((await payRedirect(env, new URL(await payLink(env, { site: SITE }, 'https://checkout.stripe.com/c/x', true, Date.now() - 20 * 60e3)), Date.now())).status === 410, 'pasados 15 minutos caduca');
+  r = await req('POST', '/api/billing/checkout', { headers: { Cookie: bob }, body: { product: 'pro-month' } });
+  ok((await r.json()).url === 'https://checkout.stripe.com/c/pay_x', 'desde la web: la dirección de Stripe tal cual');
+  ok(await payLink(env, { site: SITE }, 'https://evil.example/phish', true) === 'https://evil.example/phish', 'una dirección que no es de Stripe no se firma');
+  const forged = async u => { const b = Buffer.from(JSON.stringify({ u, x: Date.now() + 6e4 })).toString('base64url'); return `${b}.${(await (await import('../server/cloudflare/util.js')).hmac(env.MAIL_SECRET, 'pay:' + b))}`; };
+  ok((await req('GET', '/api/go?t=' + await forged('https://evil.example/phish'), { origin: '' })).status === 410, 'ni aunque la firma sea buena: solo las páginas de pago de Stripe');
+  ok((await req('GET', '/api/go?t=' + await forged('http://checkout.stripe.com/c/x'), { origin: '' })).status === 410 && (await req('GET', '/api/go?t=' + await forged('https://checkout.stripe.com.evil.example/c/x'), { origin: '' })).status === 410, 'solo https y solo esos dos dominios');
+}
 ok(!/automatic_tax/.test(stripeCalls.at(-1).body), 'sin Stripe Tax activado, no se le pide calcular impuestos');
 env.STRIPE_AUTOMATIC_TAX = '1';
 await req('POST', '/api/billing/checkout', { headers: { Cookie: bob }, body: { product: 'pro-month' } });
