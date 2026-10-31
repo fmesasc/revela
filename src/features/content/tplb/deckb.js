@@ -3,7 +3,9 @@
 // table, comparison, timeline, picture + points, vote, quiz, statement) — and this file draws them with the kit.
 // Drawings are ours (SVG as data URLs; no outside pictures). Texts are Spanish; the rest is translated with them.
 
-import { build, text, card, shape, ul, A, withAnims, numbered, glow, dg, timer, chartBlock, tableBlock, pollBlock, base, deep, model, nasa, pairStacks } from '../templates/kit.js';
+import { build, text, card, shape, ul, A, withAnims, numbered, glow, dg, timer, chartBlock, tableBlock, pollBlock, base, deep, model, nasa, pairStacks, uid } from '../templates/kit.js';
+
+const ICONS3D = new URL('../../../../assets/icons3d/', import.meta.url).href;
 
 const svgURL = (w, h, body) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${body}</svg>`);
@@ -96,6 +98,20 @@ function deckFrom(s) {
     say: sl => ({ extra: [shape('rect', 110, 230, 10, 250, acc[0]),
       on(text(`<span style="font-size:${sl.size || 44}px;font-weight:700;color:${ink};line-height:1.2">${sl.text}</span>`, 150, 220, 980, 270, { vAlign: 'middle', fontFamily: stacks.heading }), 'fade-in'),
       ...(sl.cap ? [text(sl.cap, 150, 520, 980, 90, { fontSize: 23, color: muted, lineHeight: 1.4 })] : [])] }),
+    // A travelling map: stops = [{ name, lon, lat, zoom, cc }, …] (a click flies to each); points on the left.
+    map: sl => { const st = sl.stops.map(q => ({ id: uid(), pitch: 0, bearing: 0, ...q })), fly = sl.fly || 3000;
+      const steps = st.slice(1).map((q, i) => ({ effect: 'mapfly', order: i + 1, seq: i + 1, start: 'click', duration: fly, delay: 0, stop: q.id }));
+      const m = { id: uid(), type: 'map', look: sl.look || 'globe', route: sl.route || 'geodesic', routeColor: acc[1] || acc[0], arrive: 'drop', marker: { kind: 'dot', color: acc[1] || acc[0], size: 1 },
+        x: 520, y: 175, w: 690, h: 470, rotation: 0, edge: 'round', ...(sl.mp || {}), stops: st, animation: steps[0] || null, ...(steps.length > 1 && { anims: steps.slice(1) }) };
+      return { extra: [m, text(ul(...sl.points), 90, 215, 400, 400, { fontSize: 25, color: ink, lineHeight: 1.45 })] }; },
+    // One of Revela's Lottie animations beside the points.
+    lottie: sl => ({ extra: [{ id: uid(), type: 'lottie', lottieId: sl.id, x: 90, y: 200, w: 380, h: 380, rotation: 0, animation: null, speed: 1, play: 'auto', ...(sl.lp || {}) },
+      text(ul(...sl.points), 520, 215, 680, 400, { fontSize: 27, color: ink, lineHeight: 1.45 })] }),
+    // 3D icons (resources panel): items = [[icon, title, text], …] (3 or 4), each with its picture above a card.
+    icons: sl => { const it = sl.items, n = it.length, w = n === 4 ? 258 : 350, gap = n === 4 ? 22 : 25;
+      return { extra: it.flatMap(([ic, t, d], i) => { const x = 90 + i * (w + gap);
+        return [withAnims({ ...base(x + w / 2 - 55, 190, 110, 110), type: 'image', src: `${ICONS3D}${ic}.webp`, alt: t, fit: 'contain' }, A('zoom-in', { start: i ? 'afterPrev' : 'click', duration: 500 })),
+          withAnims(cardBox(head(t, d, acc[i % acc.length], n === 4 ? 25 : 28, n === 4 ? 21 : 23), x, 315, w, 290, acc[i % acc.length], { pad: [20, 20, 16, 20], textAlign: 'center' }), A('fade-up', { start: 'withPrev' }))]; }) }; },
     model: sl => ({ extra: [
       sl.nasa ? nasa(sl.nasa, 560, 170, 650, 470, { motion: 'swing', ...(sl.mp || {}) }) : model(sl.model, 560, 170, 650, 470, { autoRotate: false, view: 'three', motion: 'swing', edge: 'fade', ...(sl.mp || {}) }),
       text(ul(...sl.points), 90, 215, 450, 400, { fontSize: 25, color: ink, lineHeight: 1.45 })] }),
