@@ -15,7 +15,8 @@
 //                              (a new account needs terms: the version of the terms accepted; else 400 { error: 'terms' })
 //   POST /api/logout
 //   POST /api/visit            { path, ref, lang, kind: view | 404 }   (the website's pages: visits.js; no cookies)
-//   POST /api/errors           { msg, stack, where, version, browser, lang, actions, kind }   (the app's errors: errors.js)
+//   POST /api/errors           { msg, stack, where, version, browser, lang, actions, kind }   (the app's errors: errors.js;
+//                              with the session, if there is one: the account's id goes with it)
 //   GET  /api/redirect?path=   → { to }   (where an address that doesn't exist goes: the 404 page asks)
 //   GET  /api/version          → { version, stage }   (the version this server is: src/core/config.js APP_VERSION)
 //   GET  /api/sessions         → { sessions: [{ id, kind, device, where, created, last, expires, current? }] }   (my open sessions)
@@ -1225,7 +1226,10 @@ export async function handleApi(req, env, url) {
     if (!webOrigin && !desktopOrigin) return json({ error: 'origin' }, 403);
     if (!env.VISITS || !body || typeof body !== 'object') return json({ ok: true });
     const who = (await sha256((req.headers.get('CF-Connecting-IP') || '') + '|' + (req.headers.get('User-Agent') || ''))).slice(0, 22);
-    await visitsCall(env, 'err-hit', { who, report: body });
+    // (If the person is signed in: its account id goes with the error, so that it can be written to — errors.js. Not an
+    // API key, nor an administrator looking as that person: the error would not be theirs.)
+    const mine = await sessionOf(req, env).catch(() => null), sub = mine && mine.via !== 'key' && !mine.impersonation ? mine.sub : '';
+    await visitsCall(env, 'err-hit', { who, sub, report: body });
     return json({ ok: true });
   }
   if (path === '/version' && req.method === 'GET') return json({ version: APP_VERSION, stage: env.STAGE || 'production' }, 200, { 'Cache-Control': 'no-store' });
@@ -1490,7 +1494,8 @@ async function accountExport(env, me, A, json) {
   const docs = [];
   for (const d of data.docs) { const r = await env.DOCS?.get(env.DOCS.idFromName('doc:' + d.id)).fetch('https://doc/get', { method: 'POST', body: JSON.stringify({ who: { sub: me.sub } }) });
     if (r?.ok) { const x = await r.json(); docs.push({ id: d.id, name: x.name, updated: x.updated, sharing: x.sharing, deck: x.deck }); } }
-  return json({ exported: new Date().toISOString(), account: { ...data.profile, plan: data.plan, credits: data.credits }, ledger: data.ledger, sessions: data.sessions, documents: docs, sharedWithMe: inbox },
+  const errors = env.VISITS ? (await visitsCall(env, 'err-mine', { sub: me.sub }).catch(() => ({}))).errors || [] : [];   // (the app's errors tied to the account)
+  return json({ exported: new Date().toISOString(), account: { ...data.profile, plan: data.plan, credits: data.credits }, ledger: data.ledger, sessions: data.sessions, documents: docs, sharedWithMe: inbox, errors },
     200, { 'Content-Disposition': 'attachment; filename="revela-mis-datos.json"' });
 }
 // Delete the account: its documents (and who they were shared with), its list of
@@ -1514,6 +1519,7 @@ export async function deleteAccount(env, sub) {
     for (const e of people) await call(acct(env, 'e:' + e), 'inbox-remove', { id });
   }
   if (w.email) await call(acct(env, 'e:' + w.email), 'wipe');
+  if (env.VISITS) await visitsCall(env, 'err-forget', { sub }).catch(() => {});   // (the app's errors it had sent: errors.js)
   if (env.BUDGET) await call(env.BUDGET.get(env.BUDGET.idFromName('global')), 'news-forget', { sub }).catch(() => {});   // (what it opened and clicked in the newsletters)
   for (const [customer, key] of [[w.customer, env.STRIPE_SECRET_KEY], [w.customerTest, env.STRIPE_TEST_SECRET_KEY]]) {
     if (!customer || !key) continue;

@@ -3,9 +3,11 @@
 //
 // What goes: the message (quoted text taken out), where in the app's code (its files, without query or hash), the
 // app's page, the version, the browser and system, the language and the last few ribbon actions (their names). Never
-// the presentation, its text or files, nor who: no account, no cookie (credentials: 'omit'). privacy.html says so.
+// the presentation, its text or files. And who: if the person is signed in, the session goes with the error (cookie on
+// the web, bearer in the desktop app) and the server keeps the account's id with it — only for the administration, so
+// that it can write to the person and help — never the email in the error itself. privacy.html says so.
 // Each error once per session, and at most MAX; not the noise of browsers, extensions and networks.
-import { apiBase } from '../../io/cloud/account.js';
+import { apiBase, sessionInit } from '../../io/cloud/account.js';
 import { APP_VERSION } from '../../core/config.js';
 import { currentLang } from '../../i18n/index.js';
 
@@ -34,7 +36,7 @@ export function initErrorReports({ testing = false } = {}) {
 export function reportError(err, kind = 'error', ev = null) {
   try {
     if (!on) return;
-    const msg = String(err?.message || (typeof err === 'string' ? err : '') || ev?.message || '').replace(/"[^"]{16,}"|'[^']{16,}'|«[^»]{16,}»/g, '"…"').slice(0, 300).trim();
+    const msg = String(err?.message || (typeof err === 'string' ? err : '') || ev?.message || '').replace(/"[^"]{16,}"|'[^']{16,}'|«[^»]{16,}»/g, '"…"').replace(/(https?:\/\/[^\s/"'()<>]+)[^\s"'()<>]*/g, '$1/…').slice(0, 300).trim();   // (an address: only where it points)
     const stack = cleanStack(err?.stack || (ev?.filename ? `at ${ev.filename}:${ev.lineno}:${ev.colno}` : ''));
     if (!msg || IGNORE.test(msg) || IGNORE.test(stack)) return;
     if (stack && !/\/src\//.test(stack)) return;                          // (not the app's code: an extension, a page inside)
@@ -42,6 +44,7 @@ export function reportError(err, kind = 'error', ev = null) {
     if (seen.has(key) || sent >= MAX) return;
     seen.add(key); sent++;
     const body = JSON.stringify({ msg, stack, where: location.pathname, version: APP_VERSION, browser: browserName(), lang: currentLang(), actions: [...actions], kind });
-    fetch(apiBase() + 'errors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true, credentials: 'omit' }).catch(() => {});
+    const { headers, credentials } = sessionInit();
+    fetch(apiBase() + 'errors', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body, keepalive: true, credentials }).catch(() => {});
   } catch {}
 }

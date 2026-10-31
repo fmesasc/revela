@@ -783,7 +783,16 @@ export async function handleAdmin(req, env, url) {
   // published now: it comes back if it happens in a newer one.
   if (path === '/errors') {
     if (!env.VISITS) return json({ error: 'not configured' }, 503);
-    if (GET) return json({ ...(await visitsCall(env, 'errs', { all: q.get('all') === '1' })), version: APP_VERSION });
+    if (GET) {
+      const r = await visitsCall(env, 'errs', { all: q.get('all') === '1' });
+      // Who had each one (the accounts signed in when it happened): the email, name and plan from the directory — errors.js keeps only the id.
+      const people = {};
+      for (const sub of [...new Set(r.items.flatMap(g => Object.keys(g.accounts || {})))].slice(0, 200)) {
+        const u = (await call(D, 'get', { sub }).catch(() => ({}))).user;
+        people[sub] = u ? { email: u.email, name: u.name || '', plan: u.plan && u.until > Date.now() ? u.plan : 'free' } : { gone: true };
+      }
+      return json({ ...r, people, version: APP_VERSION });
+    }
     if (POST) {
       const status = ['new', 'solved', 'ignored'].includes(body.status) ? body.status : null; if (!status) return json({ error: 'bad request' }, 400);
       const r = await visitsCall(env, 'err-set', { sig: clip(body.sig, 40), status, version: APP_VERSION });

@@ -19,6 +19,12 @@ for (const fn of [() => A.buy('pro-month'), () => A.buy('team-seat', { seats: 3 
   let err = null; await fn().catch(e => { err = e; });
   ok(err?.message === 'OPEN_FAILED' && /Not allowed to open url/.test(err.cause?.message), 'si el navegador no se abre: OPEN_FAILED, que los cuadros explican');
 }
+// The app's errors carry the session, so that the administration knows whose they are (errors.js): the desktop app's bearer;
+// without being signed in, nothing.
+ok(Object.keys(A.sessionInit().headers).length === 0 && A.sessionInit().credentials === 'omit', 'escritorio, sin sesión: los errores no llevan nada');
+const store = {}; globalThis.localStorage = { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = v; }, removeItem: k => { delete store[k]; } };
+store['revela.session'] = 'tok.sec';
+const si = A.sessionInit(); ok(si.headers.Authorization === 'Bearer tok.sec' && si.credentials === 'omit', 'escritorio, con sesión: los errores llevan el bearer, sin cookies: ' + JSON.stringify(si));
 await new Promise(r => setTimeout(r, 50));
 ok(loose === 0, 'y ningún error queda sin atender (promesa suelta)');
 console.log(fails ? `DESKTOP FAIL ${n - fails}/${n}` : `DESKTOP OK ${n}/${n}`);

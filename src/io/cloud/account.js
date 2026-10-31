@@ -29,6 +29,8 @@ export const onAccount = fn => { listeners.add(fn); return () => listeners.delet
 export const account = () => me;
 const changed = () => listeners.forEach(fn => { try { fn(me); } catch {} });
 
+// How a request carries the session (cookie on the web, bearer in the desktop app): for the ones that are not api() — the app's errors.
+export const sessionInit = () => ({ headers: EDITION === 'desktop' && bearer() ? { Authorization: 'Bearer ' + bearer() } : {}, credentials: EDITION === 'cloud' ? 'include' : 'omit' });
 // A request to the API (with the session: cookie on the web, bearer in the desktop app).
 export async function api(path, body) {
   const base = apiBase(); if (!base) throw Object.assign(new Error('NO_ACCOUNTS'), { status: 0 });
