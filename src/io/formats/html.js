@@ -157,8 +157,8 @@ document.addEventListener('pointermove',function(e){if(!cur)return;e.preventDefa
 document.addEventListener('pointerup',function(){if(cur)cur.style.cursor='';cur=null;},true);
 document.addEventListener('click',function(e){if(moved&&e.target.closest&&e.target.closest('[data-drag]')){e.stopPropagation();e.preventDefault();moved=false;}},true);})();`;
 // 360° photos: Pannellum, loaded the first time a slide with one is shown; each one started when its slide is.
-const PANO_JS = `(function(){var lib=null;function load(){if(lib)return lib;var l=document.createElement('link');l.rel='stylesheet';l.href=${JSON.stringify(PANNELLUM + '.css')};document.head.appendChild(l);
-lib=new Promise(function(ok,ko){var s=document.createElement('script');s.src=${JSON.stringify(PANNELLUM + '.js')};s.onload=ok;s.onerror=ko;document.head.appendChild(s);});return lib;}
+const PANO_JS = `(function(){var lib=null,X=window.__rvLib||String;function load(){if(lib)return lib;var l=document.createElement('link');l.rel='stylesheet';l.href=X(${JSON.stringify(PANNELLUM + '.css')});document.head.appendChild(l);
+lib=new Promise(function(ok,ko){var s=document.createElement('script');s.src=X(${JSON.stringify(PANNELLUM + '.js')});s.onload=ok;s.onerror=ko;document.head.appendChild(s);});return lib;}
 function show(sec){if(!sec)return;[].slice.call(sec.querySelectorAll('[data-pano]:not([data-on])')).forEach(function(el){el.setAttribute('data-on','');
  load().then(function(){window.pannellum.viewer(el,{type:'equirectangular',panorama:el.getAttribute('data-pano'),autoLoad:true,showFullscreenCtrl:false,keyboardZoom:false,disableKeyboardCtrl:true,compass:false});}).catch(function(){});});}
 Reveal.on('ready',function(e){show(e.currentSlide);});Reveal.on('slidechanged',function(e){show(e.currentSlide);});if(Reveal.isReady())show(Reveal.getCurrentSlide());})();`;
@@ -968,7 +968,7 @@ ${katexNeeded ? `<link rel="stylesheet" href="${KATEX}/katex.min.css">` : ''}
 window.__rvNoGL=!ok;var S=window.__rvGS=window.__rvGS||{fails:0,rebuilds:0,lite:false,dead:false};
 window.addEventListener('error',function(e){if(/model-viewer/.test(e.filename||'')||/reading 'xr'|Error creating WebGL context/.test(e.message||'')){e.preventDefault();S.lite=true;}});
 window.addEventListener('unhandledrejection',function(e){var m=String(e.reason&&e.reason.message||e.reason||'');if(/Error creating WebGL context|reading 'xr'/.test(m)){e.preventDefault();S.lite=true;}});
-if(ok){var s=document.createElement('script');s.type='module';s.src=${JSON.stringify(MODEL_VIEWER)};document.head.appendChild(s);}else S.dead=true;})();</script>
+if(ok){var s=document.createElement('script');s.type='module';s.src=(window.__rvLib||String)(${JSON.stringify(MODEL_VIEWER)});document.head.appendChild(s);}else S.dead=true;})();</script>
 ${katexNeeded ? `<script defer src="${KATEX}/katex.min.js"></script>` : ''}
 ${hasInlineMath ? `<script defer src="${KATEX}/contrib/auto-render.min.js"></script>` : ''}
 <style>
@@ -1151,10 +1151,11 @@ function dedupeMedia(html) {
 // The page to keep and open anywhere — a USB stick in a classroom without internet —: reveal.js, its
 // plugins and styles inside it (fetched now). → whether it could be made so (else it needs a connection;
 // 3D models, maps, fonts and videos from the internet always do).
-export async function exportHTML() {
-  const p = htmlParts(await portable(state.deck)), { html, offline } = await offlineHTML(p.html);   // (files by address, as data: core/mediastore.js)
-  download(partsBlob(html, p.files), slug(state.deck.name) + '.html');
-  return offline;
+// `libs`: also the libraries it uses and its fonts (offline-libs.js). → { offline, libs, missing }
+export async function exportHTML({ libs = false, say } = {}) {
+  const p = htmlParts(await portable(state.deck)), r = await offlineHTML(p.html, { libs, say });   // (files by address, as data: core/mediastore.js)
+  download(partsBlob(r.html, p.files), slug(state.deck.name) + '.html');
+  return r;
 }
 const inlined = new Map();
 async function fetchText(url) {
@@ -1162,17 +1163,26 @@ async function fetchText(url) {
   return inlined.get(url);
 }
 // A page's reveal.js scripts and styles, put inside it (relative addresses in the styles made absolute).
-export async function offlineHTML(html) {
+// `libs`: also the other libraries the page uses and its web fonts (io/formats/offline-libs.js) — the page then opens with no
+// connection at all but for maps' tiles, remote videos and webs. → { html, offline, libs: [ids inside], missing: [ids left on the CDN] }
+export async function offlineHTML(html, { libs = false, say } = {}) {
   const esc$ = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const tags = [...html.matchAll(new RegExp(`<script src="(${esc$(REVEAL)}[^"]+)"></script>|<link rel="stylesheet" href="(${esc$(REVEAL)}[^"]+)">`, 'g'))];
+  const L = libs ? await import('./offline-libs.js') : null, used = L ? L.usedCodePoints(html) : null;
+  let out;
   try {
     const parts = await Promise.all(tags.map(async m => {
       const url = m[1] || m[2], text = await fetchText(url);
       if (m[1]) return `<script>${text.replace(/<\/script/gi, '<\\/script')}</script>`;
-      return `<style>${text.replace(/url\((['"]?)(?!data:|https?:|#)([^'")]+)\1\)/g, (x, q, u) => `url(${new URL(u, url).href})`).replace(/<\/style/gi, '<\\/style')}</style>`;
+      let css = text.replace(/url\((['"]?)(?!data:|https?:|#)([^'")]+)\1\)/g, (x, q, u) => `url(${new URL(u, url).href})`);
+      if (L) try { css = await L.inlineCss(css, url, used); } catch {}   // (a font that can't be fetched: the style stays as it was)
+      return `<style>${css.replace(/<\/style/gi, '<\\/style')}</style>`;
     }));
-    let i = 0; return { html: html.replace(new RegExp(tags.map(m => esc$(m[0])).join('|') || '$^', 'g'), () => parts[i++]), offline: true };
-  } catch { return { html, offline: false }; }
+    let i = 0; out = { html: html.replace(new RegExp(tags.map(m => esc$(m[0])).join('|') || '$^', 'g'), () => parts[i++]), offline: true };
+  } catch { out = { html, offline: false }; }
+  if (!L || !out.offline) return { ...out, libs: [], missing: [] };
+  const r = await L.inlineLibs(out.html, { say, used });
+  return { html: r.html, offline: true, libs: r.libs, missing: r.missing, fonts: r.fonts };
 }
 
 // The inline‑styled blocks of a slide (self‑contained, no external CSS).

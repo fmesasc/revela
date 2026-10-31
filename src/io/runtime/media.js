@@ -119,7 +119,7 @@ export function createMediaPlayer(host, o) {
   api.ready = (async () => {
     try {
       if (o.kind === 'gif') {
-        const lib = await import(o.gifLib);
+        const lib = await import((window.__rvLib || String)(o.gifLib));
         const buf = await (await fetch(o.src)).arrayBuffer();
         const parsed = lib.parseGIF(buf), frames = lib.decompressFrames(parsed, true);
         const work = document.createElement('canvas'); work.width = parsed.lsd.width; work.height = parsed.lsd.height;

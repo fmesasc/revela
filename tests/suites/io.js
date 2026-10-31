@@ -1772,6 +1772,100 @@ Una ecuación\\: 2 \\= 1 \\+ 1 y unas llaves \\{\\} {=sí ~no}
     if (files.length) eq(files.filter(f => !src.includes('runtime/' + f) && !RT_EXEMPT[f]).join(', '), '', 'runtimes que html.js no mete en la página');
   });
 
+  await test('exportar HTML con las librerías dentro: lo que la presentación usa va en el archivo, y abre sin pedir nada a un CDN (misma página que sin la opción)', async () => {
+    const W = frame.contentWindow, H = await W.eval("import('/src/io/formats/html.js')"), E = await W.eval("import('/src/features/content/examples.js')"), M = await W.eval("import('/src/core/model.js')");
+    const CDN = /https:\/\/(cdn\.jsdelivr\.net\/npm\/|unpkg\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)/;
+    const decks = {
+      showcase_lottie: await E.loadExample('showcase_lottie', 'es'), showcase_maps: await E.loadExample('showcase_maps', 'es'), showcase_3d: await E.loadExample('showcase_3d', 'es'),
+    };
+    const math = M.emptyDeck(); math.slides = [M.blankSlide()];
+    math.slides[0].blocks.push(M.mathBlock({ latex: 'a^2+b^2=c^2' }), M.textBlock({ html: 'Lobster y $x^2$', fontFamily: '"Lobster", cursive' }));
+    decks.formulas = math;
+    const want = { showcase_lottie: ['lottie'], showcase_maps: ['map'], showcase_3d: ['3d'], formulas: ['math'] };
+    const bad = [];
+    for (const [key, d] of Object.entries(decks)) {
+      const html = R.io.buildHTML(d, { inApp: false });
+      const on = await H.offlineHTML(html, { libs: true }), off = await H.offlineHTML(html);
+      assert(on.offline && off.offline, key + ': con reveal.js dentro');
+      for (const id of want[key]) assert(on.libs.includes(id), key + ': lleva ' + id + ' (' + on.libs + ')');
+      eq(on.missing.join(), '', key + ': nada se quedó sin traer');
+      assert(on.html.length > off.html.length, key + ': pesa más con la opción');
+      // La misma página: las mismas diapositivas; solo cambia de dónde salen las librerías.
+      const secs = h => (h.match(/<section[^>]*>/g) || []).join('');
+      eq(secs(on.html), secs(off.html), key + ': las mismas diapositivas');
+      // Cada librería que la página usa va en su bloque, y ninguna etiqueta <script>/<link> apunta a un CDN (los modelos y fotos de internet son otra cosa).
+      const rest = on.html.replace(/<script type="text\/rv-lib"[^>]*>[\s\S]*?<\/script>/g, '');
+      if (/<(script|link)\b[^>]*\b(src|href)="https:\/\/(cdn\.jsdelivr\.net\/npm|unpkg\.com|fonts\.googleapis\.com)/.test(rest)) bad.push(key + ': una etiqueta sigue apuntando a un CDN');
+      if (key !== 'formulas' && !/<script type="text\/rv-lib" data-rv-lib="https:/.test(on.html)) bad.push(key + ': sin bloques de librería');
+      // Se abre y se recorre, y el navegador no pide nada a ningún CDN.
+      const hook = '<script>window.__errs=[];addEventListener("error",function(e){__errs.push(String(e.message))});addEventListener("unhandledrejection",function(e){__errs.push(String(e.reason&&e.reason.message||e.reason))})</script>';
+      const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:960px;height:540px;visibility:hidden'; D.body.appendChild(f);
+      try {
+        f.src = URL.createObjectURL(new Blob([on.html.replace('<head>', '<head>' + hook).replace('hash:true', 'hash:false')], { type: 'text/html' }));
+        let Rv = null; for (let i = 0; i < 160 && !(Rv = f.contentWindow?.Reveal)?.isReady?.(); i++) await sleep(100);
+        if (!Rv?.isReady?.()) { bad.push(key + ': no arranca'); continue; }
+        const total = Rv.getTotalSlides();
+        for (let i = 0; i < total; i++) { Rv.slide(i, 0, -1); await sleep(300); }
+        await sleep(600);
+        const w = f.contentWindow, hits = w.performance.getEntriesByType('resource').map(r => r.name).filter(n => CDN.test(n));
+        if (hits.length) bad.push(key + ': pidió a un CDN: ' + [...new Set(hits)].slice(0, 3).join(' , '));
+        if (key === 'showcase_lottie' && !w.lottie) bad.push(key + ': lottie no cargó desde dentro');
+        if (key === 'showcase_maps' && !w.__rvNoGL && !w.maplibregl) bad.push(key + ': maplibre no cargó desde dentro');
+        if (key === 'showcase_3d' && !w.__rvNoGL && !w.customElements.get('model-viewer')) bad.push(key + ': model-viewer no cargó desde dentro');
+        if (key === 'formulas' && !(w.katex && w.renderMathInElement)) bad.push(key + ': katex no cargó desde dentro');
+        const errs = (w.__errs || []).filter(m => !/ResizeObserver|Script error\.?$|tile|Failed to fetch|NetworkError|Load failed/i.test(m));
+        if (errs.length) bad.push(key + ': ' + [...new Set(errs)].slice(0, 3).join(' | '));
+      } finally { f.remove(); }
+    }
+    eq(bad.join('\n'), '', 'exportar con las librerías dentro');
+  });
+
+  await test('exportar HTML con las librerías dentro: cada librería que la página pide a un CDN está registrada, o dice por qué necesita red', async () => {
+    const W = frame.contentWindow, get = async u => (await fetch(u)).text();
+    const O = await W.eval("import('/src/io/formats/offline-libs.js')");
+    const offline = await get('/src/io/formats/offline-libs.js'), htmlSrc = await get('/src/io/formats/html.js');
+    // Lo que html.js importa de vendor.js: o está en GROUPS (o se mete aparte), o es de cámara/avatar (modelos de MediaPipe: red siempre).
+    const imported = (/import \{([^}]+)\} from '\.\.\/\.\.\/core\/vendor\.js'/.exec(htmlSrc)?.[1] || '').split(',').map(x => x.trim()).filter(Boolean);
+    const EXEMPT = { REVEAL: 'siempre dentro (offlineHTML)', VISION: 'cámara: modelo de MediaPipe, necesita red', SELFIE_MODEL: 'cámara', POSE_MODEL: 'avatar', FACE_MODEL: 'avatar' };
+    const unregistered = imported.filter(n => !EXEMPT[n] && !new RegExp('\\b' + n + '\\b').test(offline));
+    eq(unregistered.join(', '), '', 'librerías de vendor.js que html.js carga y offline-libs.js no conoce (regístrala en GROUPS, o en EXEMPT con su porqué)');
+    assert(imported.length >= 10, 'se leyeron los imports: ' + imported.length);
+    // Cada runtime que carga una librería pide su dirección por __rvLib.
+    for (const f of ['lottie', 'geomap', 'pdf', 'media']) assert((await get('/src/io/runtime/' + f + '.js')).includes('__rvLib'), f + '.js pide su librería por __rvLib');
+    assert((htmlSrc.match(/__rvLib/g) || []).length >= 2, 'el visor 3D y las fotos 360° también');
+    // La detección de cada grupo, sobre páginas de verdad.
+    reset(); R.blocks.addImage('data:image/gif;base64,R0lGODlhAQABAAAAACw='); await sleep(10); const im = last();
+    R.store.commit(() => { slide().blocks.find(x => x.id === im.id).pano = true; });
+    R.store.commit(() => { slide().blocks.push({ id: 'pdf1', type: 'file', display: 'page', name: 'a.pdf', src: 'data:application/pdf;base64,JVBERi0xLjQK', poster: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=', page: 1, x: 100, y: 100, w: 300, h: 400 }); });
+    const ids = O.usedGroups(R.io.buildHTML(R.state.deck, { inApp: false })).map(g => g.id);
+    for (const id of ['pano', 'pdf']) assert(ids.includes(id), 'detecta ' + id + ' (' + ids + ')');
+    reset(); eq(O.usedGroups(R.io.buildHTML(R.state.deck, { inApp: false })).map(g => g.id).join(), '', 'una presentación sin nada extra no lleva ninguna');
+  });
+
+  await test('exportar HTML: el diálogo ofrece incluir las librerías (apagado de serie, se recuerda, avisa del peso y de lo que sigue pidiendo red)', async () => {
+    reset(); const W = frame.contentWindow, X = await W.eval("import('/src/ui/dialogs/htmlexport.js')");
+    try { W.localStorage.removeItem('revela.export.libs'); } catch {}
+    const calls = [];
+    X.openHtmlExport({ run: async o => { calls.push(o); return { offline: true, libs: [], missing: [] }; } });
+    const m = D.getElementById('hx-modal'); assert(m, 'se abre el diálogo');
+    const box = m.querySelector('#hx-libs'); assert(box && !box.checked, 'apagado de serie');
+    box.checked = true; box.dispatchEvent(new W.Event('change')); await sleep(10);
+    assert(/Añade unos|pesa lo mismo/.test(m.querySelector('.hx-size').textContent), 'avisa del peso: ' + m.querySelector('.hx-size').textContent);
+    m.querySelector('.hx-go').click(); await sleep(50);
+    eq(calls.length, 1, 'descarga una vez'); eq(calls[0].libs, true, 'con las librerías');
+    assert(!D.getElementById('hx-modal'), 'el diálogo se cierra');
+    X.openHtmlExport({ run: async o => { calls.push(o); return { offline: true, libs: [], missing: [] }; } });
+    assert(D.getElementById('hx-libs').checked, 'se recuerda la elección');
+    D.getElementById('hx-libs').checked = false; D.getElementById('hx-libs').dispatchEvent(new W.Event('change'));
+    D.querySelector('#hx-modal .hx-go').click(); await sleep(50);
+    eq(calls[1].libs, false, 'y se puede apagar'); try { W.localStorage.removeItem('revela.export.libs'); } catch {}
+    // Con un mapa: avisa de que el fondo de satélite sigue pidiendo red.
+    const E = await W.eval("import('/src/features/content/examples.js')"); R.store.replaceDeck(await E.loadExample('showcase_maps', 'es'));
+    X.openHtmlExport({ run: async () => ({ offline: true, libs: [], missing: [] }) });
+    assert(/satélite/.test(D.querySelector('#hx-modal .hx-net').textContent), 'avisa de los mapas');
+    D.querySelector('#hx-modal .modal-close').click(); reset();
+  });
+
   await test('exportar HTML: los catálogos (transiciones, mapas, 3D, animaciones, Transformar, texto) se reproducen exportados sin errores de la página', async () => {
     const E = await frame.contentWindow.eval("import('/src/features/content/examples.js')");
     const bad = [];

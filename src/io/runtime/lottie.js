@@ -12,7 +12,7 @@ export function lottieRuntime(LIB, L) {
   function mirror() { var i = LIB.indexOf('/npm/'); return i > 0 && /jsdelivr/.test(LIB) ? 'https://unpkg.com/' + LIB.slice(i + 5) : ''; }
   function inject(src) {
     return new Promise(function (ok, ko) {
-      var s = document.createElement('script'); s.src = src; s.async = true;
+      var s = document.createElement('script'); s.src = (window.__rvLib || String)(src); s.async = true;
       s.onload = function () { window.lottie ? ok(window.lottie) : ko(); }; s.onerror = function () { s.remove(); ko(); };
       document.head.appendChild(s);
     });

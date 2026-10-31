@@ -19,7 +19,6 @@ import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
 import * as trans from '../../features/animation/transitions.js';
 import * as templates from '../../features/document/templates.js';
-import { exportHTML } from '../../io/formats/html.js';
 import { openScormExport } from '../dialogs/scorm.js';
 import { openClassPace } from '../dialogs/classpace.js';
 import { downloadProject } from '../shell/downloadproject.js';
@@ -150,11 +149,7 @@ export const ACTIONS = {
   'onedrive-save': () => openOneDrive({ mode: 'save' }),
   'cloud-dropbox': () => openCloud('dropbox'),
   // (A download alone is easy to miss: each one says what it was and what next.)
-  'export': async () => {
-    let offline; try { offline = await exportHTML(); } catch (e) { alertDialog(e.message || String(e)); return; }
-    toast(offline ? t('Página web descargada: se abre con cualquier navegador, también sin conexión (los modelos 3D, mapas y vídeos de internet sí la necesitan).')
-      : t('Página web descargada: para verla hace falta conexión a internet.'));
-  },
+  'export': () => import('../dialogs/htmlexport.js').then(m => m.openHtmlExport()),
   // SCORM: for learning platforms (Moodle, Canvas…): fixed or dynamic, and the pass mark (dialogs/scorm.js).
   'export-scorm': () => openScormExport(),
   'export-embed': () => import('../dialogs/embed.js').then(m => m.openEmbedExport()),

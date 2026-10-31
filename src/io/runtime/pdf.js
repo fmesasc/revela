@@ -7,7 +7,7 @@
 export function pdfRuntime(lib) {
   var docs = new Map(), pdfjs = null;
   function load() {
-    if (!pdfjs) pdfjs = import(lib + '/pdf.min.mjs').then(function (m) { m.GlobalWorkerOptions.workerSrc = lib + '/pdf.worker.min.mjs'; return m; });
+    if (!pdfjs) pdfjs = import((window.__rvLib || String)(lib + '/pdf.min.mjs')).then(function (m) { m.GlobalWorkerOptions.workerSrc = (window.__rvLib || String)(lib + '/pdf.worker.min.mjs'); return m; });
     return pdfjs;
   }
   function bytes(src) { var b = atob(src.slice(src.indexOf(',') + 1)), a = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }

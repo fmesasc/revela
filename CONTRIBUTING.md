@@ -87,6 +87,18 @@ cheapest way to cover it.
 file is data from someone else. Revela's own are made by `tools/make-lottie.mjs` (`assets/lottie/`); a template names one with
 `lottieId` and `loadExample` puts its JSON in. Tests: `Lottie: …` in `tests/suites/objects.js`.
 
+**Libraries and the offline export** (Exportar ▸ Página web ▸ «Incluir las librerías dentro del HTML»,
+`src/io/formats/offline-libs.js`, `src/ui/dialogs/htmlexport.js`). A library the exported page loads from the CDN must be
+loadable from inside it: its runtime asks for the address with `(window.__rvLib || String)(url)` (identity everywhere but in an
+offline page, where it answers with a `blob:` address of the text carried in the page), and it is registered in `GROUPS`
+(`when`: how to tell the presentation uses it, `files`: what to carry, `sizeKB`: measured, for the dialog's «+ N MB»). Only
+what the presentation uses goes in; web fonts (Google's and the theme's) and the map's flags are put in as `data:`; what
+needs the network anyway (map tiles, remote videos/pictures/3D models, embedded webs, camera and avatar models, PeerJS and the
+QR for the remote) is listed in `needsNetwork()` and said in the dialog. Test: `exportar HTML con las librerías dentro` in
+`tests/suites/io.js` exports the catalogues with the option, checks no `<script>`/`<link>` points to a CDN and that the browser
+asks no CDN for anything while the page runs. The page is the same one `buildHTML` makes: the option changes only where the
+libraries come from (and Lottie, which could not move without a connection before, now can).
+
 **Nothing is taken away in silence.** If a runtime drops or reduces something because of the computer or the settings
 (no WebGL, no connection, light mode, the system's «reduce motion»), it says so where it happens with
 `window.__rvFX.mark(box, causes)` (`src/io/runtime/fx.js`): a badge in the corner with the reason and a button to change it,

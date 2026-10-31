@@ -75,9 +75,9 @@ export function geoMapRuntime(lib, rtl, words) {
     function attempt(i) {
       return new Promise(function (ok, ko) {
         if (![].some.call(document.querySelectorAll('link[rel=stylesheet]'), function (l) { return l.href === bases[i] + '.css'; })) {
-          var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = bases[i] + '.css'; document.head.appendChild(l);
+          var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = (window.__rvLib || String)(bases[i] + '.css'); document.head.appendChild(l);
         }
-        var s = document.createElement('script'); s.src = bases[i] + '.js';
+        var s = document.createElement('script'); s.src = (window.__rvLib || String)(bases[i] + '.js');
         s.onload = function () { window.maplibregl ? ok(window.maplibregl) : ko(new Error('maplibre')); };
         s.onerror = function () { s.remove(); if (i + 1 < bases.length) ok(attempt(i + 1)); else { gl = null; ko(new Error('maplibre')); } };
         document.head.appendChild(s);
@@ -95,7 +95,7 @@ export function geoMapRuntime(lib, rtl, words) {
         ml.__rvWorkers = 1; try { ml.setWorkerCount(Math.max(1, Math.min(small || weak() ? 2 : 4, cores - 1 || 1))); } catch (e) {}
       }
       // (Arabic place names need their letters joined and laid right to left: MapLibre's plugin, once, when used.)
-      if (cfg && cfg.lang === 'ar' && rtl && ml.getRTLTextPluginStatus && ml.getRTLTextPluginStatus() === 'unavailable') { try { ml.setRTLTextPlugin(rtl, true); } catch (e) {} }
+      if (cfg && cfg.lang === 'ar' && rtl && ml.getRTLTextPluginStatus && ml.getRTLTextPluginStatus() === 'unavailable') { try { ml.setRTLTextPlugin((window.__rvLib || String)(rtl), true); } catch (e) {} }
       return ml;
     });
   }
