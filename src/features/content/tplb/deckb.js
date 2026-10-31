@@ -108,12 +108,12 @@ function deckFrom(s) {
     const lab = (x, w = 700) => text(cv.label, x, 150, w, 36, { fontSize: 22, letterSpacing: 3, color: tc(acc[0]), fontWeight: 700 });
     if (v === 'center') return { layout: 'blank', bg, back: [...gl(), shape('rect', 0, 600, 1280, 120, acc[0], { opacity: 90 })], extra: [
       lab(90, 840), text(cv.title, 84, 200, 846, 230, { fontSize: size, fontWeight: 800, color: ink, lineHeight: 1.04, fontFamily: stacks.heading }),
-      text(cv.sub, 90, 450, 830, 120, { fontSize: 27, color: muted, lineHeight: 1.4 }), withAnims(img(art, 960, 200, 250, 300, cv.alt || ''), A('zoom-in', { duration: 700 }))] };
+      text(cv.sub, 90, 450, 830, 120, { fontSize: 27, color: muted, lineHeight: 1.4 }), withAnims(img(art, 960, 200, 250, 300, cv.alt || ''), A('zoom-in', { start: 'afterPrev', duration: 700 }))] };
     if (v === 'left') return { layout: 'blank', bg, back: decorBack(0), extra: [
-      withAnims(img(art, 70, 150, 340, 410, cv.alt || ''), A('fade-right', { duration: 800 })), lab(480, 700),
+      withAnims(img(art, 70, 150, 340, 410, cv.alt || ''), A('fade-right', { start: 'afterPrev', duration: 800 })), lab(480, 700),
       text(cv.title, 474, 196, 740, 230, { fontSize: size, fontWeight: 800, color: ink, lineHeight: 1.04, fontFamily: stacks.heading }), text(cv.sub, 480, 440, 700, 130, { fontSize: 27, color: muted, lineHeight: 1.4 })] };
     return { layout: 'blank', bg, back: gl(), extra: [lab(90), text(cv.title, 84, 196, 740, 230, { fontSize: size, fontWeight: 800, color: ink, lineHeight: 1.04, fontFamily: stacks.heading }),
-      text(cv.sub, 90, 440, 680, 130, { fontSize: 27, color: muted, lineHeight: 1.4 }), withAnims(img(art, 860, 160, 340, 400, cv.alt || ''), A('fade-left', { duration: 800 }))] };
+      text(cv.sub, 90, 440, 680, 130, { fontSize: 27, color: muted, lineHeight: 1.4 }), withAnims(img(art, 860, 160, 340, 400, cv.alt || ''), A('fade-left', { start: 'afterPrev', duration: 800 }))] };
   })();
   const closeSlide = (() => { const c = s.close;
     return { layout: 'blank', bg, back: gl(), transition: 'zoom', extra: [
