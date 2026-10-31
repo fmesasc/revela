@@ -17,7 +17,7 @@ const T = (th, o) => tpl({ cat: 'life', ...TH[th], ...o });
 
 export default {
 
-  life_f_retire: T('frambuesa', { name: 'Homenaje de jubilación', summary: 'Un guion para despedir a una compañera que se jubila tras treinta años: línea del tiempo de su trayectoria, anécdotas, un gráfico de ejemplo de lo que dejó hecho, mensajes del equipo y votación para el regalo',
+  life_f_retire: T('frambuesa', { name: 'Gracias, Marta: una jubilación que se celebra', summary: 'Un guion para despedir a una compañera que se jubila tras treinta años: línea del tiempo de su trayectoria, anécdotas, un gráfico de ejemplo de lo que dejó hecho, mensajes del equipo y votación para el regalo',
     cover: { variant: 'right', label: 'EVENTOS · HOMENAJE', title: 'Gracias,<br>Marta', size: 82, sub: 'Treinta años de trabajo y compañía. Homenaje a una persona imaginaria de una empresa ficticia.', art: 'heart', alt: 'Un corazón' },
     slides: [
       { k: 'time', t: 'Una vida en la empresa', items: [['1995', 'Llega como auxiliar'], ['2002', 'Pasa a coordinar el equipo'], ['2010', 'Abre la oficina del norte'], ['2018', 'Dirige el área de clientes'], ['2025', 'Se jubila']], cap: 'Hitos inventados para esta presentación.', n: 'Adapta las fechas y los hitos a la persona real. Pide permiso para citar fechas y cifras.' },
