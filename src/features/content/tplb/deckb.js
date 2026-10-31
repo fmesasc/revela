@@ -107,7 +107,7 @@ function deckFrom(s) {
   const coverSlide = (() => { const v = cv.variant || 'right', size = cv.size || 72;
     const lab = (x, w = 700) => text(cv.label, x, 150, w, 36, { fontSize: 22, letterSpacing: 3, color: tc(acc[0]), fontWeight: 700 });
     if (v === 'center') return { layout: 'blank', bg, back: [...gl(), shape('rect', 0, 600, 1280, 120, acc[0], { opacity: 90 })], extra: [
-      lab(90, 1100), text(cv.title, 84, 200, 1110, 230, { fontSize: size, fontWeight: 800, color: ink, lineHeight: 1.04, fontFamily: stacks.heading }),
+      lab(90, 840), text(cv.title, 84, 200, 846, 230, { fontSize: size, fontWeight: 800, color: ink, lineHeight: 1.04, fontFamily: stacks.heading }),
       text(cv.sub, 90, 450, 830, 120, { fontSize: 27, color: muted, lineHeight: 1.4 }), withAnims(img(art, 960, 200, 250, 300, cv.alt || ''), A('zoom-in', { duration: 700 }))] };
     if (v === 'left') return { layout: 'blank', bg, back: decorBack(0), extra: [
       withAnims(img(art, 70, 150, 340, 410, cv.alt || ''), A('fade-right', { duration: 800 })), lab(480, 700),
