@@ -1,0 +1,116 @@
+// Example presentations: Eventos y celebraciones (tanda F, 2/2): jubilación, aniversario, graduación, inauguración, fiesta de barrio,
+// cumpleaños de aventuras, agradecimiento y balance de fin de año. Each one: { name, summary, cat: 'life', make() } → a deck.
+// Written as data with tplb/deckb.js. Personas, empresas, cifras y programas son inventados (las notas lo dicen).
+import { tpl } from '../tplb/deckb.js';
+
+const TH = {
+  frambuesa: { palette: 'frambuesa', fonts: 'friendly', bg: '#fff4f1', ink: '#3a1713', panel: '#ffffff', muted: '#80524a', acc: ['#d9462f', '#2f7bb8', '#e5a52a'], decor: 'glow' },
+  midnight: { palette: 'midnight', fonts: 'elegant', dark: true, bg: '#101a33', ink: '#eaf0ff', panel: '#1a2748', muted: '#a8b6dc', acc: ['#7aa2ff', '#f6c667', '#8fe0c0'], decor: 'glow' },
+  mostaza: { palette: 'mostaza', fonts: 'bold', bg: '#fff9ea', ink: '#33290c', panel: '#ffffff', muted: '#7a6a2f', acc: ['#d9961a', '#c2493d', '#2f7aa8'], decor: 'band' },
+  lavanda: { palette: 'lavanda', fonts: 'geometric', bg: '#f5f1fc', ink: '#2a1e45', panel: '#ffffff', muted: '#6a5d8a', acc: ['#7b5cd6', '#e0833a', '#2f9a86'], decor: 'glow' },
+  salvia: { palette: 'salvia', fonts: 'rounded', bg: '#f1f6ef', ink: '#26352a', panel: '#ffffff', muted: '#56705c', acc: ['#4f9d77', '#d98d4a', '#6a86c9'], decor: 'band' },
+  burdeos: { palette: 'burdeos', fonts: 'classic', bg: '#fbf1f2', ink: '#3a1018', panel: '#ffffff', muted: '#85505a', acc: ['#a8283f', '#2f7f88', '#d9a02c'], decor: 'band' },
+  cobalto: { palette: 'cobalto', fonts: 'modern', bg: '#eff5ff', ink: '#12284a', panel: '#ffffff', muted: '#4b6490', acc: ['#2f6fd0', '#f08b2a', '#2fa07a'], decor: 'glow' },
+  laguna: { palette: 'laguna', fonts: 'humanist', bg: '#eefafa', ink: '#0f3236', panel: '#ffffff', muted: '#4a7a80', acc: ['#1f9aa6', '#e86a4a', '#7a6fd1'], decor: 'glow' },
+};
+const T = (th, o) => tpl({ cat: 'life', ...TH[th], ...o });
+
+export default {
+
+  life_f_retire: T('frambuesa', { name: 'Homenaje de jubilación', summary: 'Un guion para despedir a una compañera que se jubila tras treinta años: línea del tiempo de su trayectoria, anécdotas, un gráfico de ejemplo de lo que dejó hecho, mensajes del equipo y votación para el regalo',
+    cover: { variant: 'right', label: 'EVENTOS · HOMENAJE', title: 'Gracias,<br>Marta', size: 82, sub: 'Treinta años de trabajo y compañía. Homenaje a una persona imaginaria de una empresa ficticia.', art: 'heart', alt: 'Un corazón' },
+    slides: [
+      { k: 'time', t: 'Una vida en la empresa', items: [['1995', 'Llega como auxiliar'], ['2002', 'Pasa a coordinar el equipo'], ['2010', 'Abre la oficina del norte'], ['2018', 'Dirige el área de clientes'], ['2025', 'Se jubila']], cap: 'Hitos inventados para esta presentación.', n: 'Adapta las fechas y los hitos a la persona real. Pide permiso para citar fechas y cifras.' },
+      { k: 'big', t: 'Marta en números', items: [['30', 'años en el equipo'], ['4', 'oficinas abiertas'], ['1.200', 'personas formadas (cifra inventada)']], cap: 'Cifras de ejemplo.', n: 'Los números dan perspectiva, pero lo importante vendrá en las anécdotas.' },
+      { k: 'cards', t: 'Lo que nos enseñó', items: [['Escuchar', 'Siempre tenía tiempo.'], ['Preguntar', 'Nunca daba nada por sabido.'], ['Celebrar', 'Cada logro era de todos.']], n: 'Pide al equipo tres cosas que han aprendido de ella y úsalas aquí.' },
+      { k: 'chart', t: 'Lo que dejó en marcha', type: 'bar', y: 'proyectos por década (datos inventados)', name: 'proyectos', labels: true, data: [['1995-2004', 12], ['2005-2014', 28], ['2015-2025', 41]], side: [['Mensaje', 'Cada década, más proyectos y más personas.']], n: 'Cifras inventadas para ilustrar.' },
+      { k: 'say', text: '“Lo que se hace con cariño se nota, aunque pasen los años.”', cap: 'Frase imaginaria atribuida a Marta.', n: 'Puedes sustituirla por una frase real suya que todos recuerden.' },
+      { k: 'lottie', t: 'Mensajes del equipo', id: 'confetti', points: ['Un vídeo de dos minutos con todo el equipo', 'Una carta firmada por cada persona', 'Un álbum de fotos de tres décadas'], n: 'Esta animación es una de las Lottie de Revela.' },
+      { k: 'vote', q: '¿Qué regalo le gustaría más?', o: ['Un viaje', 'Un álbum de fotos', 'Un día de spa', 'Una cena para toda la familia'], n: 'Pregunta con discreción a su entorno antes de decidir.' },
+    ], close: { title: 'Un brindis', body: 'Levantemos una copa por Marta. Que su jubilación sea tan buena como su trabajo. ¡Gracias por todo!', seconds: 180, end: '¡Por Marta!' } }),
+
+  life_f_aniversario: T('midnight', { name: 'Veinticinco años de la empresa', summary: 'La presentación de un aniversario de empresa: la historia en una línea del tiempo, el mapa de las sedes, un gráfico de ejemplo del crecimiento, las personas que lo hicieron posible, los próximos veinticinco años y un brindis',
+    cover: { variant: 'center', label: 'EVENTOS · ANIVERSARIO', title: '25 años<br>juntos', size: 90, sub: 'Celebramos la historia de Calamar Soluciones (empresa ficticia).', art: 'bulb', alt: 'Una bombilla' },
+    slides: [
+      { k: 'time', t: 'Nuestra historia', items: [['2000', 'Tres amigas fundan la empresa'], ['2006', 'Primera oficina propia'], ['2012', 'Salto a otras ciudades'], ['2019', 'Equipo de 100 personas'], ['2025', 'Veinticinco años']], cap: 'Cronología inventada.', n: 'Cambia las fechas y cuenta tu propia historia.' },
+      { k: 'chart', t: 'Crecimiento del equipo', type: 'line', y: 'personas en plantilla (datos inventados)', name: 'personas', labels: true, data: [['2000', 3], ['2005', 14], ['2010', 40], ['2015', 75], ['2020', 105], ['2025', 130]], side: [['Un salto', 'En 2010 el equipo se multiplicó por tres.']], n: 'Cifras de ejemplo.' },
+      { k: 'map', t: 'Nuestras sedes', stops: [{ name: 'Valencia', lon: -0.376, lat: 39.47, zoom: 8, cc: 'es' }, { name: 'Madrid', lon: -3.703, lat: 40.417, zoom: 8, cc: 'es' }, { name: 'Bilbao', lon: -2.935, lat: 43.263, zoom: 8, cc: 'es' }, { name: 'Sevilla', lon: -5.984, lat: 37.389, zoom: 8, cc: 'es' }], points: ['Valencia, la sede original', 'Madrid, desde 2012', 'Bilbao, desde 2016', 'Sevilla, desde 2021'], route: 'geodesic', mp: { look: 'map', theme: 'dark' }, n: 'Sedes ficticias en ciudades reales. Haz clic para avanzar.' },
+      { k: 'icons', t: 'Lo que nos define', items: [['heart', 'Cercanía', 'Trato humano.'], ['bulb', 'Ideas', 'Probar y aprender.'], ['trophy', 'Calidad', 'Hacerlo bien.'], ['gift', 'Generosidad', 'Compartir lo logrado.']], n: 'Pide al equipo que elija sus valores y cuenta una historia de cada uno.' },
+      { k: 'cards', t: 'Las personas', items: [['Fundadoras', 'Las que empezaron con tres mesas.'], ['Veteranía', 'Quienes llevan más de diez años.'], ['Nuevas voces', 'Las que acaban de llegar.']], n: 'Nombra a cada grupo y agradece su aportación.' },
+      { k: 'steps', t: 'Los próximos 25 años', layout: 'chevrons', items: ['Cuidar al equipo', 'Cuidar al cliente', 'Cuidar el entorno', 'Innovar con calma', 'Celebrar los logros'], h: 280, n: 'Una promesa sencilla y medible para cada paso.' },
+      { k: 'vote', q: '¿Cuál de estos deseos elegimos para el futuro?', o: ['Más formación', 'Más impacto social', 'Más tiempo de calidad', 'Más celebraciones'], n: 'Votación orientativa para el próximo plan.' },
+    ], close: { title: 'Brindemos', body: 'Por quienes empezaron, por quienes siguen y por quienes llegarán. ¡Veinticinco años y muchos más!', seconds: 180, end: '¡Salud!' } }),
+
+  life_f_graduacion: T('burdeos', { name: 'Acto de graduación', summary: 'El guion de un acto de fin de ciclo: bienvenida, discurso, palabras del alumnado, entrega de diplomas, un gráfico de ejemplo del recorrido de la promoción, mensajes y agradecimientos, y un cierre con cuenta atrás',
+    cover: { variant: 'left', label: 'EVENTOS · GRADUACIÓN', title: 'Comienza<br>lo siguiente', size: 68, sub: 'Acto de graduación de la promoción de ejemplo del instituto imaginario Los Pinos.', art: 'cap', alt: 'Un birrete' },
+    slides: [
+      { k: 'time', t: 'Programa del acto', items: [['18:00', 'Bienvenida y música'], ['18:15', 'Palabras de la dirección'], ['18:40', 'Discurso del alumnado'], ['19:00', 'Entrega de diplomas'], ['19:45', 'Brindis y fotos']], cap: 'Programa de ejemplo.', n: 'Ajusta los tiempos a tu centro y reserva un margen por si se alarga.' },
+      { k: 'big', t: 'Una promoción en cifras', items: [['86', 'personas graduadas (cifra inventada)'], ['4', 'años juntas'], ['1.460', 'días de clase']], cap: 'Cifras de ejemplo.', n: 'Los números dan marco; las historias, vida.' },
+      { k: 'chart', t: 'De dónde venimos', type: 'line', y: 'nota media por curso (datos inventados)', name: 'nota', labels: true, data: [['1º', 6.2], ['2º', 6.8], ['3º', 7.1], ['4º', 7.6]], side: [['Mejora', 'Una subida constante de curso en curso.']], n: 'Cifras inventadas, solo para ilustrar un recorrido.' },
+      { k: 'cards', t: 'Lo que llevamos', items: [['Amistades', 'Las que durarán toda la vida.'], ['Aprendizaje', 'Más de lo que pensábamos.'], ['Gratitud', 'A quienes nos acompañaron.']], n: 'Invita a que cada persona piense en una cosa que se lleva.' },
+      { k: 'say', text: 'No es un final: es el primer día de lo que viene.', cap: 'Un lema para el cierre.', n: 'Puedes pedir al alumnado que elija el lema.' },
+      { k: 'lottie', t: 'Entrega de diplomas', id: 'check', points: ['Se nombra a cada persona', 'Un aplauso para todas', 'Foto con la dirección'], n: 'La marca de verificación es una animación de Revela.' },
+      { k: 'vote', q: '¿Qué canción cerraría el acto?', o: ['Una clásica', 'Una actual', 'Una elegida por el curso', 'Una de despedida'], n: 'Una votación divertida para el final.' },
+    ], close: { title: 'Gracias', body: 'A las familias, al profesorado y a quienes lo han hecho posible. Ahora, a hacer las fotos.', seconds: 180, end: '¡Enhorabuena!' } }),
+
+  life_f_inauguracion: T('mostaza', { name: 'Inauguración de una tienda', summary: 'La presentación de la apertura de un comercio: la historia del proyecto, el local, la oferta de lanzamiento, un gráfico de ejemplo de afluencia prevista, el mapa de acceso, el programa del día y el sorteo de inauguración',
+    cover: { variant: 'right', label: 'EVENTOS · APERTURA', title: '¡Abrimos<br>puertas!', size: 80, sub: 'Inauguramos La Esquina, una librería de barrio (negocio imaginario).', art: 'book', alt: 'Un libro abierto' },
+    slides: [
+      { k: 'cards', t: 'Por qué una librería', items: [['Un barrio', 'Con ganas de un sitio para leer.'], ['Una idea', 'Libros, café y encuentros.'], ['Un equipo', 'Personas que aman lo que hacen.']], n: 'Cuenta por qué has abierto y qué esperas que la gente encuentre.' },
+      { k: 'map', t: 'Cómo llegar', stops: [{ name: 'La Esquina', lon: -3.7038, lat: 40.4168, zoom: 16, cc: 'es' }, { name: 'Metro Sol', lon: -3.7035, lat: 40.4169, zoom: 17, cc: 'es' }, { name: 'Parking de la plaza', lon: -3.7058, lat: 40.4153, zoom: 16, cc: 'es' }], points: ['La tienda está en el centro', 'El metro está a dos minutos', 'Hay parking cerca'], route: 'geodesic', mp: { look: 'map', theme: 'light' }, n: 'Ubicación de ejemplo en el centro de Madrid. Cambia las paradas por las reales.' },
+      { k: 'time', t: 'El día de la apertura', items: [['10:00', 'Cinta y primer café'], ['12:00', 'Presentación de un autor invitado'], ['17:00', 'Cuentacuentos para peques'], ['20:00', 'Sorteo y brindis']], cap: 'Programa de ejemplo.', n: 'Anuncia el programa en redes con una semana de antelación.' },
+      { k: 'chart', t: 'Afluencia prevista', type: 'bar', y: 'personas por franja (datos inventados)', name: 'personas', labels: true, data: [['10 a 12', 40], ['12 a 14', 80], ['16 a 18', 110], ['18 a 20', 150]], side: [['Más gente', 'De 18 a 20: refuerza el equipo.']], n: 'Cifras de ejemplo.' },
+      { k: 'icons', t: 'Oferta de lanzamiento', items: [['gift', 'Regalo', 'Un marcapáginas con tu compra.'], ['medal', 'Tarjeta', 'Sello doble el primer mes.'], ['calender', 'Club', 'Primer encuentro de lectura.'], ['tea-cup', 'Café', 'Descuento con tu libro.']], n: 'Pon ofertas que se puedan mantener y que animen a volver.' },
+      { k: 'compare', t: 'Qué hacemos distinto', a: ['Nosotras', 'Recomendamos con tiempo', 'Libros de editoriales pequeñas', 'Espacio para charlar'], b: ['Las grandes cadenas', 'Rapidez y variedad', 'Más oferta de bestsellers', 'Poco trato personal'], n: 'No se trata de competir en todo, sino de ofrecer algo diferente.' },
+      { k: 'vote', q: '¿Qué sorteo preferís?', o: ['Un lote de libros', 'Un año de café', 'Una cena para dos', 'Una tarjeta regalo'], n: 'Pregunta al público para animar el acto.' },
+    ], close: { title: 'Pasad y leed', body: 'Gracias por acompañarnos. La primera ronda de café va por cuenta de la casa.', seconds: 180, end: '¡Bienvenidos!' } }),
+
+  life_f_fiesta: T('lavanda', { name: 'Fiesta de barrio', summary: 'Organizar una fiesta de vecinos: reparto de tareas, permisos y seguridad, el programa del día, un gráfico de ejemplo del presupuesto, ideas de actividades para todas las edades, qué hacer con la basura y votación del lema',
+    cover: { variant: 'left', label: 'EVENTOS · COMUNIDAD', title: 'El barrio<br>en fiestas', size: 70, sub: 'Una guía para una fiesta vecinal de ejemplo en el barrio imaginario de La Ribera.', art: 'grid', alt: 'Un mosaico' },
+    slides: [
+      { k: 'steps', t: 'Pasos para organizarla', layout: 'steps', items: ['Reunir a las vecinas y vecinos', 'Repartir comisiones', 'Pedir permisos al ayuntamiento', 'Fijar un presupuesto', 'Anunciar con tiempo', 'Evaluar al terminar'], h: 340, n: 'Pide los permisos con antelación: son los que más se retrasan.' },
+      { k: 'cards', t: 'Las comisiones', items: [['Comida y bebida', 'Quién cocina y quién sirve.'], ['Actividades', 'Juegos, música y concursos.'], ['Limpieza y seguridad', 'Antes, durante y después.']], n: 'Si cada persona tiene una tarea pequeña, nadie se agota.' },
+      { k: 'time', t: 'El programa', items: [['11:00', 'Juegos para peques'], ['14:00', 'Comida popular'], ['17:00', 'Baile y música en directo'], ['20:00', 'Concurso de tartas'], ['22:00', 'Cierre y recogida']], cap: 'Programa de ejemplo.', n: 'Haz una versión para la nevera y otra para el cartel.' },
+      { k: 'chart', t: 'A dónde va el dinero', type: 'doughnut', name: '€', labels: true, y: 'presupuesto de 2.400 € (datos inventados)', data: [['Música y sonido', 800], ['Comida', 700], ['Juegos y premios', 400], ['Limpieza y seguros', 300], ['Cartelería', 200]], side: [['Cómo se financia', 'Cuotas voluntarias y venta de bebidas.']], n: 'Todo el dinero es de ejemplo.' },
+      { k: 'compare', t: 'Que todas se sientan invitadas', a: ['Piensa en', 'Accesibilidad para sillas y carritos', 'Comida variada y con alergias', 'Actividades para todas las edades'], b: ['Evita', 'Música a todo volumen toda la tarde', 'Escalones sin rampa', 'Dejar a las personas mayores al margen'], n: 'Una fiesta buena es una en la que todo el mundo cabe.' },
+      { k: 'steps', t: 'Recogida y limpieza', layout: 'process', items: ['Contenedores separados', 'Vajilla reutilizable', 'Equipo de limpieza con guantes', 'Revisar la zona al final', 'Agradecer en voz alta'], h: 300, n: 'Un buen final cuenta tanto como un buen principio.' },
+      { k: 'vote', q: '¿Qué lema elegimos?', o: ['Barrio vivo', 'Juntas, más fiesta', 'La Ribera baila', 'Aquí cabemos todos'], n: 'Votación entre varias propuestas, abierta a todas las vecinas y vecinos.' },
+    ], close: { title: 'Primer paso', body: 'Apunta tu nombre y una comisión en la hoja. La primera reunión es el miércoles en el centro cívico.', seconds: 300, end: '¡Nos vemos!' } }),
+
+  life_f_aventuras: T('laguna', { name: 'Cumpleaños de aventuras', summary: 'Un cumpleaños infantil con búsqueda del tesoro: la invitación, el mapa del jardín, los retos, un gráfico de ejemplo de energía de los peques, las reglas, la merienda y un diploma de exploradora o explorador',
+    cover: { variant: 'right', label: 'EVENTOS · CUMPLEAÑOS', title: 'Una aventura<br>de cumple', size: 62, sub: 'Un plan con mapa, pistas y tesoro para un grupo de niñas y niños (ejemplo).', art: 'pin', alt: 'Un marcador de mapa' },
+    slides: [
+      { k: 'cards', t: 'La invitación', items: [['Qué', 'Búsqueda del tesoro.'], ['Cuándo', 'Sábado a las cinco.'], ['Dónde', 'En el jardín de casa.']], n: 'Pide que confirmen y que avisen de alergias.' },
+      { k: 'steps', t: 'Las cinco pistas', layout: 'chevrons', items: ['Bajo el árbol', 'Junto a la fuente', 'En el cubo azul', 'Detrás del banco', 'El tesoro'], h: 280, n: 'Cada pista lleva a la siguiente con una rima o un dibujo.' },
+      { k: 'time', t: 'La tarde', items: [['17:00', 'Llegada y disfraces'], ['17:30', 'Primera pista'], ['18:30', 'Merienda'], ['19:00', 'Tarta y velas'], ['19:30', 'Entrega de diplomas']], cap: 'Plan de ejemplo.', n: 'Los grupos pequeños son mejores que los grandes.' },
+      { k: 'chart', t: 'La energía de los peques', type: 'line', y: 'energía sobre 10 (datos de ejemplo)', name: 'energía', labels: true, data: [['17:00', 9], ['17:30', 10], ['18:00', 7], ['18:30', 8], ['19:00', 5], ['19:30', 3]], side: [['Consejo', 'Lo más movido, al principio; lo tranquilo, al final.']], n: 'Cifras inventadas para ilustrar el ritmo.' },
+      { k: 'compare', t: 'Reglas de oro', a: ['Sí', 'Se juega en equipo', 'Se respeta el turno', 'Se pide ayuda a los mayores'], b: ['No', 'Salir del jardín', 'Empujar', 'Esconder pistas ajenas'], n: 'Cuéntalas antes de empezar con un ejemplo.' },
+      { k: 'icons', t: 'La merienda', items: [['gift', 'Bolsa sorpresa', 'Con un detalle para cada peque.'], ['tea-cup', 'Bebidas', 'Agua y zumo.'], ['thumb-up', 'Fruta', 'Para no abusar del azúcar.'], ['star', 'Tarta', 'Con velas y canción.']], n: 'Pregunta siempre por alergias antes de elegir la comida.' },
+      { k: 'vote', q: '¿Qué tesoro escondemos?', o: ['Monedas de chocolate', 'Pegatinas', 'Un cuento', 'Una medalla'], n: 'Una votación en la invitación hace que se sientan parte.' },
+    ], close: { title: 'Diploma de explorador', body: 'Cada persona recibe su diploma con su nombre. ¡Han encontrado el tesoro!', seconds: 120, end: '¡Hurra!' } }),
+
+  life_f_gracias: T('salvia', { name: 'Dar las gracias al equipo', summary: 'Reconocer el trabajo de un equipo al cerrar un proyecto: lo que se consiguió, retos que se superaron, un gráfico de ejemplo de la carga de trabajo, mensajes personales, una línea del tiempo de hitos y una votación de premios simpáticos',
+    cover: { variant: 'center', label: 'EVENTOS · AGRADECIMIENTO', title: 'Gracias por<br>llegar hasta aquí', size: 66, sub: 'Cierre de un proyecto de ejemplo con el equipo de Producto Norte (ficticio).', art: 'hands', alt: 'Manos unidas' },
+    slides: [
+      { k: 'big', t: 'Lo que hemos conseguido', items: [['6', 'meses de trabajo'], ['38', 'tareas completadas (cifra inventada)'], ['0', 'retrasos en la entrega final']], cap: 'Cifras de ejemplo.', n: 'Sustituye las cifras por las del proyecto real.' },
+      { k: 'time', t: 'Hitos del camino', items: [['Mes 1', 'Arranque y objetivos claros'], ['Mes 3', 'Primera versión de prueba'], ['Mes 5', 'Pruebas con usuarias reales'], ['Mes 6', 'Entrega final']], cap: 'Hitos de ejemplo.', n: 'Recuerda un momento difícil que el equipo supo resolver.' },
+      { k: 'chart', t: 'La carga de trabajo', type: 'area', y: 'horas semanales del equipo (datos inventados)', name: 'horas', labels: false, data: [['Mes 1', 120], ['Mes 2', 160], ['Mes 3', 190], ['Mes 4', 220], ['Mes 5', 210], ['Mes 6', 150]], side: [['El pico', 'En el mes 4 trabajamos más: hay que cuidar el descanso.']], n: 'Si hubo picos de trabajo, reconoce el esfuerzo y habla de cómo evitarlo.' },
+      { k: 'cards', t: 'Lo que valoramos', items: [['Compromiso', 'Nadie soltó la cuerda.'], ['Humor', 'Hasta en los días duros.'], ['Ayuda mutua', 'Siempre alguien echó una mano.']], n: 'Cita ejemplos concretos: un agradecimiento específico vale más que uno genérico.' },
+      { k: 'say', text: 'Un equipo no es un grupo de personas que trabajan juntas: es un grupo que confía.', cap: 'Una frase para pensar.', n: 'Puedes cambiarla por otra que os represente.' },
+      { k: 'lottie', t: 'Un aplauso', id: 'confetti', points: ['Aplauso para quien arrancó', 'Aplauso para quien cerró', 'Aplauso para quien cuidó al equipo'], n: 'La animación de confeti es una Lottie de Revela.' },
+      { k: 'vote', q: '¿Qué premio simpático damos?', o: ['Al café más rápido', 'A la reunión más corta', 'Al mejor meme', 'A la persona más paciente'], n: 'Los premios simpáticos suavizan el ambiente. Cuida que nadie quede mal.' },
+    ], close: { title: 'Gracias', body: 'Disfrutad de la comida, descansad y volved con energía. Os lo merecéis.', seconds: 180, end: '¡Gracias!' } }),
+
+  life_f_balance: T('cobalto', { name: 'Balance de fin de año en familia', summary: 'Una conversación familiar para cerrar el año: lo mejor, lo difícil y lo aprendido, un gráfico de ejemplo de momentos felices por mes, deseos para el año que viene, un reparto de tareas y una votación para planear una escapada',
+    cover: { variant: 'left', label: 'EVENTOS · FAMILIA', title: 'Cerramos<br>el año', size: 84, sub: 'Un ratito para recordar, agradecer y planear (familia imaginaria).', art: 'sun', alt: 'Un sol' },
+    slides: [
+      { k: 'cards', t: 'Tres preguntas', items: [['¿Qué fue lo mejor?', 'Cada persona cuenta uno.'], ['¿Qué fue difícil?', 'Sin culpar a nadie.'], ['¿Qué aprendimos?', 'Una cosa por cabeza.']], n: 'Cada persona tiene un turno sin interrupciones.' },
+      { k: 'chart', t: 'Mes a mes', type: 'bar', y: 'momentos felices anotados (datos inventados)', name: 'momentos', labels: true, data: [['Ene-Mar', 5], ['Abr-Jun', 9], ['Jul-Sep', 14], ['Oct-Dic', 8]], side: [['Verano', 'El verano fue el trimestre más feliz.']], n: 'Cifras inventadas. Una libreta o un frasco con notas ayuda a recordarlo.' },
+      { k: 'time', t: 'Los momentos del año', items: [['Marzo', 'Cumpleaños de la abuela'], ['Junio', 'Fin de curso'], ['Agosto', 'Vacaciones en la costa'], ['Diciembre', 'Cena en casa']], cap: 'Momentos de una familia imaginaria.', n: 'Pide fotos de cada momento y proyéctalas.' },
+      { k: 'compare', t: 'Lo que queremos mantener', a: ['Más', 'Cenar juntos tres días a la semana', 'Paseos de domingo', 'Noches de juegos'], b: ['Menos', 'Móviles en la mesa', 'Prisas por la mañana', 'Discutir por el orden de la casa'], n: 'Pactad pocos cambios, pero reales.' },
+      { k: 'steps', t: 'Un plan sencillo', layout: 'process', items: ['Cada persona escribe un deseo', 'Lo leemos en voz alta', 'Elegimos tres entre todos', 'Los pegamos en la nevera', 'Los revisamos en verano'], h: 300, n: 'Un papel visible recuerda lo acordado mucho mejor que una conversación.' },
+      { k: 'vote', q: '¿A dónde iríamos de escapada?', o: ['A la montaña', 'A la playa', 'A una ciudad', 'A un pueblo'], n: 'Cada persona vota y la mayoría decide; las demás eligen la actividad.' },
+      { k: 'big', t: 'Gracias', items: [['365', 'días juntos'], ['1', 'familia'], ['Muchos', 'abrazos']], cap: 'Datos cariñosos de ejemplo.', n: 'Termina agradeciendo a cada persona por algo concreto.' },
+    ], close: { title: 'Brindemos', body: 'Por lo vivido y por lo que viene. ¡Feliz año nuevo!', seconds: 120, end: '¡Feliz año!' } }),
+
+};
