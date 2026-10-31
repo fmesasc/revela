@@ -67,6 +67,10 @@ export function blockPreview(b, slide, { small = false } = {}) {
     else el.innerHTML = `<div style="width:100%;height:100%;background:#000;display:grid;place-items:center;color:#fff;font-size:60px">▶</div>`;
   } else if (b.type === 'audio') {
     el.innerHTML = `<div style="width:100%;height:100%;background:#0004;display:grid;place-items:center;font-size:32px">🔊</div>`;
+  } else if (b.type === 'lottie') {
+    // Its still picture (taken in the editor), or a play sign.
+    if (/^data:image\/svg\+xml/.test(b.poster || '')) { const im = document.createElement('img'); im.src = b.poster; im.alt = ''; im.style.cssText = 'width:100%;height:100%;object-fit:contain'; el.replaceChildren(im); }
+    else el.innerHTML = `<div style="width:100%;height:100%;background:#0003;display:grid;place-items:center;font-size:80px">▶</div>`;
   } else if (b.type === 'model') {
     // Its picture if it has one (taken once it loaded in the editor), or a cube.
     if (b.poster && safeURL(b.poster)) { const im = document.createElement('img'); im.src = b.poster; im.alt = ''; im.style.cssText = 'width:100%;height:100%;object-fit:contain'; el.replaceChildren(im); }

@@ -500,6 +500,7 @@ export default {"biz_board":["Quarterly results for the board","Dark blue and go
 "showcase_animations":["Catalogue: animations","Every object animation: entrance, emphasis, exit, motion paths, draw, chained, sounds and several on one object"],
 "showcase_charts":["Catalogue: charts","The 15 chart types, two per slide, with series, combo, grid, labels and axis titles, plus the table of options"],
 "showcase_diagrams":["Catalogue: diagrams","The 15 diagram layouts written as an outline, the 4 colour schemes and appearing one by one when presenting"],
+"showcase_lottie":["Catalogue: Lottie animations","Revela’s 18 vector animations and how they play: looped or once, on appearing or on click, faster, recoloured"],
 "showcase_maps":["Catalogue: maps","Maps that travel: a globe with no background, a trip stop by stop, Morph with the same planet, faded edges, a framed oval, styles, colours, markers and lines"],
 "showcase_morph":["Catalogue: Morph","Morph step by step: text that changes size and place, shapes, growing bars, a picture, 3D and letters that rearrange"],
 "showcase_objects":["Catalogue: media and objects","Code with steps, equations, icons, five devices, tables with styles and formulas, slide zoom and connectors"],

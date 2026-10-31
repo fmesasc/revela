@@ -18,6 +18,8 @@ import * as blocks from '../../features/document/blocks.js';
 import * as slides from '../../features/document/slides.js';
 import * as protect from '../../features/collab/protect.js';
 import { stlToGLB } from '../../features/content/stl.js';
+import { insertLottieFile } from '../../features/content/resources.js';
+import { lottieErrorText } from '../../features/content/lottie.js';
 import { importPPTX } from '../../io/formats/pptx-import.js';
 import { isPackage, readPackage } from '../../io/formats/package.js';
 import { importODP } from '../../io/formats/odp.js';
@@ -139,6 +141,7 @@ function kindOf(f) {
   if (/\.(json|revela)$/.test(n)) return 'project';
   if (/\.(md|markdown)$/.test(n)) return 'markdown';
   if (/\.(glb|gltf)$/.test(n)) return 'model';
+  if (/\.lottie$/.test(n)) return 'lottie';
   if (/\.stl$/.test(n)) return 'stl';
   if (ty.startsWith('image/')) return 'image';
   if (ty.startsWith('video/')) return 'video';
@@ -194,6 +197,7 @@ export async function insertFiles(files, at = null) {
       else if (k === 'audio') blocks.addAudio(await dataURL(f));
       else if (k === 'model') blocks.addModel((await dataURL(f)).replace(/^data:[^;,]*/, /\.gltf$/i.test(f.name) ? 'data:model/gltf+json' : 'data:model/gltf-binary'));
       else if (k === 'stl') blocks.addModel(stlToGLB(await f.arrayBuffer()));
+      else if (k === 'lottie') { const r = await insertLottieFile(f); if (r.error) { alertDialog(lottieErrorText(r.error)); continue; } }
       else if (k === 'pdf' || k === 'file') { if (!(await attachFile(f))) continue; if (k === 'pdf' && !selectedIsFile()) { n++; continue; } }
       else continue;
     } catch (e) { alertDialog(t('No se pudo añadir: ') + (e.message || e)); continue; }

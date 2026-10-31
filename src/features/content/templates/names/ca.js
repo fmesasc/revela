@@ -500,6 +500,7 @@ export default {"biz_board":["Resultats trimestrals al consell","Blau fosc i dau
 "showcase_animations":["Catàleg: animacions","Totes les animacions d’objecte: entrada, èmfasi, sortida, trajectòries, dibuixar, encadenades, sons i diverses en un objecte"],
 "showcase_charts":["Catàleg: gràfics","Els 15 tipus de gràfic, dos per diapositiva, amb sèries, combinat, quadrícula, etiquetes i títols d’eixos, i la taula d’opcions"],
 "showcase_diagrams":["Catàleg: diagrames","Els 15 dissenys de diagrama escrits com un esquema, els 4 esquemes de color i l’aparició un a un en presentar"],
+"showcase_lottie":["Catàleg: animacions Lottie","Les 18 animacions vectorials de Revela i com es reprodueixen: en bucle o una sola vegada, en aparèixer o en fer clic, més ràpides, acolorides de nou"],
 "showcase_maps":["Catàleg: mapes","Mapes que viatgen: globus sense fons, viatge parada a parada, Transformació amb el mateix planeta, vores esvaïdes, oval amb marc, estils, colors, marcadors i línies"],
 "showcase_morph":["Catàleg: Transformació","Transformació pas a pas: text que canvia de mida i de lloc, formes, barres que creixen, imatge, 3D i lletres que es reordenen"],
 "showcase_objects":["Catàleg: multimèdia i objectes","Codi amb passos, equacions, icones, cinc dispositius, taules amb estils i fórmules, zoom de diapositiva i connectors"],

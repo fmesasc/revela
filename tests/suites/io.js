@@ -1775,7 +1775,7 @@ Una ecuación\\: 2 \\= 1 \\+ 1 y unas llaves \\{\\} {=sí ~no}
   await test('exportar HTML: los catálogos (transiciones, mapas, 3D, animaciones, Transformar, texto) se reproducen exportados sin errores de la página', async () => {
     const E = await frame.contentWindow.eval("import('/src/features/content/examples.js')");
     const bad = [];
-    for (const key of ['showcase_transitions', 'showcase_maps', 'showcase_3d', 'showcase_animations', 'showcase_morph', 'showcase_text']) {
+    for (const key of ['showcase_transitions', 'showcase_maps', 'showcase_3d', 'showcase_animations', 'showcase_morph', 'showcase_text', 'showcase_lottie']) {
       const d = await E.loadExample(key, 'es'); assert(d, key + ' existe');
       const html = R.io.buildHTML(d, { inApp: false });
       const hook = '<script>window.__errs=[];addEventListener("error",function(e){__errs.push(String(e.message))});addEventListener("unhandledrejection",function(e){__errs.push(String(e.reason&&e.reason.message||e.reason))})</script>';
@@ -1789,6 +1789,7 @@ Una ecuación\\: 2 \\= 1 \\+ 1 y unas llaves \\{\\} {=sí ~no}
         const errs = (f.contentWindow.__errs || []).filter(m => !/ResizeObserver|Script error\.?$|tile|Failed to fetch|NetworkError|Load failed/i.test(m));
         if (errs.length) bad.push(key + ': ' + [...new Set(errs)].slice(0, 3).join(' | '));
         eq(moved, total, key + ': recorridas todas las diapositivas');
+        if (key === 'showcase_lottie') { const n = f.contentWindow.document.querySelectorAll('[data-lottie]').length; assert(n === 26, 'el catálogo trae sus 26 animaciones con su JSON (' + n + ')'); }
       } finally { f.remove(); }
     }
     eq(bad.join('\n'), '', 'errores de la página exportada');

@@ -204,6 +204,7 @@ src/
       resources.js             free GIFs, stickers and 3D models (library, Poly Haven, NASA,
                                Wikimedia STL, Sketchfab)
       stickers.js              Noto animated emoji
+      lottie.js                Lottie animations (Revela's own 18, or the user's file): catalogue, cleaning, colour, still frame
       library3d.js             curated 3D models with their licences
       nasa3d.js                NASA's 3D models (made by tools/nasa3d.py)
       maps.js                  map charts (world, Spain's communities and provinces)
@@ -243,6 +244,7 @@ src/
       ink.js                   pen, highlighter, laser, eraser while presenting
       media.js                 video/GIF player (segments, chroma key)
       model3d.js               3D objects: motion and walking
+      lottie.js                Lottie animations: lottie-web loaded on demand, start / loop / click, «reduce motion»
       camera.js                live camera (Cameo)
       puppet.js                a 3D model following the presenter's camera
       canvas.js                canvas mode camera

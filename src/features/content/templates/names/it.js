@@ -500,6 +500,7 @@ export default {"biz_board":["Risultati trimestrali al consiglio","Blu scuro e o
 "showcase_animations":["Catalogo: animazioni","Tutte le animazioni degli oggetti: entrata, enfasi, uscita, percorsi, disegno, concatenate, suoni e più su un oggetto"],
 "showcase_charts":["Catalogo: grafici","I 15 tipi di grafico, due per diapositiva, con serie, combinato, griglia, etichette e titoli degli assi, e la tabella delle opzioni"],
 "showcase_diagrams":["Catalogo: diagrammi","I 15 layout di diagramma scritti come schema, i 4 schemi di colore e la comparsa uno a uno durante la presentazione"],
+"showcase_lottie":["Catalogo: animazioni Lottie","Le 18 animazioni vettoriali di Revela e come si riproducono: in ciclo o una sola volta, alla comparsa o al clic, più veloci, ricolorate"],
 "showcase_maps":["Catalogo: mappe","Mappe che viaggiano: globo senza sfondo, viaggio tappa per tappa, Trasformazione con lo stesso pianeta, bordi sfumati, ovale con cornice, stili, colori, indicatori e linee"],
 "showcase_morph":["Catalogo: Trasformazione","Trasformazione passo passo: testo che cambia dimensione e posto, forme, barre che crescono, immagine, 3D e lettere che si riordinano"],
 "showcase_objects":["Catalogo: multimedia e oggetti","Codice a passi, equazioni, icone, cinque dispositivi, tabelle con stili e formule, zoom di diapositiva e connettori"],

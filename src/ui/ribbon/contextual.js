@@ -48,6 +48,7 @@ import { editText } from '../canvas/content.js';
 import { MAP_SCOPES } from '../../features/content/maps.js';
 import { MAP_LOOKS, MAP_ROUTES, MARKER_KINDS, MARKER_SIZES, MAP_MOTIONS, MAP_STARTS, MAP_MODES, MAP_EDGES, MAP_FRAMES, fadesOut } from '../../features/content/geomap.js';
 import { openObjectLink } from '../dialogs/objlink.js';
+import { lottieSpeed } from '../../features/content/lottie.js';
 import { t } from '../../i18n/index.js';
 import { press, common, MIXED } from './reflect.js';
 
@@ -159,6 +160,13 @@ function groupsFor(b) {
       btn('download', 'Descargar', () => saveFile(b)), btn('photo_camera', 'Guardar como imagen', () => openSaveAsPicture())]],
     ['Lupa', [btn('loupe', 'Ampliar una zona de la imagen', () => startMagnifyDraw({ within: b }), null, 'magnify-image')]]);
   else if (b.type === 'magnify') G.push(...magnifyGroups(b));
+  // (A Lottie animation: how it plays — in a loop or once, on its own or on a click, how fast — and its colour.)
+  else if (b.type === 'lottie') G.push(
+    ['Animación', [btn('repeat', 'Repetir sin parar', () => set(b, x => { x.loop = x.loop === false; }), b.loop !== false),
+      ['select', 'Empieza', [['auto', 'Al aparecer'], ['click', 'Al hacer clic']], b.play === 'click' ? 'click' : 'auto', v => set(b, x => { if (v === 'click') x.play = 'click'; else delete x.play; })],
+      ['num', 'Velocidad (×)', lottieSpeed(b), v => set(b, x => { x.speed = Math.min(4, Math.max(0.25, +v || 1)); }), 0.25, 4, 0.25]]],
+    ['Aspecto', [['color', 'palette', 'Color', b.color || '#2457d6', v => set(b, x => { x.color = v; })],
+      btn('format_color_reset', 'Colores originales', () => set(b, x => { delete x.color; }), !b.color)]]);
   else if (b.type === 'model') {
     const names = clipsOf(b), opts = [['', 'Ninguna'], ...(names.length ? names : ['*']).map(n => [n, n === '*' ? 'La primera' : n])];
     G.push(

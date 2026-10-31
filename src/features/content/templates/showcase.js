@@ -871,4 +871,31 @@ export default {
         notes: 'El globo baja desde el espacio y gira deprisa (Velocidad: Rápido). Fin del recorrido.' },
     ]);
   } },
+
+  // ---------------------------------------------------------------------------------------
+  // 12 · Lottie animations: Revela's own eighteen (assets/lottie, tools/make-lottie.mjs) and how each one plays.
+  // (An object here names its animation by lottieId; loadExample puts its JSON in — features/content/lottie.js, hydrateLottie.)
+  showcase_lottie: { name: 'Catálogo: animaciones Lottie', cat: 'showcase', summary: 'Las 18 animaciones vectoriales de Revela y cómo se reproducen: en bucle o una sola vez, al aparecer o al hacer clic, más rápidas, recoloreadas', make: () => {
+    const p = PALETTES.revela, C = p.accents, BG = '#0f1420', W = '#eef1f8', DIM = '#9aa5bd', H = pairStacks('modern').heading;
+    const lot = (id, x, y, w, h, props = {}) => ({ id: uid(), type: 'lottie', lottieId: id, x, y, w, h, rotation: 0, animation: null, speed: 1, play: 'auto', ...props });
+    const IDS = ['check', 'cross', 'arrow-right', 'arrow-down', 'confetti', 'loader', 'star', 'heartbeat', 'ripple', 'idea', 'sparkles', 'progress', 'ball', 'clock', 'equalizer', 'gear', 'underline', 'checklist'];
+    return numbered(build({ name: 'Catálogo: animaciones Lottie', palette: 'revela', fonts: 'modern', title: { color: W, size: 46 },
+      decor: () => [shape('rect', 0, 0, 1280, 6, C[0], { fill2: C[1], gradAngle: 0 })] }, [
+      { layout: 'blank', bg: BG, extra: [
+        glow(640, -200, 820, C[1], BG, 40), glow(-300, 300, 700, C[5], BG, 25),
+        kicker('CATÁLOGO DE FUNCIONES · 12', 90, 150, 600, C[5]),
+        text('Animaciones<br>Lottie', 84, 185, 680, 230, { fontFamily: H, fontSize: 80, color: W, lineHeight: 1.05 }),
+        text('Vectoriales, ligeras y nítidas a cualquier tamaño: se repiten, se aceleran, se recolorean y esperan al clic.', 90, 425, 620, 110, { fontSize: 26, color: '#b8c0d6' }),
+        lot('idea', 800, 90, 380, 380), lot('sparkles', 740, 380, 240, 240), lot('confetti', 940, 330, 300, 300)],
+        notes: 'Una bombilla, destellos y confeti: tres de las dieciocho animaciones de Revela (Insertar ▸ Elementos ▸ Animaciones). Con «Reducir movimiento» se quedan quietas.' },
+      { title: 'Las 18 animaciones de Revela', layout: 'titleOnly', bg: BG, extra: IDS.map((id, i) => { const [x, y] = cell(i, 6, 90, 165, 185, 165); return lot(id, x, y, 150, 150); }),
+        notes: 'Todas son vectoriales (unos pocos KB cada una) y se ven nítidas a cualquier tamaño. Cada una lleva su nombre como texto alternativo.' },
+      { title: 'Cómo se reproducen', layout: 'titleOnly', bg: BG, extra: [
+        ['loader', 'En bucle', 'loop: true', {}], ['check', 'Una sola vez', 'loop: false', { loop: false }], ['star', 'Al hacer clic', "play: 'click'", { play: 'click' }],
+        ['gear', 'Más rápida', 'speed: 2.5', { speed: 2.5 }], ['heartbeat', 'Con otro color', "color: '#ffb703'", { color: '#ffb703' }]]
+        .flatMap(([id, n, v, props], i) => [lot(id, 90 + i * 230, 190, 200, 200, props), cap(n, v, 70 + i * 230, 410, 240, W)]),
+        notes: 'En la cinta: Repetir sin parar, Empieza (al aparecer o al hacer clic), Velocidad y Color. La estrella espera un clic al presentar.' },
+    ]));
+  } },
+
 };

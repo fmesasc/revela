@@ -27,6 +27,7 @@ import { t, currentLang } from '../../i18n/index.js';
 import { setEmbedDisplay, setTableCells, hasTableCells, tableCellKeys } from '../../features/document/blocks.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { cameraView } from './cameraview.js';
+import { paintLottie } from './lottieview.js';
 import { pollEditorHTML, savedVotes } from '../../features/live/poll.js';
 import { PH_PROMPT, isEmptyPlaceholder, styled, levelVars, fillPlaceholder, styleKind } from '../../features/document/master.js';
 import { tableBlock, chartBlock } from '../../core/model.js';
@@ -159,6 +160,9 @@ export function content(b) {
     if (hasInlineMath(b.html)) renderInlineMath(d);
     paintTabs(d, b);
     return d;
+  }
+  if (b.type === 'lottie') {
+    const d = document.createElement('div'); d.className = 'lottie-blk'; paintLottie(d, b); return d;
   }
   if (b.type === 'model') {
     // A computer that can't draw WebGL: its picture where the model would be, never an empty box.

@@ -32,6 +32,7 @@ import { styleRich, paintWebCard, paintMath, pollSig, renderSlideRef, figIndexHT
 import { mapPreviewHTML, mapSig } from '../../features/content/geomap.js';
 import { mediaViewCurrent } from './mediaview.js';
 import { cameraViewCurrent, syncCameras } from './cameraview.js';
+import { paintLottie } from './lottieview.js';
 import { syncPuppet } from './puppetview.js';
 import { paintMagnify, setupMagnify } from './magnifyview.js';
 import { addGuideFromRuler, drawPGuides, startMarquee, startDrag, startRotate, startResize } from './interact.js';
@@ -359,6 +360,8 @@ function reconcile(b) {
   } else if (b.type === 'image') {
     const pv = el.querySelector(':scope > .media-player'); if (pv) applyImgStyle(pv, b);
     const img = el.querySelector('img'); if (img) { if (img._src !== b.src) { img.src = blobURL(b.src); img._src = b.src; } applyImgStyle(img, b); }
+  } else if (b.type === 'lottie') {
+    const d = el.querySelector('.lottie-blk'); if (d) paintLottie(d, b);
   } else if (b.type === 'model') {
     const mv = el.querySelector('model-viewer'); if (mv) applyModelAttrs(mv, b);
   } else if (b.type === 'video') {

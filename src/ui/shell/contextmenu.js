@@ -301,6 +301,12 @@ function forBlock(b, cell = null) {
       ['Descargar la imagen', () => saveFile(b)],
       ...(isGif(b) ? [['Reproducción…', () => openMediaPlayback(b)]] : []),
       null);
+  } else if (b.type === 'lottie') {
+    items.push(
+      [b.loop !== false ? 'No repetir la animación' : 'Repetir la animación', () => commit(() => { if (b.loop === false) delete b.loop; else b.loop = false; })],
+      [b.play === 'click' ? 'Empezar al aparecer' : 'Empezar al hacer clic', () => commit(() => { if (b.play === 'click') delete b.play; else b.play = 'click'; })],
+      ['Descargar la animación (.json)', () => saveFile(b)],
+      null);
   } else if (b.type === 'model') {
     items.push(
       ['Movimiento 3D…', () => openModel3D(b)],
@@ -394,7 +400,7 @@ function forBlock(b, cell = null) {
   }
 
   // Alt text for every non-text object (images already have it above).
-  if (['shape', 'chart', 'icon', 'model', 'video', 'audio', 'embed', 'math', 'ink', 'camera'].includes(b.type))
+  if (['shape', 'chart', 'icon', 'model', 'lottie', 'video', 'audio', 'embed', 'math', 'ink', 'camera'].includes(b.type))
     items.push(null, ['Texto alternativo…', () => openAlt(b)]);
 
   // Caption (figures, tables and other objects — not plain text/connectors).

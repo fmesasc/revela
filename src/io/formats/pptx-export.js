@@ -510,7 +510,7 @@ export async function buildPptx(deck = state.deck, { progress = null } = {}) {
     if (b.type === 'lock') return svgPNG(lockSVG(b), b);      // (a picture: PowerPoint has no locks; its hint, the alt text)
     if (b.type === 'chart' && ['map', 'waterfall', 'funnel', 'treemap'].includes(b.chartType)) return svgPNG(chartSVG(b), b);      // (PowerPoint's own maps can't be written here)
     if (b.type === 'file' && b.poster) return b.poster;          // (a PDF's page; the file itself stays in Revela)
-    if (b.type === 'model' && b.poster) return once(`model ${b.w}x${b.h} ${b.poster}`, () => posterPNG(b.poster, b.w, b.h));
+    if ((b.type === 'model' || b.type === 'lottie') && b.poster) return once(`model ${b.w}x${b.h} ${b.poster}`, () => posterPNG(b.poster, b.w, b.h));
     // (Only equations are shared: a poll's, an index's or a map's picture depends on more than the object.)
     if (b.type === 'math' || b.type === 'poll' || b.type === 'figindex' || b.type === 'file' || b.type === 'map') return once(b.type === 'math' ? mathKey(b) : null, () => blockImage(b, s, deck));
     if (b.type === 'magnify' && !magCrop(b, slideBlocks(s, deck))) return magnifyImage(b, s, deck);

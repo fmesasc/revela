@@ -500,6 +500,7 @@ export default {"biz_board":["Quartalsergebnisse für den Vorstand","Dunkelblau 
 "showcase_animations":["Katalog: Animationen","Alle Objektanimationen: Eingang, Betonung, Ausgang, Pfade, Zeichnen, verkettet, Klänge und mehrere an einem Objekt"],
 "showcase_charts":["Katalog: Diagramme","Die 15 Diagrammtypen, zwei pro Folie, mit Reihen, Kombination, Gitter, Beschriftungen und Achsentiteln, dazu die Optionstabelle"],
 "showcase_diagrams":["Katalog: Schaubilder","Die 15 Schaubild-Layouts als Gliederung geschrieben, die 4 Farbschemata und das Erscheinen nacheinander beim Präsentieren"],
+"showcase_lottie":["Katalog: Lottie-Animationen","Die 18 Vektoranimationen von Revela und wie sie abgespielt werden: als Schleife oder einmal, beim Erscheinen oder per Klick, schneller, umgefärbt"],
 "showcase_maps":["Katalog: Karten","Karten, die reisen: Globus ohne Hintergrund, Reise Halt für Halt, Morphen mit demselben Planeten, ausgeblendete Ränder, Oval mit Rahmen, Stile, Farben, Markierungen und Linien"],
 "showcase_morph":["Katalog: Morphen","Morphen Schritt für Schritt: Text, der Größe und Ort ändert, Formen, wachsende Balken, Bild, 3D und Buchstaben, die sich neu ordnen"],
 "showcase_objects":["Katalog: Multimedia und Objekte","Code mit Schritten, Gleichungen, Symbole, fünf Geräte, Tabellen mit Stilen und Formeln, Folienzoom und Verbinder"],

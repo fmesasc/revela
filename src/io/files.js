@@ -26,6 +26,7 @@ export const fileBase = (b, fallback = 'archivo') => String(b.alt || b.caption |
 // inside), a picture, video or sound as it was embedded.
 export async function blockFile(b) {
   if (b.type === 'model') return modelFile(b);
+  if (b.type === 'lottie') return { blob: new Blob([b.lottie || '{}'], { type: 'application/json' }), name: fileBase(b, 'animacion') + '.json' };
   const blob = await (await fetch(b.src || '')).blob(), ext = (blob.type.split('/')[1] || 'bin').replace('jpeg', 'jpg').replace(/\+.*/, '');
   return { blob, name: fileBase(b, b.type) + '.' + ext };
 }

@@ -233,6 +233,8 @@ export async function buildODP(deck = state.deck) {
     if (b.type === 'icon') return svgPicture(b, iconSVG(b));
     if (b.type === 'ink') return svgPicture(b, inkSVG(b));
     if (b.type === 'timer') return svgPicture(b, timerSVG(b));
+    // (An animation's still picture, as the SVG it was taken as.)
+    if (b.type === 'lottie' && /^data:image\/svg\+xml;base64,/.test(b.poster || '')) { try { return svgPicture(b, decodeURIComponent(escape(atob(b.poster.split(',')[1]))).replace(/ xmlns="[^"]*"/, '')); } catch { return ''; } }
     if (b.type === 'lock') return svgPicture(b, lockSVG(b));               // (a picture of the padlock: no locks in ODF)
     return '';                                             // 3D, video, web, code, equations: no ODF equivalent here
   };

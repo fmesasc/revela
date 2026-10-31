@@ -17,6 +17,7 @@ import { toast } from './toast.js';
 import { t } from '../../i18n/index.js';
 import { api, account, hasAccounts } from '../../io/cloud/account.js';
 import { addImage } from '../../features/document/blocks.js';
+import { lottieErrorText } from '../../features/content/lottie.js';
 
 // Photo services the Revela server offers (official edition and desktop app, signed in).
 const photoServices = () => (hasAccounts() && account()?.photos) || [];
@@ -31,6 +32,7 @@ const TABS = [
   ['audio', 'Sonidos', 'music_note', 'openverse', 'Openverse (openverse.org)'],
   ['stickers', 'Stickers', 'add_reaction', null, null],
   ['icons3d', 'Iconos 3D', 'view_in_ar', null, null],
+  ['lottie', 'Animaciones', 'animation', null, null],
   ['team', 'De mi equipo', 'groups', null, null],             // (the team's own pictures: server/cloudflare/teams.js; only in a team)
   ['anim3d', '3D con movimiento', 'view_in_ar', null, null],
   ['poly', 'Modelos 3D', 'deployed_code', 'poly', 'Poly Haven (polyhaven.com)'],
@@ -49,6 +51,7 @@ const HELP = {
   team: 'Los logotipos e imágenes de tu equipo: lo que sube cualquier miembro lo pueden usar todos.',
   stickers: 'Emojis animados de Google (Noto, CC BY 4.0). Se pueden animar por tramos y quitar el fondo como cualquier GIF.',
   icons3d: 'Iconos 3D de 3dicons.co (Vijay Verma, dominio público CC0): libro, lupa, cohete, trofeo… vienen con Revela, sin conexión. Se añaden como imagen con fondo transparente.',
+  lottie: 'Animaciones vectoriales (Lottie) hechas para Revela: marcas, flechas, confeti, cargando… ligeras, nítidas a cualquier tamaño y sin conexión. Se pueden repetir, acelerar, recolorear y poner al hacer clic; con «Reducir movimiento» quedan quietas. También puedes traer tu propio archivo .json o .lottie.',
   anim3d: 'Modelos 3D con licencia libre, varios con animaciones propias (andar, bailar…). Se guardan dentro de la presentación. Muévelos con clic derecho ▸ Movimiento 3D.',
   poly: 'Más de 500 modelos 3D de Poly Haven, de dominio público (CC0). Se guardan dentro de la presentación.',
   icosa: 'El archivo de Google Poly (Icosa Gallery): cientos de miles de modelos 3D —personas, animales, objetos…— casi todos CC BY; se añade la atribución (autor y licencia) como pie. Busca en inglés para más resultados.',
@@ -160,6 +163,7 @@ function build() {
       <label class="fr-chk el-anim"><input type="checkbox" class="el-onlyanim"> ${t('Solo animados')}</label>
       <label class="el-akind">${sel('el-audiokind', [['', 'Música y efectos'], ['effects', 'Efectos de sonido'], ['music', 'Música']])}</label>
       <button type="button" class="mini2 el-upteam" hidden><i class="ms">upload</i> ${t('Subir una imagen al equipo')}</button>
+      <button type="button" class="mini2 el-uplottie" hidden title="${t('Archivo .json o .lottie de una animación Lottie (hasta 600 KB)')}"><i class="ms">upload_file</i> ${t('Traer mi animación…')}</button>
       <label class="el-col" title="${t('Color')}">${t('Color')} <input type="color" class="el-color" value="${/^#[0-9a-f]{6}$/i.test(deckFg()) ? deckFg() : '#ffffff'}"></label></div>
     <p class="host-help el-help"></p>
     <p class="el-by" hidden></p>
@@ -168,6 +172,7 @@ function build() {
   dock(elementsSide());
   q('.cm-close').addEventListener('click', closeElements);
   q('.el-upteam').addEventListener('click', uploadTeamImage);
+  q('.el-uplottie').addEventListener('click', uploadLottie);
   q('.el-side').addEventListener('click', () => setElementsSide(elementsSide() === 'left' ? 'right' : 'left'));
   q('.el-tabs').addEventListener('click', e => { const b = e.target.closest('[data-et]'); if (b) show(b.dataset.et); });
   q('.sk-go').addEventListener('click', () => run());
@@ -199,6 +204,7 @@ function show(tab) {
   q('.el-akind').hidden = tab !== 'audio'; stopListening();
   q('.el-col').hidden = tab !== 'icons';
   q('.el-upteam').hidden = tab !== 'team';
+  q('.el-uplottie').hidden = tab !== 'lottie';
   showProviders(tab);
   q('.el-grid').className = 'el-grid' + (tab === 'icons' || tab === 'stickers' ? ' small' : '') + (tab === 'images' ? ' checker justify' : tab === 'gif' || tab === 'videos' || tab === 'photos' ? ' justify' : '');
   q('.sk-q').value = terms[tab] || '';
@@ -347,6 +353,17 @@ function uploadTeamImage() {
   inp.click();
 }
 
+// The user's own animation (.json / .lottie): checked and cleaned (features/content/lottie.js), then onto the slide.
+export function uploadLottie() {
+  const inp = Object.assign(document.createElement('input'), { type: 'file', accept: '.json,.lottie,application/json' });
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f || !currentSlide()) return;
+    try { const r = await R.insertLottieFile(f); if (r.error) alertDialog(lottieErrorText(r.error)); }
+    catch (e) { alertDialog(t('No se pudo añadir: ') + (e.message || e)); }
+  };
+  inp.click();
+}
+
 let runs = 0, busy = false;
 async function run(more = false) {
   if (!panel) return;
@@ -412,6 +429,8 @@ async function run(more = false) {
       list = R.searchStickers(term).map(s => [s.thumb, s.words, '', () => R.insertSticker(s.code, s.words)]);
     } else if (tab === 'icons3d') {
       list = R.searchIcons3D(term).map(i => [i.thumb, `${i.name} — 3dicons.co (CC0)`, i.name, () => R.insertIcon3D(i)]);
+    } else if (tab === 'lottie') {
+      list = R.searchLottie(term).map(i => [i.thumb, `${i.name} — ${t('Animación Lottie')}`, i.name, () => R.insertLottie(i), i.w / i.h]);
     } else if (tab === 'anim3d') {
       // (A model with a brand's logo on it: ™ on its tile, and why, in its title and once added.)
       list = R.searchLibrary3D(term, { animated: q('.el-onlyanim').checked }).map(m => { const mk = R.brandMarks(m), warn = mk && marksText(mk);

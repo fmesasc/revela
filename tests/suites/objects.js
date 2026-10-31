@@ -5335,4 +5335,161 @@ export default async function ({ R, D, frame, test, sleep, waitFor, assert, eq, 
       eq(images, 1, 'borrarlo: la IA de imágenes, una vez');
     } finally { W.fetch = realFetch; AI.disconnectAi(); D.getElementById('imged-modal')?.querySelector('.modal-close')?.click(); }
   });
+
+  // Lottie animations (2026-10-31): vector JSON drawn by lottie-web's light build; Revela's own 18 (tools/make-lottie.mjs) or the user's file.
+  await test('Lottie: las animaciones de Revela se buscan en cualquier idioma, se insertan con sus ajustes, se dibujan y viajan en el archivo', async () => {
+    reset(); R.slides.addSlide('blank'); await sleep(10);
+    const W = frame.contentWindow, Rz = await W.eval("import('/src/features/content/resources.js')"), Lt = await W.eval("import('/src/features/content/lottie.js')");
+    eq(Rz.searchLottie('').length, 18, 'dieciocho animaciones propias');
+    assert(Rz.searchLottie('confeti')[0]?.id === 'confetti' && Rz.searchLottie('Konfetti')[0]?.id === 'confetti' && Rz.searchLottie('قصاصات')[0]?.id === 'confetti', 'se buscan en cualquier idioma');
+    assert(Rz.searchLottie('').every(i => /^assets\/lottie\/[\w-]+\.svg$/.test(i.thumb) && i.name), 'cada una con miniatura y nombre');
+    for (const i of Rz.searchLottie('')) { const j = await (await W.fetch(`assets/lottie/${i.id}.json`)).text(); assert(Lt.lottieClean(j).data, i.id + ': una animación válida'); assert((await W.fetch(i.thumb)).ok, i.id + ': su miniatura'); }
+    const b = await Rz.insertLottie(Rz.searchLottie('verificación')[0]);
+    assert(b.type === 'lottie' && b.loop === false && b.still === 1 && b.play === 'auto' && b.speed === 1 && b.alt && Lt.lottieClean(b.lottie).data, 'el objeto: una sola vez, su imagen quieta, al aparecer, con su texto alternativo');
+    const svg = await waitFor(() => D.querySelector(`.block[data-id="${b.id}"] .lottie-blk svg`)); assert(svg, 'se dibuja en el lienzo');
+    const poster = await waitFor(() => slide().blocks.find(x => x.id === b.id).poster, 8000);
+    assert(/^data:image\/svg\+xml;base64,/.test(poster) && atob(poster.split(',')[1]).includes('<path'), 'su imagen quieta, tomada una vez');
+    const el = D.querySelector(`.block[data-id="${b.id}"] .lottie-blk`);
+    // (In the editor: on its own, it plays — «al hacer clic» and «reducir movimiento» leave it still.)
+    await waitFor(() => el._lot); eq(el._lot.isPaused, false, 'en el editor se mueve sola');
+    R.store.commit(() => { slide().blocks.find(x => x.id === b.id).play = 'click'; }); R.render(); await sleep(60);
+    eq(D.querySelector(`.block[data-id="${b.id}"] .lottie-blk`)._lot.isPaused, true, '«al hacer clic»: quieta en el editor');
+    R.store.commit(() => { const x = slide().blocks.find(y => y.id === b.id); delete x.play; x.color = '#ff0000'; }); R.render();
+    await waitFor(() => slide().blocks.find(x => x.id === b.id).psig?.startsWith('#ff0000'), 8000);
+    assert(/#ff0000|rgb\(255,\s*0,\s*0\)/i.test(atob(slide().blocks.find(x => x.id === b.id).poster.split(',')[1])), 'recolorear: su imagen quieta se toma de nuevo, ya en rojo');
+    // Saved and opened again: it is drawn again (the file carries the JSON, not a link).
+    const copy = JSON.parse(JSON.stringify(R.state.deck)); R.store.replaceDeck(copy); R.state.ui.slideIndex = copy.slides.findIndex(x => x.blocks.some(y => y.id === b.id)); R.render();
+    assert(await waitFor(() => D.querySelector(`.block[data-id="${b.id}"] .lottie-blk svg`)), 'abierta otra vez, se dibuja');
+    // Selected, its tab of the ribbon has its settings.
+    R.state.ui.selection = b.id; R.render(); await sleep(30);
+    assert(D.querySelector('#ribbon [data-page="ctx"]')?.innerHTML.includes('Repetir sin parar') && /Velocidad/.test(D.querySelector('#ribbon [data-page="ctx"]').innerHTML), 'en la cinta: sus ajustes (repetir, empieza, velocidad, color)');
+  });
+
+  await test('Lottie: lo que no es una animación, o trae algo que no debe, no pasa; el color recolorea; se trae un .json o un .lottie del usuario', async () => {
+    const W = frame.contentWindow, Lt = await W.eval("import('/src/features/content/lottie.js')"), S = await W.eval("import('/src/core/vendor.js')");
+    const base = () => ({ v: '5.7.0', fr: 30, ip: 0, op: 60, w: 200, h: 100, assets: [], layers: [{ ty: 4, ind: 1, nm: 'a', ks: {}, shapes: [{ ty: 'gr', it: [{ ty: 'rc', p: { a: 0, k: [0, 0] }, s: { a: 0, k: [50, 50] }, r: { a: 0, k: 0 } }, { ty: 'fl', c: { a: 0, k: [0, 0, 1, 1] }, o: { a: 0, k: 100 } }, { ty: 'st', c: { a: 1, k: [{ t: 0, s: [0, 1, 0, 1] }, { t: 10, s: [1, 1, 0, 1] }] }, w: { a: 0, k: 4 } }] }], ip: 0, op: 60, st: 0 }] });
+    eq(Lt.lottieClean('esto no es json').error, 'json', 'no es JSON');
+    eq(Lt.lottieClean('{"a":1}').error, 'format', 'JSON, pero no una animación');
+    eq(Lt.lottieClean({ ...base(), w: 90000 }).error, 'format', 'de un tamaño imposible');
+    eq(Lt.lottieClean({ ...base(), op: 999999 }).error, 'long', 'de duración imposible');
+    eq(Lt.lottieClean({ ...base(), layers: [] }).error, 'format', 'sin capas');
+    // What would reach the page: expressions, ids and classes, fonts and pictures from the web; pictures as data stay.
+    const bad = base(); bad.layers[0].ln = 'rvm-x'; bad.layers[0].cl = 'reveal'; bad.layers[0].ks.o = { a: 0, k: 100, x: 'var $bm_rt = alert(1);' };
+    bad.fonts = { list: [{ fName: 'F', fFamily: 'F', fPath: 'https://evil.test/f.css', fOrigin: 'u' }] };
+    bad.assets = [{ id: 'i1', w: 5, h: 5, u: 'https://evil.test/', p: 'x.png', e: 0 }, { id: 'i2', w: 5, h: 5, u: '', p: 'javascript:alert(1)', e: 1 }, { id: 'i3', w: 1, h: 1, u: '', p: 'data:image/png;base64,iVBORw0KGgo=', e: 1 }, { id: 'c1', layers: [] }];
+    const txt = JSON.stringify(bad).replace('"layers":[{"ty":4', '"__proto__":{"polluted":1},"layers":[{"ty":4');
+    const c = Lt.lottieClean(txt).data; assert(c, 'la limpia sigue siendo una animación');
+    const out = JSON.stringify(c);
+    assert(!/"ln"|"cl"|"x":|fPath|evil\.test|javascript:/.test(out) && !Object.keys(c).includes('__proto__') && !({}).polluted, 'sin ids, clases, expresiones, fuentes ni imágenes de la web: ' + out.slice(0, 200));
+    eq(c.assets.map(a => a.id).join(), 'i3,c1', 'quedan la imagen incrustada y la precomposición');
+    eq(c.fonts.list[0].fOrigin, 'n', 'y sus fuentes no se descargan');
+    // Colour: every fill and stroke, whatever it was (even animated).
+    const tinted = JSON.stringify(Lt.lottieTint(Lt.lottieClean(base()).data, '#ff0000'));
+    assert((tinted.match(/\[1,0,0,1\]/g) || []).length === 2 && !/"s":\[0,1,0,1\]/.test(tinted), 'el relleno y el trazo (también el animado) pasan a rojo');
+    eq(JSON.stringify(Lt.lottieTint(base(), 'rojo')), JSON.stringify(base()), 'un color que no lo es: se deja como está');
+    // The user's own files.
+    const mk = (parts, name) => new W.File(parts, name);
+    const ok = await Lt.lottieFromFile(mk([JSON.stringify(base())], 'mi-animacion.json')); assert(ok.data && ok.name === 'mi-animacion', 'un .json');
+    eq((await Lt.lottieFromFile(mk(['x'.repeat(Lt.LOTTIE_MAX + 10)], 'grande.json'))).error, 'big', 'uno demasiado grande');
+    eq((await Lt.lottieFromFile(mk(['[1,2'], 'roto.json'))).error, 'json', 'uno roto');
+    const JSZip = await S.loadScript(S.JSZIP, 'JSZip'), zip = new JSZip();
+    zip.file('manifest.json', JSON.stringify({ version: '1', animations: [{ id: 'anim1' }] })); zip.file('animations/anim1.json', JSON.stringify(base()));
+    const dot = await Lt.lottieFromFile(mk([await zip.generateAsync({ type: 'uint8array' })], 'otra.lottie')); assert(dot.data && dot.name === 'otra', 'un .lottie (dotLottie)');
+    // And through the panel's own door: onto the slide.
+    reset(); const Rz = await W.eval("import('/src/features/content/resources.js')");
+    const r = await Rz.insertLottieFile(mk([JSON.stringify(base())], 'ejemplo.json')); assert(r.block?.type === 'lottie' && r.block.alt === 'ejemplo' && r.block.w / r.block.h > 1.9, 'entra con su forma (2 : 1) y su nombre');
+    eq((await Rz.insertLottieFile(mk(['nada'], 'x.json'))).error, 'json', 'y lo malo no entra');
+    eq(slide().blocks.filter(x => x.type === 'lottie').length, 1, 'solo la buena');
+  });
+
+  await test('exportar HTML: una animación Lottie viaja con sus ajustes y su imagen quieta, se mueve al llegar y vuelve a empezar, espera al clic, se queda quieta con «Reducir movimiento» (con su aviso) y pausa fuera de pantalla', async () => {
+    reset(); R.slides.addSlide('blank'); await sleep(10);
+    const W = frame.contentWindow, Rz = await W.eval("import('/src/features/content/resources.js')"), S = await W.eval("import('/src/core/vendor.js')");
+    const loop = await Rz.insertLottie(Rz.searchLottie('flecha a la derecha')[0]);
+    await waitFor(() => slide().blocks.find(x => x.id === loop.id).poster, 8000);
+    R.slides.addSlide('blank'); await sleep(10);
+    const once = await Rz.insertLottie(Rz.searchLottie('verificación')[0]);
+    R.store.commit(() => { Object.assign(slide().blocks.find(x => x.id === once.id), { play: 'click', speed: 2, color: '#118833' }); });
+    await waitFor(() => slide().blocks.find(x => x.id === once.id).poster, 8000);
+    const html = R.io.buildHTML(R.state.deck, { inApp: false });
+    assert(html.includes(S.LOTTIE) && /data-lottie="/.test(html) && /data-lo="0"/.test(html) && /data-lo="1"/.test(html) && /data-tr="click"/.test(html) && /data-sp="2"/.test(html) && /data-still="\d+"/.test(html), 'sus ajustes en la página');
+    assert(/<img src="data:image\/svg\+xml;base64,[^"]+" alt=""/.test(html), 'su imagen quieta dentro, hasta que llega el reproductor');
+    assert(html.includes('[0.0667,0.5333,0.2,1]'), 'el color elegido, ya en su JSON');
+    const REDUCE = `<script>(function(){var m=window.matchMedia.bind(window);window.matchMedia=function(q){return /prefers-reduced-motion/.test(q)?{matches:true,media:q,addEventListener:function(){},removeEventListener:function(){},addListener:function(){},removeListener:function(){}}:m(q);};})()</script>`;
+    const FULL = `<script>try{localStorage.setItem('revela.perf','full');localStorage.removeItem('revela.motion')}catch(e){}</script>`;
+    const play = async (head, run, page = html) => {
+      const f = D.createElement('iframe'); f.style.cssText = 'position:fixed;left:0;top:0;width:1280px;height:720px;visibility:hidden'; D.body.appendChild(f);
+      try {
+        f.srcdoc = page.replace('<head>', '<head>' + head).replace('hash:true', 'hash:false');
+        for (let k = 0; k < 100 && !f.contentWindow.Reveal?.isReady?.(); k++) await sleep(100);
+        const F = f.contentWindow; assert(F.Reveal?.isReady?.(), 'la página arranca');
+        await run(F, F.Reveal);
+      } finally { f.remove(); try { W.localStorage.removeItem('revela.motion'); } catch {} }
+    };
+    const box = (F, n) => F.document.querySelectorAll('[data-lottie]')[n];
+    const anim = async (F, n) => { const el = box(F, n); await waitFor(() => el.__lt?.anim && el.querySelector('svg'), 10000); return el.__lt.anim; };
+    // 1. Normal: the first one plays when its slide is shown, stops when it leaves, starts again from the beginning on return; the clicked one waits.
+    await play(FULL, async (F, RV) => {
+      RV.slide(1);
+      const a = await anim(F, 0); await waitFor(() => !a.isPaused, 4000); eq(a.isPaused, false, 'la repetida se mueve al llegar'); eq(a.loop, true, 'y en bucle');
+      assert(!box(F, 0).querySelector('img'), 'el reproductor releva a su imagen quieta');
+      assert(!F.document.querySelector('.rvfx-badge'), 'sin aviso en el caso normal');
+      RV.slide(2); await sleep(300); eq(a.isPaused, true, 'al irse de la diapositiva se para');
+      const c = await anim(F, 1); await sleep(200); eq(c.isPaused, true, '«al hacer clic»: quieta hasta el clic'); eq(c.loop, false, 'y una sola vez');
+      box(F, 1).click(); await sleep(150); eq(c.isPaused, false, 'el clic la pone en marcha'); eq(c.playSpeed, 2, 'al doble de velocidad');
+      assert(box(F, 1).getAttribute('role') === 'button' && box(F, 1).tabIndex === 0, 'y se puede pulsar con el teclado');
+      RV.slide(1); await sleep(300); a.goToAndStop(20, true); RV.slide(2); await sleep(200); RV.slide(1); await sleep(300);
+      eq(a.isPaused, false, 'al volver, otra vez en marcha'); assert(a.currentFrame < 20, 'desde el principio, no desde donde iba: ' + a.currentFrame);
+      // The tab hidden (or the box scrolled away): it waits, and goes on when it is seen again.
+      Object.defineProperty(F.document, 'hidden', { get: () => true, configurable: true }); F.document.dispatchEvent(new F.Event('visibilitychange')); await sleep(80);
+      eq(a.isPaused, true, 'con la pestaña oculta, espera');
+      delete F.document.hidden; F.document.dispatchEvent(new F.Event('visibilitychange')); await sleep(80); eq(a.isPaused, false, 'y sigue al verse otra vez');
+    });
+    // 2. «Reduce motion»: still on its still frame, and the badge says why.
+    await play(FULL + REDUCE, async (F, RV) => {
+      RV.slide(1); const a = await anim(F, 0); await sleep(300); eq(a.isPaused, true, 'con «Reducir movimiento» no se mueve');
+      const b = F.document.querySelector('.present .rvfx-badge'); assert(b && b.textContent.includes('Movimiento reducido'), 'y lo dice en su esquina');
+      b.click(); assert(F.document.querySelector('.rvfx-pop')?.textContent.includes('animaciones se muestran quietas'), 'con el motivo');
+      [...F.document.querySelectorAll('.rvfx-pop button')].find(x => x.textContent === 'Mostrar con todos los efectos').click(); await sleep(400);
+      eq(a.isPaused, false, 'el botón del aviso la pone en marcha'); assert(!F.document.querySelector('.present .rvfx-badge'), 'y el aviso se va');
+    });
+    // 3. The player can't be loaded (no connection): the still picture stays, and the badge says so.
+    await play(FULL, async F => {
+      F.Reveal.slide(1); await sleep(1500); const el = box(F, 0);
+      assert(el.querySelector('img') && !el.querySelector('svg'), 'sin el reproductor, su imagen quieta');
+      const b = F.document.querySelector('.present .rvfx-badge'); assert(b && b.textContent.includes('Animación sin conexión'), 'y el aviso: sin conexión');
+    }, html.split(JSON.stringify(S.LOTTIE)).join(JSON.stringify('data:text/javascript;charset=utf-8,0%3B%2F%2F')));
+    // Without animations, neither the player nor its code is in the page.
+    reset(); assert(!/lottie_light|data-lottie|lottieRuntime|rvfx-/.test(R.io.buildHTML(R.state.deck, { inApp: false })), 'sin animaciones, ni su reproductor ni su código');
+  });
+
+
+  await test('Lottie: la pestaña «Animaciones» de Elementos las lista sin conexión, un clic las añade y deja traer la propia', async () => {
+    reset(); const W = frame.contentWindow, E = await W.eval("import('/src/ui/shell/elements.js')");
+    E.closeElements(); E.openElements('lottie');
+    try {
+      const grid = () => D.querySelector('#elements-panel .el-grid');
+      assert(await waitFor(() => grid()?.querySelectorAll('.sk-item').length === 18), 'las dieciocho, sin buscar nada');
+      assert(!D.querySelector('#elements-panel .el-uplottie').hidden && /Traer mi animación/.test(D.querySelector('#elements-panel .el-uplottie').textContent), 'con su botón para traer la propia');
+      assert(/Lottie/.test(D.querySelector('#elements-panel .el-help').textContent), 'y su explicación');
+      const n = slide().blocks.length; grid().querySelector('.sk-item').click();
+      assert(await waitFor(() => slide().blocks.length === n + 1 && last().type === 'lottie'), 'un clic la pone en la diapositiva');
+      D.querySelector('#elements-panel .sk-q').value = 'ondas'; D.querySelector('#elements-panel .sk-go').click();
+      assert(await waitFor(() => grid().querySelectorAll('.sk-item').length === 1), 'se busca por su nombre');
+    } finally { E.closeElements(); }
+  });
+
+
+  await test('Lottie: con «Reducir movimiento» en el sistema, el editor la deja quieta en su imagen y lo dice en su esquina', async () => {
+    reset(); R.slides.addSlide('blank'); await sleep(10);
+    const W = frame.contentWindow, Rz = await W.eval("import('/src/features/content/resources.js')"), mm = W.matchMedia;
+    W.matchMedia = q => (/prefers-reduced-motion/.test(q) ? { matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} } : mm.call(W, q));
+    try {
+      const b = await Rz.insertLottie(Rz.searchLottie('reloj')[0]);
+      const el = await waitFor(() => { const e = D.querySelector(`.block[data-id="${b.id}"] .lottie-blk`); return e?._lot && e; });
+      assert(el, 'se dibuja'); await sleep(200); eq(el._lot.isPaused, true, 'quieta');
+      const badge = D.querySelector(`.block[data-id="${b.id}"] > .rvfx-badge`); assert(badge && /Movimiento reducido/.test(badge.textContent), 'con su aviso en la esquina del objeto');
+    } finally { W.matchMedia = mm; D.querySelectorAll('.rvfx-pop, .rvfx-toast').forEach(x => x.remove()); }
+  });
+
 }

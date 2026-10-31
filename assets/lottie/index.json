@@ -1,0 +1,128 @@
+{
+ "check": {
+  "loop": false,
+  "w": 512,
+  "h": 512,
+  "frames": 66,
+  "still": 1
+ },
+ "cross": {
+  "loop": false,
+  "w": 512,
+  "h": 512,
+  "frames": 66,
+  "still": 1
+ },
+ "arrow-right": {
+  "loop": true,
+  "w": 512,
+  "h": 512,
+  "frames": 60,
+  "still": 0.5
+ },
+ "arrow-down": {
+  "loop": true,
+  "w": 512,
+  "h": 512,
+  "frames": 60,
+  "still": 0.5
+ },
+ "confetti": {
+  "loop": false,
+  "w": 512,
+  "h": 512,
+  "frames": 90,
+  "still": 0.3
+ },
+ "loader": {
+  "loop": true,
+  "w": 512,
+  "h": 512,
+  "frames": 40,
+  "still": 0.1
+ },
+ "star": {
+  "loop": false,
+  "w": 512,
+  "h": 512,
+  "frames": 84,
+  "still": 1
+ },
+ "heartbeat": {
+  "loop": true,
+  "w": 512,
+  "h": 512,
+  "frames": 48,
+  "still": 0.17
+ },
+ "ripple": {
+  "loop": true,
+  "w": 512,
+  "h": 512,
+  "frames": 60,
+  "still": 0.5
+ },
+ "idea": {
+  "loop": true,
+  "w": 512,
+  "h": 512,
+  "frames": 60,
+  "still": 0.5
+ },
+ "sparkles": {
+  "loop": true,
+  "w": 512,
+  "h": 512,
+  "frames": 60,
+  "still": 0.5
+ },
+ "progress": {
+  "loop": false,
+  "w": 512,
+  "h": 160,
+  "frames": 84,
+  "still": 1
+ },
+ "ball": {
+  "loop": true,
+  "w": 512,
+  "h": 512,
+  "frames": 40,
+  "still": 0.5
+ },
+ "clock": {
+  "loop": true,
+  "w": 512,
+  "h": 512,
+  "frames": 90,
+  "still": 0.1
+ },
+ "equalizer": {
+  "loop": true,
+  "w": 512,
+  "h": 512,
+  "frames": 48,
+  "still": 0.5
+ },
+ "gear": {
+  "loop": true,
+  "w": 512,
+  "h": 512,
+  "frames": 90,
+  "still": 0
+ },
+ "underline": {
+  "loop": false,
+  "w": 512,
+  "h": 128,
+  "frames": 54,
+  "still": 1
+ },
+ "checklist": {
+  "loop": false,
+  "w": 512,
+  "h": 512,
+  "frames": 100,
+  "still": 1
+ }
+}

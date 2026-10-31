@@ -51,6 +51,7 @@ on:
       - 'src/features/content/gltf.js'
       - 'src/features/content/icons3d.js'
       - 'src/features/content/library3d.js'
+      - 'src/features/content/lottie.js'
       - 'src/features/content/maps.js'
       - 'src/features/content/nasa3d.js'
       - 'src/features/content/resources.js'

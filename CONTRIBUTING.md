@@ -82,6 +82,11 @@ they also export and play the `showcase_*` catalogues and fail on any page error
 exported, put it in the test's exempt list with the reason. A new `showcase_*` catalogue for a new feature is the
 cheapest way to cover it.
 
+**Lottie animations** (`type: 'lottie'`): their JSON is only ever given to the player through `lottieSafe()` / `lottieClean()`
+(`src/features/content/lottie.js`), which drops expressions, ids and classes, fonts and pictures from the web: an animation
+file is data from someone else. Revela's own are made by `tools/make-lottie.mjs` (`assets/lottie/`); a template names one with
+`lottieId` and `loadExample` puts its JSON in. Tests: `Lottie: …` in `tests/suites/objects.js`.
+
 **Nothing is taken away in silence.** If a runtime drops or reduces something because of the computer or the settings
 (no WebGL, no connection, light mode, the system's «reduce motion»), it says so where it happens with
 `window.__rvFX.mark(box, causes)` (`src/io/runtime/fx.js`): a badge in the corner with the reason and a button to change it,

@@ -10,6 +10,7 @@ import { A, anim, appScreen, bar, base, big, build, card, dg, glow, icon, lib3d,
 import { CATALOG, LOADERS } from './templates/catalog.js';
 import { translateDeck, textsIn, RTL_LANGS } from './tplang.js';
 import { currentLang } from '../../i18n/index.js';
+import { hydrateLottie } from './lottie.js';
 import { EXAMPLES_ML, withTexts } from './multilang.js';
 import { langsOf, rebase } from '../document/languages.js';
 
@@ -746,6 +747,10 @@ export async function exampleNames(lang) {
 }
 // In the interface's language (tplang.js), or the one asked for ('es': as written).
 export async function loadExample(key, lang = currentLang()) {
+  const deck = await loadExampleRaw(key, lang);
+  return deck ? hydrateLottie(deck, lang) : deck;           // (the animations named by id get their JSON)
+}
+async function loadExampleRaw(key, lang) {
   if (!loaded[key]) { const f = CATALOG[key]?.file; if (!f || !LOADERS[f]) return null; Object.assign(loaded, (await LOADERS[f]()).default); }
   const deck = loaded[key]?.make() || null;
   // (One with its own table of languages: in that language as its original, the others kept in the table.)

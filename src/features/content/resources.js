@@ -11,6 +11,7 @@ import { searchImages, insertStockImage } from './stock.js';
 import { STICKERS, stickerURL, stickerThumb, STICKER_CREDIT } from './stickers.js';
 import { ICONS3D, ICONS3D_CREDIT, icon3dURL, icon3dName } from './icons3d.js';
 import { currentLang } from '../../i18n/index.js';
+import { LOTTIES, lottieURL, lottieThumb, lottieName, lottieFromFile, lottieClean } from './lottie.js';
 import { LIBRARY_3D } from './library3d.js';
 import { NASA_3D } from './nasa3d.js';
 import { stlToGLB } from './stl.js';
@@ -44,6 +45,25 @@ export async function insertIcon3D(i) {
   const src = await toDataURL(await download(i.thumb));
   return place({ id: uid(), type: 'image', src, fit: 'contain', alt: i.name, credit: ICONS3D_CREDIT,
     ...centred(240, 240), rotation: 0, animation: null });
+}
+
+// ---- Lottie animations: Revela's own (vector, JSON), or the user's file ---------------------------
+export const searchLottie = q => LOTTIES.filter(r => !q || matches(r[5].join(' '), q))
+  .map(r => ({ id: r[0], name: lottieName(r, currentLang()), thumb: lottieThumb(r[0]), still: r[1], loop: r[2], w: r[3], h: r[4] }));
+function placeLottie(json, data, { name = '', still, loop = true } = {}) {
+  const k = 420 / Math.max(data.w, data.h), w = Math.round(data.w * k), h = Math.round(data.h * k);
+  return place({ id: uid(), type: 'lottie', lottie: json, loop, speed: 1, play: 'auto', ...(still != null ? { still } : {}), alt: name,
+    ...centred(w, h), rotation: 0, animation: null });
+}
+export async function insertLottie(i) {
+  const json = JSON.stringify((await (await fetch(lottieURL(i.id))).json()));
+  const c = lottieClean(json); if (!c.data) throw new Error(c.error);
+  return placeLottie(json, c.data, { name: i.name, still: i.still, loop: i.loop });
+}
+// A .json or .lottie of the user's: checked and cleaned before it goes in (see lottie.js); what is wrong comes back as { error }.
+export async function insertLottieFile(file) {
+  const r = await lottieFromFile(file); if (r.error) return r;
+  return { block: placeLottie(r.json, r.data, { name: r.name || '', loop: true }) };
 }
 
 // ---- 3D: curated library (some animated) ------------------------------------------------
