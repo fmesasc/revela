@@ -365,7 +365,7 @@ function drawChart(b) {
   const lab = (x, ls) => ls.map((l, k) => `<text x="${x.toFixed(1)}" y="${(B + 4 + fit.fs * sy + k * lh).toFixed(1)}" font-size="${+fit.fs.toFixed(2)}" text-anchor="middle" fill="#8a8a8a">${escSvg(l)}</text>`).join('');
   const labels = edges ? edges.map((_, i) => lab(L + gap * i, fit.lines[i])).join('') : data.map((d, i) => lab(barSer.length ? X(i) : lx(i), fit.lines[i])).join('');
   const titles = (b.xTitle ? `<text x="${(L + W / 2).toFixed(1)}" y="59" font-size="3.6" text-anchor="middle" fill="#8a8a8a">${escSvg(b.xTitle)}</text>` : '')
-    + (b.yTitle ? `<text x="2.6" y="${((T + B) / 2).toFixed(1)}" font-size="3.6" text-anchor="middle" fill="#8a8a8a" transform="rotate(-90 2.6 ${((T + B) / 2).toFixed(1)})">${escSvg(b.yTitle)}</text>` : '')
+    + (b.yTitle ? yTitleSvg(b.yTitle, T, B) : '')
     + (two2 && b.y2Title ? `<text x="97.4" y="${((T + B) / 2).toFixed(1)}" font-size="3.6" text-anchor="middle" fill="#8a8a8a" transform="rotate(90 97.4 ${((T + B) / 2).toFixed(1)})">${escSvg(b.y2Title)}</text>` : '');
   const legend = seriesLegend(ser);
   return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${grid}${bars}${lines}${zero}${labels}${titles}${legend}</svg>`;
@@ -527,7 +527,7 @@ function xyFrame(b, xs, ys, legend, pad = 0, { xNums = true } = {}) {
     + sx.ticks.map((v, i) => (i % every || !xNums ? '' : `<text x="${X(v).toFixed(1)}" y="${(B + 1.5 + fs * sy).toFixed(1)}" font-size="${fs}" text-anchor="middle" fill="#8a8a8a">${escSvg(fmtNum(v))}</text>`)).join('')
     + line(L, B, R, B) + line(L, T - 2, L, B)
     + (b.xTitle ? `<text x="${((L + R) / 2).toFixed(1)}" y="59" font-size="3.6" text-anchor="middle" fill="#8a8a8a">${escSvg(b.xTitle)}</text>` : '')
-    + (b.yTitle ? `<text x="2.6" y="${((T + B) / 2).toFixed(1)}" font-size="3.6" text-anchor="middle" fill="#8a8a8a" transform="rotate(-90 2.6 ${((T + B) / 2).toFixed(1)})">${escSvg(b.yTitle)}</text>` : '');
+    + (b.yTitle ? yTitleSvg(b.yTitle, T, B) : '');
   return { X, Y, L, R, T, B, svg };
 }
 // Funnel: centred bars, as wide as their value, one under another (stages of a process).
@@ -570,7 +570,7 @@ function hbarSVG(b) {
   const grid = b.grid ? sc.ticks.map(v => `<line x1="${X(v).toFixed(1)}" y1="${T}" x2="${X(v).toFixed(1)}" y2="${B.toFixed(1)}" stroke="#8a8a8a" stroke-opacity="0.3" stroke-width="0.3" vector-effect="non-scaling-stroke"/>`
     + `<text x="${X(v).toFixed(1)}" y="${(B + 1.5 + 3 * sy).toFixed(1)}" font-size="3" text-anchor="middle" fill="#8a8a8a">${escSvg(fmtNum(v))}</text>`).join('') : '';
   const titles = (b.xTitle ? `<text x="${((L + R) / 2).toFixed(1)}" y="59" font-size="3.6" text-anchor="middle" fill="#8a8a8a">${escSvg(b.xTitle)}</text>` : '')
-    + (b.yTitle ? `<text x="2.6" y="${((T + B) / 2).toFixed(1)}" font-size="3.6" text-anchor="middle" fill="#8a8a8a" transform="rotate(-90 2.6 ${((T + B) / 2).toFixed(1)})">${escSvg(b.yTitle)}</text>` : '');
+    + (b.yTitle ? yTitleSvg(b.yTitle, T, B) : '');
   const axis = `<line x1="${X0.toFixed(1)}" y1="${T}" x2="${X0.toFixed(1)}" y2="${B.toFixed(1)}" stroke="#8a8a8a" stroke-width="0.4" vector-effect="non-scaling-stroke"/>`;
   const legend = seriesLegend(ser);
   return `<svg viewBox="0 0 100 60" preserveAspectRatio="none" width="100%" height="100%" style="overflow:visible">${grid}${bars}${axis}${labels}${titles}${legend}</svg>`;
@@ -599,6 +599,11 @@ function chartSqueeze(b) {
   const k = (h / 60) / (w / 100); return k < 1 ? [k, 1] : [1, 1 / k];
 }
 // About how wide a text is drawn, in the drawing's units (~0.55 em a character).
+// The y axis' title, turned: smaller when it's longer than the plot is tall (a translation is usually longer), so it doesn't run off.
+function yTitleSvg(t, T, B) {
+  const n = [...String(t)].length, fs = Math.max(2.2, Math.min(3.6, (B - T) * 0.96 / (n * 0.55))), m = ((T + B) / 2).toFixed(1);
+  return `<text x="2.6" y="${m}" font-size="${+fs.toFixed(2)}" text-anchor="middle" fill="#8a8a8a" transform="rotate(-90 2.6 ${m})">${escSvg(t)}</text>`;
+}
 function textWidth(s, fs, b) { return [...String(s ?? '')].length * fs * 0.55 * chartSqueeze(b)[0]; }
 // A label in two (or `n`) lines, split at the spaces that leave the longest line shortest.
 function twoLines(s, n = 2) {
