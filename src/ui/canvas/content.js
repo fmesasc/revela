@@ -443,6 +443,7 @@ function refreshFormulas(t, b) {
 // them dragged across or Shift+clicked; a right click in a cell, that cell (or the block it is in); a click on the
 // table not being written in, the table as a whole. (Kept when the caret leaves for the ribbon: that is where the
 // command is.) Whole rows and columns: dragged across, from the first cell to the last.
+let lastPress = null;   // (the last press on a table: where and when, for the double press)
 export function setupTable(el, b) {
   const cellOf = e => { const td = e.target.closest?.('td[data-r]'); return td && el.contains(td) ? [+td.dataset.r, +td.dataset.c, td] : null; };
   const pick = (...rc) => { setTableCells(b.id, ...rc); commit(() => {}, { history: false }); };   // (redrawn: the tint, the ribbon's colour)
@@ -466,15 +467,27 @@ export function setupTable(el, b) {
   el.addEventListener('mouseup', () => { dragging = false; });
   // (The caret moved to another cell with the keyboard — Tab, arrows —: that cell.)
   el.addEventListener('focusin', e => { const at = cellOf(e); if (at && !dragging && el.classList.contains('editing') && !inPicked(at)) { anchor = at; pick(at[0], at[1]); } });
-  el.addEventListener('dblclick', e => {
-    // (The block took the pointer when it was pressed — to drag it —, and a browser that follows the spec sends the
-    // click and the double-click to the element that held it, not to the cell: the cell is the one under the pointer.)
-    const td = e.target.closest('td') || document.elementFromPoint(e.clientX, e.clientY)?.closest('td');
-    if (!td || !el.contains(td)) return;
-    el.classList.add('editing');
-    el.querySelectorAll('.tbl td').forEach(c => (c.contentEditable = 'true'));
+  // Starts writing in a cell. (The block took the pointer when it was pressed — to drag it —, and a browser that follows
+  // the spec sends the click and the double-click to the element that held it, not to the cell: the cell is the one under
+  // the pointer.)
+  const edit = (blk, td, e) => {
+    if (!td || !blk.contains(td) || readOnly()) return;
+    blk.classList.add('editing');
+    blk.querySelectorAll('.tbl td').forEach(c => (c.contentEditable = 'true'));
     td.focus();
-    if (e.isTrusted) selectWordAt(td, e.clientX, e.clientY);
+    if (e?.isTrusted) selectWordAt(td, e.clientX, e.clientY);
+  };
+  el.addEventListener('dblclick', e => edit(el, e.target.closest('td') || document.elementFromPoint(e.clientX, e.clientY)?.closest('td'), e));
+  // The double-click event doesn't always arrive (the first click selects the table and the slide is drawn again, so the
+  // element that held the pointer is gone before the second click): two presses close in time and place are one too.
+  el.addEventListener('pointerdown', e => {
+    const last = lastPress; lastPress = { id: b.id, t: e.timeStamp, x: e.clientX, y: e.clientY };
+    if (e.button !== 0 || !last || last.id !== b.id || e.timeStamp - last.t > 500 || Math.hypot(e.clientX - last.x, e.clientY - last.y) > 8 || el.classList.contains('editing')) return;
+    lastPress = null;
+    addEventListener('pointerup', () => setTimeout(() => {
+      const live = document.querySelector(`#stage .block[data-id="${b.id}"]`);
+      if (live && !live.classList.contains('editing')) edit(live, document.elementFromPoint(e.clientX, e.clientY)?.closest('td'), e);
+    }, 0), { once: true });
   });
   // A formula cell shows its formula while the caret is in it, and the results come back when it leaves.
   el.addEventListener('focusin', e => { const td = e.target.closest?.('td.formula'); if (td) { td.innerHTML = b.rows[+td.dataset.r][+td.dataset.c] || ''; td.classList.replace('formula', 'src'); } });

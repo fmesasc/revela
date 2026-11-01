@@ -300,6 +300,13 @@ def mouse_checks(send, recv, port):
         got = _j.loads(ev("JSON.stringify(window.__revela.store.currentSlide().blocks.at(-1).rows)") or 'null')
         check(got and got[0][2] == 'Z' and got[1][1] == 'Hola', f'con la tabla en edición, un clic pasa a otra celda ({got!r})')
     else: check(False, 'tabla de prueba en la diapositiva')
+    # The same with two presses that the browser doesn't count as a double-click (it sent no dblclick): still two presses.
+    ev("(()=>{const R=window.__revela;R.store.replaceDeck(R.model.emptyDeck());R.blocks.addTable();R.store.setSelection(null);R.render();return 1})()"); time.sleep(0.4)
+    at = cell(1, 0)
+    if at:
+        click(at['x'], at['y'], 1); time.sleep(0.25); click(at['x'], at['y'], 1); time.sleep(0.4)
+        check(ev("!!document.querySelector('#stage .block.editing .tbl') && document.activeElement?.tagName==='TD'"), 'dos pulsaciones seguidas en una celda (sin evento de doble clic): se puede editar')
+    else: check(False, 'tabla de prueba (dos pulsaciones)')
     recv(send('Target.closeTarget', targetId=tid))
     return fails
 
