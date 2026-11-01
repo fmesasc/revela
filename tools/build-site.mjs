@@ -76,6 +76,7 @@ function buildImages(out) {
   ensureSite();
   cpSync(join(ROOT, 'site', 'img', 'templates'), join(out, 'templates'), { recursive: true });
   writeFileSync(join(out, '_headers'), '/*\n  Cache-Control: public, max-age=604800\n  Access-Control-Allow-Origin: *\n');
+  writeFileSync(join(out, '404.html'), 'Not found\n');   // (Without one, Pages answers 200 with index.html to any address: a missing picture would not be missing.)
   writeFileSync(join(out, 'index.html'), '<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>Revela</title><a href="https://revelaslides.com">revelaslides.com</a>\n');
   return out;
 }

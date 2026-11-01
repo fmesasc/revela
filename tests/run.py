@@ -513,15 +513,20 @@ def site_checks(send, recv):
             recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/templates.html')); time.sleep(1.5)
             cards = ev("document.querySelectorAll('.tpl-card').length") or 0
             check(cards == len(tpl_pages) and ev("document.querySelectorAll('.tpl-group h2').length") >= 6, f'la lista de plantillas, por grupos: {cards}')
-            bad = ev(r"""(async()=>{const u=[...new Set([...document.querySelectorAll('.tpl-card')].flatMap(a=>[a.getAttribute('href')+'.html',a.querySelector('img').getAttribute('src')]))];
+            # (The pages are in this site; the covers in img.revelaslides.com — their own Pages project, build-site.mjs --images —: each one
+            # must point there and be in site/img/templates.)
+            bad = ev(r"""(async()=>{const u=[...new Set([...document.querySelectorAll('.tpl-card')].map(a=>a.getAttribute('href')+'.html'))];
               const bad=[];await Promise.all(u.map(h=>fetch(h).then(r=>{if(!r.ok)bad.push(h)})));return bad.join(',')})()""")
-            check(bad == '', 'cada plantilla de la lista, con su página y su portada: ' + str(bad)[:300])
+            srcs = json.loads(ev("JSON.stringify([...new Set([...document.querySelectorAll('.tpl-card img')].map(i=>i.getAttribute('src')))])") or '[]')
+            pre = 'https://img.revelaslides.com/templates/'
+            lost = [x for x in srcs if not x.startswith(pre) or not os.path.exists(os.path.join(ROOT, 'site', 'img', 'templates', x[len(pre):]))]
+            check(bad == '' and not lost and srcs, 'cada plantilla de la lista, con su página y su portada: ' + str(bad)[:150] + str(lost)[:150])
             first = ev("document.querySelector('.tpl-card').getAttribute('href')")
             recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/en{first}.html')); time.sleep(1.5)
             check(ev("document.documentElement.lang") == 'en' and ev("document.querySelector('link[rel=canonical]').href") == 'https://revelaslides.com/en' + first, 'una plantilla en inglés, con su dirección: ' + str(first))
             check(ev("[...document.querySelectorAll('link[rel=alternate][hreflang]')].length") == 12 and ev("document.querySelector('.site-langs a[hreflang=ar]').getAttribute('href')") == '/ar' + first, 'con sus otros idiomas')
             check(ev("(a=>!!a&&/^\\/app\\/\\?template=\\w+&lang=en$/.test(a.getAttribute('href')))(document.querySelector('.tpl-hero .btn.primary'))"), 'el botón la abre en la aplicación, en inglés')
-            check(ev("(i=>i.complete&&i.naturalWidth===640)(document.querySelector('.tpl-cover img'))") and ev("document.querySelectorAll('.tpl-slides li').length") > 3, 'su portada y sus diapositivas')
+            check(ev("(i=>!!i&&/^https:\\/\\/img\\.revelaslides\\.com\\/templates\\/[\\w-]+\\.webp$/.test(i.getAttribute('src'))&&i.getAttribute('width')==='640')(document.querySelector('.tpl-cover img'))") and ev("document.querySelectorAll('.tpl-slides li').length") > 3, 'su portada y sus diapositivas')
             check(ev("JSON.parse(document.querySelector('script[type=\"application/ld+json\"]').textContent)['@graph'][0].inLanguage") == 'en' and not ev("/Plantillas|diapositivas|Usar esta/.test(document.body.innerText)"), 'datos para buscadores en inglés, y sin restos en español')
             recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/index.html')); time.sleep(1)
         recv(send('Page.navigate', sid, url=f'http://127.0.0.1:{port}/en/pricing.html')); time.sleep(1.5)
