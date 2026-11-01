@@ -9,6 +9,7 @@
 //   …/version.json   beside the web app's index.html: which build it is (buildId; ui/shell/update.js offers to reload)
 //
 //   node tools/build-site.mjs [out]              → the site (default: dist)
+//   node tools/build-site.mjs [out] --images     → only the template covers (img.revelaslides.com: its own Pages project)
 //   node tools/build-site.mjs out --app-only     → only the app, marked "desktop" (the desktop app)
 //   node tools/build-site.mjs out --open         → only the app, unmarked: the open edition (GitHub Pages)
 //   node tools/build-site.mjs --missing          → the website's texts still untranslated, by language
@@ -69,8 +70,19 @@ function stampBuild(dir) {
   return id;
 }
 
-export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = false } = {}) {
+// The template covers (site/img/templates), alone: their own Pages project, img.revelaslides.com (site/tools/pages.mjs IMG_HOST).
+// The website's project can't hold them (Pages: 20,000 files at most in a deployment).
+function buildImages(out) {
+  ensureSite();
+  cpSync(join(ROOT, 'site', 'img', 'templates'), join(out, 'templates'), { recursive: true });
+  writeFileSync(join(out, '_headers'), '/*\n  Cache-Control: public, max-age=604800\n  Access-Control-Allow-Origin: *\n');
+  writeFileSync(join(out, 'index.html'), '<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>Revela</title><a href="https://revelaslides.com">revelaslides.com</a>\n');
+  return out;
+}
+
+export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = false, images = false } = {}) {
   rmSync(out, { recursive: true, force: true });
+  if (images) { mkdirSync(out, { recursive: true }); return buildImages(out); }
   if (open) { copyApp(out); stampBuild(out); return out; }    // (GitHub Pages: the app and its legal pages, not the site nor the repository's other files)
   // (The desktop app: an account on the official server. No build stamp: it has its own updater — desktop.js —, and
   // a bar saying «reload» there would only reload the same files it was installed with.)
@@ -78,7 +90,8 @@ export async function build(out = join(ROOT, 'dist'), { appOnly = false, open = 
   // The site's own pages and files.
   ensureSite();
   // (Not its translations, nor its repository's own files: .git, .github, README, its tools.)
-  const own = new Set(['.git', '.github', 'README.md', '.gitignore', 'tools', 'templates.json'].map(f => join(ROOT, 'site', f)));
+  // (Nor the template covers: they are img.revelaslides.com's — build --images.)
+  const own = new Set(['.git', '.github', 'README.md', '.gitignore', 'tools', 'templates.json', join('img', 'templates')].map(f => join(ROOT, 'site', f)));
   cpSync(join(ROOT, 'site'), out, { recursive: true, filter: f => !f.includes(join('site', 'i18n')) && ![...own].some(o => f === o || f.startsWith(o + '/')) });
   const made = await sitePages(out);
   localize(out, made);
@@ -280,8 +293,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const m = missingTexts(); for (const [l, ks] of Object.entries(m)) console.log(`${l}: ${ks.length} sin traducir${ks.length ? '\n  ' + ks.join('\n  ') : ''}`);
     process.exit(0);
   }
-  const args = process.argv.slice(2), appOnly = args.includes('--app-only'), open = args.includes('--open'), outArg = args.find(a => !a.startsWith('--'));
-  const out = await build(outArg ? resolve(outArg) : undefined, { appOnly, open });
+  const args = process.argv.slice(2), appOnly = args.includes('--app-only'), open = args.includes('--open'), images = args.includes('--images'), outArg = args.find(a => !a.startsWith('--'));
+  const out = await build(outArg ? resolve(outArg) : undefined, { appOnly, open, images });
   const count = d => readdirSync(d, { withFileTypes: true }).reduce((n, e) => n + (e.isDirectory() ? count(join(d, e.name)) : 1), 0);
-  console.log(`${appOnly || open ? 'App' : 'Site'} built in ${out} (${count(out)} files)`);
+  console.log(`${images ? 'Images' : appOnly || open ? 'App' : 'Site'} built in ${out} (${count(out)} files)`);
 }
