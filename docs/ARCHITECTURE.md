@@ -22,6 +22,22 @@ from `<meta name="revela-edition">`:
 | `cloud`   | revelaslides.com (the app in `/app/`)   | `node tools/build-site.mjs` on Cloudflare Pages: the website (the private `fmesasc/revela-site`, cloned in `site/`) plus the app marked `cloud` |
 | `desktop` | the Tauri app (`desktop/`)              | `node tools/build-site.mjs desktop/dist --app-only`: the app marked `desktop`, using the official server |
 
+### The website and its covers: two Cloudflare Pages deployments
+
+Cloudflare Pages takes **20,000 files at most** in a deployment and refuses the rest only when it is already building. The
+website outgrew it on 2026-10-31 (23,800 files, almost all of them the templates' covers: two pictures in each of 11
+languages for every template), and for a day neither test nor production got a new app. So there are two deployments:
+
+| Project        | Address                      | What it holds                                   | How it is published |
+|----------------|------------------------------|-------------------------------------------------|---------------------|
+| `revelaslides` | revelaslides.com, test.…     | the website and the app (`/app/`), ~9,500 files | git: Cloudflare builds `node tools/build-site.mjs` on every push (`main` → test, `production` → revelaslides.com) |
+| `revela-img`   | img.revelaslides.com         | the covers, `templates/*.webp`, ~14,300 files   | by hand: `node tools/build-site.mjs <dir> --images`, then `npx wrangler pages deploy <dir> --project-name revela-img --branch main` |
+
+`site/tools/pages.mjs` (`IMG_HOST`) points every page, structured-data entry and sitemap image at the second. After adding
+templates (`site/tools/export-templates.py`) the covers have to be deployed again, or their pages show missing pictures.
+`tests/build-limits.mjs` fails when either deployment passes 18,500 files; from there on, split the covers over a second
+project (say `img2`, by language) or move them to R2. (`revela-admin` is a third, separate project: the administration.)
+
 The app is exactly the files listed in `APP_FILES` (`tools/build-site.mjs`):
 the root pages below, `icons/`, `assets/` and `src/` — no tests, tools or server
 code. Every publishing workflow (`pages.yml`, `server.yml`, `desktop.yml`) first
@@ -74,7 +90,8 @@ core      data model, store (undo/redo), persistence, and the ports below
 **Rule: a module imports only from its own layer or the layers below.**
 `tests/layers.py` enforces it, and also that every imported name exists, that
 every file the pages and `sw.js` link to exists, and that no file in `src/` is
-ignored by `.gitignore` (it would be missing once published); `tests/run.sh`
+ignored by `.gitignore` (it would be missing once published); that no module joins a cycle of imports beyond the
+list grown so far (`CYCLES`: the canvas, the ribbon, some dialogs); that this file names every module; `tests/run.sh`
 runs it first and fails on any violation. `render` and `i18n` share a rank but
 do not know each other. The runtime scripts that are embedded in the exported
 presentation as source (`io/runtime/ink.js`, `camera.js`, `puppet.js`) may not
@@ -386,6 +403,93 @@ tools/
   pptx-compare.py              compare a PowerPoint file with Revela's rendering
   nasa3d.py                    NASA's 3D model index and thumbnails
   blender-try.py               run the Blender wrapper of the AI 3D models with this computer's Blender
+```
+
+### Other modules
+
+Added after the map above was written; one line each (every module's own header says the rest). `tests/layers.py`
+fails if a module of `src/`, `server/cloudflare/` or `tools/` is not named in this file, so the map cannot fall behind again.
+
+```
+src/core/
+  deckfile.js              the presentation as a .revela.json: a picture or video used in several places is written once
+  jsonblob.js              a value as JSON in a Blob, written in pieces (never one string of a 400 MB deck)
+  mediastore.js            big files kept once each, as bytes, so an autosave does not rewrite them all
+  svgstretch.js            an SVG shown «Estirar» (fit fill) really fills its box
+  webgl.js                 what this computer can draw, found out once (3D and maps fall back where there is none)
+src/features/
+  ai/aianim.js             «Animación con IA»: the AI writes the scene of an explainer (content/aianim.js plays it)
+  ai/legibility.js         how big the type must be and how much text fits, by where the deck will be shown
+  ai/masterai.js           «Diseñar con IA»: three whole template designs from a description or a logo
+  ai/model3dagent.js       «Crear 3D con IA» in the browser: an agent writes Three.js and corrects itself from photos
+  ai/quality.js           how good a deck the AI made is, measured as numbers
+  ai/specdeck.js           slides from specs with no editor open (the public API and the MCP server)
+  ai/videoquiz.js          questions for a video, from frames spread over it
+  animation/fxcatalog.js   PowerPoint's animation effects as Revela plays them: one catalogue for CSS, preview, galleries, import and export
+  content/aianim.js        the player of the AI's explainer animations
+  content/examples-texts.js  the company examples' texts in the other languages
+  content/geomap.js        maps that fly from stop to stop (Insertar ▸ Mapa)
+  content/icons3d.js       3D icons (3dicons.co, CC0)
+  content/model3dweb.js    a 3D model built from the code an AI wrote, photographed from three sides
+  content/multilang.js  multilang-texts.js   two examples in eleven languages and their texts
+  content/qrcode.js        QR codes made in the app (link, Wi-Fi, contact, email, place…)
+  content/sketch.js        draw a symbol to find it, compared on this computer
+  content/symbols.js       the data of Insert ▸ Symbols and emojis
+  content/tplb/deckb.js    a compact way to write the examples (a palette, a cover and slides of a few kinds); templates/x/deckkit.js are the builders of the older ones
+  design/devmode.js        developer mode: the deck's own CSS, classes and HTML objects
+  document/imagetools.js   what «Editar imagen» does to the picture itself, one undo step each
+  document/syspaste.js     pasting what another program copied (PowerPoint, Word, Excel, a web page)
+  document/watermark.js    «Confidencial»: a watermark over every slide
+src/io/
+  deskzip.js               the desktop app's zips, read through the window itself
+  export/scorm.js          the deck as a SCORM 1.2 package
+  formats/blobmedia.js     pictures, videos and sounds as blob: addresses for what is shown in this window
+  formats/offline-libs.js  «Incluir las librerías dentro del HTML»: the libraries inside the exported page
+  formats/package.js       the .revela package (a zip with the project and its media)
+  formats/zipstore.js      a zip made of Blobs and read through slices, never whole in memory
+  formats/xlsx-import.js   Excel workbooks read in the browser
+  runtime/aianim.js        the presentation side of the AI animations (one stage per click)
+  runtime/finishstep.js    «Next» while a step animates finishes it first
+  runtime/fx.js            what a map or a 3D model gives up on this computer, said where it happens
+  runtime/geomap.js        the maps that fly from stop to stop (MapLibre GL JS)
+  runtime/liveframe.js     «Web viva»: a web page that keeps its place from one slide to the next
+src/render/
+  imagelook.js             a picture's look beyond PowerPoint's four corrections (warmth, hue, sharpen, vignette)
+  sectionbar.js            the sections bar, as LaTeX Beamer's
+  slidenumber.js           the slide number, drawn the same on canvas, thumbnails and presentation
+src/ui/
+  canvas/imagecrop.js      cropping a picture on the slide
+  canvas/lottieview.js     a Lottie object in the editor
+  dialogs/aianim.js  animfx.js  classpace.js  classroom.js  developers.js  devmode.js  diagram.js  dlgkit.js  geomap.js
+  dialogs/headerfooter.js  htmlexport.js  imageai.js  imageedit.js  masterai.js  objlink.js  pdfmode.js  pdfzone.js
+  dialogs/qaprep.js  qr.js  qrmaker.js  scorm.js  sheets.js  shortcuts.js  symbols.js  teamsso.js  textstyles.js
+                           one dialog each, named for what it does; dlgkit.js has the parts they are all made of (tabs, folded «Más opciones»)
+  shell/bigdeck.js  broadcast.js  colorpicker.js  downloadproject.js  errors.js  fxdemo.js  prompter.js  tour.js  update.js
+                           very big decks, «Emitir en directo», Revela's colour picker, Archivo ▸ Descargar, errors sent to the server,
+                           an effect's example on hover, teleprompter, guided tours, «Hay una versión nueva»
+server/cloudflare/
+  brakes.js                brakes on what runs by itself (alarms, crons, the «Rastreador»)
+  broadcast.js             live broadcast to a big audience
+  crm-reply.js             Captación's emails written by hand
+  deckedit.js              the public API's changes to a presentation, run by the document's own object
+  errors.js                the app's errors, kept per account for 90 days
+  hooks.js                 integrations: Slack, Zapier, Microsoft
+  meshy3d.js  trellis3d.js   «Realista»: textured 3D models (Meshy through fal.ai; TRELLIS on Runware or fal)
+  news.js  news-starters.js  the newsletter («Novedades») and its ready-made starting points
+  openrouterwatch.js       the server's OpenRouter balance
+  publicapi.js             the public API and its MCP server
+  quota.js                 the day's use against the Workers Free plan's quota
+  sso.js                   single sign-on for teams
+tools/
+  ai-eval.py  measure-design-variety.mjs   the AI's decks and design choices, measured with the real model
+  audit-motion.py  motioncheck.mjs         what every example's motion does when played (no browser)
+  build-news-starters.mjs  build-symbols.mjs  make-lottie.mjs   generated data: newsletter starters, symbols, Revela's Lottie animations
+  chromeprof.py            a headless Chrome profile for the tools that drive one
+  play-templates.py        plays the examples as an audience would see them
+  rig-metrics.mjs          rig quality of a 3D model, measured
+tests/
+  build-limits.mjs         the website and the covers stay under Cloudflare Pages' 20,000 files
+  build-stamp.mjs  client-desktop.mjs  seo-site.mjs  server-brakes.mjs   the update stamp, desktop payments, the website's SEO, the brakes
 ```
 
 ## Data model

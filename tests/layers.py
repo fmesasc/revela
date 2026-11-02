@@ -19,9 +19,48 @@ APART = {('render', 'i18n')}
 # Code that runs inside the exported presentation cannot import at all.
 SELF_CONTAINED = {'io/runtime/ink.js', 'io/runtime/camera.js', 'io/runtime/puppet.js'}
 
+# Modules that are already in a cycle of static imports (a imports b, b imports a, directly or through others). ES modules
+# allow it, and in the editor's canvas, ribbon and dialogs it grew with the features, but each new one makes the load order
+# harder to reason about: no module outside this list may join a cycle (take what both need into a third module, or load
+# the other with import() when it is used). Removing one from the list is always welcome.
+CYCLES = {
+    'features/ai/attach.js',
+    'features/ai/authoring.js',
+    'features/design/fonts.js',
+    'features/design/palettes.js',
+    'io/export/images.js',
+    'io/export/objects.js',
+    'ui/canvas/canvas.js',
+    'ui/canvas/content.js',
+    'ui/canvas/fittext.js',
+    'ui/canvas/hover.js',
+    'ui/canvas/interact.js',
+    'ui/canvas/magnifyview.js',
+    'ui/canvas/pathdraw.js',
+    'ui/canvas/textruler.js',
+    'ui/dialogs/account.js',
+    'ui/dialogs/ai.js',
+    'ui/dialogs/assistant.js',
+    'ui/dialogs/cloud.js',
+    'ui/dialogs/cloudlibrary.js',
+    'ui/dialogs/diagram.js',
+    'ui/dialogs/object.js',
+    'ui/dialogs/team.js',
+    'ui/dialogs/theme.js',
+    'ui/ribbon/actions.js',
+    'ui/ribbon/contextual.js',
+    'ui/ribbon/ribbon.js',
+    'ui/shell/backstage.js',
+    'ui/shell/contextmenu.js',
+    'ui/shell/openfile.js',
+    'ui/shell/palette.js',
+    'ui/shell/textaids.js',
+}
+
 IMPORT = re.compile(r"""(?:^\s*import\s[^'"]*?from\s*|^\s*import\s*|\bimport\()\s*['"](\.[^'"]+)['"]""", re.M)
 
 
+STATIC = re.compile(r"^\s*(?:import|export)\s[^'\"\n]*?from\s*['\"](\.[^'\"]+)['\"]|^\s*import\s*['\"](\.[^'\"]+)['\"]", re.M)
 NAMED = re.compile(r"^\s*import\s*\{([^}]*)\}\s*from\s*['\"](\.[^'\"]+)['\"]", re.M)
 EXPORT = re.compile(r"^export\s+(?:async\s+)?(?:function\*?|const|let|var|class)\s+([\w$]+)|^export\s*\{([^}]*)\}", re.M)
 
@@ -126,6 +165,43 @@ def main():
         for m in re.finditer(r'^\s+(?:async\s+)?alarm\s*\([^)]*\)\s*\{', text, re.M):
             if 'runAlarm(' not in text[m.end():m.end() + 200]:
                 errors.append(f'{rel}:{text[:m.start()].count(chr(10)) + 1}: alarm() sin runAlarm (brakes.js)')
+    # no new import cycles (see CYCLES)
+    graph = {}
+    for f in SRC.rglob('*.js'):
+        outs = set()
+        for m in STATIC.finditer(f.read_text(encoding='utf-8')):
+            t = (f.parent / (m.group(1) or m.group(2))).resolve()
+            if t.exists(): outs.add(t)
+        graph[f.resolve()] = outs
+    index, low, stack, on, counter, found = {}, {}, [], set(), [0], []
+    sys.setrecursionlimit(10000)
+    def visit(v):
+        index[v] = low[v] = counter[0]; counter[0] += 1; stack.append(v); on.add(v)
+        for w in graph.get(v, ()):
+            if w not in index: visit(w); low[v] = min(low[v], low[w])
+            elif w in on: low[v] = min(low[v], index[w])
+        if low[v] == index[v]:
+            comp = []
+            while True:
+                w = stack.pop(); on.discard(w); comp.append(w)
+                if w == v: break
+            if len(comp) > 1: found.append(comp)
+    for v in graph:
+        if v not in index: visit(v)
+    for comp in found:
+        new = sorted(m.relative_to(SRC.resolve()).as_posix() for m in comp if m.relative_to(SRC.resolve()).as_posix() not in CYCLES)
+        if new:
+            errors.append('ciclo de imports nuevo: ' + ', '.join(new) + ' (módulos que se importan entre sí; saca lo común a un tercero o carga con import() al usarlo)')
+    # docs/ARCHITECTURE.md names every module (the map fell behind by a hundred of them before this check): the app's, the
+    # server's and the tools', except the templates and the language tables, which have their own pipeline
+    doc = (ROOT / 'docs' / 'ARCHITECTURE.md').read_text(encoding='utf-8')
+    tracked = subprocess.run(['git', 'ls-files', 'src', 'server', 'tools', 'tests'], cwd=ROOT, capture_output=True, text=True).stdout.split()
+    for f in tracked:
+        if not f.endswith(('.js', '.mjs', '.py')) or '/templates/' in f or '/langs/' in f or '/suites/' in f or '/fixtures/' in f or 'node_modules' in f or '__pycache__' in f:
+            continue
+        name = f.rsplit('/', 1)[-1]; stem = name.rsplit('.', 1)[0]
+        if name not in doc and not re.search(r'(?<![\w-])' + re.escape(stem) + r'(?![\w-])', doc):
+            errors.append(f'docs/ARCHITECTURE.md: no nombra {f} (añade una línea en su sección)')
     # every file of the app must be committable: an ignored one works locally
     # but is missing (404) once published
     ignored = subprocess.run(['git', 'check-ignore', '--no-index', '--stdin'], cwd=ROOT, capture_output=True, text=True,
