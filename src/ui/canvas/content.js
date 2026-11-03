@@ -36,6 +36,7 @@ import { KATEX, HIGHLIGHT, loadScript, loadStyle } from '../../core/vendor.js';
 import { findBlock, readOnly, fitFontSize } from './canvas.js';
 import { openMath } from '../dialogs/object.js';
 import { keyedView, mediaView } from './mediaview.js';
+import { webImage, withHeic } from '../../features/document/heic.js';
 import { modelAttrs, modelBleed } from '../../features/content/model3d.js';
 import { mapPreviewHTML, mapSig } from '../../features/content/geomap.js';
 
@@ -109,8 +110,8 @@ export function styleRich(rich, b) {
 function fillMediaPlaceholder(b) {
   if (b.ph === 'table') return fillPlaceholder(b.id, tableBlock({ fontSize: 22 }));
   if (b.ph === 'chart') return fillPlaceholder(b.id, chartBlock());
-  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
-  inp.onchange = () => { const f = inp.files[0]; if (!f) return; const r = new FileReader();
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = withHeic('image/*');
+  inp.onchange = async () => { let f = inp.files[0]; if (!f) return; f = await webImage(f).catch(() => null); if (!f) return; const r = new FileReader();
     r.onload = () => fillPlaceholder(b.id, { type: 'image', src: r.result, fit: 'cover', alt: '' }); r.readAsDataURL(f); };
   inp.click();
 }

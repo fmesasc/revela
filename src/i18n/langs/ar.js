@@ -2139,6 +2139,7 @@ export default {
   "Viñeta": "تعداد نقطي",
   "Atajos de teclado": "اختصارات لوحة المفاتيح",
   "¿Nueva presentación? Se perderá la actual si no la has guardado.": "عرض تقديمي جديد؟ سيُفقد الحالي إذا لم تحفظه.",
+  "No se pudo leer esta foto HEIC. Expórtala a JPG desde el móvil o el visor de fotos e inténtalo de nuevo.": "تعذّرت قراءة صورة HEIC هذه. صدّرها بصيغة JPG من هاتفك أو من عارض الصور ثم حاول مرة أخرى.",
   "Proyecto no válido.": "مشروع غير صالح.",
   "Nombre de la plantilla": "اسم القالب",
   "Enlace: URL, nº de diapositiva o correo:": "الارتباط: URL أو رقم الشريحة أو البريد الإلكتروني:",

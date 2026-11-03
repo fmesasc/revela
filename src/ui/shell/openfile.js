@@ -31,12 +31,14 @@ import { sanitizeDeck } from '../../features/document/sanitize.js';
 import { factor } from '../canvas/interact.js';
 import { confirmDialog, promptDialog, alertDialog } from '../dialogs/dialog.js';
 import { t } from '../../i18n/index.js';
+import { isHeicFile, webImage, webImages, withHeic } from '../../features/document/heic.js';
 
 // A file chosen with the system dialog: its data URL, text or the File itself.
 export const readFile = (accept, cb, as = 'DataURL') => {
   const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = accept;
-  inp.onchange = () => { const f = inp.files[0]; if (!f) return;
+  inp.type = 'file'; inp.accept = withHeic(accept);
+  inp.onchange = async () => { let f = inp.files[0]; if (!f) return;
+    if (isHeicFile(f)) { try { f = await webImage(f); } catch { alertDialog(t('No se pudo leer esta foto HEIC. Expórtala a JPG desde el móvil o el visor de fotos e inténtalo de nuevo.')); return; } }
     if (as === 'file') { cb(f); return; }
     const r = new FileReader(); r.onload = () => cb(r.result);
     if (as === 'text') r.readAsText(f); else r.readAsDataURL(f); };
@@ -213,7 +215,9 @@ export async function insertFiles(files, at = null) {
 }
 // Any dropped file: a presentation opens (one at a time), the rest are inserted.
 export async function dropFiles(files, at = null) {
-  const list = [...files], doc = list.find(f => ['presentation', 'project'].includes(kindOf(f)));
+  const conv = await webImages([...files]);                         // (iPhone's HEIC pictures: JPEG from here on)
+  if (conv.failed.length) alertDialog(t('No se pudo leer esta foto HEIC. Expórtala a JPG desde el móvil o el visor de fotos e inténtalo de nuevo.') + ' ' + conv.failed.join(', '));
+  const list = conv.files, doc = list.find(f => ['presentation', 'project'].includes(kindOf(f)));
   if (doc) {
     if (isKeynote(doc)) { keynoteHelp(); return 0; }
     if (isThemeFile(doc)) return (await useThemeOf(doc)) ? 1 : 0;   // (a theme changes the open one: nothing to lose)
