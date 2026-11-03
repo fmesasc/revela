@@ -101,7 +101,7 @@ def main():
             ev("(()=>{const b=document.querySelector('#gallery-modal .gal-bar');b.previousElementSibling.scrollIntoView({block:'start'});" + (f"b.querySelector('.gal-cat[data-cat={json.dumps(cat)}]').click();" if cat else '') + "return 1})()"); time.sleep(7)
         open(out, 'wb').write(shot()); print(out); proc.kill(); return
     if present:
-        ev(f"(()=>{{const R=window.__revela;R.slides.goToSlide({present - 1});R.io.present({{fullscreen:false,fromCurrent:true}});return 1}})()"); time.sleep(2); models(); time.sleep(2)
+        ev(f"(()=>{{const R=window.__revela;R.slides.goToSlide({present - 1});R.io.present({{fullscreen:false,fromCurrent:true}});return 1}})()"); time.sleep(2); models(); time.sleep(float(os.environ.get('SHOT_WAIT', 2)))
         open(out, 'wb').write(shot()); print(out); return
     ims = []
     for i in range(count):
