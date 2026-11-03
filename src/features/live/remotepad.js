@@ -174,14 +174,41 @@ function paintTrail(doc, cv, tr) {
   if (cv.width !== Math.round(w * d) || cv.height !== Math.round(h * d)) { cv.width = Math.round(w * d); cv.height = Math.round(h * d); }
   const g = cv.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, w, h);
   tr.pts = tr.pts.filter(p => now - p.t < 450);
-  g.lineCap = g.lineJoin = 'round';
-  for (let i = 1; i < tr.pts.length; i++) {
-    const a = tr.pts[i - 1], b = tr.pts[i], k = 1 - (now - b.t) / 450;
-    g.strokeStyle = `rgba(255,45,45,${(k * 0.75).toFixed(3)})`; g.lineWidth = 2 + 8 * k;
-    g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
-  }
+  if (tr.pts.length > 1) ribbon(g, tr.pts, now);
   tr.raf = tr.pts.length ? win.requestAnimationFrame(() => paintTrail(doc, cv, tr)) : 0;
   if (!tr.raf) g.clearRect(0, 0, w, h);
+}
+// One continuous stroke that thins out towards its tail, instead of a string of separate segments (those, half
+// transparent and with round ends, overlapped at every joint and read as a line of dots). The points are rounded
+// off first (two Chaikin passes), so a finger dragged across the screen draws a smooth curve, not a broken line.
+function ribbon(g, pts, now) {
+  let q = pts.map(p => ({ x: p.x, y: p.y, k: 1 - (now - p.t) / 450 }));
+  for (let pass = 0; pass < 2 && q.length > 2; pass++) {
+    const r = [q[0]];
+    for (let i = 0; i < q.length - 1; i++) {
+      const a = q[i], b = q[i + 1];
+      r.push({ x: a.x * 0.75 + b.x * 0.25, y: a.y * 0.75 + b.y * 0.25, k: a.k * 0.75 + b.k * 0.25 },
+             { x: a.x * 0.25 + b.x * 0.75, y: a.y * 0.25 + b.y * 0.75, k: a.k * 0.25 + b.k * 0.75 });
+    }
+    r.push(q[q.length - 1]); q = r;
+  }
+  const L = [], R = [];
+  for (let i = 0; i < q.length; i++) {
+    const a = q[Math.max(0, i - 1)], b = q[Math.min(q.length - 1, i + 1)];
+    let dx = b.x - a.x, dy = b.y - a.y; const m = Math.hypot(dx, dy) || 1; dx /= m; dy /= m;
+    const half = (1 + 5 * Math.max(0, q[i].k)) ;    // 1 px at the tail, 6 px at the head
+    L.push({ x: q[i].x - dy * half, y: q[i].y + dx * half }); R.push({ x: q[i].x + dy * half, y: q[i].y - dx * half });
+  }
+  g.save();
+  g.beginPath(); g.moveTo(L[0].x, L[0].y);
+  for (let i = 1; i < L.length; i++) g.lineTo(L[i].x, L[i].y);
+  for (let i = R.length - 1; i >= 0; i--) g.lineTo(R[i].x, R[i].y);
+  g.closePath();
+  const t0 = q[0], t1 = q[q.length - 1], gr = g.createLinearGradient(t0.x, t0.y, t1.x, t1.y);
+  gr.addColorStop(0, 'rgba(255,45,45,0)'); gr.addColorStop(1, 'rgba(255,45,45,.9)');
+  g.fillStyle = Math.hypot(t1.x - t0.x, t1.y - t0.y) > 2 ? gr : 'rgba(255,45,45,.9)';
+  g.shadowColor = 'rgba(255,45,45,.55)'; g.shadowBlur = 8; g.fill();
+  g.restore();
 }
 
 // Spotlight: everything dimmed except a circle (radius r, a fraction of the slide's width).
