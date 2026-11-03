@@ -162,6 +162,7 @@ src/
       a11y.js                  accessibility checker (pure analysis)
       magnify.js               the magnifier: lines, placement, picture crop
       imgshrink.js             big pictures made smaller (compress pictures)
+      heic.js                  iPhone HEIC/HEIF photos → JPEG on the way in (the browser's decoder, or libheif on demand)
       swapimage.js             «Cambiar imagen»: another picture in the same object (place, crop, animations stay)
       sanitize.js              what comes from outside can't run code
     design/
@@ -438,6 +439,7 @@ src/features/
   content/tplb/deckb.js    a compact way to write the examples (a palette, a cover and slides of a few kinds); templates/x/deckkit.js are the builders of the older ones
   design/devmode.js        developer mode: the deck's own CSS, classes and HTML objects
   document/imagetools.js   what «Editar imagen» does to the picture itself, one undo step each
+  document/heic.js         iPhone photos (HEIC) turned into JPEG when inserted, dropped or pasted
   document/syspaste.js     pasting what another program copied (PowerPoint, Word, Excel, a web page)
   document/watermark.js    «Confidencial»: a watermark over every slide
 src/io/
