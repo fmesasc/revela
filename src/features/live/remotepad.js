@@ -226,24 +226,75 @@ function arrowAt(doc, cx, cy) {
   a.style.left = cx + 'px'; a.style.top = cy + 'px'; a.style.display = 'block';
 }
 
-// Magnifier: a circle showing the slide around the finger at twice the size (a copy
-// of the slide: live media inside it show as empty boxes).
+// Magnifier: a circle showing the slide around the finger at twice the size. It is a copy of the slide, renewed every
+// moment (so entrances, fragments and the like show as they are); the pictures in it (3D models, canvases, videos) are
+// snapshots of the live ones, taken while the lens is up. Frames and audio show as empty boxes.
+const LIVE = 'iframe,video,audio,model-viewer,canvas', SNAP = /^(CANVAS|VIDEO|MODEL-VIEWER)$/;
+async function snapshot(el) {
+  try {
+    if (el.tagName === 'CANVAS') return el.toDataURL('image/png');
+    if (el.tagName === 'VIDEO') {
+      if (!el.videoWidth) return null;
+      const c = el.ownerDocument.createElement('canvas'); c.width = el.videoWidth; c.height = el.videoHeight;
+      c.getContext('2d').drawImage(el, 0, 0); return c.toDataURL('image/jpeg', 0.7);
+    }
+    const cv = el.shadowRoot?.querySelector('canvas');           // (a 3D model: the picture it already shows)
+    if (cv && cv.width) return cv.toDataURL('image/png');
+    if (typeof el.toBlob === 'function') return URL.createObjectURL(await el.toBlob({ mimeType: 'image/png' }));
+  } catch { /* tainted or not ready: left empty */ }
+  return null;
+}
+function lensCopy(doc, lens, cur, stage) {
+  const win = doc.defaultView;
+  const copy = stage.cloneNode(true), orig = [...stage.querySelectorAll(LIVE)], made = [...copy.querySelectorAll(LIVE)];
+  lens.__shots = lens.__shots || new Map(); lens.__media = [];
+  // What the live slide hides or fades (its entrances, auto-animate ghosts… are driven by CSS and scripts that don't reach the copy)
+  const oa = stage.querySelectorAll('*'), ca = copy.querySelectorAll('*');
+  for (let i = 0; i < oa.length && i < ca.length; i++) {
+    const cs = win.getComputedStyle(oa[i]);
+    if (cs.visibility === 'hidden') ca[i].style.visibility = 'hidden';
+    if (cs.opacity !== '1') ca[i].style.opacity = cs.opacity;
+  }
+  made.forEach((n, i) => {
+    const o = orig[i]; if (!o) return;
+    const keep = SNAP.test(n.tagName), r = doc.createElement(keep ? 'img' : 'div');
+    r.className = n.className; r.style.cssText = n.getAttribute('style') || '';
+    // (the box it had, whatever the deck's CSS gave it: a model, a canvas… are sized by their own rules)
+    const cs = win.getComputedStyle(o); r.style.display = 'block'; r.style.flex = 'none';
+    r.style.width = o.offsetWidth + 'px'; r.style.height = o.offsetHeight + 'px'; r.style.margin = cs.margin;
+    if (cs.position !== 'static') { r.style.position = cs.position; r.style.left = cs.left; r.style.top = cs.top; r.style.right = r.style.bottom = 'auto'; }
+    if (keep) { r.alt = ''; r.style.objectFit = 'contain'; const u = lens.__shots.get(o); if (u) r.src = u; lens.__media.push([o, r]); }
+    n.replaceWith(r);
+  });
+  copy.querySelectorAll('script').forEach(n => n.remove());
+  copy.querySelectorAll('[data-auto-animate-target]').forEach(n => n.removeAttribute('data-auto-animate-target'));
+  copy.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+  copy.style.position = 'absolute'; copy.style.left = copy.style.top = '0'; copy.style.margin = '0'; copy.style.transformOrigin = '0 0';
+  const bg = win.getComputedStyle(stage).backgroundColor, body = win.getComputedStyle(doc.querySelector('.reveal') || doc.body).backgroundColor;
+  lens.style.background = !/rgba\(0, 0, 0, 0\)|transparent/.test(bg) ? bg : (!/rgba\(0, 0, 0, 0\)|transparent/.test(body) ? body : '#fff');
+  // (the copy keeps the slide's look: reveal's and the deck's CSS select .reveal .stage)
+  const wrap = doc.createElement('div'); wrap.className = 'reveal __rv-lensc'; wrap.style.cssText = 'position:absolute;inset:0;transform:none;scale:none;translate:none';
+  // (a copy would start every entrance animation over, mid-flight: it shows them at their end, as the live slide has them)
+  const st = doc.createElement('style'); st.textContent = '.__rv-lensc *{animation-duration:.001s!important;animation-delay:0s!important;animation-iteration-count:1!important;animation-fill-mode:both!important;transition:none!important}'; wrap.appendChild(st);
+  const sec = doc.createElement('section'); sec.style.cssText = 'position:absolute;inset:0;display:block'; sec.className = cur.className;
+  sec.appendChild(copy); wrap.appendChild(sec); lens.replaceChildren(wrap); lens.__for = cur; lens.__copy = copy; lens.__t = performance.now();
+}
+function lensSnaps(lens) {
+  if (lens.__busy || !lens.__media?.length) return;
+  lens.__busy = true;
+  Promise.all(lens.__media.map(async ([o]) => {
+    const u = await snapshot(o); if (!u) return;
+    const old = lens.__shots.get(o); lens.__shots.set(o, u);
+    lens.__media.forEach(([q, img]) => { if (q === o) img.src = u; });
+    if (old && old.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(old), 1500);
+  })).finally(() => { setTimeout(() => { lens.__busy = false; }, 250); });
+}
 function lensAt(doc, x, y, rect, rpx) {
   const win = doc.defaultView, cur = win.Reveal?.getCurrentSlide?.(), stage = cur?.querySelector('.stage');
   if (!stage) return;
   const lens = layer(doc, '__rv-lens', `z-index:${Z + 1};border-radius:50%;overflow:hidden;border:3px solid #fff;box-shadow:0 6px 24px rgba(0,0,0,.5);transform:translate(-50%,-50%)`);
-  if (lens.__for !== cur) {
-    const copy = stage.cloneNode(true);
-    copy.querySelectorAll('iframe,video,audio,model-viewer,canvas,script').forEach(n => n.replaceWith(doc.createElement('div')));
-    copy.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
-    copy.style.position = 'absolute'; copy.style.left = copy.style.top = '0'; copy.style.margin = '0'; copy.style.transformOrigin = '0 0';
-    const bg = win.getComputedStyle(stage).backgroundColor, body = win.getComputedStyle(doc.querySelector('.reveal') || doc.body).backgroundColor;
-    lens.style.background = !/rgba\(0, 0, 0, 0\)|transparent/.test(bg) ? bg : (!/rgba\(0, 0, 0, 0\)|transparent/.test(body) ? body : '#fff');
-    // (the copy keeps the slide's look: reveal's and the deck's CSS select .reveal .stage)
-    const wrap = doc.createElement('div'); wrap.className = 'reveal'; wrap.style.cssText = 'position:absolute;inset:0;transform:none;scale:none;translate:none';
-    const sec = doc.createElement('section'); sec.style.cssText = 'position:absolute;inset:0;display:block'; sec.className = cur.className;
-    sec.appendChild(copy); wrap.appendChild(sec); lens.replaceChildren(wrap); lens.__for = cur; lens.__copy = copy;
-  }
+  if (lens.__for !== cur || performance.now() - (lens.__t || 0) > 700) lensCopy(doc, lens, cur, stage);
+  lensSnaps(lens);
   const W = stage.offsetWidth, H = stage.offsetHeight, k = 2 * rect.width / W, d = rpx * 2;
   lens.style.width = lens.style.height = d + 'px';
   lens.style.left = (rect.left + x * rect.width) + 'px'; lens.style.top = (rect.top + y * rect.height) + 'px';
