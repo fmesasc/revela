@@ -2139,6 +2139,7 @@ export default {
   "Viñeta": "Buleta",
   "Atajos de teclado": "Laster-teklak",
   "¿Nueva presentación? Se perderá la actual si no la has guardado.": "Aurkezpen berria? Unekoa galduko da gorde ez baduzu.",
+  "No se pudo leer esta foto HEIC. Expórtala a JPG desde el móvil o el visor de fotos e inténtalo de nuevo.": "Ezin izan da HEIC argazki hau irakurri. Esportatu JPG gisa telefonotik edo argazki-ikustailetik eta saiatu berriro.",
   "Proyecto no válido.": "Proiektu baliogabea.",
   "Nombre de la plantilla": "Txantiloiaren izena",
   "Enlace: URL, nº de diapositiva o correo:": "Esteka: URLa, diapositiba-zk. edo helbide elektronikoa:",

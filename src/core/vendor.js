@@ -38,6 +38,9 @@ export const GIFENC = NPM + 'gifenc@1.0.3/+esm';
 export const JSZIP_ESM = NPM + 'jszip@3.10.1/+esm';
 export const PDFJS = NPM + 'pdfjs-dist@4.10.38/build';
 export const BG_REMOVAL = NPM + '@imgly/background-removal@1.5.5/+esm';
+// HEIC / HEIF photos (iPhone), turned into JPEG when the browser can't read them itself (features/document/heic.js):
+// libheif compiled to WebAssembly, its build without eval (LGPL-3, loaded only when such a picture comes in; ~3 MB).
+export const HEIC_TO = NPM + 'heic-to@1.6.6/dist/csp/heic-to.js';
 export const GIFUCT = NPM + 'gifuct-js@2.1.2/+esm';
 // Compressed 3D models, unpacked in the browser (features/content/gltfunpack.js): Google's
 // Draco decoder, its glTF-only build (~60 KB of JS + ~190 KB of wasm, not on npm: from its

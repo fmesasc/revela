@@ -10,6 +10,7 @@
 // commands); and Ctrl+V in the desktop app when its web view sends no paste event outside a text (WebKitGTK).
 // Francisco: «cuando copio de un PowerPoint o de un programa de fuera no me deja pegar en Revela».
 
+import { webImage } from './heic.js';
 import { state } from '../../core/store.js';
 import * as clip from './clipboard.js';
 import { addImage, addTableFromText, addText } from './blocks.js';
@@ -59,7 +60,7 @@ export async function pasteData({ files = [], html = '', text = '' } = {}) {
   if (own) { clip.paste(!clip.isCurrent(own) ? own : undefined); return true; }
   if (text && text.includes('\t') && text.trim()) { addTableFromText(text); return true; }
   const img = files.find(f => f && /^image\//.test(f.type));
-  if (img) { addImage(await dataURLOf(img)); return true; }
+  if (img) { addImage(await dataURLOf(await webImage(img).catch(() => img))); return true; }
   if (html && hasText(html)) { const h = htmlToText(html); if (h) { addText(h); return true; } }
   if (text && text.trim()) { addText(plainHTML(text)); return true; }
   return false;

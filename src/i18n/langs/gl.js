@@ -2139,6 +2139,7 @@ export default {
   "Viñeta": "Viñeta",
   "Atajos de teclado": "Atallos de teclado",
   "¿Nueva presentación? Se perderá la actual si no la has guardado.": "Nova presentación? Perderase a actual se non a gardaches.",
+  "No se pudo leer esta foto HEIC. Expórtala a JPG desde el móvil o el visor de fotos e inténtalo de nuevo.": "Non se puido ler esta foto HEIC. Expórtaa a JPG desde o móbil ou o visor de fotos e téntao de novo.",
   "Proyecto no válido.": "Proxecto non válido.",
   "Nombre de la plantilla": "Nome do modelo",
   "Enlace: URL, nº de diapositiva o correo:": "Ligazón: URL, n.º de diapositiva ou correo:",

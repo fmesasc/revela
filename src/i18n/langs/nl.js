@@ -2139,6 +2139,7 @@ export default {
   "Viñeta": "Opsommingsteken",
   "Atajos de teclado": "Sneltoetsen",
   "¿Nueva presentación? Se perderá la actual si no la has guardado.": "Nieuwe presentatie? De huidige gaat verloren als je haar niet hebt opgeslagen.",
+  "No se pudo leer esta foto HEIC. Expórtala a JPG desde el móvil o el visor de fotos e inténtalo de nuevo.": "Deze HEIC-foto kon niet worden gelezen. Exporteer hem als JPG vanaf je telefoon of fotoviewer en probeer het opnieuw.",
   "Proyecto no válido.": "Ongeldig project.",
   "Nombre de la plantilla": "Naam van het sjabloon",
   "Enlace: URL, nº de diapositiva o correo:": "Koppeling: URL, dianummer of e-mailadres:",
