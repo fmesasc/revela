@@ -1,6 +1,6 @@
 {
   "name": "revela",
-  "version": "0.4.99",
+  "version": "0.4.100",
   "private": true,
   "description": "Visual editor for interactive presentations with live 3D, built on reveal.js",
   "license": "MIT",
