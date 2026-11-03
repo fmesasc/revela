@@ -62,7 +62,7 @@ export function deckQuality(specs, { topic = '', sourced = false, images = false
   // («[ventas]») is fine, and so are figures that say where they come from (or that they are an example).
   const hasFigure = v => /\d/.test(str(v)) && !/\[[^\]]+\]/.test(str(v));
   // («Internal data», «company figures»: a source the model can't have when none was given — the figure is invented.)
-  const ownData = /intern|interno|propi|compañ|company|empresa|organi[sz]a|corporat|nuestr|\bour\b|objetivo|target|meta/i;
+  const ownData = /intern|interno|propi|compañ|company|empresa|organi[sz]a|corporat|nuestr|\bour\b|objetivo|target|meta|valida[ct]|tesis|thesis|resultad|results of|simulaci|experiment/i;   // (and the person's own work: «Validación de la tesis» is not a source anybody can check)
   // («Example data» on a claim about the world, not a tutorial's dataset: invented too.)
   const example = /ejemplo|example|exemple|illustrat|ilustrativ|hipot[eé]tic|hypothetic/i;
   const unbacked = sp => !str(sp.source) || ownData.test(sp.source) || (!tech && example.test(sp.source));
