@@ -253,6 +253,8 @@ export function mp4Seconds(buf) {
   return scale ? Math.round(dur / scale) : 0;
 }
 const isoDuration = sec => `PT${sec >= 3600 ? Math.floor(sec / 3600) + 'H' : ''}${Math.floor(sec % 3600 / 60) ? Math.floor(sec % 3600 / 60) + 'M' : ''}${sec % 60 || !sec ? sec % 60 + 'S' : ''}`;
+// Google wants uploadDate with time and zone (a bare date is flagged), so a date-only value gets midnight UTC.
+const iso = d => (/^\d{4}-\d\d-\d\d$/.test(d) ? d + 'T00:00:00+00:00' : d);
 export function withVideos(html, out, lang, site = SITE) {
   const f = join(ROOT, 'site', 'tools', 'seo-videos.json'), dates = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : {};
   const abs = u => (/^https?:/.test(u) ? u : site + '/' + u.replace(/^\/+/, ''));
@@ -263,13 +265,13 @@ export function withVideos(html, out, lang, site = SITE) {
     const v = /<video\b[^>]*\bposter="([^"]+)"[^>]*\bsrc="([^"]+)"/.exec(sec), h = /<h[23][^>]*>([\s\S]*?)<\/h[23]>/.exec(sec);
     if (!v || !h) continue;
     const steps = /<ol class="guide-steps">([\s\S]*?)<\/ol>/.exec(sec), name = plain(h[1]), date = dates[v[2].replace(/^\/+/, '')], s = secs(v[2]);
-    if (date && s) vids.push({ '@type': 'VideoObject', name, description: cut(plain(steps ? steps[1].replace(/<\/li>/g, ' ') : name), 300), thumbnailUrl: abs(v[1]), contentUrl: abs(v[2]), uploadDate: date, duration: isoDuration(s), inLanguage: lang });
+    if (date && s) vids.push({ '@type': 'VideoObject', name, description: cut(plain(steps ? steps[1].replace(/<\/li>/g, ' ') : name), 300), thumbnailUrl: abs(v[1]), contentUrl: abs(v[2]), uploadDate: iso(date), duration: isoDuration(s), inLanguage: lang });
   }
   const loop = /data-video="([^"]+)"[^>]*>\s*<img src="([^"]+)"[^>]*alt="([^"]*)"/.exec(html);
   if (loop) {
     const variant = /^(en|fr|de|nl|ar)$/.test(lang) ? 'en' : 'es', src = `${loop[1]}-${variant}.mp4`, before = html.slice(0, loop.index), h = [...before.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/g)].pop();
     const date = dates[src.replace(/^\/+/, '')], s = secs(src);
-    if (date && s && h) vids.push({ '@type': 'VideoObject', name: plain(h[1]), description: plain(loop[3]), thumbnailUrl: abs(loop[2]), contentUrl: abs(src), uploadDate: date, duration: isoDuration(s), inLanguage: lang });
+    if (date && s && h) vids.push({ '@type': 'VideoObject', name: plain(h[1]), description: plain(loop[3]), thumbnailUrl: abs(loop[2]), contentUrl: abs(src), uploadDate: iso(date), duration: isoDuration(s), inLanguage: lang });
   }
   if (!vids.length) return html;
   return html.replace('</head>', `  <script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': vids }).replace(/</g, '\\u003c')}</script>\n</head>`);
