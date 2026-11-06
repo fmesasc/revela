@@ -1297,6 +1297,7 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     ok((await A('GET', '/audit?limit=5')).j.entries.some(e => e.action === 'backup'), 'copia: queda en la auditoría');
     ok((await A('GET', '/access')).j.access.some(x => x.sub === '1414') && (await A('GET', '/access?day=2000-01-01')).j.access.length === 0, 'accesos: el registro de todos, y por día'); }
   { const g = (await A('GET', '/growth?days=30')).j, last = g.days.at(-1); ok(g.days.length === 30 && last.day === new Date().toISOString().slice(0, 10) && last.total >= 1 && last.active >= 1 && g.days[0].active === null, 'crecimiento: 30 días, total de cuentas y activas de hoy (antes de empezar a contarlas: nulo)'); }
+  { const r = (await A('GET', '/retention?weeks=4')).j; ok(Array.isArray(r.weeks) && r.weeks.length >= 1 && r.total >= 1 && r.weeks.every(w => w.n >= 1 && w.activated <= w.n && w.d7 <= w.mature7 && w.d30 <= w.mature30) && r.active7 >= 1 && r.activeSince, 'retención: cohortes por semana de alta, con guardó / volvió 7 y 30 días coherentes y activas de hoy'); }
   { // The map of where users come from: the place noted at an access (city level), grouped by city, the others «unknown».
     const D = env.DIRECTORY.get(env.DIRECTORY.idFromName('directory')), geo = { cc: 'ES', region: 'Madrid', city: 'Madrid', lat: 40.42, lon: -3.7 };
     await D.fetch('https://dir/access', { method: 'POST', body: JSON.stringify({ sub: '1414', email: 'pia@example.com', at: Date.now(), how: 'use', geo }) });

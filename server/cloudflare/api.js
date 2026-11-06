@@ -268,7 +268,7 @@ export class Account {
     if (!this.env.DIRECTORY) return;
     const prof = await this.get('profile', null); if (!prof?.sub) return;
     const own = await this.plan(), rec = { sub: prof.sub, email: prof.email, name: prof.name || null, plan: own, until: own === 'pro' ? await this.proUntil() : 0, credits: await this.get('credits', 0),
-      created: prof.created || null, lang: prof.lang || null, news: !!(await this.get('newsOn', null)) && !(await this.get('newsHold', null)), newsAt: (await this.get('newsOn', null))?.at || null, lastSeen: await this.get('lastSeen', null), lastSeenAt: await this.get('lastSeenAt', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)), bytes: (await this.storage()).used,
+      created: prof.created || null, lang: prof.lang || null, news: !!(await this.get('newsOn', null)) && !(await this.get('newsHold', null)), newsAt: (await this.get('newsOn', null))?.at || null, lastSeen: await this.get('lastSeen', null), lastSeenAt: await this.get('lastSeenAt', null), team: await this.get('team', null), blocked: !!(await this.get('blocked', null)), bytes: (await this.storage()).used, docs: (await this.get('docs', [])).length,
       // (Test mode, apart: the flag, a Pro only from test mode, and the test credits — kept out of the real counts.)
       billingTest: !!(await this.get('billingTest', null)), test: own === 'pro' && !!(await this.get('plan', null))?.test && !((await this.get('proGift', null))?.until > Date.now()),
       testCredits: (await this.lots()).filter(l => l.test && l.exp > Date.now()).reduce((t, l) => t + l.n, 0) };

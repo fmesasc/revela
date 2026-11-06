@@ -16,6 +16,7 @@
 //
 //   GET  /api/admin/whoami                 → { email }
 //   POST /api/admin/backup { reason, include?, auditLines? } → the copy to download: only what `include` lists of { accounts, accesses, config, newsletters, audit } (once per 20 min)
+//   GET  /api/admin/retention?weeks=12     → sign-up cohorts: activated, back within 7 / 30 days (Directory 'retention')
 //   GET  /api/admin/stats                  → { users, pro, blocked, ai: { month, usd, limit }, tickets: { open, waiting, closed },
 //                                          test: { accounts (billingTest), pro (Pro only from test mode), credits } }
 //   GET  /api/admin/map?days=              → { places: [{ cc, region, city, lat, lon, n, users }], unknown, total }   (where the users come from, for the Resumen's map)
@@ -212,7 +213,7 @@ export class Directory {
       if (!a.sub) return Response.json({ error: 'bad request' }, { status: 400 });
       const old = await st.get('u:' + a.sub), rec = { sub: String(a.sub), email: String(a.email || '').toLowerCase(), name: a.name || null, plan: a.plan || 'free', until: +a.until || 0,
         credits: +a.credits || 0, created: +a.created || null, lastSeen: a.lastSeen || null, lastSeenAt: +a.lastSeenAt || null, team: a.team || null, blocked: !!a.blocked,
-        lang: a.lang ? String(a.lang).slice(0, 5) : null, news: !!a.news, newsAt: +a.newsAt || null, billingTest: !!a.billingTest, test: !!a.test, testCredits: Math.max(0, +a.testCredits || 0), bytes: Math.max(0, +a.bytes || 0), updated: Date.now(), ...((a.geo || old?.geo) && { geo: a.geo || old.geo }) };
+        lang: a.lang ? String(a.lang).slice(0, 5) : null, news: !!a.news, newsAt: +a.newsAt || null, billingTest: !!a.billingTest, test: !!a.test, testCredits: Math.max(0, +a.testCredits || 0), bytes: Math.max(0, +a.bytes || 0), docs: Math.max(0, +a.docs || 0), updated: Date.now(), ...((a.geo || old?.geo) && { geo: a.geo || old.geo }) };
       const gone = old ? [emailKey(old), seenKey(old), legacyKey(old)].filter(k => k !== emailKey(rec) && k !== seenKey(rec)) : [];
       if (gone.length) await st.delete(gone);
       await st.put({ ['u:' + rec.sub]: rec, [emailKey(rec)]: rec.sub, [seenKey(rec)]: rec.sub });
@@ -246,6 +247,32 @@ export class Directory {
       const first = [...act.keys()].sort()[0] || null, out = []; let total = before;
       for (let i = 0; i < n; i++) { const d = day(Date.now() - (n - 1 - i) * DAY); total += created[d] || 0; out.push({ day: d, total, created: created[d] || 0, active: first && d >= first ? act.get(d) || 0 : null }); }
       return Response.json({ days: out });
+    }
+    // Retention by week of sign-up: { weeks } → { weeks: [{ week, n, activated, d7, d30, approx, mature7, mature30 }], total, never, active7, active30, activeSince }.
+    // activated: has at least one presentation saved; d7 / d30: came back on some day 1–7 / 8–30 after signing up (from 'da:<day>', the
+    // daily-activity lists, so exact only for weeks after the first day noted — before that, «approx»: last seen at least a day after
+    // creation, which can only overcount); mature*: the window has already ended, so the figure is final. never: signed up and never used it again.
+    if (op === 'retention') {
+      const nW = Math.min(52, Math.max(4, +a.weeks || 12)), DAY = 864e5, day = t => new Date(t).toISOString().slice(0, 10), today = day(Date.now());
+      const monday = t => { const d = new Date(t); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return day(+d); };
+      const add = (d, n) => day(+new Date(d + 'T00:00:00Z') + n * DAY);
+      const days = new Map(); let first = null;
+      for (const [k, v] of await st.list({ prefix: 'da:' })) { const d = k.slice(3); if (!first || d < first) first = d; for (const sub of v) (days.get(sub) || days.set(sub, new Set()).get(sub)).add(d); }
+      const from = monday(Date.now() - (nW - 1) * 7 * DAY), by = {}; let total = 0, never = 0, active7 = 0, active30 = 0;
+      const d7 = add(today, -6), d30 = add(today, -29);
+      for (const [, r] of await st.list({ prefix: 'u:', limit: 100000 })) {
+        if (r.test || r.blocked) continue; total++;
+        if (r.lastSeen >= d7) active7++; if (r.lastSeen >= d30) active30++;
+        if (!r.created) continue; const c = day(r.created), seen = days.get(r.sub);
+        const back = !!r.lastSeen && r.lastSeen > c; if (!back) never++;
+        const w = monday(r.created); if (w < from) continue;
+        const o = by[w] || (by[w] = { week: w, n: 0, activated: 0, d7: 0, d30: 0, approx: !first || w < monday(+new Date(first + 'T00:00:00Z')), mature7: 0, mature30: 0 });
+        o.n++; if (r.docs > 0 || r.bytes > 0) o.activated++;
+        const in7 = o.approx ? back : !!seen && [...Array(7)].some((_, i) => seen.has(add(c, i + 1))), in30 = o.approx ? back : !!seen && [...Array(23)].some((_, i) => seen.has(add(c, i + 8)));
+        if (add(c, 7) < today) { o.mature7++; if (in7) o.d7++; }
+        if (add(c, 30) < today) { o.mature30++; if (in30) o.d30++; }
+      }
+      return Response.json({ weeks: Object.values(by).sort((x, y) => x.week.localeCompare(y.week)), total, never, active7, active30, activeSince: first });
     }
     // Where the users come from: { days? } (only those seen in the last days) → { places: [{ cc, region, city, lat, lon, n, users: [{ sub, email, name, plan, lastSeen }] }], unknown, total }.
     // The place is the one Cloudflare read from the IP at their latest sign-in or use (city level); users seen before the directory
@@ -702,6 +729,7 @@ export async function handleAdmin(req, env, url) {
 
   if (GET && path === '/whoami') return json({ email: by });
   if (GET && path === '/map') return json(await call(D, 'map', { days: +q.get('days') || 0 }));
+  if (GET && path === '/retention') return json(await call(D, 'retention', { weeks: +q.get('weeks') || 12 }));
   if (GET && path === '/growth') return json(await call(D, 'growth', { days: +q.get('days') || 90 }));
   if (GET && path === '/stats') {
     const [u, ai, tickets, errors, openrouter, drive, runware] = await Promise.all([call(D, 'stats'), env.BUDGET ? call(stub(env.BUDGET, 'global'), 'check', { usd: 0 }) : null, call(T, 'counts'),
