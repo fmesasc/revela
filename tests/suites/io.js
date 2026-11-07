@@ -807,7 +807,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const tc = (t, fill = '') => `<a:tc><a:txBody><a:bodyPr/><a:p><a:r><a:rPr sz="1300"/><a:t>${t}</a:t></a:r></a:p></a:txBody><a:tcPr marL="91440" marR="91440" marT="91440" marB="91440">${fill}</a:tcPr></a:tc>`;
     zip.file('ppt/slides/slide1.xml', `<p:sld ${NS}><p:cSld><p:spTree>`
       + sp('<p:ph type="title"/>', '', `<p:txBody><a:bodyPr><a:normAutofit fontScale="90000"/></a:bodyPr><a:p><a:r><a:rPr lang="ca"/><a:t>Títol</a:t></a:r></a:p></p:txBody>`, '<a:solidFill><a:srgbClr val="000000"><a:alpha val="0"/></a:srgbClr></a:solidFill>')
-      + sp('<p:ph type="body" idx="1"/>', '', `<p:txBody><a:bodyPr/><a:p><a:r><a:rPr b="1"/><a:t>Negreta</a:t></a:r><a:r><a:rPr/><a:t> i </a:t></a:r><a:r><a:rPr i="1"><a:hlinkClick r:id="rId3"/></a:rPr><a:t>enllaç</a:t></a:r></a:p>`
+      + sp('<p:ph type="body" idx="1"/>', '', `<p:txBody><a:bodyPr/><a:p><a:r><a:rPr b="1"/><a:t>Negreta</a:t></a:r><a:r><a:rPr/><a:t> i </a:t></a:r><a:r><a:rPr i="1"><a:hlinkClick r:id="rId3"/></a:rPr><a:t>enllaç</a:t></a:r><a:r><a:rPr><a:hlinkClick r:id="rId5"/></a:rPr><a:t>perill</a:t></a:r></a:p>`
         + `<a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr/><a:t>A      [ OK ]</a:t></a:r></a:p></p:txBody>`)
       + sp('<p:ph type="sldNum" idx="12"/>', xf(8400000, 4700000, 500000, 300000), `<p:txBody><a:bodyPr/><a:p><a:fld id="{1}" type="slidenum"><a:t>‹#›</a:t></a:fld></a:p></p:txBody>`)
       + `<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="7" name="t"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr><p:xfrm><a:off x="311700" y="3000000"/><a:ext cx="100" cy="100"/></p:xfrm>`
@@ -827,10 +827,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       + `<p:pic><p:nvPicPr><p:cNvPr id="44" name="Mapa"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId4"><a:duotone><a:srgbClr val="00FF00"/><a:prstClr val="white"/></a:duotone></a:blip></p:blipFill><p:spPr>${xf(5200000, 4300000, 400000, 400000)}</p:spPr></p:pic>`
       + `<p:sp><p:nvSpPr><p:cNvPr id="45" name="Lista"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr>${xf(5800000, 4300000, 1500000, 400000)}</p:spPr><p:txBody><a:bodyPr><a:normAutofit fontScale="92500" lnSpcReduction="20000"/></a:bodyPr><a:p><a:pPr marL="285750" indent="-285750"><a:spcBef><a:spcPts val="1000"/></a:spcBef><a:buClr><a:srgbClr val="3C8F26"/></a:buClr><a:buChar char="•"/></a:pPr><a:r><a:rPr sz="2000"><a:solidFill><a:srgbClr val="111111"/></a:solidFill></a:rPr><a:t>Conceptual Model</a:t></a:r></a:p></p:txBody></p:sp>`
       + `</p:spTree></p:cSld></p:sld>`);
-    zip.file('ppt/slides/_rels/slide1.xml.rels', rels(rel('rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml'), rel('rId3', 'hyperlink', 'https://example.org/', ' TargetMode="External"'), rel('rId4', 'image', '../media/logo.png')));
+    zip.file('ppt/slides/_rels/slide1.xml.rels', rels(rel('rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml'), rel('rId3', 'hyperlink', 'https://example.org/', ' TargetMode="External"'), rel('rId4', 'image', '../media/logo.png'), rel('rId5', 'hyperlink', 'javascript:alert(document.domain)', ' TargetMode="External"')));
     const deck = await R.pptxImport.importPPTX(new W.File([await zip.generateAsync({ type: 'blob' })], 'plantilla.pptx'));
     const pt = v => Math.round(v * 12700 * 1280 / 9144000);
     const s1 = deck.slides[0], texts = s1.blocks.filter(b => b.type === 'text');
+    { const html = texts.map(b => b.html).join(''); assert(/href="https:\/\/example\.org\/"/.test(html) && /perill/.test(html) && !/javascript:/i.test(html), 'PPTX: el enlace web se conserva y uno javascript: se queda en texto sin enlace'); }
     const title = texts.find(b => /Títol/.test(b.html));
     eq(R.master.styled(title, s1, deck).fontSize, pt(28 * 0.9), 'título: 28 pt del patrón (no 14 pt del estilo genérico) y reducido al 90 %');
     const eff = b => R.master.styled(b, s1, deck);

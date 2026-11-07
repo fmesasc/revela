@@ -23,6 +23,7 @@ import { storeBytes, mediaType, MEDIA_MIN } from '../../core/mediastore.js';
 import { desktopFileOf } from '../deskzip.js';
 import { parseCommentText } from '../../features/collab/comments.js';
 import { esc } from '../../core/text.js';
+import { safeURL } from '../../features/document/sanitize.js';
 import { uid } from '../../core/model.js';
 import { styled, masterStyles, newSlideBlocks } from '../../features/document/master.js';
 import { customPalette, themeFontStacks } from '../../features/design/palettes.js';
@@ -500,7 +501,8 @@ function paragraphsHTML(txBody, ctx, style) {
       if (rp.strike) h = `<s>${h}</s>`;
       const link = all(kid(r, 'a:rPr'), 'a:hlinkClick')[0]?.getAttribute('r:id');
       const href = link && ctx.links?.[link];
-      if (href) h = `<a href="${esc(href)}" target="_blank" rel="noopener">${h}</a>`;
+      // (A link in a file from outside: only an address that can be followed — never javascript: or the like: features/document/sanitize.js.)
+      if (href && safeURL(href)) h = `<a href="${esc(href)}" target="_blank" rel="noopener">${h}</a>`;
       runs.push(h);
     }
     const html = runs.join('');
