@@ -1,5 +1,5 @@
 # Publishes the open edition (the app, without the revelaslides.com website) on GitHub Pages when production
-# changes (the branch production: promote.yml), after all the tests pass (tests.yml). No bundler: tools/build-site.mjs --open copies the app as it is.
+# changes (the branch production: promote.yml), after the tests pass (tests.yml; not repeated for a published version: it passed them on main). No bundler: tools/build-site.mjs --open copies the app as it is.
 name: Deploy to GitHub Pages
 
 on:
@@ -18,9 +18,13 @@ concurrency:
 
 jobs:
   tests:
+    # (A published version already passed these tests on main, and promote.yml only takes such a main: repeating them here
+    # only let an unstable test leave the website moved and the server or this site behind. They still run for anything else.)
+    if: github.ref_name != 'production' && !startsWith(github.ref, 'refs/tags/')
     uses: ./.github/workflows/tests.yml
   deploy:
     needs: tests
+    if: ${{ !cancelled() && (needs.tests.result == 'success' || needs.tests.result == 'skipped') }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages

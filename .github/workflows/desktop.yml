@@ -1,4 +1,4 @@
-# The desktop app (Tauri 2) for Windows, macOS and Linux, after all the tests pass (tests.yml).
+# The desktop app (Tauri 2) for Windows, macOS and Linux, after the tests pass (tests.yml; not repeated for a published version: it passed them on main).
 #
 # - Each version published (its tag vX.Y.Z, made by promote.yml): builds the installers and publishes them in a release
 #   with that number, kept (Revela 0.4.2…), marked as the latest one — the installed apps update from it.
@@ -25,9 +25,13 @@ concurrency:
 
 jobs:
   tests:
+    # (A published version already passed these tests on main, and promote.yml only takes such a main: repeating them here
+    # only let an unstable test leave the website moved and the server or this site behind. They still run for anything else.)
+    if: github.ref_name != 'production' && !startsWith(github.ref, 'refs/tags/')
     uses: ./.github/workflows/tests.yml
   build:
     needs: tests
+    if: ${{ !cancelled() && (needs.tests.result == 'success' || needs.tests.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:

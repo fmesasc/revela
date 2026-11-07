@@ -61,7 +61,7 @@ jobs:
           if ! git merge-base --is-ancestor "$prod" "$main"; then
             echo "::error::production has changes that aren't in main: nothing is moved (bring them to main first)."; exit 1; fi
           # (The tests of that exact main must have passed.)
-          ok=$(gh run list --workflow tests.yml --branch main -L 50 --json headSha,conclusion -q "[.[] | select(.headSha == \"$main\" and .conclusion == \"success\")] | length")
+          ok=$(gh run list --workflow tests.yml --branch main -L 200 --json headSha,conclusion -q "[.[] | select(.headSha == \"$main\" and .conclusion == \"success\")] | length")
           if [ "$main" != "$prod" ] && [ "${ok:-0}" = 0 ]; then
             echo "::error::The tests of main ($main) haven't passed (or are still running): nothing is published."; exit 1; fi
           # The website: its main and production.
@@ -71,7 +71,9 @@ jobs:
             smain=$(git -C /tmp/site rev-parse main); sprod=$(git -C /tmp/site rev-parse production)
             git -C /tmp/site merge-base --is-ancestor "$sprod" "$smain" || { echo "::error::The website's production has changes that aren't in its main."; exit 1; }
           else echo "::warning::No SITE_PROMOTE_KEY: the website's production branch is left as it was."; fi
-          if [ "$main" = "$prod" ] && [ "$smain" = "$sprod" ]; then echo "## Publicar en producción
+          # (Up to date only if that version also has its tag: a run that failed after moving production left it without,
+          # and must go on to tag and publish it, not stop here.)
+          if [ "$main" = "$prod" ] && [ "$smain" = "$sprod" ] && [ -n "$(git tag --points-at "$main" --list 'v[0-9]*')" ]; then echo "## Publicar en producción
           Todo estaba ya al día: no hay versión nueva." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
 
           # The version: package.json's, or the next one if it was already published (a commit on main).
@@ -97,9 +99,10 @@ jobs:
           git tag -a "v$V" -F /tmp/notes "$main"
           # The website first (its tag and production), then the app (its production and the tag: it starts the desktop app).
           if [ -n "$smain" ]; then
-            git -C /tmp/site tag -a "v$V" -m "Revela $V" "$smain"
+            # (Reused if a run that failed after this had already made it: the website's tag is pushed before the app's.)
+            git -C /tmp/site rev-parse -q --verify "refs/tags/v$V" > /dev/null || git -C /tmp/site tag -a "v$V" -m "Revela $V" "$smain"
             GIT_SSH_COMMAND="$SITE_SSH" git -C /tmp/site push -q origin "$smain:refs/heads/production" "refs/tags/v$V"
           fi
-          git push -q origin "$main:refs/heads/production"
-          git push -q origin "refs/tags/v$V"
+          # (One atomic push: production and its tag, which starts the desktop app, move together or not at all.)
+          git push -q --atomic origin "$main:refs/heads/production" "refs/tags/v$V"
           { echo "## Publicada la versión $V"; echo; sed 's/^Revela .*//' /tmp/notes; } >> "$GITHUB_STEP_SUMMARY"

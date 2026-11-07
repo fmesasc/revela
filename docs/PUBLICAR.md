@@ -33,6 +33,15 @@ aplicación muestra el distintivo «Pruebas» (`tools/build-site.mjs`, `src/ui/s
 4. Opcional: en **Versiones**, «publicar sola cuando lleve sin cambios N días» (el cron diario del servidor de
    producción, `server/cloudflare/releases.js`).
 
+Las pruebas **no se repiten** en los flujos que publican (`server.yml`, `pages.yml`, `desktop.yml`) cuando lo que se
+mueve es `production` o una etiqueta: ese código ya las pasó en `main`, y volver a pasarlas solo permitía que una
+prueba inestable dejara la web ya publicada con el servidor o GitHub Pages en la versión anterior (el commit
+«Versión X.Y.Z» solo toca `package.json` y `src/core/config.js`). Para todo lo demás (ramas, `main`) siguen mandando.
+
+Si una publicación falla a mitad, se vuelve a lanzar: `promote.yml` reutiliza la etiqueta que ya hubiera puesto en la
+web, mueve `production` y la etiqueta de la aplicación en un único `push --atomic`, y no da «todo al día» mientras la
+versión publicada no tenga su etiqueta.
+
 `production` solo avanza al publicar: si alguien escribiera en ella directamente, el flujo se para. Un arreglo se hace
 en `main` y se publica como versión nueva.
 

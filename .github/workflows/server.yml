@@ -1,5 +1,5 @@
 # Deploys Revela's server (server/cloudflare: accounts, cloud documents, sharing, co-editing, LTI, the administration's
-# API…) to Cloudflare when it changes, after all the tests pass (tests.yml).
+# API…) to Cloudflare when it changes, after the tests pass (tests.yml; not repeated for a published version: it passed them on main).
 #
 # Repository secrets (Settings ▸ Secrets and variables ▸ Actions):
 #   CLOUDFLARE_API_TOKEN   a token from the «Edit Cloudflare Workers» template
@@ -86,9 +86,13 @@ concurrency:
 
 jobs:
   tests:
+    # (A published version already passed these tests on main, and promote.yml only takes such a main: repeating them here
+    # only let an unstable test leave the website moved and the server or this site behind. They still run for anything else.)
+    if: github.ref_name != 'production' && !startsWith(github.ref, 'refs/tags/')
     uses: ./.github/workflows/tests.yml
   deploy:
     needs: tests
+    if: ${{ !cancelled() && (needs.tests.result == 'success' || needs.tests.result == 'skipped') }}
     runs-on: ubuntu-latest
     env:
       HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
