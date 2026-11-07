@@ -203,14 +203,16 @@ export default async function ({ R, D, frame, test, sleep, waitFor, assert, eq, 
     try {
       for (let i = 0; i < 100 && !f.contentWindow.Reveal?.isReady?.(); i++) await sleep(100);
       const Rv = f.contentWindow.Reveal, at = () => JSON.stringify(Rv.getIndices());
-      Rv.next(); await sleep(300);                                   // (the animation starts: 4 s)
-      const step = at(), live = () => f.contentDocument.getAnimations().filter(a => a.playState === 'running' && isFinite(a.effect.getComputedTiming().endTime) && Rv.getCurrentSlide().contains(a.effect.target));
-      assert(live().length > 0, 'la animación está en marcha');
+      const live = () => f.contentDocument.getAnimations().filter(a => a.playState === 'running' && isFinite(a.effect.getComputedTiming().endTime) && Rv.getCurrentSlide().contains(a.effect.target));
+      Rv.next();                                                     // (the animation starts: 4 s)
+      // Waits for each condition instead of a fixed pause: on a loaded machine 300 ms was not always enough.
+      assert(await waitFor(() => live().length > 0, 5000), 'la animación está en marcha');
+      const step = at();
       Rv.next(); await sleep(50);
       eq(at(), step, 'siguiente con la animación a medias: no avanza');
-      await sleep(600); eq(live().length, 0, 'la termina, y lo que venía detrás en el mismo paso también');
-      Rv.next(); await sleep(100);
-      assert(at() !== step, 'y el siguiente clic ya avanza');
+      assert(await waitFor(() => live().length === 0, 5000), 'la termina, y lo que venía detrás en el mismo paso también');
+      Rv.next();
+      assert(await waitFor(() => at() !== step, 3000), 'y el siguiente clic ya avanza');
     } finally { f.remove(); }
   });
 

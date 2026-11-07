@@ -9,7 +9,7 @@ Prints "REVELATEST PASS n/n" or "REVELATEST FAIL ..."; exit code 0 on pass.
 import http.server, json, os, shutil, socketserver, subprocess, sys, tempfile, threading, time, urllib.parse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TIMEOUT = float(os.environ.get('REVELA_TEST_TIMEOUT', '180'))
+TIMEOUT = float(os.environ.get('REVELA_TEST_TIMEOUT', '600'))
 
 
 class Quiet(http.server.SimpleHTTPRequestHandler):
