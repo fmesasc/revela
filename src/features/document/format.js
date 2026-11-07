@@ -274,7 +274,9 @@ if (typeof document !== 'undefined') {
   for (const ev of ['pointerdown', 'keydown']) document.addEventListener(ev, e => { if (e.target.closest?.('.rich')) touched = Date.now(); }, true);
   document.addEventListener('selectionchange', () => {
     const s = getSelection(); if (!s.rangeCount) return;
-    const n = s.getRangeAt(0).startContainer, el = (n.nodeType === 1 ? n : n.parentElement)?.closest?.('.rich[contenteditable="true"]');
+    // (Firefox: with the cursor inside a field of the page, the selection can start in an anonymous node of the
+    // field that the page may not touch — reading its nodeType throws «Permission denied». Not a text box: ignored.)
+    let el; try { const n = s.getRangeAt(0).startContainer; el = (n.nodeType === 1 ? n : n.parentElement)?.closest?.('.rich[contenteditable="true"]'); } catch { return; }
     if (!el) return;                                   // (the focus in a field of the ribbon: what was selected stays)
     const at = caretOf(el);
     if (!s.isCollapsed && at && at.end > at.start) keptSel = { id: el.closest('.block')?.dataset.id, ...at, t: Date.now() };
