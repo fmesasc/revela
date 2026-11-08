@@ -1258,7 +1258,7 @@ async function webApi(env, path, q, body, { GET, POST, by, json }) {
     const [stats, nf, { extra }, locs] = await Promise.all([visitsCall(env, 'stats', { days: +q.get('days') || 30 }), visitsCall(env, 'notfound', { all: q.get('all') === '1' }), visitsCall(env, 'extra'), sitemapUrls(env)]);
     const inMap = new Set(locs.map(u => { try { return cleanPath(new URL(u).pathname); } catch { return ''; } }));
     // (Visited, yet search engines aren't told: not the app, nor the API, nor the community's pages — those it lists itself.)
-    const missing = stats.pages.filter(p => !inMap.has(p.k) && !/^\/(app|api|community|comunidad)(\/|$)/.test(p.k) && p.k !== '/404');
+    const missing = stats.pages.filter(p => !inMap.has(p.k) && !/^\/(app|api|community|comunidad)(\/|$)/.test(p.k) && p.k !== '/404' && p.k !== '(otros)');
     return json({ ...stats, notfound: nf.items, extra, sitemap: { count: locs.length, site }, missing });
   }
   if (POST && path === '/web/extra') {
