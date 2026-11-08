@@ -15,7 +15,7 @@
 import { sha256, random, DAY } from './util.js';
 import { errorsOp } from './errors.js';
 
-const KEEP_DAYS = 400, MAX_KEYS = 300, MAX_PER_VISITOR = 200;
+const KEEP_DAYS = 400, MAX_KEYS = 300, MAX_PAGES = 600, MAX_PER_VISITOR = 200;
 export const dayOf = (ts = Date.now()) => new Date(ts).toISOString().slice(0, 10);
 // An address of this site, as it's counted: the path only, without «.html» or a final «/» (but the root), ≤ 200.
 export function cleanPath(p) {
@@ -28,7 +28,8 @@ export function cleanPath(p) {
 export function cleanRef(r, site) {
   try { const u = new URL(r); if (!/^https?:$/.test(u.protocol)) return ''; if (u.host === new URL(site).host) return 'internal:' + cleanPath(u.pathname); return (u.host + u.pathname).slice(0, 200); } catch { return ''; }
 }
-const bump = (o, k, n = 1) => { if (!k) return; if (!(k in o) && Object.keys(o).length >= MAX_KEYS) k = '(otros)'; o[k] = (o[k] || 0) + n; };
+const bump = (o, k, n = 1, max = MAX_KEYS) => { if (!k) return; if (!(k in o) && Object.keys(o).length >= max) k = '(otros)'; o[k] = (o[k] || 0) + n; };
+const add = (o, k, n) => { o[k] = (o[k] || 0) + n; };      // (the sum of several days: no cap, each day's was)
 
 export class Visits {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; }
@@ -55,7 +56,7 @@ export class Visits {
         const n = was || { path: a.path, n: 0, first: now, refs: {}, status: 'new' };
         n.n++; n.last = now; if (a.ref) bump(n.refs, a.ref); if (Object.keys(n.refs).length > 10) n.refs = Object.fromEntries(Object.entries(n.refs).sort((x, y) => y[1] - x[1]).slice(0, 10));
         await st.put(k, n);
-      } else { d.views++; bump(d.pages, a.path); if (a.ref && !a.ref.startsWith('internal:')) bump(d.refs, a.ref.split('/')[0]); bump(d.langs, a.lang); }
+      } else { d.views++; bump(d.pages, a.path, 1, MAX_PAGES); if (a.ref && !a.ref.startsWith('internal:')) bump(d.refs, a.ref.split('/')[0]); bump(d.langs, a.lang); }
       await st.put({ [vid]: seen + 1, ['d:' + day]: d });
       return Response.json({ ok: true });
     }
@@ -63,9 +64,12 @@ export class Visits {
       const n = Math.min(400, Math.max(1, +a.days || 30)), from = dayOf(now - (n - 1) * DAY), rows = await st.list({ prefix: 'd:', start: 'd:' + from });
       const pages = {}, refs = {}, langs = {}, days = [];
       for (const [k, d] of rows) { days.push({ day: k.slice(2), views: d.views, uniques: d.uniques, nf: d.nf });
-        for (const [x, v] of Object.entries(d.pages)) bump(pages, x, v); for (const [x, v] of Object.entries(d.refs)) bump(refs, x, v); for (const [x, v] of Object.entries(d.langs)) bump(langs, x, v); }
+        for (const [x, v] of Object.entries(d.pages)) add(pages, x, v); for (const [x, v] of Object.entries(d.refs)) add(refs, x, v); for (const [x, v] of Object.entries(d.langs)) add(langs, x, v); }
+      // («(otros)»: what a single day's counter no longer told apart — not a page; shown apart, not as a row.)
+      const unlisted = pages['(otros)'] || 0; delete pages['(otros)']; const refsOther = refs['(otros)'] || 0; delete refs['(otros)'];
       const top = (o, m = 30) => Object.entries(o).sort((x, y) => y[1] - x[1]).slice(0, m).map(([k, v]) => ({ k, n: v }));
-      return Response.json({ days, pages: top(pages, 200), refs: top(refs), langs: top(langs, 20) });
+      const all = top(pages, 1000), shown = all.slice(0, 200);
+      return Response.json({ days, pages: shown, allPages: all, pagesRest: { pages: Math.max(0, all.length - shown.length), views: all.slice(200).reduce((t, x) => t + x.n, 0) }, unlisted, refs: top(refs), refsOther, langs: top(langs, 20) });
     }
     // «¿Para qué vas a usar Revela?»: 'a:<day>' { first: { edu, biz, both }, skip, change: { … }, langs: { es: { edu… } } }.
     if (op === 'aud') {                                   // { v: edu | biz | both, kind: first | change | skip, lang }

@@ -2922,6 +2922,13 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     const sm = await (await worker.fetch(new Request(SITE + '/community/sitemap.xml'), env)).text();
     ok(sm.includes('<loc>https://revelaslides.com/pricing</loc>') && sm.includes('<loc>https://revelaslides.com/guides</loc>'), 'sitemap: las extra, en el sitemap dinámico');
     x = await A('GET', '/web'); ok(!x.j.missing.some(p => p.k === '/pricing'), 'sitemap: ya no falta');
+    // More different addresses than the daily counter tells apart (600): «(otros)» is not a page to add to the sitemap,
+    // and the long tail of the period still shows (the top, the rest counted, what the counter could not tell apart).
+    for (let i = 0; i < 640; i++) await hit({ path: '/cola/p' + i }, { ip: '10.8.' + (i >> 7) + '.' + (i % 128) });
+    x = await A('GET', '/web');
+    ok(!x.j.missing.some(p => p.k === '(otros)') && !x.j.pages.some(p => p.k === '(otros)'), 'visitas: «(otros)» no sale como página');
+    ok(x.j.unlisted >= 40 && x.j.pages.length === 200 && x.j.pagesRest.pages > 300 && !('allPages' in x.j), 'visitas: lo que el contador diario no distingue y las páginas de poca visita, contadas aparte: ' + JSON.stringify([x.j.unlisted, x.j.pages.length, x.j.pagesRest]));
+    ok(x.j.missing.filter(p => p.k.startsWith('/cola/')).length > 300, 'visitas: las páginas de la cola larga que no están en el sitemap sí se ofrecen');
     x = await A('POST', '/web/check', { body: {} });
     ok(x.j.checked >= 4 && x.j.bad.some(b => b.url === 'https://revelaslides.com/pricing' && b.status === 404) && !x.j.bad.some(b => b.url === 'https://revelaslides.com/'), 'sitemap: «Comprobar» dice qué dirección no responde');
     ok(x.j.total === x.j.checked && x.j.next === null && (await A('POST', '/web/check', { body: { offset: 1 } })).j.checked === x.j.total - 1, 'sitemap: por tandas (Cloudflare limita las peticiones de cada llamada)');
