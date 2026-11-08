@@ -1251,16 +1251,37 @@ async function sitemapUrls(env) {
   }
   return locs;
 }
+// The app's downloads, as GitHub counts them: every file of every release, by system (the installers; not the update
+// bundles or signatures). It is everyone's — the site's buttons, the install scripts, the APT repository, winget and
+// the updater — so it also counts updates. Public data (no key); kept 10 minutes, as GitHub limits the unauthenticated.
+const DL_OS = [['windows', /\.(exe|msi)$/i], ['mac', /\.dmg$/i], ['linux', /\.(appimage|deb|rpm)$/i]];
+let dlCache = null;
+async function githubDownloads(env) {
+  if (dlCache && Date.now() - dlCache.at < 600e3 && !env.FETCH) return dlCache.v;
+  const repo = env.APP_REPO || 'fmesasc/revela', f = env.FETCH || fetch;
+  const r = await f(`https://api.github.com/repos/${repo}/releases?per_page=100`, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'revela-admin', ...(env.GITHUB_TOKEN && { Authorization: `Bearer ${env.GITHUB_TOKEN}` }) } }).catch(() => null);
+  if (!r?.ok) return dlCache?.v || null;
+  const rels = await r.json().catch(() => null); if (!Array.isArray(rels)) return dlCache?.v || null;
+  const total = { windows: 0, mac: 0, linux: 0 }, versions = [];
+  for (const rel of rels) {
+    if (rel.draft) continue;
+    const v = { tag: rel.tag_name, at: rel.published_at, windows: 0, mac: 0, linux: 0 };
+    for (const a of rel.assets || []) { const os = DL_OS.find(([, re]) => re.test(a.name))?.[0]; if (os) { v[os] += a.download_count || 0; total[os] += a.download_count || 0; } }
+    versions.push(v);
+  }
+  const out = { total, all: total.windows + total.mac + total.linux, versions: versions.slice(0, 8) };
+  dlCache = { at: Date.now(), v: out }; return out;
+}
 async function webApi(env, path, q, body, { GET, POST, by, json }) {
   if (!env.VISITS) return json({ error: 'not configured' }, 503);
   const site = env.SITE_URL || 'https://revelaslides.com';
   if (GET && path === '/web') {
-    const [stats, nf, { extra }, locs] = await Promise.all([visitsCall(env, 'stats', { days: +q.get('days') || 30 }), visitsCall(env, 'notfound', { all: q.get('all') === '1' }), visitsCall(env, 'extra'), sitemapUrls(env)]);
+    const [stats, nf, { extra }, locs, github] = await Promise.all([visitsCall(env, 'stats', { days: +q.get('days') || 30 }), visitsCall(env, 'notfound', { all: q.get('all') === '1' }), visitsCall(env, 'extra'), sitemapUrls(env), githubDownloads(env)]);
     const inMap = new Set(locs.map(u => { try { return cleanPath(new URL(u).pathname); } catch { return ''; } }));
     // (Visited, yet search engines aren't told: not the app, nor the API, nor the community's pages — those it lists itself.)
     const missing = stats.allPages.filter(p => !inMap.has(p.k) && !/^\/(app|api|community|comunidad)(\/|$)/.test(p.k) && p.k !== '/404' && p.k !== '(otros)');
     delete stats.allPages;
-    return json({ ...stats, notfound: nf.items, extra, sitemap: { count: locs.length, site }, missing });
+    return json({ ...stats, github, notfound: nf.items, extra, sitemap: { count: locs.length, site }, missing });
   }
   if (POST && path === '/web/extra') {
     const extra = [...new Set((Array.isArray(body.extra) ? body.extra : []).map(x => cleanPath(x)).filter(x => x.length > 1 && !/^\/(api|app)(\/|$)/.test(x)))].slice(0, 500);

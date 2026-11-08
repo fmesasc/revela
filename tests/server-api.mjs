@@ -53,6 +53,9 @@ env.FETCH = async (url, init = {}) => {
   if (u.startsWith('https://rtc.live.cloudflare.com/v1/apps/')) { rtCalls.push({ u, method: init.method, auth: init.headers.Authorization, body: init.body && JSON.parse(init.body) });
     if (u.endsWith('/sessions/new')) return Response.json({ sessionId: 'sess-' + rtCalls.length });
     return Response.json({ sessionDescription: { type: 'answer', sdp: 'v=0 fake' }, tracks: [], requiresImmediateRenegotiation: false }); }
+  if (u.startsWith('https://api.github.com/repos/fmesasc/revela/releases')) return Response.json([
+    { tag_name: 'v0.4.2', published_at: '2026-11-01T10:00:00Z', assets: [{ name: 'Revela_0.4.2_x64-setup.exe', download_count: 10 }, { name: 'Revela_0.4.2_x64_en-US.msi', download_count: 3 }, { name: 'Revela_0.4.2_universal.dmg', download_count: 4 }, { name: 'Revela_0.4.2_amd64.deb', download_count: 5 }, { name: 'Revela_0.4.2_amd64.AppImage', download_count: 2 }, { name: 'latest.json', download_count: 900 }, { name: 'Revela_0.4.2_x64-setup.exe.sig', download_count: 800 }] },
+    { tag_name: 'v0.4.1', published_at: '2026-10-01T10:00:00Z', assets: [{ name: 'Revela_0.4.1_x64-setup.exe', download_count: 7 }] }]);
   if (u.startsWith('https://api.unsplash.com/')) { stockCalls.push({ u, auth: init.headers?.Authorization });
     return Response.json(u.includes('/download') ? {} : { results: [{ id: 'abc123', width: 4000, height: 3000, alt_description: 'Un faro', urls: { small: 'https://images.unsplash.com/s.jpg', regular: 'https://images.unsplash.com/r.jpg' },
       user: { name: 'Ana Foto', links: { html: 'https://unsplash.com/@ana' } }, links: { download_location: 'https://api.unsplash.com/photos/abc123/download?ixid=M3x1' } }, { id: 'malo', urls: { small: 'javascript:alert(1)', regular: 'http://x/y.jpg' }, user: {} }, { id: 'otro9', urls: { small: 'https://images.unsplash.com/s2.jpg', regular: 'https://images.unsplash.com/r2.jpg' }, user: { name: 'Leo', links: { html: 'javascript:alert(1)' } }, links: { download_location: 'https://evil.example/photos/otro9/download' } }] }); }
@@ -2922,6 +2925,13 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     const sm = await (await worker.fetch(new Request(SITE + '/community/sitemap.xml'), env)).text();
     ok(sm.includes('<loc>https://revelaslides.com/pricing</loc>') && sm.includes('<loc>https://revelaslides.com/guides</loc>'), 'sitemap: las extra, en el sitemap dinámico');
     x = await A('GET', '/web'); ok(!x.j.missing.some(p => p.k === '/pricing'), 'sitemap: ya no falta');
+    // The app's downloads: GitHub's count by system (installers only: not latest.json nor signatures) and the clicks on the site.
+    await hit({ path: '/download', kind: 'dl', os: 'windows' }, { ip: '10.7.0.1' }); await hit({ path: '/download', kind: 'dl', os: 'linux' }, { ip: '10.7.0.1' });
+    await hit({ path: '/download', kind: 'dl', os: '<script>' }, { ip: '10.7.0.2' });
+    x = await A('GET', '/web?days=7');
+    ok(x.j.github.total.windows === 20 && x.j.github.total.mac === 4 && x.j.github.total.linux === 7 && x.j.github.all === 31 && x.j.github.versions[0].tag === 'v0.4.2', 'descargas: lo que cuenta GitHub, por sistema y sin firmas ni latest.json: ' + JSON.stringify(x.j.github));
+    ok(x.j.dl.windows === 1 && x.j.dl.linux === 1 && x.j.dl.otro === 1 && x.j.days.reduce((t, d) => t + d.dl, 0) === 3, 'descargas: los clics de la web, por sistema (lo raro, como «otro»): ' + JSON.stringify(x.j.dl));
+    ok(!x.j.pages.some(p => p.k === '/download'), 'descargas: un clic no cuenta como página vista');
     // More different addresses than the daily counter tells apart (600): «(otros)» is not a page to add to the sitemap,
     // and the long tail of the period still shows (the top, the rest counted, what the counter could not tell apart).
     for (let i = 0; i < 640; i++) await hit({ path: '/cola/p' + i }, { ip: '10.8.' + (i >> 7) + '.' + (i % 128) });
