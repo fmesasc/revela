@@ -5276,4 +5276,8 @@ export default {
   "Preparando la página…": "Preparando a páxina…",
   "Página web descargada, pero no se pudo incluir todo: esas partes necesitan conexión.": "Páxina web descargada, pero non se puido incluír todo: esas partes precisan de conexión.",
   "Página web descargada con las librerías dentro: se abre sin conexión.": "Páxina web descargada coas bibliotecas dentro: ábrese sen conexión.",
+  "¿Quieres enterarte de lo nuevo de Revela por correo?": "Queres estar ao tanto das novidades de Revela por correo?",
+  "Te escribiremos solo cuando haya algo que merezca la pena, y puedes darte de baja cuando quieras. Si cierras este aviso sin elegir, no te lo volveremos a preguntar.": "Só che escribiremos cando haxa algo que o merezca, e podes darte de baixa cando queiras. Se pechas este aviso sen escoller, non volveremos preguntar.",
+  "Sí, avisadme": "Si, avisádeme",
+  "Listo: te avisaremos por correo. Puedes cambiarlo en «Mi cuenta».": "Feito: avisarémoste por correo. Podes cambialo en «A miña conta».",
 };

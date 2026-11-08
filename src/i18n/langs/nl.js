@@ -5276,4 +5276,8 @@ export default {
   "Preparando la página…": "Pagina voorbereiden…",
   "Página web descargada, pero no se pudo incluir todo: esas partes necesitan conexión.": "Webpagina gedownload, maar niet alles kon worden opgenomen: die onderdelen hebben een verbinding nodig.",
   "Página web descargada con las librerías dentro: se abre sin conexión.": "Webpagina gedownload met de bibliotheken erin: ze opent zonder verbinding.",
+  "¿Quieres enterarte de lo nuevo de Revela por correo?": "Wil je per e-mail weten wat er nieuw is in Revela?",
+  "Te escribiremos solo cuando haya algo que merezca la pena, y puedes darte de baja cuando quieras. Si cierras este aviso sin elegir, no te lo volveremos a preguntar.": "We mailen je alleen als er iets de moeite waard is, en je kunt je altijd afmelden. Als je dit sluit zonder te kiezen, vragen we het niet opnieuw.",
+  "Sí, avisadme": "Ja, hou me op de hoogte",
+  "Listo: te avisaremos por correo. Puedes cambiarlo en «Mi cuenta».": "Klaar: we laten het je per e-mail weten. Je kunt dit wijzigen in 'Mijn account'.",
 };

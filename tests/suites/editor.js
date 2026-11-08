@@ -1267,6 +1267,45 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { stop(); B.setBigDeckLimit(200e6); B.setLauncher(u => { W.location.href = u; }); R.store.commit(() => { slide().blocks = slide().blocks.filter(b => b.id !== 'bigV'); }); }
   });
 
+  await test('novedades por correo: se pregunta una vez, tras usar la app, con dos botones iguales; Sí lo activa, No no vuelve, cerrar no cuenta como sí', async () => {
+    reset(); const W = frame.contentWindow, N = await W.eval("import('/src/ui/shell/newsask.js')"), KEY = 'revela.news.asked';
+    const calls = []; let me = { email: 'a@b.c' };
+    const run = (o = {}) => N.watchNewsAsk({ edition: 'cloud', me: () => me, onMe: () => () => {}, call: async (p, b) => { calls.push([p, b]); return { news: !!b.news }; }, every: 10, minChanges: 3, minMs: 0, ...o });
+    const edit = n => { for (let i = 0; i < n; i++) R.store.commit(() => { R.state.deck.name = 'x' + i + Math.random(); }); };
+    const modal = () => D.getElementById('newsask-modal');
+    W.localStorage.removeItem(KEY);
+    try {
+      // Not before using it, nor in other editions, nor without a session.
+      let stop = run(); await sleep(60); assert(!modal(), 'antes de usarla no pregunta'); edit(1); await sleep(60); assert(!modal(), 'con un solo cambio tampoco'); stop();
+      stop = run({ edition: 'open' }); edit(5); await sleep(60); assert(!modal(), 'fuera de la edición con cuentas, no'); stop();
+      me = null; stop = run(); edit(5); await sleep(60); assert(!modal(), 'sin sesión, no'); stop(); me = { email: 'a@b.c' };
+      // Who already has them, or answered: nothing.
+      me = { email: 'a@b.c', news: true }; stop = run(); edit(5); await sleep(60); assert(!modal(), 'quien ya las tiene no lo ve'); stop(); me = { email: 'a@b.c' };
+      W.localStorage.setItem(KEY, 'no'); stop = run(); edit(5); await sleep(60); assert(!modal(), 'quien ya contestó no lo ve'); stop(); W.localStorage.removeItem(KEY);
+      // Not over another dialog.
+      const other = D.createElement('div'); other.className = 'modal-backdrop'; D.body.appendChild(other);
+      stop = run(); edit(5); await sleep(60); assert(!modal() && !W.localStorage.getItem(KEY), 'con un diálogo abierto espera'); other.remove(); await sleep(60);
+      // The question: two buttons of the same kind, focus inside, Escape closes without choosing.
+      const box = modal(); assert(box, 'aparece tras usarla: ' + (box && box.textContent));
+      const yes = box.querySelector('.na-yes'), no = box.querySelector('.na-no');
+      assert(yes && no && yes.className.replace(/ ?na-\w+/, '') === no.className.replace(/ ?na-\w+/, ''), 'dos botones iguales de peso');
+      assert(box.contains(D.activeElement) && box.querySelector('[role=dialog]'), 'foco dentro, como diálogo');
+      assert(!D.querySelector('.acc-news-ok:checked, .acc-news-opt:checked'), 'las casillas siguen sin marcar');
+      D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(30);
+      assert(!modal(), 'Escape cierra'); eq(calls.length, 0, 'cerrar sin elegir no activa nada');
+      edit(5); await sleep(80); assert(!modal(), 'y no se repite'); stop();
+      // Sí → the same call as the box in «Mi cuenta».
+      W.localStorage.removeItem(KEY); stop = run(); edit(5); await sleep(60);
+      modal().querySelector('.na-yes').click(); await sleep(40);
+      eq(JSON.stringify(calls), '[["mail/prefs",{"news":true}]]', 'Sí llama a mail/prefs con news:true'); eq(W.localStorage.getItem(KEY), 'yes'); assert(!modal(), 'se cierra');
+      edit(5); await sleep(60); assert(!modal(), 'no vuelve tras el Sí'); stop();
+      // No → nothing sent, never again.
+      calls.length = 0; W.localStorage.removeItem(KEY); stop = run(); edit(5); await sleep(60);
+      modal().querySelector('.na-no').click(); await sleep(40);
+      eq(calls.length, 0, 'No no envía nada'); eq(W.localStorage.getItem(KEY), 'no'); edit(5); await sleep(60); assert(!modal(), 'No no vuelve'); stop();
+    } finally { D.getElementById('newsask-modal')?.remove(); W.localStorage.removeItem(KEY); }
+  });
+
   await test('si el navegador no puede guardar, la barra lo dice y un clic descarga una copia', async () => {
     reset(); const S = W.Storage.prototype, P = W.IDBObjectStore.prototype, set = S.setItem, put = P.put;
     const ss = D.getElementById('save-state');

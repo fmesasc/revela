@@ -5276,4 +5276,8 @@ export default {
   "Preparando la página…": "جارٍ تجهيز الصفحة…",
   "Página web descargada, pero no se pudo incluir todo: esas partes necesitan conexión.": "تم تنزيل صفحة الويب، لكن تعذّر تضمين كل شيء: تلك الأجزاء تحتاج إلى اتصال.",
   "Página web descargada con las librerías dentro: se abre sin conexión.": "تم تنزيل صفحة الويب مع المكتبات بداخلها: تُفتح بلا اتصال.",
+  "¿Quieres enterarte de lo nuevo de Revela por correo?": "هل تريد معرفة جديد Revela عبر البريد الإلكتروني؟",
+  "Te escribiremos solo cuando haya algo que merezca la pena, y puedes darte de baja cuando quieras. Si cierras este aviso sin elegir, no te lo volveremos a preguntar.": "سنراسلك فقط عندما يكون هناك ما يستحق، ويمكنك إلغاء الاشتراك متى شئت. إذا أغلقت هذا التنبيه دون اختيار فلن نسألك مرة أخرى.",
+  "Sí, avisadme": "نعم، أبلغوني",
+  "Listo: te avisaremos por correo. Puedes cambiarlo en «Mi cuenta».": "تم: سنبلغك عبر البريد الإلكتروني. يمكنك تغيير ذلك من «حسابي».",
 };

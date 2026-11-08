@@ -5276,4 +5276,8 @@ export default {
   "Preparando la página…": "Orria prestatzen…",
   "Página web descargada, pero no se pudo incluir todo: esas partes necesitan conexión.": "Web-orria deskargatu da, baina ezin izan da dena sartu: zati horiek konexioa behar dute.",
   "Página web descargada con las librerías dentro: se abre sin conexión.": "Web-orria deskargatu da liburutegiak barruan dituela: konexiorik gabe irekitzen da.",
+  "¿Quieres enterarte de lo nuevo de Revela por correo?": "Revelaren berritasunen berri posta elektronikoz jaso nahi duzu?",
+  "Te escribiremos solo cuando haya algo que merezca la pena, y puedes darte de baja cuando quieras. Si cierras este aviso sin elegir, no te lo volveremos a preguntar.": "Merezi duen zerbait dagoenean bakarrik idatziko dizugu, eta nahi duzunean baja eman dezakezu. Aukeratu gabe leiho hau ixten baduzu, ez dizugu berriro galdetuko.",
+  "Sí, avisadme": "Bai, abisatu iezadazue",
+  "Listo: te avisaremos por correo. Puedes cambiarlo en «Mi cuenta».": "Prest: posta elektronikoz abisatuko dugu. «Nire kontua» atalean alda dezakezu.",
 };

@@ -3,6 +3,7 @@
 import { hasAccounts, cloudAi, refreshAccount, onAccount, account } from '../../io/cloud/account.js';
 import { mountCloudStatus, mountViewAsBanner, openFromLink } from '../../ui/dialogs/cloud.js';
 import { mountNotices } from '../../ui/shell/notices.js';
+import { watchNewsAsk } from '../../ui/shell/newsask.js';
 import { docIdFrom } from '../../io/cloud/clouddocs.js';
 import * as clouddocs from '../../io/cloud/clouddocs.js';
 import { setCloudAi } from '../../features/ai/openrouter.js';
@@ -362,7 +363,7 @@ if (hasAccounts()) {
   setCloudAi(cloudAi);
   const btn = document.getElementById('plan-btn'), paint = me => { btn.hidden = false;
     btn.querySelector('span').textContent = me ? `${Math.max(0, me.credits | 0)}` : t('Iniciar sesión'); btn.classList.toggle('in', !!me); };
-  onAccount(paint); paint(null); mountCloudStatus(); mountViewAsBanner(); watchTerms(); mountNotices();
+  onAccount(paint); paint(null); mountCloudStatus(); mountViewAsBanner(); watchTerms(); mountNotices(); watchNewsAsk();
   initModelAi();
   btn.addEventListener('click', () => openAccount());
   window.addEventListener('revela:lang', () => paint(account()));
