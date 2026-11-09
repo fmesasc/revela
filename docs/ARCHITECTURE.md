@@ -302,7 +302,7 @@ src/
                                masterview (slide master view), backstage (the File page), coach,
                                collab (co-editing in the interface), morphhint, menu (popup menus),
                                files (saving an object's file), sorter (slide sorter), openfile
-                               (opening and dropping files), openwith (Drive/Dropbox «Open with»),
+                               (opening and dropping files), newsask (the one-time, unticked «news by email» question), openwith (Drive/Dropbox «Open with»),
                                palette (command search, Ctrl+K), dictate, attachments (files for
                                the AI), notices, toast (short notes), where (where the presentation
                                is kept), changeimage («Cambiar imagen»: a file or Recursos), editaids
