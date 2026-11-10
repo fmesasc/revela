@@ -79,7 +79,8 @@ None is better than a wrong one.
 Answer only JSON {"n":N (the best one, or 0),"score":0-10,"alt":"what the chosen ${what} shows, for someone who can't see it, max 125 characters, in ${language}","note":"one sentence for the speaker notes: what to point at or do with it, in ${language}"}.` },
     { role: 'user', content },
   ], { json: true, maxTokens: 400, feature: 'create', tier: 'medium', prefer: PICK_MODEL });
-  const a = parseJSON(out) || {}, n = +a.score >= 7 ? Math.round(+a.n) || 0 : 0;
+  let a = {}; try { a = parseJSON(out) || {}; } catch {}   // (an empty answer: none chosen)
+  const n = +a.score >= 7 ? Math.round(+a.n) || 0 : 0;
   return n >= 1 && n <= shots.length ? { n, c: shots[n - 1].c, alt: str(a.alt).slice(0, 180), note: str(a.note).slice(0, 300) } : { n: 0 };
 }
 
@@ -114,7 +115,9 @@ async function findVideos(list, { topic = '', language = lang() } = {}) {
     { role: 'user', content: `Presentation: ${str(topic).slice(0, 300)}\n${list.map(x => `${x.i}: ${str(x.sp.video_search)} (slide «${str(x.sp.title)}»)`).join('\n')}` },
   ], { json: true, maxTokens: 1200, feature: 'create', tier: 'medium', prefer: PICK_MODEL, web: true }).catch(() => '');
   const found = new Map();
-  for (const v of parseJSON(out)?.videos || []) {
+  // (A search that answered nothing, or not JSON, leaves the slides without a video — they are optional.)
+  let vids = []; try { vids = parseJSON(out)?.videos || []; } catch {}
+  for (const v of Array.isArray(vids) ? vids : []) {
     const it = list.find(x => x.i === +v.i); if (!it || found.has(it.i)) continue;
     const ok = await checkVideo(v.url); if (!ok) continue;
     // (Its real title must be about the slide: a valid address of another video is still the wrong video.)
