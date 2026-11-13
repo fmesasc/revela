@@ -123,10 +123,10 @@ export function openColourPicker(input) {
       const r = sv.getBoundingClientRect();
       cur.hsv = { ...cur.hsv, s: Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)), v: Math.max(0, Math.min(1, 1 - (ev.clientY - r.top) / r.height)) };
       cur.value = fromHsv(cur.hsv); paint();
-      if (!frame) frame = requestAnimationFrame(() => { frame = 0; apply(cur.value); });
+      if (!frame) frame = requestAnimationFrame(() => { frame = 0; if (cur?.pop === pop) apply(cur.value); });   // (the picker may have closed by then)
     };
     at(e);
-    const move = ev => at(ev), up = () => { sv.removeEventListener('pointermove', move); sv.removeEventListener('pointerup', up); cancelAnimationFrame(frame); apply(cur.value, true); };
+    const move = ev => { if (cur?.pop === pop) at(ev); }, up = () => { sv.removeEventListener('pointermove', move); sv.removeEventListener('pointerup', up); cancelAnimationFrame(frame); if (cur?.pop === pop) apply(cur.value, true); };
     sv.addEventListener('pointermove', move); sv.addEventListener('pointerup', up);
   });
   const hue = pop.querySelector('.cp-hue');
