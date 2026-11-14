@@ -3423,6 +3423,8 @@ export default {
   "Color de las líneas": "Lerroen kolorea",
   "Marco en la zona": "Markoa eremuan",
   "Sombra del recuadro": "Laukiaren itzala",
+  "Foto dentro de la lupa": "Argazkia luparen barruan",
+  "Volver a ampliar": "Berriro handitu",
   "Ampliación": "Handitzea",
   "Aumento (×)": "Handitzea (×)",
   "Colocar automáticamente": "Automatikoki kokatu",

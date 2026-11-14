@@ -9,7 +9,7 @@ import { shortSig } from '../../core/text.js';
 import { t } from '../../i18n/index.js';
 import { masterBlocksFor, styled } from '../../features/document/master.js';
 import { currentPalette } from '../../features/design/palettes.js';
-import { underArea, viewOf, magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, zoomLabel, clampSource, retarget, boxToSource, addMagnify } from '../../features/document/magnify.js';
+import { underArea, viewOf, magPhoto, magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, zoomLabel, clampSource, retarget, boxToSource, addMagnify } from '../../features/document/magnify.js';
 import { magnifyView, blockPreview } from '../shell/preview.js';
 import { stage, readOnly } from './canvas.js';
 import { factor } from './interact.js';
@@ -30,7 +30,7 @@ export function paintMagnify(el, b) {
   const slide = currentSlide(), { w: W, h: H } = state.deck.size, accent = currentPalette().accents[0];
   const all = [...masterBlocksFor(slide), ...slide.blocks.map(x => styled(x, slide))], under = underArea(all, viewOf(b), [b.id]);
   // What it shows changes with the objects under the area (and the slide's background); where and how big, every time.
-  const sig = shortSig([slide.background, under, liveSig(under), W, H, under.filter(o => o.type === 'magnify').map(o => underArea(all, viewOf(o), [b.id, o.id]))]);
+  const sig = shortSig([slide.background, magPhoto(b)?.src, under, liveSig(under), W, H, under.filter(o => o.type === 'magnify').map(o => underArea(all, viewOf(o), [b.id, o.id]))]);
   if (d.dataset.sig !== sig || !d.querySelector('.rv-mag')) {
     d.dataset.sig = sig;
     d.replaceChildren(magnifyView(b, slide, cloneOf), handles());
@@ -38,7 +38,7 @@ export function paintMagnify(el, b) {
     const ovl = d.querySelector('.rv-mag-lines');
     Object.assign(ovl.style, { left: -b.x + 'px', top: -b.y + 'px' }); ovl.innerHTML = magOverlaySVG(b, W, H, accent);
     d.querySelector('.rv-mag-in').style.cssText = magInsetCSS(b);
-    const view = d.querySelector('.rv-mag-view'); view.style.cssText = `${magViewCSS(b)};width:${W}px;height:${H}px;background:${slide.background || 'transparent'}`;
+    const view = d.querySelector('.rv-mag-view'); if (view) view.style.cssText = `${magViewCSS(b)};width:${W}px;height:${H}px;background:${slide.background || 'transparent'}`;
     d.querySelector('.rv-mag-fr').innerHTML = magFrameSVG(b, accent);
   }
   const v = viewOf(b), hs = d.querySelector('.mag-src');

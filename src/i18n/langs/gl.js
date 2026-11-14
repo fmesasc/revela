@@ -3423,6 +3423,8 @@ export default {
   "Color de las líneas": "Cor das liñas",
   "Marco en la zona": "Marco na zona",
   "Sombra del recuadro": "Sombra do recadro",
+  "Foto dentro de la lupa": "Foto dentro da lupa",
+  "Volver a ampliar": "Volver ampliar",
   "Ampliación": "Ampliación",
   "Aumento (×)": "Aumento (×)",
   "Colocar automáticamente": "Colocar automaticamente",

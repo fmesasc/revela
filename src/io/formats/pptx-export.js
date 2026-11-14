@@ -21,7 +21,7 @@ import { chartSVG, chartSeries, histogramBins, bubblePoints, scatterSeries, pieC
 import { blockImage, magnifyImage } from '../export/images.js';
 import { bakeImage } from '../export/objects.js';
 import { hasLook, hasDecor } from '../../render/imagelook.js';
-import { magGeometry, viewOf, underArea, targetImage, imageCrop } from '../../features/document/magnify.js';
+import { magGeometry, magPhoto, viewOf, underArea, targetImage, imageCrop } from '../../features/document/magnify.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, styleKind } from '../../features/document/master.js';
 import { PPTXGEN, JSZIP, loadScript } from '../../core/vendor.js';
 import { animTimeline, animEntries, isEntrance, motionPoints } from '../../features/animation/transitions.js';
@@ -171,8 +171,12 @@ function addMagnifier(slide, b, pptx, raster, blocks) {
   lines.forEach(([x1, y1, x2, y2], i) => slide.addShape(pptx.ShapeType.line, { x: IN(Math.min(x1, x2)), y: IN(Math.min(y1, y2)), w: IN(Math.max(1, Math.abs(x2 - x1))), h: IN(Math.max(1, Math.abs(y2 - y1))),
     flipH: x2 < x1, flipV: y2 < y1, line: line(st.lineColor, st.lineWidth, st.lineDash), objectName: `${id}-line${i + 1}` }));
   if (st.sourceFrame && st.width) rect(src, st.radius / Math.max(1, viewOf(b).k), `${id}-area`);
-  const crop = magCrop(b, blocks), pos = { x: IN(b.x), y: IN(b.y), w: IN(b.w), h: IN(b.h) };
-  if (crop) { slide.addImage({ ...pos, data: crop.img.src, objectName: id, ...(crop.img.flipH && { flipH: true }), ...(crop.img.flipV && { flipV: true }) }); picCrops.set(b.id, crop.src); }
+  const photo = magPhoto(b), nat = photo && picSizes.get('mag:' + b.id), crop = !photo && magCrop(b, blocks), pos = { x: IN(b.x), y: IN(b.y), w: IN(b.w), h: IN(b.h) };
+  if (photo && nat) {                                       // (the photo, covering the box: PowerPoint crops it by srcRect)
+    const R = nat[0] / nat[1], r = b.w / b.h, e = R > r ? 1 - r / R : 1 - R / r, [l, t] = R > r ? [e / 2, 0] : [0, e / 2];
+    slide.addImage({ ...pos, ...(/^data:/.test(photo.src) ? { data: photo.src } : { path: photo.src }), objectName: id, ...((photo.alt || b.alt) && { altText: photo.alt || b.alt }) });
+    if (e > 0.0005) picCrops.set(b.id, R > r ? { l, t: 0, r: l, b: 0 } : { l: 0, t, r: 0, b: t });
+  } else if (crop) { slide.addImage({ ...pos, data: crop.img.src, objectName: id, ...(crop.img.flipH && { flipH: true }), ...(crop.img.flipV && { flipV: true }) }); picCrops.set(b.id, crop.src); }
   else if (raster.has(b.id)) slide.addImage({ ...pos, data: raster.get(b.id), objectName: id });
   if (st.width) rect(box, Math.max(0, st.radius - st.width / 2), `${id}-frame`);
 }
@@ -182,6 +186,7 @@ async function naturalSizes(deck) {
   const all = [deck.master, ...(deck.layouts || []), ...deck.slides].flatMap(s => s?.blocks || []);
   // (Pictures, by their id; a diagram's pictures, by their address.)
   const imgs = all.filter(b => b.type === 'image' && b.src).map(b => [b.id, b.src])
+    .concat(all.filter(b => b.type === 'magnify' && magPhoto(b)).map(b => ['mag:' + b.id, b.image.src]))
     .concat(all.filter(b => b.type === 'diagram').flatMap(b => (b.pictures || []).filter(p => p?.src).map(p => [p.src, p.src])));
   // (Each picture decoded once, however many times it is used: a logo on every slide is one.)
   const sizes = new Map(), sizeOf = src => sizes.get(src) || sizes.set(src, new Promise(res => {
@@ -513,7 +518,7 @@ export async function buildPptx(deck = state.deck, { progress = null } = {}) {
     if ((b.type === 'model' || b.type === 'lottie') && b.poster) return once(`model ${b.w}x${b.h} ${b.poster}`, () => posterPNG(b.poster, b.w, b.h));
     // (Only equations are shared: a poll's, an index's or a map's picture depends on more than the object.)
     if (b.type === 'math' || b.type === 'poll' || b.type === 'figindex' || b.type === 'file' || b.type === 'map') return once(b.type === 'math' ? mathKey(b) : null, () => blockImage(b, s, deck));
-    if (b.type === 'magnify' && !magCrop(b, slideBlocks(s, deck))) return magnifyImage(b, s, deck);
+    if (b.type === 'magnify' && !(magPhoto(b) ? picSizes.has('mag:' + b.id) : magCrop(b, slideBlocks(s, deck)))) return magnifyImage(b, s, deck);
     // (A picture with a look — its corrections, filter, shape, outline… render/imagelook.js —: PowerPoint has nearly none
     // of them, so it goes as it shows, in its box. Not an animated GIF: its frames would be lost.)
     // (Its shadow's style or its reflection too, past its box: the picture placed that much larger — picPads.)

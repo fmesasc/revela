@@ -3423,6 +3423,8 @@ export default {
   "Color de las líneas": "لون الخطوط",
   "Marco en la zona": "إطار حول المنطقة",
   "Sombra del recuadro": "ظل الإطار",
+  "Foto dentro de la lupa": "صورة داخل العدسة",
+  "Volver a ampliar": "التكبير من جديد",
   "Ampliación": "التكبير",
   "Aumento (×)": "التكبير (×)",
   "Colocar automáticamente": "وضع تلقائي",

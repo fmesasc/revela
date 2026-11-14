@@ -6,7 +6,7 @@
 // block  = { id, type, x, y, w, h, rotation, animation|null, ...payload }
 //   text  -> { html, fontSize }        model -> { src, autoRotate }
 //   image -> { src, fit }              video -> { src }
-//   magnify -> { source:{x,y,w,h}, target, border, sourceFrame, lines, … }
+//   magnify -> { source:{x,y,w,h}, target, border, sourceFrame, lines, image?:{src,alt?} (a photo in the box instead of the area enlarged), … }
 // A slide's `transition` overrides the deck's `defaultTransition`; an object's
 // `animation` describes its entrance (effect + order).
 

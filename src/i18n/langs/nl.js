@@ -3423,6 +3423,8 @@ export default {
   "Color de las líneas": "Kleur van de lijnen",
   "Marco en la zona": "Kader om het gebied",
   "Sombra del recuadro": "Schaduw van het kader",
+  "Foto dentro de la lupa": "Foto in de loep",
+  "Volver a ampliar": "Weer vergroten",
   "Ampliación": "Vergroting",
   "Aumento (×)": "Vergroting (×)",
   "Colocar automáticamente": "Automatisch plaatsen",

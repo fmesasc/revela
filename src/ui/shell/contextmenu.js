@@ -349,6 +349,7 @@ function forBlock(b, cell = null) {
       ['Colocar automáticamente', () => mag.placeAgain(b.id)],
       ['Al otro lado', () => mag.swapSide(b.id)],
       ['Ampliar una zona de esta lupa', () => startMagnifyDraw({ within: b })],
+      ...(mag.magPhoto(b) ? [['Volver a ampliar', () => mag.setMagPhoto(b.id, null)]] : []),
       [b.lines === 'none' ? 'Mostrar las líneas' : 'Quitar las líneas', () => commit(() => { b.lines = b.lines === 'none' ? 'corners' : 'none'; })], null);
   } else if (b.type === 'slideref') {
     items.push(

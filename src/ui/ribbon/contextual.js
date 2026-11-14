@@ -34,6 +34,8 @@ import { openImageAdjust, openMath, openChartData, openOpacity, openIconColor, o
 import { alertDialog, promptDialog } from '../dialogs/dialog.js';
 import { startPathDraw } from '../canvas/pathdraw.js';
 import { startMagnifyDraw } from '../canvas/magnifyview.js';
+import { readFile } from '../shell/openfile.js';
+import { shrinkImage } from '../../features/document/imgshrink.js';
 import * as mag from '../../features/document/magnify.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { openAddAnimation } from './animadd.js';
@@ -345,6 +347,8 @@ function magnifyGroups(b) {
       ['color', 'timeline', 'Color de las líneas', st.lineColor, v => on({ lineColor: v })],
       btn('crop_free', 'Marco en la zona', () => on({ sourceFrame: !st.sourceFrame }), st.sourceFrame),
       btn('shadow', 'Sombra del recuadro', () => on({ insetShadow: !st.shadow }), st.shadow)]],
+    ['Contenido', [btn('add_photo_alternate', 'Foto dentro de la lupa', () => readFile('image/*', src => { mag.setMagPhoto(b.id, src); shrinkImage(src).then(small => { if (small && b.image?.src === src) commit(() => { b.image = { ...b.image, src: small }; }, { history: false }); }).catch(() => {}); }), !!mag.magPhoto(b), 'magnify-photo'),
+      ...(mag.magPhoto(b) ? [btn('zoom_in_map', 'Volver a ampliar', () => mag.setMagPhoto(b.id, null), null, 'magnify-unphoto')] : [])]],
     ['Ampliación', [['num', 'Aumento (×)', k, v => mag.setZoom(b.id, v), 1, 12, 0.5],
       btn('auto_awesome_mosaic', 'Colocar automáticamente', () => mag.placeAgain(b.id)),
       btn('swap_horiz', 'Al otro lado', () => mag.swapSide(b.id)),

@@ -13,7 +13,7 @@ import { safeURL } from '../../features/document/sanitize.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { levelVars, masterBlocksFor, styled } from '../../features/document/master.js';
 import { state } from '../../core/store.js';
-import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, underArea, viewOf, MAG_SKIP } from '../../features/document/magnify.js';
+import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, underArea, viewOf, MAG_SKIP, magPhoto, magPhotoCSS } from '../../features/document/magnify.js';
 import { lockSVG } from '../../render/svg.js';
 import { ensureLook } from '../../render/imagelook.js';
 import { mapPreviewHTML } from '../../features/content/geomap.js';
@@ -131,15 +131,20 @@ export function magnifyView(b, slide, clone = null, chain = []) {
   const view = document.createElement('div'); view.className = 'rv-mag-view';
   view.style.cssText = `${magViewCSS(b)};width:${W}px;height:${H}px;background:${slide.background || 'transparent'}`;
   const all = [...(slide.id ? masterBlocksFor(slide) : []), ...slide.blocks.map(x => (slide.id ? styled(x, slide) : x))];
+  const photo = magPhoto(b);
+  if (photo) {                                         // (a photo of the user's in the box, not the area enlarged)
+    const img = document.createElement('img'); img.className = 'rv-mag-photo'; img.alt = photo.alt || ''; img.setAttribute('src', photo.src); img.style.cssText = magPhotoCSS;
+    inset.appendChild(img);
+  }
   // (As in the presentation: no copies of live objects — web pages, polls, cameras, timers, sounds, zooms.)
-  for (const o of underArea(all, viewOf(b), [...chain, b.id]).filter(x => !MAG_SKIP.includes(x.type))) {
+  for (const o of (photo ? [] : underArea(all, viewOf(b), [...chain, b.id])).filter(x => !MAG_SKIP.includes(x.type))) {
     if (o.type !== 'magnify') { view.appendChild(clone ? clone(o, slide) : blockPreview(o, slide)); continue; }
     // Another magnifier: its box (without its lines), enlarged in turn.
     const sub = magnifyView(o, slide, clone, [...chain, b.id]), at = document.createElement('div');
     sub.querySelector('.rv-mag-lines').remove(); at.style.cssText = `position:absolute;left:${o.x}px;top:${o.y}px;width:${o.w}px;height:${o.h}px`;
     at.appendChild(sub); view.appendChild(at);
   }
-  inset.appendChild(view);
+  if (!photo) inset.appendChild(view);
   const frame = document.createElement('div'); frame.className = 'rv-mag-fr'; frame.style.cssText = 'position:absolute;inset:0;pointer-events:none';
   frame.innerHTML = magFrameSVG(b, accent);
   root.append(ovl, inset, frame);

@@ -107,6 +107,9 @@ export function magViewCSS(b) {
   const v = viewOf(b);
   return `position:absolute;left:0;top:0;transform-origin:0 0;transform:scale(${+v.k.toFixed(5)}) translate(${r1(-v.x)}px,${r1(-v.y)}px);pointer-events:none`;
 }
+// A photo chosen by the user instead of the enlarged area: { src, alt? } (absent: the area enlarged). It fills the box (cover).
+export const magPhoto = b => (b.image && typeof b.image.src === 'string' && b.image.src ? b.image : null);
+export const magPhotoCSS = 'position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none';
 export const magInsetCSS = b => { const st = magStyle(b); return `position:absolute;inset:0;overflow:hidden;border-radius:${st.radius}px;${st.shadow ? 'box-shadow:0 8px 28px rgba(0,0,0,.45);' : ''}`; };
 // (A zoom-in entrance grows out of the area.)
 export const magOrigin = b => { const v = viewOf(b); return `${Math.round(v.x + v.w / 2 - b.x)}px ${Math.round(v.y + v.h / 2 - b.y)}px`; };
@@ -229,6 +232,11 @@ export function swapSide(id) {
     b.x = Math.round(Math.min(Math.max(0, 2 * cx - b.x - b.w), W - b.w));
     b.y = Math.round(Math.min(Math.max(0, 2 * cy - b.y - b.h), H - b.h));
   });
+}
+// A photo inside the box instead of the enlarged area (src: a data: URL, as the pictures' own), or none (enlarged again).
+export function setMagPhoto(id, src, alt) {
+  const b = find(id); if (!b || b.locked) return;
+  commit(() => { if (src) b.image = { src, ...(alt && { alt }) }; else delete b.image; });
 }
 // Its look: border, lines, frame round the area, shadow.
 export function setMagStyle(id, props) {

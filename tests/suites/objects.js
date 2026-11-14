@@ -3614,6 +3614,34 @@ export default async function ({ R, D, frame, test, sleep, waitFor, assert, eq, 
     assert(/<a:srgbClr val="E53935"/.test(xml), 'en rojo');
   });
 
+  await test('lupa con foto: el recuadro pinta la foto (lienzo, miniatura, HTML, PowerPoint), quitarla vuelve a ampliar, copiar y pegar la conservan, el alt sale en accesibilidad', async () => {
+    await picSlide(); const M = await magMod(), W = frame.contentWindow;
+    const PNG1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const b = M.addMagnify({ x: 320, y: 180, w: 160, h: 90 });
+    let el = D.querySelector(`#stage .block[data-id="${b.id}"]`);
+    assert(el.querySelector('.rv-mag-view') && !el.querySelector('.rv-mag-photo'), 'sin foto: ampliada como siempre');
+    M.setMagPhoto(b.id, PNG1, 'El resultado'); R.render(); await sleep(30);
+    el = D.querySelector(`#stage .block[data-id="${b.id}"]`);
+    assert(el.querySelector('.rv-mag-in img.rv-mag-photo')?.getAttribute('src') === PNG1 && !el.querySelector('.rv-mag-view'), 'el lienzo pinta la foto y no el clon');
+    eq(el.querySelectorAll('.rv-mag-lines line').length, 2, 'las líneas siguen'); assert(el.querySelector('.rv-mag-fr rect') && el.querySelector('.rv-mag-lines rect.rv-mag-src'), 'marco y zona siguen');
+    eq(getComputedStyle(el.querySelector('.rv-mag-photo')).objectFit, 'cover', 'cover');
+    const html = R.io.buildHTML(); assert(html.includes('class="rv-mag-photo"') && html.includes(PNG1.slice(0, 60)) && html.includes('alt="El resultado"'), 'el HTML exportado lleva la foto');
+    assert(R.a11y.blockLabel(b).includes('El resultado'), 'texto alternativo en accesibilidad');
+    const zip = await W.JSZip.loadAsync(await R.pptx.buildPptxBlob()), xml = await zip.file('ppt/slides/slide1.xml').async('string');
+    const at = xml.indexOf(`name="rv-${b.id}"`), pic = xml.slice(xml.lastIndexOf('<p:pic>', at), xml.indexOf('</p:pic>', at));
+    assert(at > 0 && /<p:pic>/.test(xml.slice(xml.lastIndexOf('<p:pic>', at), at)) && /descr="El resultado"/.test(pic), 'PowerPoint: la foto como imagen del recuadro');
+    const media = Object.keys(zip.files).filter(n => /^ppt\/media\//.test(n)); assert(media.length >= 2, 'con su archivo');
+    // copiar y pegar
+    R.store.commit(() => R.store.setSelection(b.id), { history: false }); const n = slide().blocks.length;
+    R.clipboard.copySelected(); R.clipboard.paste(); await sleep(30);
+    eq(slide().blocks.length, n + 1, 'pegada'); const c = last(); eq(c.type, 'magnify', 'otra lupa'); eq(c.image?.src, PNG1, 'con su foto'); assert(c.image !== b.image, 'copia propia');
+    // quitar la foto: vuelve la ampliación
+    M.setMagPhoto(b.id, null); R.render(); await sleep(30);
+    el = D.querySelector(`#stage .block[data-id="${b.id}"]`);
+    assert(!b.image && el.querySelector('.rv-mag-view') && !el.querySelector('.rv-mag-photo'), 'sin foto, ampliada otra vez');
+    assert(c.image && R.io.buildHTML().split('class="rv-mag-photo"').length === 2, 'la copia conserva la suya; la original, en el HTML sin foto');
+  });
+
   await test('lupa de una lupa: el recuadro de la otra se ve ampliado (editor, presentación), sin bucles', async () => {
     reset(); const M = await magMod();
     const t = slide().blocks[0]; R.store.commit(() => { t.html = 'Detalle pequeño'; });

@@ -3570,6 +3570,8 @@ export const ROWS = [
   ['Color de las líneas', 'Line colour', 'Couleur des lignes', 'Linienfarbe', 'Colore delle linee', 'Cor das linhas', 'Color de les línies'],
   ['Marco en la zona', 'Frame round the area', 'Cadre autour de la zone', 'Rahmen um den Bereich', 'Cornice sulla zona', 'Moldura na zona', 'Marc a la zona'],
   ['Sombra del recuadro', 'Box shadow', 'Ombre de l’encadré', 'Schatten des Ausschnitts', 'Ombra del riquadro', 'Sombra da caixa', 'Ombra del requadre'],
+  ['Foto dentro de la lupa', 'Photo inside the magnifier', 'Photo dans la loupe', 'Foto in der Lupe', 'Foto dentro la lente', 'Foto dentro da lupa', 'Foto dins de la lupa'],
+  ['Volver a ampliar', 'Magnify the area again', 'Agrandir de nouveau', 'Wieder vergrößern', 'Ingrandisci di nuovo', 'Voltar a ampliar', 'Torna a ampliar'],
   ['Ampliación', 'Enlargement', 'Agrandissement', 'Vergrößerung', 'Ingrandimento', 'Ampliação', 'Ampliació'],
   ['Aumento (×)', 'Zoom (×)', 'Grossissement (×)', 'Vergrößerung (×)', 'Ingrandimento (×)', 'Ampliação (×)', 'Augment (×)'],
   ['Colocar automáticamente', 'Place automatically', 'Placer automatiquement', 'Automatisch platzieren', 'Posiziona automaticamente', 'Colocar automaticamente', 'Col·loca automàticament'],

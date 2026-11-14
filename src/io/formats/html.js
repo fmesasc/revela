@@ -64,7 +64,7 @@ import { fxVars, fxPresentationCSS, fxParagraphCSS, isFx, FX } from '../../featu
 const FX_REV = e => !!FX[e]?.reverse;
 import { customPath, pathEnd, animTimeline, animEntries, EFFECT_KF, EFFECT_KF_CSS, EMPHASIS_FX, SIZE_FX, animScale, isEntrance, MEDIA_FX, customTransitionCSS, transitionName, isShapeTransition, pathKeyframesCSS, pathTurns, animsOf, animKey, offsetBefore } from '../../features/animation/transitions.js';
 import { masterBlocksFor, isEmptyPlaceholder, styled, levelVars, layoutOf } from '../../features/document/master.js';
-import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, magOrigin, underArea, viewOf, MAG_SKIP } from '../../features/document/magnify.js';
+import { magOverlaySVG, magFrameSVG, magViewCSS, magInsetCSS, magOrigin, underArea, viewOf, MAG_SKIP, magPhoto, magPhotoCSS } from '../../features/document/magnify.js';
 import { watermarkPage } from '../../features/document/watermark.js';
 import { portable, isLive } from '../../core/mediastore.js';
 
@@ -620,7 +620,8 @@ function magCloneHTML(o, slide, deck, chain) {
   return blockHTML({ ...o, ...STILL }, slide).replace(/ data-bid="[^"]*"/g, '');
 }
 export function magnifyInsetHTML(b, slide, deck = state.deck, chain = []) {
-  const { w: W, h: H } = deck.size, ch = [...chain, b.id];
+  const { w: W, h: H } = deck.size, ch = [...chain, b.id], photo = magPhoto(b);
+  if (photo) return `<div class="rv-mag-in" style="${magInsetCSS(b)}">${safeURL(photo.src) ? `<img class="rv-mag-photo" src="${esc(photo.src)}" alt="${esc(photo.alt || '')}" style="${magPhotoCSS}">` : ''}</div>`;
   const under = slide ? underArea(blocksOf(slide, deck), viewOf(b), ch) : [];
   return `<div class="rv-mag-in" style="${magInsetCSS(b)}"><div aria-hidden="true" style="${magViewCSS(b)};width:${W}px;height:${H}px;background:${slide ? stageBackground(slide) : 'transparent'}">`
     + `${slide ? bgLayer(slide) : ''}${under.map(o => magCloneHTML(o, slide, deck, ch)).join('')}</div></div>`;
