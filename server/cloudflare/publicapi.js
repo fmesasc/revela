@@ -28,6 +28,8 @@
 //   POST /api/v1/decks/:id/rename      { name } → { ok }
 //   POST /api/v1/decks/:id/share       { link: none|present|view|comment|edit } → { url }   (the link's role; people: in the app)
 //   POST /api/v1/decks/:id/trash       → { ok }
+//   POST /api/v1/decks/:id/slides/:sid/upload → { upload_url, … }   (a private picture: PUT its bytes to the link — imageup.js)
+//   PUT  /api/v1/upload/:token         the picture's bytes (no key: the signed link, 10 minutes) → { ok, width, height }
 //   GET  /api/v1/kinds                 → { kinds, doc, designs }   (what a spec can be)
 //
 //   POST /api/mcp                      JSON-RPC 2.0, MCP's Streamable HTTP (JSON answers; no server-sent events):
@@ -48,6 +50,7 @@ import { acct, call, FEATURES } from './api.js';
 import { enc, b64url, unb64, random, sha256, hmac } from './util.js';
 import { deckFromSpecs, deckOutline, outlineText, markdownSpecs, SPEC_DOC, KINDS, DESIGNS, DESIGN_DOC, MAX_SLIDES } from '../../src/features/ai/specdeck.js';
 import { PHOTO_PROVIDERS, stockUsed } from './stock.js';
+import { signUpload, UPLOAD_MINUTES, UPLOAD_MAX } from './imageup.js';
 import { APP_VERSION } from '../../src/core/config.js';
 
 export const KEYS_MAX = 20, ACCESS_DAYS = 30, REFRESH_DAYS = 90, CODE_MINUTES = 5, CONNECT_MINUTES = 15;
@@ -189,6 +192,16 @@ async function findPictures(ctx, specs) {
   }));
 }
 export const ACTIONS = {
+  // A private picture: no address to give, so a link to PUT its bytes to (imageup.js). Only for a slide the person may edit.
+  async imageUpload(ctx, a = {}) {
+    const id = str(a.id), slide = str(a.slide);
+    const { deck, role } = await readDeck(ctx, id);
+    if (!(deck.slides || []).some(x => x.id === slide)) fail(404, 'no such slide');
+    if (!['owner', 'edit'].includes(role)) fail(403, 'forbidden');
+    const url = `${site(ctx.env)}/api/v1/upload/${await signUpload(ctx.env, { sub: ctx.me.sub, email: ctx.who.email, deck: id, slide })}`;
+    return { upload_url: url, method: 'PUT', expires_minutes: UPLOAD_MINUTES, max_bytes: UPLOAD_MAX, types: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
+      how: `Send the file's bytes to upload_url with PUT, e.g. curl -sS -X PUT --data-binary @FILE "${url}" (add ?alt=… with a short description for people who can't see it). The picture goes into that slide, inside the presentation: it never gets a public address.` };
+  },
   async me(ctx) {
     const p = await call(acct(ctx.env, ctx.me.sub), 'me');
     return { email: p.email, name: p.name, plan: p.plan, docs: p.docs };
@@ -255,6 +268,8 @@ export async function handleV1(path, req, body, url, env, me, json) {
     if (m && GET) return ['get', { ...q, id: m[1] }];
     m = path.match(/^\/v1\/decks\/([\w-]+)\/(slides|replace|rename|share|trash)$/);
     if (m && POST) return [{ slides: 'addSlides' }[m[2]] || m[2], { ...body, id: m[1] }];
+    m = path.match(/^\/v1\/decks\/([\w-]+)\/slides\/([\w-]+)\/upload$/);
+    if (m && POST) return ['imageUpload', { ...body, id: m[1], slide: m[2] }];
     m = path.match(/^\/v1\/decks\/([\w-]+)\/slides\/([\w-]+)(\/delete)?$/);
     if (m && POST) return [m[3] ? 'deleteSlides' : 'updateSlide', { ...body, id: m[1], slide: m[2] }];
     return null;
@@ -271,7 +286,7 @@ export async function handleV1(path, req, body, url, env, me, json) {
 }
 
 // ---- MCP ------------------------------------------------------------------------------------------------
-const SLIDE_SCHEMA = { type: 'object', description: 'One slide: {"kind": "...", ...the fields of that kind}. Optional on any kind: "notes" (what the presenter says), "image_url" (https) or "image_search" (words to find a real photo).', additionalProperties: true };
+const SLIDE_SCHEMA = { type: 'object', description: 'One slide: {"kind": "...", ...the fields of that kind}. Optional on any kind: "notes" (what the presenter says), "image_url" (https) or "image_search" (words to find a real photo); a picture that is not on the web goes through upload_image.', additionalProperties: true };
 const DECK_ID = { type: 'string', description: 'The presentation\'s id (from list_presentations or create_presentation).' };
 export const TOOLS = [
   { name: 'list_presentations', action: 'list', title: 'List presentations', description: 'Lists the presentations in the user\'s Revela cloud (their own and those shared with them), newest first, with their ids and links.',
@@ -287,6 +302,8 @@ Pictures: "image_url" (an https address) or "image_search" (a few words, best in
     inputSchema: { type: 'object', properties: { name: { type: 'string', description: 'The presentation\'s title.' }, design: { type: 'string', enum: DESIGNS }, slides: { type: 'array', items: SLIDE_SCHEMA, maxItems: MAX_SLIDES }, markdown: { type: 'string' } }, required: ['name'] } },
   { name: 'add_slides', action: 'addSlides', title: 'Add slides', description: 'Adds slides (the same specs as create_presentation, or Markdown) to a presentation, at the end or at a position; they take its design.',
     inputSchema: { type: 'object', properties: { id: DECK_ID, slides: { type: 'array', items: SLIDE_SCHEMA, maxItems: MAX_SLIDES }, markdown: { type: 'string' }, position: { type: 'integer', minimum: 1, description: '1-based place for the first new slide; default: at the end.' } }, required: ['id'] } },
+  { name: 'upload_image', action: 'imageUpload', title: 'Add a private picture', description: 'For a picture that is NOT on the web (a screenshot, a photo, a file on the user\'s computer): there is no https address to give. This returns a short-lived, single-purpose upload link for one slide of one presentation; PUT the file\'s bytes to it from wherever the file is (for example curl -X PUT --data-binary @file "<upload_url>" in a shell). PNG, JPEG, WebP or GIF, up to 4 MB; it is embedded in the presentation and never made public. Never put the file\'s bytes in this conversation.',
+    inputSchema: { type: 'object', properties: { id: DECK_ID, slide: { type: 'string', description: 'The slide\'s id (from get_presentation or create_presentation) that gets the picture.' } }, required: ['id', 'slide'] } },
   { name: 'update_slide', action: 'updateSlide', title: 'Change a slide', description: 'Changes one slide: rewrites its content from a spec (its pictures, charts, code and equations are kept), sets its speaker notes, hides or shows it, or moves it.',
     inputSchema: { type: 'object', properties: { id: DECK_ID, slide: { type: 'string', description: 'The slide\'s id (from get_presentation).' }, spec: SLIDE_SCHEMA, notes: { type: 'string' }, hidden: { type: 'boolean' }, position: { type: 'integer', minimum: 1 } }, required: ['id', 'slide'] } },
   { name: 'delete_slides', action: 'deleteSlides', title: 'Delete slides', description: 'Deletes slides from a presentation (their ids from get_presentation). The deck\'s history in Revela keeps earlier versions.',

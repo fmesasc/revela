@@ -49,6 +49,9 @@ function placePicture(slide, sp, deck) {
     x: Math.round(box.x + (box.w - w) / 2), y: Math.round(box.y + (box.h - h) / 2), w, h, ...(f.caption && { caption: str(f.caption) }), ...(f.caption && f.captionLinks?.length && { captionLinks: f.captionLinks }) });
 }
 
+// A picture that is not on the web (its bytes, as a data: address — server/cloudflare/imageup.js) into a slide that exists.
+export const placeImage = (deck, slide, { src, w, h, alt }) => placePicture(slide, { picture: { src, w, h, alt } }, deck);
+
 // New slides for `deck` from specs, to go at index `at` (they take the look of the slides around there).
 export function slidesFromSpecs(deck, specs, at = deck.slides.length) {
   ensureLayouts(deck);

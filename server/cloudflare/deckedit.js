@@ -10,7 +10,7 @@
 // Each one changes the deck it is given (a copy: CloudDoc compares it with the original) and returns its answer, or
 // throws EditError(status, message), which becomes that answer.
 
-import { slidesFromSpecs, respecSlide, cleanSpec, MAX_SLIDES } from '../../src/features/ai/specdeck.js';
+import { slidesFromSpecs, respecSlide, cleanSpec, placeImage, MAX_SLIDES } from '../../src/features/ai/specdeck.js';
 
 export class EditError extends Error { constructor(status, message) { super(message); this.status = status; } }
 const fail = (status, message) => { throw new EditError(status, message); };
@@ -50,6 +50,13 @@ export const EDITS = {
     if (typeof a.notes === 'string') s.notes = a.notes.slice(0, 20000);
     if (typeof a.hidden === 'boolean') s.hidden = a.hidden;
     if (a.position != null) { const i = deck.slides.indexOf(s); deck.slides.splice(i, 1); deck.slides.splice(position(a.position, deck.slides.length), 0, s); }
+    return { ok: true };
+  },
+  // { slide, src (a data: address), w, h, alt? }: a private picture (imageup.js) into the slide's picture place.
+  addImage(deck, a = {}) {
+    const s = (deck.slides || []).find(x => x.id === str(a.slide)); if (!s) fail(404, 'no such slide');
+    if (!/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/.test(str(a.src))) fail(400, 'bad picture');
+    placeImage(deck, s, { src: a.src, w: +a.w, h: +a.h, alt: str(a.alt).slice(0, 300) });
     return { ok: true };
   },
   // { slides: [ids] }

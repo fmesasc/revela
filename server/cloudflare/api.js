@@ -85,6 +85,7 @@ import { handleVisit, visitsCall, cleanPath } from './visits.js';
 import { startLive, joinLive, startVote, joinVote, voteCode } from './broadcast.js';
 import { ssoStart, ssoCallback, ssoJoin } from './sso.js';
 import { hookOp, handleHooks } from './hooks.js';
+import { handleUpload } from './imageup.js';
 import { keyOp, handleKeys, handleV1, handleMcp, handleOAuth, connectInfo, connectApprove, isKey, parseKey, mcpChallenge } from './publicapi.js';
 import { APP_VERSION } from '../../src/core/config.js';
 import { credits, aiChat, aiImage, aiSpeech } from './ai.js';
@@ -1113,7 +1114,7 @@ export async function handleApi(req, env, url) {
   const cors = { 'Vary': 'Origin', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex',
     ...(open ? { 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'WWW-Authenticate, Mcp-Session-Id' }
       : { ...(webOrigin && { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Credentials': 'true' }), ...(desktopOrigin && { 'Access-Control-Allow-Origin': origin }) }),
-    'Access-Control-Allow-Methods': open ? 'GET, POST, DELETE, OPTIONS' : 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': open ? 'Content-Type, Authorization, Mcp-Protocol-Version, Mcp-Session-Id' : 'Content-Type, Authorization' };
+    'Access-Control-Allow-Methods': open ? 'GET, POST, PUT, DELETE, OPTIONS' : 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': open ? 'Content-Type, Authorization, Mcp-Protocol-Version, Mcp-Session-Id' : 'Content-Type, Authorization' };
   const json = (o, status = 200, extra = {}) => new Response(JSON.stringify(o), { status, headers: { ...cors, 'Content-Type': 'application/json', ...extra } });
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   const path = url.pathname.replace(/^\/api/, '');
@@ -1140,6 +1141,9 @@ export async function handleApi(req, env, url) {
   // A live broadcast's room (broadcast.js): the presenter (with its token) and the audience (no session).
   const lv = path.match(/^\/live\/([\w-]{1,40})$/);
   if (lv && req.method === 'GET') return joinLive(req, env, lv[1]);
+  // A private picture for a presentation (imageup.js): the signed link is the whole authority — no key, no cookie.
+  const upl = path.match(/^\/v1\/upload\/([\w.-]{30,800})$/);
+  if (upl) return handleUpload(req, env, upl[1], json);
   // OAuth for the MCP server (publicapi.js): its own forms, from other sites, no session.
   if (['/oauth/register', '/oauth/authorize', '/oauth/token'].includes(path)) { const r = await handleOAuth(path, req, env, url); if (r) return r; }
   // Stripe's own calls: signed, no browser involved.

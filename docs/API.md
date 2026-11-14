@@ -17,7 +17,7 @@ owner's role on each (owner, edit, comment, view) and within their plan's limits
 3. Ask: *"Make a 10-slide presentation about photosynthesis for 12-year-olds in Revela"*. The answer includes the link to open it.
 
 What it can do (MCP tools): `list_presentations`, `get_presentation`, `create_presentation`, `add_slides`,
-`update_slide`, `delete_slides`, `replace_text`, `rename_presentation`, `share_presentation`.
+`update_slide`, `delete_slides`, `replace_text`, `rename_presentation`, `share_presentation`, `upload_image`.
 
 Connected apps are listed in Revela under **My account ▸ Developers and AI**, where any of them can be disconnected.
 
@@ -64,6 +64,12 @@ Whoever has the presentation open in Revela sees the changes within seconds, and
 
 A slide is `{ "kind": "…", …fields }`. Every kind may have `notes` (what the presenter says), `icon`, and a picture:
 `image_url` (https) or `image_search` (a few words; a real photo from Unsplash or Pexels is placed, with its author).
+
+**Private pictures** (a screenshot, a photo, a file on your computer: there is no https address to give). `upload_image { id, slide }`
+(or `POST /api/v1/decks/:id/slides/:sid/upload`) returns a signed `upload_url`, valid 10 minutes and good only for that slide of that
+presentation. Put the file there from wherever it is — `curl -X PUT --data-binary @shot.png "<upload_url>?alt=Description"` — so its
+bytes never travel through the AI conversation. PNG, JPEG, WebP or GIF, up to 4 MB, checked by content (SVG is refused); it is embedded
+in the presentation and never gets a public address. The change is made as you, so a presentation you can't edit refuses it.
 `"below": true` puts a slide under the previous one, one level down (a vertical stack when presenting): an optional
 deeper look — a worked example, a diagram — that the presenter opens only if needed.
 

@@ -477,6 +477,7 @@ server/cloudflare/
   errors.js                the app's errors, kept per account for 90 days
   hooks.js                 integrations: Slack, Zapier, Microsoft
   meshy3d.js  trellis3d.js   «Realista»: textured 3D models (Meshy through fal.ai; TRELLIS on Runware or fal)
+  imageup.js               private pictures into a deck made from outside: a signed upload link (PUT), checked by content
   news.js  news-starters.js  the newsletter («Novedades») and its ready-made starting points
   openrouterwatch.js       the server's OpenRouter balance
   publicapi.js             the public API and its MCP server

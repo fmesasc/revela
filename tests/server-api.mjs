@@ -3266,6 +3266,34 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
   j = await (await mcp(key, { jsonrpc: '2.0', id: 8, method: 'resources/list' })).json();
   ok(j.error?.code === -32601, 'MCP: método desconocido');
 
+  // ---- Imágenes privadas: un enlace de subida firmado, no los bytes por la conversación ----
+  ok(names.includes('upload_image'), 'MCP: existe upload_image');
+  j = await (await kreq('GET', '/api/v1/decks/' + mid, key)).json();
+  const psid = j.deck.slides[1].id;
+  j = await (await mcp(key, { jsonrpc: '2.0', id: 20, method: 'tools/call', params: { name: 'upload_image', arguments: { id: mid, slide: psid } } })).json();
+  const upUrl = j.result?.structuredContent?.upload_url;
+  ok(!j.result?.isError && /^https:\/\/revelaslides\.com\/api\/v1\/upload\/up_[\w-]+\.[\w-]+$/.test(upUrl) && j.result.structuredContent.method === 'PUT', 'MCP: upload_image da un enlace de subida PUT');
+  j = await (await mcp(key, { jsonrpc: '2.0', id: 21, method: 'tools/call', params: { name: 'upload_image', arguments: { id: mid, slide: 'nope-nope-nope' } } })).json();
+  ok(j.result?.isError, 'MCP: upload_image con una diapositiva que no existe falla');
+  const PNG = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
+  const put = (u, bytes, hd = {}) => worker.fetch(new Request(u, { method: 'PUT', body: bytes, headers: { 'Content-Type': 'application/octet-stream', ...hd } }), env);
+  ok((await put(upUrl.slice(0, -3) + 'abc', PNG)).status === 401, 'subida: un enlace manipulado no vale');
+  ok((await put(SITE + '/api/v1/upload/up_' + 'a'.repeat(40) + '.' + 'b'.repeat(43), PNG)).status === 401, 'subida: un enlace inventado no vale');
+  ok((await put(upUrl, new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'), { 'Content-Type': 'image/png' })).status === 415, 'subida: un SVG se rechaza aunque diga ser PNG');
+  ok((await put(upUrl, new Uint8Array(0))).status === 400, 'subida: sin cuerpo se rechaza');
+  ok((await put(upUrl, new Uint8Array(4 * 1024 * 1024 + 1))).status === 413, 'subida: pasar de 4 MB se rechaza');
+  r = await put(upUrl + '?alt=' + encodeURIComponent('Una captura'), PNG); j = await r.json();
+  ok(r.status === 200 && j.ok && j.width === 1 && j.height === 1, 'subida: un PNG privado entra');
+  j = await (await kreq('GET', '/api/v1/decks/' + mid, key)).json();
+  const im = j.deck.slides.find(x => x.id === psid).blocks.find(b => b.type === 'image');
+  ok(im && /^data:image\/png;base64,/.test(im.src) && im.alt === 'Una captura', 'subida: la imagen queda incrustada en la diapositiva (nunca con dirección pública)');
+  r = await worker.fetch(new Request(upUrl, { method: 'GET' }), env);
+  ok(r.status === 405, 'subida: solo PUT');
+  {
+    const now = Date.now; Date.now = () => now() + 11 * 60e3;
+    try { ok((await put(upUrl, PNG)).status === 401, 'subida: el enlace caduca a los 10 minutos'); } finally { Date.now = now; }
+  }
+
   // ---- OAuth (Claude's and ChatGPT's connectors) ----
   j = await (await worker.fetch(new Request(SITE + '/.well-known/oauth-protected-resource/api/mcp'), env)).json();
   ok(j.resource === SITE + '/api/mcp' && j.authorization_servers[0] === SITE, 'OAuth: el recurso protegido');
