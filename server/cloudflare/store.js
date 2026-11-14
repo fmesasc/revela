@@ -23,17 +23,30 @@ const chunkFor = text => (/[^\x00-\x7f]/.test(text) ? 600 * 1024 : 1900 * 1000);
 const YEAR = 365 * 864e5;
 
 // ---- Text stored in parts ---------------------------------------------------------
-// prev: the parts written last time (only the ones that changed are written again).
-export async function writeText(storage, prefix, text, prev = null) {
-  const parts = [], size = chunkFor(text);
-  for (let i = 0; i < text.length; i += size) parts.push(text.slice(i, i + size));
-  const put = {};
-  parts.forEach((p, i) => { if (!prev || prev[i] !== p) put[prefix + i] = p; });
-  const keys = Object.keys(put);
-  for (let i = 0; i < keys.length; i += 100) await storage.put(Object.fromEntries(keys.slice(i, i + 100).map(k => [k, put[k]])));
-  if (prev && prev.length > parts.length) await storage.delete(prev.slice(parts.length).map((_, i) => prefix + (parts.length + i)));
-  await storage.put(prefix + 'n', parts.length);
-  return parts;
+// A short fingerprint of a text (its length and a SHA-256 of it): to know whether a part changed without keeping its text
+// (a presentation's slides were kept in memory twice — the deck, and the text last written to compare with —, which on a big
+// one was most of the object's memory: 128 MB per Durable Object).
+const hex = buf => Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, '0')).join('');
+export const fingerprint = async s => s.length + ':' + hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))).slice(0, 32);
+// The parts of a text and their fingerprints (writeText's prev and result).
+export const partsOf = async text => { const size = chunkFor(text), fps = []; for (let i = 0; i < text.length; i += size) fps.push(await fingerprint(text.slice(i, i + size))); return fps; };
+// prev: the fingerprints of the parts written last time (only the ones that changed are written again); fps: the ones of
+// this text, if already made. → the fingerprints of the parts now.
+export async function writeText(storage, prefix, text, prev = null, fps = null) {
+  const size = chunkFor(text), n = Math.ceil(text.length / size);
+  fps ||= prev ? await partsOf(text) : [];
+  // (Written in batches of at most ~4 M characters, so a big text isn't all in flight at once.)
+  let put = {}, chars = 0, rows = 0;
+  const flush = async () => { if (rows) { await storage.put(put); put = {}; chars = 0; rows = 0; } };
+  for (let i = 0; i < n; i++) {
+    if (prev && prev[i] === fps[i]) continue;
+    put[prefix + i] = text.slice(i * size, (i + 1) * size); chars += put[prefix + i].length; rows++;
+    if (rows >= 100 || chars >= 4e6) await flush();
+  }
+  await flush();
+  if (prev && prev.length > n) await storage.delete(prev.slice(n).map((_, i) => prefix + (n + i)));
+  await storage.put(prefix + 'n', n);
+  return fps;
 }
 export async function readParts(storage, prefix) {
   const n = await storage.get(prefix + 'n'); if (n == null) return null;
@@ -117,8 +130,9 @@ export async function writeDeck(storage, deck, prev = null, touched = null) {
   for (const s of slides) {
     const old = prev?.slides.get(s.id);
     if (old && touched && !touched.has(s.id)) { next.slides.set(s.id, old); continue; }
-    const text = JSON.stringify(s);
-    next.slides.set(s.id, old && old.text === text ? old : { text, parts: await writeText(storage, `slide:${s.id}:`, text, old?.parts) });
+    // (What is kept of each slide: its size in characters and the fingerprints of its parts, not its text.)
+    const text = JSON.stringify(s), fps = await partsOf(text);
+    next.slides.set(s.id, old && old.len === text.length && old.parts.length === fps.length && old.parts.every((f, i) => f === fps[i]) ? old : { len: text.length, parts: await writeText(storage, `slide:${s.id}:`, text, old?.parts, fps) });
   }
   for (const [id, old] of prev?.slides || []) if (!next.slides.has(id)) await storage.delete([`slide:${id}:n`, ...old.parts.map((_, i) => `slide:${id}:${i}`)]);
   return next;
@@ -128,7 +142,7 @@ export async function readDeck(storage) {
   const { order = [], ...rest } = JSON.parse(head), state = { head, slides: new Map() }, slides = [];
   for (const id of order) {
     const parts = await readParts(storage, `slide:${id}:`); if (!parts) continue;
-    const text = parts.join(''); state.slides.set(id, { text, parts }); slides.push(JSON.parse(text));
+    const text = parts.join(''); state.slides.set(id, { len: text.length, parts: await Promise.all(parts.map(fingerprint)) }); slides.push(JSON.parse(text));
   }
   return { deck: { ...rest, slides }, state };
 }

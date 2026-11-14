@@ -110,6 +110,22 @@ const LOG_PIECE = 20;
 const logKey = n => 'log:' + String(n).padStart(9, '0');
 const opsChars = e => JSON.stringify(e.ops).length;
 
+// A copy of data that came from JSON, sharing its strings (they never change): structuredClone copies the pictures
+// inside, which is what a change by the public API did with the whole deck (the deck twice over in memory).
+const cloneJson = v => (Array.isArray(v) ? v.map(cloneJson) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, cloneJson(x)])) : v);
+// JSON.stringify(o) of an answer with a deck, in pieces (the deck's slides one by one, each into bytes at once): the whole
+// text and its bytes together were twice the deck, on top of the deck itself.
+function* answerPieces(o) {
+  const { deck, ...rest } = o; let first = true;
+  yield '{"deck":{';
+  for (const [k, v] of Object.entries(deck)) { const t = k === 'slides' ? undefined : JSON.stringify(v); if (t !== undefined) { yield (first ? '' : ',') + JSON.stringify(k) + ':' + t; first = false; } }
+  yield (first ? '' : ',') + '"slides":[';
+  for (let i = 0; i < deck.slides.length; i++) yield (i ? ',' : '') + JSON.stringify(deck.slides[i]);
+  yield ']}';
+  for (const [k, v] of Object.entries(rest)) { const t = JSON.stringify(v); if (t !== undefined) yield ',' + JSON.stringify(k) + ':' + t; }
+  yield '}';
+}
+const BIG_ANSWER = 2e6;
 export const docsSettings = env => ({
   maxMb: +env.MAX_MB || 30,
   freeDocs: +(env.FREE_DOCS ?? 3), proDocs: +(env.PRO_DOCS ?? 500),
@@ -129,12 +145,19 @@ export function indexOf(deck) {
 // ---- One document ---------------------------------------------------------------------------
 export class CloudDoc {
   constructor(ctx, env) { this.ctx = ctx; this.env = env; this.doc = null; this.parts = null; this.pvN = {}; this.log = null; this.versions = null; this.edits = []; }
-  json(o, status = 200) { return new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json' } }); }
+  json(o, status = 200) {
+    // (A big deck goes out in pieces already in bytes; its answer, as ever, is the same JSON.)
+    if (o?.deck && Array.isArray(o.deck.slides) && this.doc && (this.size ??= this.measure(this.parts ? new Set() : null)) > BIG_ANSWER) {
+      const enc = new TextEncoder(), chunks = []; for (const t of answerPieces(o)) chunks.push(enc.encode(t));
+      let i = 0; return new Response(new ReadableStream({ pull(c) { if (i < chunks.length) c.enqueue(chunks[i++]); else c.close(); } }), { status, headers: { 'Content-Type': 'application/json', ...(!o.notify && { 'X-Deck': '1' }) } });
+    }
+    return new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json' } });
+  }
   async load() {
     if (this.doc) return this.doc;
     const st = this.ctx.storage, meta = await st.get('meta'); if (!meta) return null;
     const r = await readDeck(st); if (!r) return null;
-    this.parts = r.state; this.doc = { meta, deck: r.deck }; this.size = null; return this.doc;
+    this.parts = r.state; this.doc = { meta, deck: r.deck }; this.size = null; this.lens = null; return this.doc;
   }
   // Role of { sub, email } (either may be missing): owner, a person's, or the link's.
   roleOf(meta, who, r) {
@@ -166,9 +189,24 @@ export class CloudDoc {
   // What it takes in the cloud, in characters (≈ bytes; storage.js): the deck, its saved versions, its picture and the
   // log of recent changes.
   async bytes(meta) {
-    this.size ??= JSON.stringify(this.doc.deck).length;
+    this.size ??= this.measure(this.parts ? new Set() : null);
     const versions = (await this.versionList()).reduce((t, v) => t + (+v.bytes || 0), 0);
     return this.size + versions + (+meta.thumbChars || 0) + (+meta.logChars || 0);
+  }
+  // The deck's size in characters — what JSON.stringify(deck).length says —, without making that text (it was, with every
+  // change: the whole deck again in memory, to count it). The size of each slide is kept (this.lens: as stored, from this.parts);
+  // `touched` are the slides that may have changed since (null: all of them), each measured alone.
+  measure(touched) {
+    const slides = this.doc.deck.slides, ids = new Set(slides.map(x => x?.id));
+    if (!this.lens) { this.lens = new Map(); if (this.parts && touched) for (const [id, e] of this.parts.slides) this.lens.set(id, e.len); else touched = null; }
+    const lens = this.lens;
+    for (const id of lens.keys()) if (!ids.has(id)) lens.delete(id);
+    if (touched) { for (const x of slides) if (touched.has(x?.id) || !lens.has(x?.id)) lens.set(x?.id, JSON.stringify(x).length); }
+    else { lens.clear(); for (const x of slides) lens.set(x?.id, JSON.stringify(x).length); }
+    const { slides: _, ...rest } = this.doc.deck;
+    let t = JSON.stringify({ ...rest, slides: [] }).length + Math.max(slides.length - 1, 0);
+    for (const n of lens.values()) t += n;
+    return t;
   }
   // The saved versions' list (kept in memory while awake; snapshot() changes it).
   async versionList() { return (this.versions ??= (await this.ctx.storage.get('versions')) || []); }
@@ -242,12 +280,14 @@ export class CloudDoc {
   }
   async applyEdits(group) {
     const st = this.ctx.storage, maxBytes = docsSettings(this.env).maxMb * 1024 * 1024;
+    // (Which slides the operations reach; null: all of them, if the list itself is replaced.)
+    const touchedOf = ops => { const t = new Set(); for (const o of ops) if (o.p[0] === 'slides') { if (o.p.length === 1) return null; if (o.p[1] !== '#') t.add(o.p[1]); } return t; };
     if (!(await this.load())) return group.map(() => this.json({ error: 'not found' }, 404));
     const { meta } = this.doc, out = [], done = [];
     let lk = null, used = 0, snap = null, touched = new Set();
     // (A change refused after it was applied — too large, no space —: the deck read again as stored, with the earlier
     // changes of this group applied again.)
-    const undo = async () => { this.doc = null; await this.load(); this.doc.meta = meta; for (const ops of done) applyOps(this.doc.deck, ops); this.size = null; await this.bytes(meta); };
+    const undo = async () => { this.doc = null; await this.load(); this.doc.meta = meta; for (const ops of done) applyOps(this.doc.deck, ops); this.lens = null; this.size = this.measure(null); };
     for (const x of group) {
       const a = x.a, role = this.roleOf(meta, a.who, a.r), deck = this.doc.deck;
       if (meta.trashed && role !== 'owner') { out.push(this.json({ error: 'not found' }, 404)); continue; }
@@ -256,7 +296,7 @@ export class CloudDoc {
       let ops, res = null;
       if (x.op === 'change') {                             // the public API: its change made here, on a copy, and compared
         if (!at('edit') || !EDITS[a.action]) { out.push(this.json({ error: 'forbidden' }, 403)); continue; }
-        const next = structuredClone(deck);
+        const next = cloneJson(deck);
         // (Whatever goes wrong in it, only its own answer: the copy is thrown away, the rest of the group goes on.)
         try { res = EDITS[a.action](next, a.args || {}); } catch (e) { if (!e.status) console.log('change', a.action, e?.message); out.push(this.json({ error: e.status ? e.message : 'error' }, e.status || 500)); continue; }
         ops = diff(deck, next);
@@ -273,26 +313,29 @@ export class CloudDoc {
       if (lk.locked) { out.push(this.json({ error: 'read only', reason: 'over limit', limit: lk.limit }, 402)); continue; }
       await this.bytes(meta); const oldSize = this.size;
       const last = snap ? snap.at : (await this.versionList()).slice(-1)[0]?.at || 0;
-      const before = at('edit') && Date.now() - last > VERSION_EVERY ? JSON.stringify(this.doc.deck) : null;
+      // (The version is written as it was before this change, slide by slide, before applying it — not made whole in
+      // memory —; if the change is refused or the space doesn't allow it, it's deleted again. Its size is the deck's.)
+      const pend = at('edit') && Date.now() - last > VERSION_EVERY && !(lk.storage && used >= lk.storage.quota) ? await this.writeVersion(this.doc.deck) : null;
+      const t = touchedOf(ok);
       applyOps(this.doc.deck, ok);
-      const size = JSON.stringify(this.doc.deck).length;
-      if (size > maxBytes) { await undo(); out.push(this.json({ error: 'too large' }, 413)); continue; }
+      const size = this.measure(t);
+      if (size > maxBytes) { await this.dropVersion(pend); await undo(); out.push(this.json({ error: 'too large' }, 413)); continue; }
       // The owner's space full: nothing that makes it bigger (what makes it smaller, yes — that frees space; then
       // without the saved version, which would take more).
-      let keep = before;
-      if (lk.storage && keep && size <= oldSize && used + size - oldSize + keep.length > lk.storage.quota) keep = null;
-      const grows = size - oldSize + (keep ? keep.length : 0);
-      if (lk.storage && grows > 0 && used + grows > lk.storage.quota) { await undo(); out.push(this.json({ error: 'storage full', used, quota: lk.storage.quota }, 402)); continue; }
+      let keep = !!pend;
+      if (lk.storage && keep && size <= oldSize && used + size - oldSize + oldSize > lk.storage.quota) { await this.dropVersion(pend); keep = false; }
+      const grows = size - oldSize + (keep ? oldSize : 0);
+      if (lk.storage && grows > 0 && used + grows > lk.storage.quota) { if (keep) await this.dropVersion(pend); await undo(); out.push(this.json({ error: 'storage full', used, quota: lk.storage.quota }, 402)); continue; }
       used += grows; this.size = size; done.push(ok);
-      if (keep) snap = { text: keep, rev: meta.rev, at: Date.now() };
+      if (keep) snap = { at: pend.at, rev: meta.rev, bytes: oldSize, n: pend.n };
       meta.rev++; meta.updated = Date.now(); meta.name = nameOf(this.doc.deck);
       meta.logChars = await this.logAdd({ rev: meta.rev, ops: ok });
       // (Which slides to write again: those the operations reach; all of them if the list itself is replaced.)
-      for (const o of ok) if (touched && o.p[0] === 'slides') { if (o.p.length === 1) touched = null; else if (o.p[1] !== '#') touched.add(o.p[1]); }
+      if (touched) { if (t) for (const id of t) touched.add(id); else touched = null; }
       out.push({ rev: meta.rev, ...(res && { out: res }), changed: true });
     }
     if (!done.length) return out.map(r => (r instanceof Response ? r : this.json(r)));
-    if (snap) await this.snapshot(snap.text, snap.rev);
+    if (snap) await this.snapshot(snap);
     this.parts = await writeDeck(st, this.doc.deck, this.parts, touched);
     const { put, del } = this.logWrites();
     await st.put({ meta, ...put }); if (del.length) await st.delete(del);
@@ -312,13 +355,13 @@ export class CloudDoc {
       if (!a.bookmark && !(at > now - 30 * DAY && at < now)) return this.json({ error: 'bad time' }, 400);
       const before = await st.getCurrentBookmark(), to = a.bookmark ? String(a.bookmark) : await st.getBookmarkForTime(at);
       await st.onNextSessionRestoreBookmark(to);
-      this.doc = null; this.parts = null; this.log = null; this.versions = null;
+      this.doc = null; this.parts = null; this.lens = null; this.log = null; this.versions = null;
       setTimeout(() => { try { this.ctx.abort('restore'); } catch {} }, 0);       // (after this answer: then it restarts restored)
       return this.json({ ok: true, before, to });
     }
     if (op === 'init') {
       const meta = { owner: a.owner, ownerEmail: a.ownerEmail, name: nameOf(a.deck), link: 'none', people: {}, rev: 1, created: Date.now(), updated: Date.now() };
-      this.parts = await writeDeck(st, a.deck); this.doc = { meta, deck: a.deck }; this.size = null;
+      this.parts = await writeDeck(st, a.deck); this.doc = { meta, deck: a.deck }; this.size = null; this.lens = null;
       this.log = { pieces: [], dirty: new Set(), gone: [], old: false }; this.versions = [];
       await st.put({ meta, versions: [] }); return this.json({ ok: true, rev: 1 });
     }
@@ -521,10 +564,33 @@ export class CloudDoc {
     }
     return this.json({ error: 'unknown' }, 404);
   }
-  // A version of the whole deck (before a change, at most one every half hour; the last ten).
-  async snapshot(text, rev) {
-    const st = this.ctx.storage, list = await this.versionList(), at = Date.now();
-    await writeText(st, `v:${at}:`, text); list.push({ at, rev, bytes: text.length });
+  // A version of the whole deck as it is now, written slide by slide in parts as JSON.stringify(deck) would be (the text
+  // is never whole in memory): → { at, n } (its parts), not in the list until snapshot().
+  async writeVersion(deck) {
+    const st = this.ctx.storage, at = Date.now(), prefix = `v:${at}:`;
+    let buf = '', n = 0;
+    const ASCII = 1900 * 1000, WIDE = 600 * 1024;      // (parts of < 2 MB: as chunkFor, store.js)
+    const out = async final => {
+      while (buf.length > (final ? 0 : ASCII)) {
+        let k = Math.min(buf.length, ASCII); if (/[^\x00-\x7f]/.test(buf.slice(0, k))) k = Math.min(k, WIDE);
+        await st.put(prefix + n++, buf.slice(0, k)); buf = buf.slice(k);
+      }
+    };
+    const add = async t => { buf += t; if (buf.length > ASCII) await out(false); };
+    await add('{'); let first = true;
+    for (const [k, v] of Object.entries(deck)) {
+      if (k === 'slides') { await add((first ? '' : ',') + '"slides":['); for (let i = 0; i < v.length; i++) await add((i ? ',' : '') + JSON.stringify(v[i])); await add(']'); first = false; continue; }
+      const t = JSON.stringify(v); if (t === undefined) continue;
+      await add((first ? '' : ',') + JSON.stringify(k) + ':' + t); first = false;
+    }
+    await add('}'); await out(true); await st.put(prefix + 'n', n);
+    return { at, n };
+  }
+  async dropVersion(v) { if (v) await this.ctx.storage.delete([`v:${v.at}:n`, ...Array.from({ length: v.n }, (_, i) => `v:${v.at}:${i}`)]); }
+  // A version of the whole deck (before a change, at most one every half hour; the last ten): written by writeVersion.
+  async snapshot({ at, rev, bytes }) {
+    const st = this.ctx.storage, list = await this.versionList();
+    list.push({ at, rev, bytes });
     while (list.length > VERSIONS) {
       const old = list.shift(), n = (await st.get(`v:${old.at}:n`)) || 0;
       await st.delete([`v:${old.at}:n`, ...Array.from({ length: n }, (_, i) => `v:${old.at}:${i}`)]);
@@ -537,7 +603,9 @@ export class CloudDoc {
 const docOf = (env, id) => env.DOCS.get(env.DOCS.idFromName('doc:' + id));
 // The team's list of documents shared with it (teams.js).
 const teamDocs = async (env, team, op, body) => { if (!env.TEAMS || !team) return null; const r = await env.TEAMS.get(env.TEAMS.idFromName('team:' + team)).fetch('https://team/' + op, { method: 'POST', body: JSON.stringify(body) }); return r.json(); };
-const ask = async (env, id, op, body) => { const r = await docOf(env, id).fetch('https://doc/' + op, { method: 'POST', body: JSON.stringify(body) }); return { status: r.status, data: await r.json() }; };
+// (body: the object, or its JSON already made — a whole deck is made once, not again to send it.)
+const askRaw = (env, id, op, body) => docOf(env, id).fetch('https://doc/' + op, { method: 'POST', body: typeof body === 'string' ? body : JSON.stringify(body) });
+const ask = async (env, id, op, body) => { const r = await askRaw(env, id, op, body); return { status: r.status, data: await r.json() }; };
 const ID = /^[\w-]{16,40}$/;
 
 // Deleted for good (by its owner, or by the daily cron after TRASH_DAYS in the trash): the document,
@@ -561,16 +629,25 @@ export async function purgeDoc(env, sub, id) {
   return { status: 200, data: { ok: true } };
 }
 // A new one in my list (and in a folder of mine, if given), within the plan's limit.
-async function create(env, me, deck, folder) {
+async function create(env, me, deck, folder, raw = null) {
   const s = docsSettings(env), id = random(16);
-  const room = await call(acct(env, me.sub), 'docs-add', { id, name: nameOf(deck), limit: me.plan === 'pro' ? s.proDocs : s.freeDocs, folder: folder || null, bytes: JSON.stringify(deck).length, ...indexOf(deck) });
+  // The body as it came, when it is a plain JSON object {"deck": …}: its length is the deck's and more (never less: the deck's
+  // JSON can't be longer than the text it was read from), and it goes on to the document as it is — owner and email last, so
+  // they win over any the caller put in —, instead of the deck made into text twice more (a 50 MB deck in the Worker's
+  // memory, 128 MB, was five copies of it). Otherwise (the API, a copy) the deck's own JSON, made once.
+  const t = typeof raw === 'string' ? raw.trimEnd() : '';
+  const plain = t.startsWith('{') && t.endsWith('}');
+  const text = plain ? null : JSON.stringify(deck);
+  const room = await call(acct(env, me.sub), 'docs-add', { id, name: nameOf(deck), limit: me.plan === 'pro' ? s.proDocs : s.freeDocs, folder: folder || null, bytes: plain ? t.length : text.length, ...indexOf(deck) });
   if (!room.ok) return { status: 402, data: room.storage ? { error: 'storage full', used: room.storage.used, quota: room.storage.quota } : { error: 'doc limit', limit: room.limit } };
-  const r = await ask(env, id, 'init', { owner: me.sub, ownerEmail: me.email, deck });
+  const owner = `"owner":${JSON.stringify(me.sub)},"ownerEmail":${JSON.stringify(me.email ?? null)}`;
+  const r = await ask(env, id, 'init', plain ? `${t.slice(0, -1)},${owner}}` : `{"deck":${text},${owner}}`);
   return { status: 200, data: { id, rev: r.data.rev } };
 }
 
 // me: { sub, email, plan, features } or null.
-export async function handleDocs(path, req, body, url, env, me, json) {
+// bodyText: the request's body as it came (text), so a big new presentation isn't made into text again to be sent on.
+export async function handleDocs(path, req, body, url, env, me, json, bodyText = null) {
   const s = docsSettings(env);
   const who = me ? { sub: me.sub, email: me.email, ...(me.team && { team: me.team }) } : null;
   const reply = r => json(r.data, r.status);
@@ -583,7 +660,7 @@ export async function handleDocs(path, req, body, url, env, me, json) {
     }
     const deck = body.deck;
     if (!deck || typeof deck !== 'object' || !Array.isArray(deck.slides)) return json({ error: 'bad request' }, 400);
-    return reply(await create(env, me, deck, typeof body.folder === 'string' ? body.folder : null));
+    return reply(await create(env, me, deck, typeof body.folder === 'string' ? body.folder : null, bodyText));
   }
   // My folders, the pictures of several at once, emptying the trash.
   const fm = path.match(/^\/docs\/(folders|thumbs|trash\/empty)(?:\/([\w-]{4,20})(\/delete)?)?$/);
@@ -688,7 +765,11 @@ export async function handleDocs(path, req, body, url, env, me, json) {
     if (th.data.thumb) { const t = await ask(env, c.data.id, 'thumb', { who, id: c.data.id, thumb: th.data.thumb }); await call(acct(env, me.sub), 'docs-meta', { id: c.data.id, thumbAt: t.data.at }); }
     return json({ id: c.data.id });
   }
-  const r = await ask(env, id, op, args);
+  const got = await askRaw(env, id, op, args);
+  // (A big deck, which the document sends in pieces: on to the browser as it comes, not read whole here — it would be the
+  // deck twice, and again to send it.)
+  if (got.status === 200 && got.headers.get('X-Deck')) { const probe = json({}); if (probe instanceof Response) return new Response(got.body, { status: 200, headers: probe.headers }); }   // (not for the callers that take the data: publicapi.js)
+  const r = { status: got.status, data: await got.json() };
   if (r.status !== 200) return json(r.data, r.status);
   // Keep the lists in step: the owner's, and each person's "shared with me".
   if (op === 'share') {

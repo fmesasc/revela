@@ -1349,7 +1349,7 @@ export async function handleApi(req, env, url) {
     // (The team only while they really are in it: someone taken out keeps its id in their account until it's noticed.)
     const who = me && { ...me, ...(await call(acct(env, me.sub), 'me')) }, tid = me && (await call(acct(env, me.sub), 'team-id')).id;
     const team = tid && (await teamStatus(env, tid, who.email))?.member ? tid : null;
-    return handleDocs(path, req, body, url, env, who && { sub: me.sub, email: who.email, name: who.name, plan: who.plan, features: who.features, ...(team && { team }) }, json);
+    return handleDocs(path, req, body, url, env, who && { sub: me.sub, email: who.email, name: who.name, plan: who.plan, features: who.features, ...(team && { team }) }, json, text);
   }
   // The welcome message of a new account (set in the admin; off by default): no session needed.
   if (path === '/welcome' && req.method === 'GET') return json({ welcome: welcomeFor(await welcomeConfig(env), langOf(url.searchParams.get('lang'))) });
