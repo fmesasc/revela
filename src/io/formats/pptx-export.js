@@ -178,7 +178,7 @@ function addMagnifier(slide, b, pptx, raster, blocks) {
     if (e > 0.0005) picCrops.set(b.id, R > r ? { l, t: 0, r: l, b: 0 } : { l: 0, t, r: 0, b: t });
   } else if (crop) { slide.addImage({ ...pos, data: crop.img.src, objectName: id, ...(crop.img.flipH && { flipH: true }), ...(crop.img.flipV && { flipV: true }) }); picCrops.set(b.id, crop.src); }
   else if (raster.has(b.id)) slide.addImage({ ...pos, data: raster.get(b.id), objectName: id });
-  if (st.width) rect(box, Math.max(0, st.radius - st.width / 2), `${id}-frame`);
+  if (st.width) rect(box, st.radius ? st.radius + st.width / 2 : 0, `${id}-frame`);
 }
 const picSizes = new Map(), picCrops = new Map(), picPads = new Map();   // (for the export under way: images' natural sizes, their srcRect, how far a baked one goes past its box)
 async function naturalSizes(deck) {

@@ -74,11 +74,11 @@ export function centerLine(a, b) {
   const edge = (r, c, t) => { const dx = t[0] - c[0], dy = t[1] - c[1], s = Math.min(r.w / 2 / Math.abs(dx || 1e-9), r.h / 2 / Math.abs(dy || 1e-9)); return [c[0] + dx * s, c[1] + dy * s]; };
   return [[...edge(a, ca, cb), ...edge(b, cb, ca)]];
 }
-// The frames' own lines (the area's drawn just outside it, the box's just
-// inside), and the lines between them.
+// The frames' own lines (the area's drawn just outside it, the box's too: neither
+// covers what the box enlarges), and the lines between them.
 export function magGeometry(b) {
   const st = magStyle(b), v = viewOf(b), h = st.width / 2;
-  const src = st.sourceFrame && st.width ? grow(v, h) : v, box = st.width ? grow(b, -h) : { x: b.x, y: b.y, w: b.w, h: b.h };
+  const src = st.sourceFrame && st.width ? grow(v, h) : v, box = st.width ? grow(b, h) : { x: b.x, y: b.y, w: b.w, h: b.h };
   const lines = st.lines === 'none' ? [] : st.lines === 'center' ? centerLine(src, box) : tangentLines(src, box);
   return { st, view: v, src, box, lines };
 }
@@ -96,11 +96,12 @@ export function magOverlaySVG(b, W, H, accent) {
     s += `<rect class="rv-mag-src" x="${r1(src.x)}" y="${r1(src.y)}" width="${r1(src.w)}" height="${r1(src.h)}" rx="${st.radius ? r1(st.radius / Math.max(1, zoomOf(b))) : 0}" fill="none" stroke="${col}" stroke-width="${st.width}"${dashOf(st.style, st.width)}/>`;
   return s + '</svg>';
 }
-// The box's frame, in the box's own coordinates (over what it shows).
+// The box's frame, in the box's own coordinates: just outside it, as the area's is, so that
+// it never covers what the box shows (the whole area, as the area's frame encloses it).
 export function magFrameSVG(b, accent) {
   const st = magStyle(b); if (!st.width) return '';
-  const h = st.width / 2;
-  return `<svg class="rv-mag-frame" viewBox="0 0 ${b.w} ${b.h}" width="${b.w}" height="${b.h}" aria-hidden="true"><rect x="${h}" y="${h}" width="${Math.max(0, b.w - st.width)}" height="${Math.max(0, b.h - st.width)}" rx="${Math.max(0, st.radius - h)}" fill="none" stroke="${resolve(st.color, accent)}" stroke-width="${st.width}"${dashOf(st.style, st.width)}/></svg>`;
+  const w = st.width, h = w / 2;
+  return `<svg class="rv-mag-frame" viewBox="${-w} ${-w} ${b.w + 2 * w} ${b.h + 2 * w}" width="${b.w + 2 * w}" height="${b.h + 2 * w}" style="position:absolute;left:${-w}px;top:${-w}px;overflow:visible" aria-hidden="true"><rect x="${-h}" y="${-h}" width="${b.w + w}" height="${b.h + w}" rx="${st.radius ? st.radius + h : 0}" fill="none" stroke="${resolve(st.color, accent)}" stroke-width="${w}"${dashOf(st.style, w)}/></svg>`;
 }
 // CSS of the layer (the slide's size) that shows the area enlarged in the box.
 export function magViewCSS(b) {

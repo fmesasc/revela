@@ -3599,6 +3599,26 @@ export default async function ({ R, D, frame, test, sleep, waitFor, assert, eq, 
     D.querySelector('[data-tab="home"]').click();
   });
 
+  await test('lupa: lo que enseña el recuadro es lo que encierra el marco de la zona, con bordes gruesos y otra proporción (el borde no tapa la ampliación)', async () => {
+    await picSlide(); const M = await magMod();
+    for (const bw of [4, 14]) {
+      const b = M.addMagnify({ x: 300, y: 300, w: 282, h: 28 }, { x: 420, y: 40, w: 413, h: 70, source: { x: 300, y: 300, w: 282, h: 28 }, border: { color: '#e53935', width: bw, style: 'solid', radius: 0 } });
+      R.render(); await sleep(30);
+      const el = D.querySelector(`#stage .block[data-id="${b.id}"]`), v = M.viewOf(b), h = bw / 2;
+      // La capa ampliada lleva el rectángulo de la zona exactamente a los bordes del recuadro (b.w × b.h).
+      const m = new (frame.contentWindow.DOMMatrix)(getComputedStyle(el.querySelector('.rv-mag-view')).transform), P = (x, y) => [m.a * x + m.e, m.d * y + m.f];
+      const [x0, y0] = P(v.x, v.y), [x1, y1] = P(v.x + v.w, v.y + v.h);
+      assert(Math.abs(x0) < 0.6 && Math.abs(y0) < 0.6 && Math.abs(x1 - b.w) < 0.6 && Math.abs(y1 - b.h) < 0.6, `borde ${bw}: la zona llena el recuadro (${[x0, y0, x1, y1].map(Math.round)} / ${b.w}×${b.h})`);
+      // El borde del recuadro queda fuera de lo que enseña (su canto interior es el del recuadro) y el de la zona fuera de la zona.
+      const fr = el.querySelector('.rv-mag-fr rect'), sr = el.querySelector('.rv-mag-lines rect.rv-mag-src');
+      const inner = r => ({ x: +r.getAttribute('x') + h, y: +r.getAttribute('y') + h, w: +r.getAttribute('width') - bw, h: +r.getAttribute('height') - bw });
+      const fi = inner(fr), si = inner(sr);
+      assert(Math.abs(fi.x) < 0.6 && Math.abs(fi.y) < 0.6 && Math.abs(fi.w - b.w) < 0.6 && Math.abs(fi.h - b.h) < 0.6, `borde ${bw}: el borde del recuadro no tapa la ampliación (${JSON.stringify(fi)})`);
+      assert(Math.abs(si.x - v.x) < 0.6 && Math.abs(si.y - v.y) < 0.6 && Math.abs(si.w - v.w) < 0.6 && Math.abs(si.h - v.h) < 0.6, `borde ${bw}: el marco de la zona encierra lo que se ve`);
+      R.store.undo(); await sleep(10);
+    }
+  });
+
   await test('lupa: en PowerPoint, la parte de la imagen recortada (srcRect) o una imagen de lo que hay, y el marco y las líneas como formas', async () => {
     await picSlide(); const M = await magMod(), W = frame.contentWindow;
     const b = M.addMagnify({ x: 320, y: 180, w: 160, h: 90 });
