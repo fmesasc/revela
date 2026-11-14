@@ -21,7 +21,7 @@
 //   GET  /api/version          → { version, stage }   (the version this server is: src/core/config.js APP_VERSION)
 //   GET  /api/sessions         → { sessions: [{ id, kind, device, where, created, last, expires, current? }] }   (my open sessions)
 //   POST /api/sessions         { id } | { others: true } → { ended }   (closing one, or all but this one)
-//   GET  /api/me               → { email, plan, credits, features, billing, billingTest, terms (accepted the current ones?), docs,
+//   GET  /api/me               → { email, plan, credits, features, billing, billingTest, terms (accepted the current ones?), docs ({ n, limit, readOnly, maxMb, proMaxMb }: how many, the plan's limit, those read-only, the most one may take — this plan's and Pro's — in MB),
 //                              trialDays (Pro's free trial on offer to this account; 0: none), trial? ({ until }: in a trial now) }
 //   POST /api/terms            { version, lang? }       (accepting the current terms, once; accounts from before)
 //   POST /api/mail/test                                 (a test email to my own address, once an hour)
@@ -64,7 +64,7 @@ import { handleDocs } from './docs.js';
 import { handleTeams, teamStatus } from './teams.js';
 import { handleLti } from './lti.js';
 import { handleCalls } from './calls.js';
-import { docsSettings, TRASH_DAYS, FOLDERS } from './docs.js';
+import { docsSettings, maxMbOf, TRASH_DAYS, FOLDERS } from './docs.js';
 import { mail, sendMail, readUnsubToken, unsubPage, fmtDate, mailConfigured, OPTIONAL, unsubToken } from './mail.js';
 import { renderNews, newsTick, linkTarget, NEWS_LANGS, recipientToken, readRecipientToken } from './news.js';
 import { scheduleItem, scheduleAll, dayOf } from './schedule.js';
@@ -563,7 +563,7 @@ export class Account {
         await this.expire(); await this.monthly(plan === 'pro', s);
         const ds = await this.docState(plan === 'pro'); await this.dirSync();
         return this.json({ email: prof.email, name: prof.name || null, plan, until: own === 'pro' ? await this.proUntil() : null, ...((await this.get('blocked', null)) && { blocked: true }), credits: await this.get('credits', 0), expiring: await this.soon(), features: FEATURES[plan] || FEATURES.free,
-          terms: prof.terms?.version === s.termsVersion, docs: { n: ds.docs.length, limit: ds.limit, readOnly: ds.locked.length }, ...((await this.get('newsOn', null)) && { news: true }), ...((await this.get('billingTest', null)) && { billingTest: true }),
+          terms: prof.terms?.version === s.termsVersion, docs: { n: ds.docs.length, limit: ds.limit, readOnly: ds.locked.length, maxMb: maxMbOf(this.env, plan === 'pro'), proMaxMb: maxMbOf(this.env, true) }, ...((await this.get('newsOn', null)) && { news: true }), ...((await this.get('billingTest', null)) && { billingTest: true }),
           ...(p?.trial && p.until > Date.now() && own === 'pro' && !((await this.get('proGift', null))?.until > Date.now()) && { trial: { until: p.until } }),
           ...(team?.member && { team: { name: team.name, role: team.role, active: team.active } }) });
       }
@@ -739,10 +739,13 @@ export class Account {
       // (Asked by the document on every read and change: it also says what it takes now — bytes.)
       case 'docs-locked': {
         if (Number.isFinite(+a.bytes)) { const docs = await this.get('docs', []), d = docs.find(x => x.id === a.id); if (d && d.bytes !== +a.bytes) { d.bytes = +a.bytes; await this.put({ docs }); } }
-        const d = await this.docState(); return this.json({ locked: d.locked.includes(a.id), limit: d.limit, storage: await this.storage() });
+        const d = await this.docState(); return this.json({ locked: d.locked.includes(a.id), limit: d.limit, maxMb: maxMbOf(this.env, await this.isPro()), storage: await this.storage() });
       }
       case 'docs-add': {                                   // { id, name, limit, bytes, folder?, slides, text } (folder: one of mine, else the top)
         const docs = await this.get('docs', []), folders = await this.get('folders', []);
+        // (How big one may be: by this account's plan, never by what the caller says — a.limit is the caller's number of documents.)
+        const maxMb = maxMbOf(this.env, await this.isPro());
+        if ((+a.bytes || 0) > maxMb * MB) return this.json({ ok: false, tooLarge: true, maxMb });
         if (docs.length >= +a.limit) return this.json({ ok: false, limit: +a.limit });
         const sto = await this.storage(); if (sto.used + (+a.bytes || 0) > sto.quota) return this.json({ ok: false, storage: sto });
         const folder = folders.some(f => f.id === a.folder) ? a.folder : null, now = Date.now();
@@ -1194,7 +1197,7 @@ export async function handleApi(req, env, url) {
   if (req.method === 'POST' && cookieOf(req) && !req.headers.get('Authorization') && !webOrigin) return json({ error: 'origin' }, 403);
   const isDocs = path === '/docs' || path.startsWith('/docs/');
   // (Documents, and the team's templates and pictures, may be big: the rest is small JSON.)
-  const maxBody = isDocs || path === '/team/template' || path === '/team/assets' ? (+env.MAX_MB || 30) * 1024 * 1024 : 2e6;
+  const maxBody = isDocs || path === '/team/template' || path === '/team/assets' ? maxMbOf(env, true) * 1024 * 1024 : 2e6;   // (the most any plan keeps; each plan's own is checked once the account is known)
   if (+(req.headers.get('Content-Length') || 0) > maxBody) return json({ error: 'too large' }, 413);
   const text = req.method === 'POST' ? await req.text() : '';
   if (text.length > maxBody) return json({ error: 'too large' }, 413);

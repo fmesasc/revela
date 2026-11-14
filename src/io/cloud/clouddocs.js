@@ -14,7 +14,7 @@
 // Then nothing is sent: what is changed here stays here (status 'readonly') and can
 // be kept as a copy (keepCopy) or exported; it's checked again when the account changes.
 
-import { api } from './account.js';
+import { api, account } from './account.js';
 import { OFFICIAL_SITE, EDITION } from '../../core/config.js';
 import { state, subscribe, snapshot, applyRemote, adoptDeck, replaceDeck, setPersist, mutate, onBeforeReplace } from '../../core/store.js';
 import { diff, applyOps } from '../../features/live/collabsync.js';
@@ -159,12 +159,15 @@ export async function openDoc(id, { io = send, pollMs = 5000, debounceMs = 1200 
   return cloudDoc();
 }
 // Put the current presentation in the cloud (in one of my folders, if given) and keep it in step from now on.
-// The largest presentation Revela's cloud keeps (server: MAX_MB, 30 MB — its pictures, videos and 3D models inside):
-// known here, so a bigger one is told before it is sent, with where it does fit (Drive, a file).
-export const CLOUD_MAX_MB = 30;
+// The largest presentation Revela's cloud keeps (its pictures, videos and 3D models inside): 30 MB, and 40 MB with Pro
+// (server: MAX_MB and PRO_MAX_MB, docs.js maxMbOf). Known here, so a bigger one is told before it is sent, with where it
+// does fit (Drive, a file) — or Pro. The server says this account's own in /api/me (docs.maxMb); without it, by the plan.
+export const CLOUD_MAX_MB = 30, CLOUD_PRO_MAX_MB = 40;
+export const cloudMaxMB = (a = account()) => +a?.docs?.maxMb || (a?.plan === 'pro' ? CLOUD_PRO_MAX_MB : CLOUD_MAX_MB);
+export const cloudProMaxMB = (a = account()) => +a?.docs?.proMaxMb || CLOUD_PRO_MAX_MB;
 // (Its files by address — core/mediastore.js — count as the data: URLs they become on their way.)
 const sizeOf = deck => approxSize(deck) + liveBytes(deck) * 4 / 3;
-export const cloudFits = (deck = state.deck) => sizeOf(deck) * 1.02 + 65536 <= CLOUD_MAX_MB * 1024 * 1024;
+export const cloudFits = (deck = state.deck, a = account()) => sizeOf(deck) * 1.02 + 65536 <= cloudMaxMB(a) * 1024 * 1024;
 export const deckMB = (deck = state.deck) => Math.max(1, Math.round(sizeOf(deck) / 1048576));
 export async function saveToCloud({ io = send, pollMs = 5000, debounceMs = 1200, folder = null } = {}) {
   const deck = await portable(snapshot(state.deck)), r = await io('docs', { deck, ...(folder && { folder }) });

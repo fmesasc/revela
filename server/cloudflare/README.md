@@ -126,7 +126,8 @@ keeps them across deploys. Every feature whose secret is missing is simply off.
 
 | Name | Purpose |
 |------|---------|
-| `MAX_MB` | largest share, room or document (default 30) |
+| `MAX_MB` | largest share, room or document of an owner on the free plan (default 30) |
+| `PRO_MAX_MB` | largest cloud document of an owner on Pro (default 40; see docs/NUBE.md) |
 | `DAILY_PER_USER`, `DAILY_TOTAL` | shares + rooms per person and in total per day |
 | `API_ORIGINS` | origins allowed to use the API with the session cookie |
 | `SITE_URL` | the site that links and payments come back to |

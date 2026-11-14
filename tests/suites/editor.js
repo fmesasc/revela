@@ -1235,6 +1235,21 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     assert(!box.contains(own), 'un clic lo quita (quedan: ' + [...box.children].map(x => x.textContent.trim().slice(0, 40)).slice(0, 3).join(' | ') + ')');
   });
 
+  await test('nube de Revela: el límite de tamaño depende del plan (gratis 30 MB, Pro 40 MB) y el aviso lo dice', async () => {
+    reset(); const W = frame.contentWindow, CL = await W.eval("import('/src/ui/dialogs/cloud.js')"), CD = await W.eval("import('/src/io/cloud/clouddocs.js')");
+    eq(CD.cloudMaxMB(null), 30, 'sin cuenta: 30'); eq(CD.cloudMaxMB({ plan: 'free' }), 30, 'gratis: 30'); eq(CD.cloudMaxMB({ plan: 'pro' }), 40, 'Pro: 40');
+    eq(CD.cloudMaxMB({ plan: 'pro', docs: { maxMb: 35 } }), 35, 'lo que dice el servidor manda'); eq(CD.cloudProMaxMB({ plan: 'free', docs: { maxMb: 30, proMaxMb: 45 } }), 45, 'el de Pro, también');
+    R.store.commit(() => { slide().blocks.push({ id: 'big3d', type: 'model', x: 0, y: 0, w: 100, h: 100, src: 'data:model/gltf-binary;base64,' + 'A'.repeat(36e6) }); });
+    assert(!CD.cloudFits(undefined, { plan: 'free' }), 'una de 36 MB no cabe en gratis'); assert(CD.cloudFits(undefined, { plan: 'pro' }), 'pero sí en Pro');
+    const p = CL.fitsCloudOrOffer(); await sleep(30);
+    const msg = [...D.querySelectorAll('.modal .dlg-msg')].pop()?.textContent || '';
+    assert(/30 MB/.test(msg) && /40 MB/.test(msg) && /Pro/.test(msg) && /Google Drive/.test(msg), 'gratis: el límite, que con Pro caben 40 MB y Drive: ' + msg);
+    [...D.querySelectorAll('.modal .dlg-cancel')].pop().click(); eq(await p, false, 'y no se sube');
+    R.store.commit(() => { slide().blocks.find(b => b.id === 'big3d').src = 'data:model/gltf-binary;base64,' + 'A'.repeat(60e6); });
+    assert(!CD.cloudFits(undefined, { plan: 'pro' }), 'una de 60 MB no cabe ni en Pro');
+    R.store.commit(() => { slide().blocks = slide().blocks.filter(b => b.id !== 'big3d'); });
+  });
+
   await test('nube de Revela: una presentación que no cabe (más de 30 MB) lo dice antes de subirla, con cuánto ocupa, y ofrece Google Drive', async () => {
     reset(); const W = frame.contentWindow, CL = await W.eval("import('/src/ui/dialogs/cloud.js')"), CD = await W.eval("import('/src/io/cloud/clouddocs.js')");
     assert(CD.cloudFits(), 'una normal cabe');

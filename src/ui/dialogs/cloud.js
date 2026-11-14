@@ -37,8 +37,14 @@ export const errorText = e => (e.status === 402 && e.data?.error === 'read only'
 
 // Too big for Revela's cloud: how big, the limit, and where it does fit. (Francisco, 2026-10-19: the message said only
 // «too big for the cloud», and as he signs in with Google he took it for his Drive.)
-const tooBigText = () => t('Esta presentación ocupa unos {n} MB y la nube de Revela guarda hasta {max} MB (las fotos, los vídeos y los modelos 3D van dentro). Guárdala en tu Google Drive, que no tiene ese límite, o descárgala como archivo.')
-  .replace('{n}', cd.deckMB()).replace('{max}', cd.CLOUD_MAX_MB);
+const tooBigText = () => {
+  const max = cd.cloudMaxMB(), pro = cd.cloudProMaxMB(), n = cd.deckMB();
+  // (Free, and it would fit with Pro: said — a way out that isn't Drive.)
+  if (pro > max && n <= pro) return t('Esta presentación ocupa unos {n} MB y la nube de Revela guarda hasta {max} MB en el plan gratuito (las fotos, los vídeos y los modelos 3D van dentro); con Pro caben hasta {pro} MB. Pásate a Pro, guárdala en tu Google Drive, que no tiene ese límite, o descárgala como archivo.')
+    .replace('{n}', n).replace('{max}', max).replace('{pro}', pro);
+  return t('Esta presentación ocupa unos {n} MB y la nube de Revela guarda hasta {max} MB (las fotos, los vídeos y los modelos 3D van dentro). Guárdala en tu Google Drive, que no tiene ese límite, o descárgala como archivo.')
+    .replace('{n}', n).replace('{max}', max);
+};
 // Before sending it: if it doesn't fit, said now — with a way to keep it in Drive — instead of after uploading it.
 export async function fitsCloudOrOffer() {
   if (cd.cloudFits()) return true;

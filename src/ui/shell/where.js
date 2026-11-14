@@ -27,7 +27,7 @@ export function openSaveWhere(anchor) {
   popupMenu(anchor, { id: 'save-where', className: 'save-where', attr: 'w', align: 'right',
     html: `<div class="sw-head">${t('Ahora solo está en este navegador. ¿Dónde la guardas?')}</div>`
       + item('drive', 'add_to_drive', t('Google Drive (tu cuenta de Google)'), t('Recomendado: se guarda sola, sin límite de tamaño, y la abres desde cualquier dispositivo.'))
-      + (cloud ? item('cloud', 'cloud', t('Nube de Revela'), t('En tu cuenta de Revela (hasta {max} MB): desde ahí la compartes con personas concretas y ves sus estadísticas.').replace('{max}', cd.CLOUD_MAX_MB)) : '')
+      + (cloud ? item('cloud', 'cloud', t('Nube de Revela'), t('En tu cuenta de Revela (hasta {max} MB): desde ahí la compartes con personas concretas y ves sus estadísticas.').replace('{max}', cd.cloudMaxMB())) : '')
       + (onedriveReady() ? item('onedrive', 'cloud_circle', 'OneDrive', t('Se guarda sola en tu OneDrive personal, de trabajo o de tu centro.')) : '')
       + item('file', 'download', t('Descargar un archivo'), t('Una copia (.revela) que guardas tú.')),
     onPick: async k => {

@@ -128,9 +128,16 @@ function* answerPieces(o) {
 const BIG_ANSWER = 2e6;
 export const docsSettings = env => ({
   maxMb: +env.MAX_MB || 30,
+  // (Pro: 40 MB. Measured here in local (workerd, heap limited to find the least each step needs; 2026-11-14): creating one
+  // takes ~2 copies of it plus ~12 MB in the Worker and in the document — 30 MB: ~72 MB; 40 MB: ~88-90; 50 MB: 104-112,
+  // of the 128 MB an isolate has. Without a copy at the document's side (this file, store.js) it was 104 at 30 MB and 160
+  // at 50. Above 40, a presentation should leave the document's own memory: see docs/NUBE.md, «Tamaño máximo».)
+  proMaxMb: +env.PRO_MAX_MB || 40,                       // (the owner's plan Pro: see Account 'docs-locked')
   freeDocs: +(env.FREE_DOCS ?? 3), proDocs: +(env.PRO_DOCS ?? 500),
   maxPeople: +(env.MAX_PEOPLE ?? 50),
 });
+// The most a presentation may take, in MB, for an owner on Pro or not (the Pro one is never below the common one).
+export const maxMbOf = (env, pro) => { const s = docsSettings(env); return pro ? Math.max(s.proMaxMb, s.maxMb) : s.maxMb; };
 const nameOf = deck => String(deck?.name || '').slice(0, 200) || 'Presentación sin título';
 export const TRASH_DAYS = 30, FOLDERS = { max: 200, name: 80, depth: 3 };
 const THUMB = /^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/]+=*$/, THUMB_CHARS = 40000;
@@ -279,7 +286,9 @@ export class CloudDoc {
     group.forEach((x, i) => x.resolve(replies[i]));
   }
   async applyEdits(group) {
-    const st = this.ctx.storage, maxBytes = docsSettings(this.env).maxMb * 1024 * 1024;
+    const st = this.ctx.storage, ds = docsSettings(this.env);
+    // (The most a presentation may take: the owner's plan — as the account says in lk —, else the common one.)
+    const maxBytes = lk => (lk?.maxMb || ds.maxMb) * 1024 * 1024;
     // (Which slides the operations reach; null: all of them, if the list itself is replaced.)
     const touchedOf = ops => { const t = new Set(); for (const o of ops) if (o.p[0] === 'slides') { if (o.p.length === 1) return null; if (o.p[1] !== '#') t.add(o.p[1]); } return t; };
     if (!(await this.load())) return group.map(() => this.json({ error: 'not found' }, 404));
@@ -319,7 +328,7 @@ export class CloudDoc {
       const t = touchedOf(ok);
       applyOps(this.doc.deck, ok);
       const size = this.measure(t);
-      if (size > maxBytes) { await this.dropVersion(pend); await undo(); out.push(this.json({ error: 'too large' }, 413)); continue; }
+      if (size > maxBytes(lk)) { await this.dropVersion(pend); await undo(); out.push(this.json({ error: 'too large' }, 413)); continue; }
       // The owner's space full: nothing that makes it bigger (what makes it smaller, yes — that frees space; then
       // without the saved version, which would take more).
       let keep = !!pend;
@@ -639,6 +648,7 @@ async function create(env, me, deck, folder, raw = null) {
   const plain = t.startsWith('{') && t.endsWith('}');
   const text = plain ? null : JSON.stringify(deck);
   const room = await call(acct(env, me.sub), 'docs-add', { id, name: nameOf(deck), limit: me.plan === 'pro' ? s.proDocs : s.freeDocs, folder: folder || null, bytes: plain ? t.length : text.length, ...indexOf(deck) });
+  if (room.tooLarge) return { status: 413, data: { error: 'too large', maxMb: room.maxMb } };
   if (!room.ok) return { status: 402, data: room.storage ? { error: 'storage full', used: room.storage.used, quota: room.storage.quota } : { error: 'doc limit', limit: room.limit } };
   const owner = `"owner":${JSON.stringify(me.sub)},"ownerEmail":${JSON.stringify(me.email ?? null)}`;
   const r = await ask(env, id, 'init', plain ? `${t.slice(0, -1)},${owner}}` : `{"deck":${text},${owner}}`);

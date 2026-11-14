@@ -23,6 +23,9 @@ class_name = "Limits"
 [vars]
 # The largest presentation, in MB, that can be saved in Revela's cloud (docs.js).
 MAX_MB = "30"
+# …and the same for an owner on Pro (docs.js maxMbOf: Free keeps MAX_MB; the account says which applies, never the caller).
+# 40 is what was measured safe in a 128 MB Durable Object / Worker (docs/NUBE.md, «Tamaño máximo por plan»).
+PRO_MAX_MB = "40"
 # Per Google account (or address) and in total, per day: shares + rooms created.
 DAILY_PER_USER = "30"
 DAILY_TOTAL = "3000"
@@ -340,6 +343,7 @@ SITE_URL = "https://test.revelaslides.com"
 STRIPE_MODE = "test"
 MONTHLY_BUDGET_USD = "5"
 MAX_MB = "30"
+PRO_MAX_MB = "40"
 DAILY_PER_USER = "30"
 DAILY_TOTAL = "3000"
 FREE_DOCS = "3"

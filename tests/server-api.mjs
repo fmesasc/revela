@@ -42,7 +42,7 @@ env.FETCH = async (url, init = {}) => {
   const u = String(url);
   if (u.startsWith('https://oauth2.googleapis.com/tokeninfo')) {
     const t = new URL(u).searchParams.get('access_token');
-    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' }, 'tok-lia': { sub: '2323', email: 'lia@example.com' }, 'tok-sto': { sub: '2424', email: 'sto@example.com' }, 'tok-una': { sub: '2525', email: 'una@example.com' }, 'tok-tour': { sub: '2626', email: 'tour@example.com' }, 'tok-tour2': { sub: '2727', email: 'tour2@example.com' }, 'tok-tour3': { sub: '2828', email: 'tour3@example.com' }, 'tok-nwa': { sub: '3001', email: 'nwa@example.com' }, 'tok-nwb': { sub: '3002', email: 'nwb@example.com' }, 'tok-nwc': { sub: '3003', email: 'nwc@example.com' }, 'tok-nwd': { sub: '3004', email: 'nwd@example.com' }, 'tok-nwe': { sub: '3005', email: 'nwe@example.com' }, 'tok-nwf': { sub: '3006', email: 'nwf@example.com' }, 'tok-err': { sub: '3101', email: 'erra@example.com' } }[t];
+    const who = { 'tok-ana': { sub: '111', email: 'ana@example.com' }, 'tok-luis': { sub: '222', email: 'luis@example.com' }, 'tok-eva': { sub: '444', email: 'eva@example.com' }, 'tok-rosa': { sub: '555', email: 'rosa@escuela.example' }, 'tok-pepe': { sub: '666', email: 'pepe@escuela.example' }, 'tok-mar': { sub: '777', email: 'mar@example.com' }, 'tok-sol': { sub: '888', email: 'sol@example.com' }, 'tok-teo': { sub: '999', email: 'teo@example.com' }, 'tok-ines': { sub: '1010', email: 'ines@example.com' }, 'tok-gil': { sub: '1212', email: 'gil@example.com' }, 'tok-noa': { sub: '1313', email: 'noa@example.com' }, 'tok-pia': { sub: '1414', email: 'pia@example.com' }, 'tok-tess': { sub: '1515', email: 'tess@example.com' }, 'tok-ivo': { sub: '1616', email: 'ivo@example.com' }, 'tok-ada': { sub: '1717', email: 'ada@example.com' }, 'tok-bea': { sub: '1818', email: 'bea@example.com' }, 'tok-cid': { sub: '1919', email: 'cid@example.com' }, 'tok-dan': { sub: '2020', email: 'dan@example.com' }, 'tok-zoe': { sub: '2121', email: 'zoe@example.com' }, 'tok-kai': { sub: '2222', email: 'kai@example.com' }, 'tok-lia': { sub: '2323', email: 'lia@example.com' }, 'tok-sto': { sub: '2424', email: 'sto@example.com' }, 'tok-una': { sub: '2525', email: 'una@example.com' }, 'tok-tour': { sub: '2626', email: 'tour@example.com' }, 'tok-tour2': { sub: '2727', email: 'tour2@example.com' }, 'tok-tour3': { sub: '2828', email: 'tour3@example.com' }, 'tok-nwa': { sub: '3001', email: 'nwa@example.com' }, 'tok-nwb': { sub: '3002', email: 'nwb@example.com' }, 'tok-nwc': { sub: '3003', email: 'nwc@example.com' }, 'tok-nwd': { sub: '3004', email: 'nwd@example.com' }, 'tok-nwe': { sub: '3005', email: 'nwe@example.com' }, 'tok-nwf': { sub: '3006', email: 'nwf@example.com' }, 'tok-err': { sub: '3101', email: 'erra@example.com' }, 'tok-big1': { sub: '3201', email: 'big1@example.com' }, 'tok-big2': { sub: '3202', email: 'big2@example.com' } }[t];
     if (t === 'tok-otraapp') return Response.json({ aud: 'otra-app', sub: '333', email: 'x@example.com', email_verified: 'true' });
     return who ? Response.json({ aud: CID, ...who, email_verified: 'true', expires_in: 3000 }) : new Response('bad', { status: 400 });
   }
@@ -435,7 +435,7 @@ ok((await req('POST', '/api/desktop/claim', { origin: 'tauri://localhost', body:
   j = await (await get(ana, '/since?rev=0')).json(); ok(j.deck && j.deck.slides[0].blocks[0].html === 'Hola, mundo', 'nube: si va muy atrás, el documento entero');
   j = await (await get(eva, '/versions')).json(); ok(j.versions.length === 1, 'nube: una versión guardada antes de editar');
   j = await (await get(eva, '/version?at=' + j.versions[0].at)).json(); ok(j.deck.slides[0].blocks[0].html === 'Hola', 'nube: la versión anterior se puede recuperar');
-  ok((await ops(ana, [{ p: ['slides', 's1', 'blocks', 'b1', 'html'], v: 'x'.repeat(31 * 1024 * 1024) }])).status === 413, 'nube: tamaño máximo');
+  ok((await ops(ana, [{ p: ['slides', 's1', 'blocks', 'b1', 'html'], v: 'x'.repeat(51 * 1024 * 1024) }])).status === 413, 'nube: tamaño máximo (Pro: 40 MB)');
   // Link
   ok((await get(null)).status === 401, 'nube: sin enlace público, sin sesión no');
   await req('POST', `/api/docs/${id}/share`, { headers: { Cookie: ana }, body: { link: 'view' } });
@@ -3752,6 +3752,60 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     await ops('x');
     j = await (await P('GET', `/api/docs/${did}/since?rev=230`, { headers: { Cookie: c } })).json();
     ok(!DS().has('log') && DS().has('log:000000000') && j.ops?.length === 3, 'registro por trozos: y con el siguiente cambio pasa a trozos'); }
+  // The most a presentation may take, by its owner's plan: 30 MB free, 40 MB Pro (PRO_MAX_MB), asked of the owner's account —
+  // never what the caller says — when it is created and with every change.
+  {
+    const MBs = 1024 * 1024, login = async tok => cookieFrom(await req('POST', '/api/login', { body: { accessToken: tok, terms: TERMS } }));
+    const mk = (mb, name = 'Grande') => ({ name, slides: [{ id: 'g1', blocks: [{ id: 'b1', type: 'text', html: 'x'.repeat(mb * MBs) }] }] });
+    const free = await login('tok-big1'), pro = await login('tok-big2');
+    await env.ACCOUNTS.get('u:3202').fetch('https://do/setplan', { method: 'POST', body: JSON.stringify({ name: 'pro', until: Date.now() + 864e5 }) });
+    const meF = await (await req('GET', '/api/me', { headers: { Cookie: free } })).json(), meP = await (await req('GET', '/api/me', { headers: { Cookie: pro } })).json();
+    ok(meF.docs.maxMb === 30 && meF.docs.proMaxMb === 40 && meP.docs.maxMb === 40, 'límite por plan: /api/me lo dice (gratis 30, Pro 40): ' + JSON.stringify([meF.docs, meP.docs]));
+    let r = await req('POST', '/api/docs', { headers: { Cookie: free }, body: { deck: mk(31) } });
+    ok(r.status === 413 && (await r.json()).maxMb === 30, 'límite por plan: una de 31 MB, gratis → 413 (con su límite)');
+    r = await req('POST', '/api/docs', { headers: { Cookie: free }, body: { deck: mk(29) } }); const f = await r.json();
+    ok(r.status === 200 && f.id, 'límite por plan: una de 29 MB, gratis → cabe');
+    const opsOf = (c, did, mb) => req('POST', `/api/docs/${did}/ops`, { headers: { Cookie: c }, body: { ops: [{ p: ['slides', 'g1', 'blocks', 'b1', 'html'], v: 'y'.repeat(mb * MBs) }] } });
+    ok((await opsOf(free, f.id, 31)).status === 413, 'límite por plan: crecer a 31 MB, gratis → 413');
+    ok((await opsOf(free, f.id, 28)).status === 200, 'límite por plan: y a 28 MB, sí');
+    r = await req('POST', '/api/docs', { headers: { Cookie: pro }, body: { deck: mk(36) } }); const p = await r.json();
+    ok(r.status === 200 && p.id, 'límite por plan: una de 36 MB, Pro → cabe');
+    ok((await opsOf(pro, p.id, 39)).status === 200, 'límite por plan: crecer a 39 MB, Pro → cabe');
+    ok((await opsOf(pro, p.id, 41)).status === 413, 'límite por plan: crecer a 41 MB, Pro → 413');
+    ok((await req('POST', '/api/docs', { headers: { Cookie: pro }, body: { deck: mk(41) } })).status === 413, 'límite por plan: una de 41 MB, Pro → 413');
+    j = await (await req('GET', `/api/docs/${p.id}`, { headers: { Cookie: pro } })).json();
+    ok(j.deck.slides[0].blocks[0].html.length === 39 * MBs && j.rev === 2, 'límite por plan: la grande se lee entera y sin cambios por el camino');
+    env.PRO_MAX_MB = '35'; ok((await opsOf(pro, p.id, 38)).status === 413 && (await opsOf(pro, p.id, 34)).status === 200, 'límite por plan: PRO_MAX_MB lo cambia'); delete env.PRO_MAX_MB;
+    // (The owner's plan counts, not the editor's: a Pro editing a free person's presentation keeps to 30 MB.)
+    await req('POST', `/api/docs/${f.id}/share`, { headers: { Cookie: free }, body: { link: 'edit' } });
+    ok((await opsOf(pro, f.id, 35)).status === 413, 'límite por plan: cuenta el plan de quien es dueño, no el de quien edita');
+    // (The body goes on to the document as it came — only owner and email are the account's own, whatever the body says.)
+    r = await req('POST', '/api/docs', { headers: { Cookie: free }, body: { deck: mk(1, 'Con dueño falso'), owner: '3202', ownerEmail: 'big2@example.com' } }); const fk = await r.json();
+    j = await (await req('GET', `/api/docs/${fk.id}`, { headers: { Cookie: free } })).json();
+    ok(r.status === 200 && j.role === 'owner' && (await (await req('GET', `/api/docs/${fk.id}`, { headers: { Cookie: pro } })).json()).error === 'forbidden', 'límite por plan: el dueño es la cuenta, no lo que diga el cuerpo');
+    await req('POST', `/api/docs/${fk.id}/delete`, { headers: { Cookie: free }, body: {} });
+    // The saved version is written slide by slide, before the change, and gone again if the change is refused.
+    {
+      const st = env.DOCS.inst.get('doc:' + f.id).ctx.storage.m, rows = () => [...st.keys()].filter(k => /^v:\d+:n$/.test(k)).length;
+      const vers = async () => (await (await req('GET', `/api/docs/${f.id}/versions`, { headers: { Cookie: free } })).json()).versions;
+      const before = (await vers()).length;
+      ok((await opsOf(free, f.id, 31)).status === 413 && rows() === before, 'versión: si el cambio se rechaza, no queda ninguna fila suelta (' + rows() + ' de ' + before + ')');
+      // (Non-ASCII text: parts of 600 K characters, a slide bigger than a part, and many slides.)
+      const wide = { name: 'Ancha', slides: [{ id: 'a1', blocks: [{ id: 'b1', type: 'text', html: 'é€'.repeat(900000) }] }, { id: 'a2', blocks: [{ id: 'b2', type: 'text', html: 'ñ'.repeat(700000) }, { id: 'b3', type: 'text', html: 'abc' }] }, ...Array.from({ length: 30 }, (_, i) => ({ id: 'x' + i, blocks: [{ id: 'y' + i, type: 'text', html: 'z'.repeat(5000 + i) }] }))], theme: { a: 1 } };
+      const w = await (await req('POST', '/api/docs', { headers: { Cookie: free }, body: { deck: wide } })).json();
+      const rw = await req('POST', `/api/docs/${w.id}/ops`, { headers: { Cookie: free }, body: { ops: [{ p: ['slides', 'a2', 'blocks', 'b3', 'html'], v: 'cambiado' }] } });
+      const vl = (await (await req('GET', `/api/docs/${w.id}/versions`, { headers: { Cookie: free } })).json()).versions;
+      const old = (await (await req('GET', `/api/docs/${w.id}/version?at=${vl[0].at}`, { headers: { Cookie: free } })).json()).deck;
+      ok(rw.status === 200 && vl.length === 1 && vl[0].bytes === JSON.stringify(wide).length && JSON.stringify(old.slides) === JSON.stringify(wide.slides) && old.name === 'Ancha' && old.theme.a === 1, 'versión: la anterior se recupera igual, con texto que no es ASCII y partes de varias diapositivas (' + vl[0]?.bytes + ' = ' + JSON.stringify(wide).length + ')');
+      const wst = env.DOCS.inst.get('doc:' + w.id).ctx.storage.m;
+      ok([...wst.keys()].filter(k => k.startsWith('v:')).every(k => k.endsWith(':n') || (wst.get(k).length <= 600 * 1024)), 'versión: ninguna parte pasa de lo que cabe en un valor');
+      j = await (await req('GET', `/api/docs/${w.id}`, { headers: { Cookie: free } })).json();
+      ok(j.deck.slides.length === 32 && j.deck.slides[1].blocks[1].html === 'cambiado' && j.deck.slides[0].blocks[0].html.length === 1800000 && j.deck.theme.a === 1, 'una presentación con texto ancho y muchas diapositivas se lee entera y con el cambio');
+      await req('POST', `/api/docs/${w.id}/delete`, { headers: { Cookie: free }, body: {} });
+    }
+    // (Cleaning up.)
+    await req('POST', `/api/docs/${p.id}/delete`, { headers: { Cookie: pro }, body: {} }); await req('POST', `/api/docs/${f.id}/delete`, { headers: { Cookie: free }, body: {} });
+  }
   // Changes that wait together: each answered on its own; a refused one (too large) leaves the others as they were.
   { const st = fakeStorage(), d = new CloudDoc({ storage: st }, { MAX_MB: '0.01' }), who = { sub: 'dueña' };
     const send = (op, body) => d.fetch(new Request('https://doc/' + op, { method: 'POST', body: JSON.stringify({ who, ...body }) }));

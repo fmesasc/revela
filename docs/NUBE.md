@@ -97,6 +97,26 @@ cambios (una cada media hora como mucho, las diez últimas) y, para el dueño co
 Pro, estadísticas por diapositiva (vistas y tiempo) con un identificador
 aleatorio del navegador, sin correos ni direcciones.
 
+**Tamaño máximo por plan.** Una presentación de la nube (con sus fotos, vídeos y modelos 3D
+dentro, como `data:`) puede ocupar hasta 30 MB si su dueño tiene el plan gratuito (`MAX_MB`) y
+hasta 40 MB si tiene Pro (`PRO_MAX_MB`; `maxMbOf` en `docs.js`). Cuenta el plan **del dueño**,
+no el de quien edita, y lo dice su cuenta (`docs-add` al crear y `docs-locked` con cada cambio):
+nunca el cliente. Pasarse: `413 { error: 'too large' }`. `/api/me` da `docs.maxMb` (el de esta
+cuenta) y `docs.proMaxMb`, y la app los usa para avisar antes de subir (en el plan gratuito dice
+que con Pro caben hasta 40 MB). Por qué 40 y no 50: la memoria. Un Durable Object y un Worker
+tienen 128 MB, y al crear una presentación el Worker tiene a la vez el texto recibido y lo ya
+leído (dos copias), y el objeto igual al recibirla. Medido en local (workerd con la memoria
+limitada con `MINIFLARE_WORKERD_V8_FLAGS=--max-old-space-size=N`, buscando el N mínimo con el que
+pasan todos los pasos: guardar entera, editar un bloque, cambio por la API, versión, leer,
+reabrir; 2026-11-14), el objeto necesitó, con 30 / 40 / 50 MB de presentación, 104 / 128 / 160 MB
+antes de quitarle copias (`docs.js`, `store.js`: ya no guarda el texto de cada diapositiva
+para comparar —solo huellas—, mide el tamaño por diapositiva, copia solo la estructura en
+los cambios por la API, escribe las versiones diapositiva a diapositiva y responde por
+trozos) y 72 / 88 / 112 MB después; el Worker (crear), 72 MB con 30 y unos 90 con 40 (50 MB:
+entre 97 y 112). Con 50 MB el margen sobre 128 es de un 12 %, y 128 incluye lo que no se
+ve aquí; con 40 es de un 30 %. Para ir más allá hay que sacar los archivos pesados del
+documento (filas propias `media:<hash>`, subida y bajada bajo demanda).
+
 **Solo lectura al dejar Pro.** Nunca se borra nada por dejar Pro. Si el dueño tiene
 más presentaciones en la nube que las que permite su plan (3 en el gratuito, `FREE_DOCS`),
 solo se pueden editar las N editadas más recientemente (N = el límite; el orden es el

@@ -4972,6 +4972,7 @@ export default {
   "Numerar las secciones (1. Introducción)": "ترقيم الأقسام (1. مقدمة)",
   "Con una línea del avance de toda la presentación": "مع خط يبيّن تقدم العرض بأكمله",
   "Esta presentación ocupa unos {n} MB y la nube de Revela guarda hasta {max} MB (las fotos, los vídeos y los modelos 3D van dentro). Guárdala en tu Google Drive, que no tiene ese límite, o descárgala como archivo.": "يشغل هذا العرض نحو {n} ميغابايت، وسحابة Revela تحفظ حتى {max} ميغابايت (الصور والفيديوهات والنماذج ثلاثية الأبعاد بداخله). احفظه في Google Drive الخاص بك، فليس فيه هذا الحد، أو نزّله كملف.",
+  "Esta presentación ocupa unos {n} MB y la nube de Revela guarda hasta {max} MB en el plan gratuito (las fotos, los vídeos y los modelos 3D van dentro); con Pro caben hasta {pro} MB. Pásate a Pro, guárdala en tu Google Drive, que no tiene ese límite, o descárgala como archivo.": "يشغل هذا العرض نحو {n} ميغابايت، وسحابة Revela تحفظ حتى {max} ميغابايت في الخطة المجانية (الصور والفيديوهات والنماذج ثلاثية الأبعاد بداخله)؛ ومع Pro يتسع حتى {pro} ميغابايت. انتقل إلى Pro، أو احفظه في Google Drive الخاص بك، فليس فيه هذا الحد، أو نزّله كملف.",
   "Guardada en tu nube de Revela. Para compartirla: Archivo ▸ Personas.": "حُفظ في سحابة Revela الخاصة بك. لمشاركته: ملف ▸ أشخاص.",
   "Google Drive (tu cuenta de Google)": "Google Drive (حسابك في Google)",
   "Recomendado: se guarda sola, sin límite de tamaño, y la abres desde cualquier dispositivo.": "موصى به: يُحفظ تلقائيًا، دون حد للحجم، وتفتحه من أي جهاز.",
