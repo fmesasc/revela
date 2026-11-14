@@ -8,7 +8,7 @@
 // memory as one text. Archivo ▸ Descargar always makes one (project.js), as PowerPoint makes a .pptx; a .revela.json,
 // as before, still opens. Both open on the web and in the desktop app.
 
-import { dehydrate, mediaBlobOf, storeMedia, mediaId, usedRefs, registerMedia, liveDeck, MEDIA_REF } from '../../core/mediastore.js';
+import { dehydrate, mediaBlobOf, mediaBlob, storeMedia, mediaId, usedRefs, registerMedia, liveDeck, MEDIA_REF } from '../../core/mediastore.js';
 import { zipBlobs, unzipIndex } from './zipstore.js';
 import { desktopFileOf } from '../deskzip.js';
 
@@ -87,9 +87,16 @@ export async function readPackage(file, { onProgress } = {}) {
     const e = idx.get(String(f.path || '')); if (!e) continue;
     const blob = await e.read(String(f.type || ''));
     done += blob.size; onProgress?.(done, total);
-    if (await mediaId(await blob.arrayBuffer()) !== id) continue;
+    const bytes = await blob.arrayBuffer();
+    if (await mediaId(bytes) !== id) continue;
     await storeMedia(id, blob).catch(() => {});             // (no store — a private window —: this page still has it)
-    urls.set(id, registerMedia(id, blob).url);
+    // (What the page shows is never a slice of the person's file: that one reads the file again each time it is used, and
+    // fails — every picture at once — if the file is touched, replaced or moved after opening it. The browser's own copy
+    // of it, else one in memory.)
+    let own = await mediaBlob(id).catch(() => null);
+    if (!own || own.size !== blob.size) own = new Blob([bytes], { type: blob.type });
+    else if (own.type !== blob.type) own = own.slice(0, own.size, blob.type);
+    urls.set(id, registerMedia(id, own).url);
   }
   return withAddresses(doc.deck, urls);
 }

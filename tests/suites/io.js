@@ -400,6 +400,24 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(await (await W.eval("import('/src/core/mediastore.js')")).portable(R.state.deck.slides[0].blocks.find(b => b.id === 'm1')?.src), big2, 'con sus archivos');
   });
 
+  await test('paquete .revela abierto: lo que se ve no son trozos del archivo del disco (si se toca, se borra o se mueve después, las imágenes siguen)', async () => {
+    reset(); const W = frame.contentWindow, PK = await W.eval("import('/src/io/formats/package.js')"), MS = await W.eval("import('/src/core/mediastore.js')");
+    const bytes = n => { const a = new Uint8Array(n); for (let i = 0; i < n; i++) a[i] = (i * 13 + n) % 251; return a; };
+    const url = a => 'data:image/png;base64,' + W.btoa(String.fromCharCode(...a));
+    const photo = url(bytes(90000));
+    R.store.commit(() => { slide().blocks.push({ id: 'q1', type: 'image', src: photo, x: 0, y: 0, w: 10, h: 10 }); });
+    const pkg = await PK.packageBlob(R.state.deck);
+    // The file «on disk»: every Blob it gives out (and the ones cut from those) is noted. A slice of it stays tied to the file in
+    // the browser, and fails when the file changes; one that was ever cut from it must not be what the page keeps.
+    const cut = new W.WeakSet(), mark = b => { const sl = b.slice.bind(b); b.slice = (...a) => mark(sl(...a)); cut.add(b); return b; };
+    const disk = { name: 'Disco.revela', size: pkg.size, slice: (a, b) => mark(pkg.slice(a, b)) };
+    const deck = await PK.readPackage(disk);
+    const src = deck.slides[0].blocks.find(b => b.id === 'q1').src, id = [...MS.usedRefs(await MS.dehydrate(deck), new Set())][0];
+    assert(src.startsWith('blob:') && id, 'la imagen, por su dirección');
+    assert(!cut.has(MS.mediaEntry(id).blob), 'lo registrado no es un trozo del archivo del disco');
+    assert(await MS.portable(src) === photo, 'y se lee igual');
+  });
+
   await test('fotos y vídeos guardados aparte en el navegador: una vez cada uno, en la presentación y en las versiones', async () => {
     reset(); const W = frame.contentWindow, MS = await W.eval("import('/src/core/mediastore.js')"), I = await W.eval("import('/src/core/idb.js')"), M = R.model;
     // A real picture (bytes that are an image), the same one in two places, and a small one that stays inside.
