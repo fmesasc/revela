@@ -133,10 +133,13 @@ export function collapseSlideSel() {
 // ---- Cut, copy and paste slides --------------------------------------------------
 let slideClip = null;                 // { size, slides } copied in this tab
 export const hasSlideClip = () => !!slideClip?.slides.length;
+// Ctrl+V / Pegar in the slides panel pastes slides — unless what was copied last was objects (a picture, a group): the
+// slides copied before stay kept, but they don't win over a newer copy (state.ui.lastCopy: 'slides' | 'objects').
+export const pastesSlides = () => !!state.ui.navFocus && hasSlideClip() && state.ui.lastCopy !== 'objects';
 export function copySlides(indices = selectedSlideIndices()) {
   if (state.ui.noCopy) return 0;                         // (shared without copies)
   const list = indices.map(i => state.deck.slides[i]).filter(Boolean);
-  if (list.length) slideClip = { size: { ...state.deck.size }, slides: shareCopy(list) };
+  if (list.length) { slideClip = { size: { ...state.deck.size }, slides: shareCopy(list) }; state.ui.lastCopy = 'slides'; }
   return list.length;
 }
 export function cutSlides() { const idx = selectedSlideIndices(); if (copySlides(idx)) deleteSlides(idx); }

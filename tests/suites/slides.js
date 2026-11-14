@@ -111,6 +111,28 @@ export default async function ({ R, D, frame, test, sleep, waitFor, assert, eq, 
     eq(order(), 'n0,n3,n4,n1,n2,n5', 'Ctrl+V las pega tras la seleccionada'); eq(sel(), '3,4', 'y quedan seleccionadas');
     await key('c', { ctrlKey: true }); R.slides.goToSlide(0); R.slides.pasteSlides(); eq(order(), 'n0,n1,n2,n3,n4,n1,n2,n5', 'copiar y pegar');
     R.store.undo(); R.store.undo(); R.store.undo(); await sleep(10); eq(order(), base, 'cortar y pegar se deshacen paso a paso');
+    // Slides copied first, then a picture or a group: Ctrl+V in the panel pastes what was copied LAST (Francisco, 2026-11-14:
+    // «copio una foto, me voy a otra y Ctrl+V: se sigue pegando la diapositiva entera»).
+    {
+      const C = await W.eval("import('/src/features/document/clipboard.js')");
+      await click(1); await key('c', { ctrlKey: true });                    // (slides copied, the panel has the focus)
+      R.slides.goToSlide(0);
+      const s0 = R.state.deck.slides[0], b0 = s0.blocks.length;
+      R.state.ui.selection = s0.blocks[0].id; R.state.ui.multi = [];
+      R.state.ui.navFocus = false; C.copySelected();                          // (an object, from the slide itself)
+      await click(2);                                                          // (to another slide by its thumbnail: the panel has the focus again)
+      assert(R.state.ui.navFocus, 'el panel de diapositivas tiene el foco');
+      const n = R.state.deck.slides.length, tgt = R.state.deck.slides[R.state.ui.slideIndex].blocks.length;
+      D.dispatchEvent(new W.ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: new W.DataTransfer() })); await sleep(30);
+      eq(R.state.deck.slides.length, n, 'Ctrl+V tras copiar un objeto no pega las diapositivas copiadas antes');
+      eq(R.state.deck.slides[R.state.ui.slideIndex].blocks.length, tgt + 1, 'sino el objeto, en la diapositiva actual');
+      R.store.undo(); await sleep(10);
+      await click(1); await key('c', { ctrlKey: true });                      // (and slides copied after an object: the slides again)
+      D.dispatchEvent(new W.ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: new W.DataTransfer() })); await sleep(30);
+      eq(R.state.deck.slides.length, n + 1, 'copiar diapositivas después las vuelve a pegar');
+      R.store.undo(); await sleep(10); eq(order(), base, 'queda como estaba');
+      void b0;
+    }
     // Hide / show.
     R.slides.goToSlide(1); R.slides.selectSlide(3, { toggle: true });
     R.slides.toggleSlideHidden(); assert(R.state.deck.slides[1].hidden && R.state.deck.slides[3].hidden && !R.state.deck.slides[2].hidden, 'ocultar las seleccionadas');

@@ -36,6 +36,7 @@ export function copySelected() {
   // Include connectors whose two ends are copied.
   const conns = currentSlide().blocks.filter(b => b.type === 'connector' && ids.has(b.from) && ids.has(b.to) && !ids.has(b.id));
   mem = { from: currentSlide().id, blocks: share([...bs, ...conns]) };
+  state.ui.lastCopy = 'objects';                        // (a newer copy than any slides copied before: features/document/slides.js pastesSlides)
   publish(mem);
   commit(() => {}, { history: false });                 // refresh the UI (Paste becomes available)
   return bs.length;

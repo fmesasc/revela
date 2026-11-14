@@ -285,7 +285,7 @@ export const ACTIONS = {
   'clip-copy': () => (slidesFocused() ? slides.copySlides() : clip.copySelected()),
   'clip-cut': () => (slidesFocused() ? slides.cutSlides() : clip.cutSelected()),
   // (Also what another program copied: features/document/syspaste.js.)
-  'clip-paste': () => (state.ui.navFocus && slides.hasSlideClip() ? slides.pasteSlides()
+  'clip-paste': () => (slides.pastesSlides() ? slides.pasteSlides()
     : pasteAnything().then(ok => { if (!ok) toast(t('No hay nada que pegar. Si lo copiaste en otro programa, prueba con Ctrl+V.')); })),
   'obj-duplicate': () => (slidesFocused() ? slides.duplicateSlide() : blocks.duplicateSelected()),
   'group': () => blocks.groupSelected(),

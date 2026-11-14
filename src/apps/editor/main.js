@@ -278,7 +278,7 @@ document.addEventListener('paste', e => {
   const cd = e.clipboardData; if (!cd) return;
   const got = syspaste.fromEvent(cd);
   // Slides copied in the panel, pasted there.
-  if (state.ui.navFocus && slides.hasSlideClip() && !got.files.length) { e.preventDefault(); slides.pasteSlides(); return; }
+  if (slides.pastesSlides() && !got.files.length) { e.preventDefault(); slides.pasteSlides(); return; }
   if (!got.files.length && !got.text && !got.html) { if (clip.hasClipboard()) { e.preventDefault(); clip.paste(); } return; }
   e.preventDefault(); syspaste.pasteData(got);
 });
