@@ -510,6 +510,7 @@ export default {"biz_board":["Quarterly results for the board","Dark blue and go
 "edu_volcanoes":["Volcanoes","Fire style: animated eruption with sound, volcano parts to label, table, timed quiz and countdown"],
 "edu_water":["The water cycle","Cycle diagram one by one, landscape with rising drops and animated rain with sound, doughnut charts, matching pairs and 3D satellite"],
 "effects":["Animations and effects","Entrance, emphasis and exit, a curved path that rotates with the object, “Transform” between slides and Text Art"],
+"hoy_vivienda":["Current affairs: housing in Spain","Prices, rent and access to housing with official data from November 2026 (INE, Banco de España, Eurostat, ECB, Registradores, Ministerio): five “prices” that are not the same thing, stressed areas, access effort, emancipation, supply deficit, mortgages, EU comparison, what the data do and don't say, different readings, vote and debate"],
 "learn_revela_ai":["Revela's AI","A chat under the northern lights: creating a presentation, rewriting text (with Transform by words), pictures, the assistant and more help"],
 "learn_revela_anim":["Animations step by step","A theatre: entrance, emphasis, exit and motion paths, Start with or after previous, animation pane, More effects and sounds"],
 "learn_revela_collab":["Collaborate and share","A cork board: working together at once, sharing permissions, real comments and tasks, links, versions and a matching activity"],

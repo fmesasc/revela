@@ -510,6 +510,7 @@ export default {"biz_board":["Kwartaalresultaten voor de raad","Donkerblauw en g
 "edu_volcanoes":["Vulkanen","Vuurstijl: geanimeerde uitbarsting met geluid, delen van de vulkaan benoemen, tabel, quiz op tijd en aftelklok"],
 "edu_water":["De waterkringloop","Cyclusdiagram één voor één, landschap met stijgende druppels en geanimeerde regen met geluid, ringdiagrammen, paren koppelen en 3D-satelliet"],
 "effects":["Animaties en effecten","Ingang, nadruk en uitgang, een gebogen pad dat met het object meedraait, ‘Transformeren’ tussen dia’s en Text Art"],
+"hoy_vivienda":["Actueel: wonen in Spanje","Prijzen, huur en toegang tot wonen met officiële gegevens van november 2026 (INE, Banco de España, Eurostat, ECB, Registradores, Ministerio): vijf «prijzen» die niet hetzelfde zijn, gespannen gebieden, toegangsinspanning, zelfstandig wonen, aanbodtekort, hypotheken, vergelijking met de EU, wat de gegevens wel en niet zeggen, verschillende lezingen, stemming en debat"],
 "learn_revela_ai":["De AI van Revela","Een chat onder het noorderlicht: een presentatie maken, teksten herschrijven (met Transformeren per woord), afbeeldingen, de assistent en meer hulp"],
 "learn_revela_anim":["Animaties stap voor stap","Een theater: ingang, nadruk, uitgang en bewegingspaden, starten met of na vorige, animatiedeelvenster, meer effecten en geluiden"],
 "learn_revela_collab":["Samenwerken en delen","Een prikbord: tegelijk samenwerken, deelrechten, echte opmerkingen en taken, links, versies en een koppelactiviteit"],

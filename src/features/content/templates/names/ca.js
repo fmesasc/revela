@@ -510,6 +510,7 @@ export default {"biz_board":["Resultats trimestrals al consell","Blau fosc i dau
 "edu_volcanoes":["Els volcans","Estil foc: erupció animada amb so, parts del volcà per etiquetar, taula, qüestionari amb temps i compte enrere"],
 "edu_water":["El cicle de l'aigua","Diagrama de cicle un a un, paisatge amb gotes que pugen i pluja animada amb so, gràfics d'anell, unir parelles i satèl·lit 3D"],
 "effects":["Animacions i efectes","Entrada, èmfasi i sortida, trajectòria corba que gira amb l'objecte, «Transforma» entre diapositives i Text Art"],
+"hoy_vivienda":["Actualitat: habitatge a Espanya","Preus, lloguer i accés a l'habitatge amb dades oficials de novembre de 2026 (INE, Banc d'Espanya, Eurostat, BCE, Registradors, Ministeri): cinc «preus» que no són el mateix, zones tensionades, esforç d'accés, emancipació, dèficit d'oferta, hipoteques, comparació amb la UE, què diuen i què no diuen les dades, lectures diferents, votació i debat"],
 "learn_revela_ai":["La IA de Revela","Un xat sota l'aurora: crear una presentació, reescriure textos (amb Transforma per paraules), imatges, l'assistent i més ajudes"],
 "learn_revela_anim":["Animacions pas a pas","Un teatre: entrada, èmfasi, sortida i trajectòries, inici amb l'anterior o després, tauler d'animació, més efectes i sons"],
 "learn_revela_collab":["Col·laborar i compartir","Un tauler de suro: col·laborar alhora, permisos en compartir, comentaris i tasques reals, enllaços, versions i una activitat d'unir"],
