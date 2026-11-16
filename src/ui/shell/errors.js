@@ -6,14 +6,15 @@
 // the presentation, its text or files. And who: if the person is signed in, the session goes with the error (cookie on
 // the web, bearer in the desktop app) and the server keeps the account's id with it — only for the administration, so
 // that it can write to the person and help — never the email in the error itself. privacy.html says so.
-// Each error once per session, and at most MAX; not the noise of browsers, extensions and networks.
+// Each error once per session, and at most MAX; not the noise of browsers, extensions and networks (also the browser refusing
+// to open a link out of the app — «Not allowed to open url», Edge/Windows policy or its own handling — which no code of ours causes).
 import { apiBase, sessionInit } from '../../io/cloud/account.js';
 import { APP_VERSION } from '../../core/config.js';
 import { currentLang } from '../../i18n/index.js';
 
 const MAX = 10, actions = [], seen = new Set();
 let sent = 0, on = false;
-const IGNORE = /ResizeObserver loop|^Script error\.?$|AbortError|aborted|NotAllowedError|chrome-extension:|moz-extension:|safari-(web-)?extension:|Load failed|Failed to fetch|NetworkError|^STOPPED$|^CANCELLED$/i;
+const IGNORE = /ResizeObserver loop|^Script error\.?$|AbortError|aborted|NotAllowedError|Not allowed to open url|chrome-extension:|moz-extension:|safari-(web-)?extension:|Load failed|Failed to fetch|NetworkError|^STOPPED$|^CANCELLED$/i;
 
 // «Chrome 141 · Windows»: the browser and system, nothing more of the user agent.
 export function browserName(u = navigator.userAgent) {
