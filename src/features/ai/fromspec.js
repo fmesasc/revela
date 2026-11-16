@@ -184,7 +184,7 @@ function needHeight(html, fs, w, lh, cw = 0.54) {
 }
 // The factor (≤ 1, or `want` when it fits) for a placeholder's text in its box.
 function fitPlaceholder(b, slide, deck, want = 1) {
-  const sb = styled({ ...b, fit: undefined }, slide, deck), fs = sb.fontSize || 40, lh = styleKind(b) === 'body' ? 1.32 : 1.18;
+  const sb = styled({ ...b, fit: undefined }, slide, deck), fs = sb.fontSize || 40, lh0 = styleKind(b) === 'body' ? 1.32 : 1.18, lh = deck?.lineHeight && sb.lineHeight ? Math.max(lh0, +sb.lineHeight) : lh0;   // (a new presentation's roomier spacing: deck.lineHeight)
   // (A title or subtitle: measured with its own font — a long cover title wrapped to a third line past its box.)
   if (styleKind(b) !== 'body' && !(b.columns > 1)) {
     const bold = sb.fontWeight === '700' || sb.fontWeight === 'bold' || styleKind(b) === 'title';

@@ -3,7 +3,7 @@
 // master decorations and layouts with placeholders. Everything is generated
 // here, so no files or network are needed.
 
-import { emptyDeck, uid } from '../../core/model.js';
+import { newDeck, uid } from '../../core/model.js';
 import { PALETTES, pairStacks } from './palettes.js';
 
 const T = (ph, x, y, w, h, fontSize, extra = {}) => ({ id: uid(), type: 'text', ph, html: '', x, y, w, h, fontSize, rotation: 0, animation: null, ...extra });
@@ -83,7 +83,7 @@ export const GALLERY = {
 export function buildFromGallery(key) {
   const g = GALLERY[key]; if (!g) return null;
   const p = PALETTES[g.palette], st = pairStacks(g.fonts);
-  const deck = emptyDeck();
+  const deck = newDeck();
   deck.name = 'Presentación sin título';
   deck.palette = g.palette; deck.fontPair = g.fonts; deck.bodyFont = st.body;
   deck.master = { id: 'master', background: null, blocks: g.master(p).map(b => ({ ...b, decorative: true })) };

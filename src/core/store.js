@@ -2,7 +2,7 @@
 // history stack for undo/redo, and a subscription mechanism so the UI re-renders
 // after every committed change.
 
-import { emptyDeck, loadDeck, saveDeck, flushSave } from './model.js';
+import { newDeck, loadDeck, saveDeck, flushSave } from './model.js';
 
 const listeners = new Set();
 const past = [];
@@ -18,7 +18,7 @@ export function snapshot(v) {
 }
 
 export const state = {
-  deck: loadDeck() || emptyDeck(),
+  deck: loadDeck() || newDeck(),
   // `selection` is the primary (last‑clicked) block; `multi` is the full set of
   // selected block ids (includes the primary). Single selection keeps both in sync.
   // `slideSel` is the set of slide ids selected in the slides panel (the current

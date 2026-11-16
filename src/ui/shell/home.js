@@ -6,7 +6,7 @@ import { whileOpening } from './opening.js';
 import { esc } from '../../core/text.js';
 import { popupMenu } from './menu.js';
 import { state, replaceDeck } from '../../core/store.js';
-import { emptyDeck, isUntitled, UNTITLED } from '../../core/model.js';
+import { newDeck, isUntitled, UNTITLED } from '../../core/model.js';
 import * as gd from '../../io/cloud/gdrive.js';
 import { hasAccounts } from '../../io/cloud/account.js';
 import { initOneDrive } from '../dialogs/onedrive.js';
@@ -157,7 +157,7 @@ export async function openHome() {
     else if (act === 'reconnect') { try { await gd.ensureToken(true); load(); } catch (err) { friendly(err); } }
     else if (act === 'new') {
       if (!(await keepCurrent())) return;
-      replaceDeck(emptyDeck()); close();
+      replaceDeck(newDeck()); close();
       if (gd.account()) gd.savePresentation().catch(friendly);   // a new file in Drive, saved as you go
     } else if (act === 'pick') { close(); gd.openWithUI(); }
     else { close(); document.querySelector(`[data-action="${act === 'templates' ? 'gallery' : 'open'}"]`)?.click(); }

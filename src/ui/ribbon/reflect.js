@@ -3,7 +3,7 @@
 // their common value, or "mixed"), and the selected slides' transition.
 // Each part redoes its work only when what it shows has changed.
 
-import { currentSlide, selectedBlocks, targetSlides } from '../../core/store.js';
+import { state, currentSlide, selectedBlocks, targetSlides } from '../../core/store.js';
 import { shortSig } from '../../core/text.js';
 import { t } from '../../i18n/index.js';
 import { styled } from '../../features/document/master.js';
@@ -102,7 +102,7 @@ export function syncBoxFormat() {
   const math = sel.length === 1 && sel[0].type === 'math' ? sel[0] : null;
   showValue($('[data-font]'), texts.length ? common(texts, b => b.fontFamily || '') : '');
   showValue($('[data-size]'), texts.length ? common(texts, b => String(styled(b, slide).fontSize || 40)) : math ? String(math.fontSize || MATH_SIZE) : '');
-  showValue($('[data-linespacing]'), texts.length ? common(texts, b => String(b.lineHeight || 1)) : '1');
+  showValue($('[data-linespacing]'), texts.length ? common(texts, b => String(styled(b, slide).lineHeight || 1)) : String(state.deck.lineHeight || 1));   // (the effective one: a new presentation's 1.4 included)
   showValue($('[data-textstyle]'), texts.length ? common(texts, b => b.textStyle || '') : '');
   const align = math ? math.textAlign || 'center' : common(texts, b => b.textAlign || 'left');
   document.querySelectorAll('#ribbon [data-para]').forEach(x => press(x, align === x.dataset.para ? true : align === MIXED && texts.some(b => (b.textAlign || 'left') === x.dataset.para) ? MIXED : false));

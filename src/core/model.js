@@ -58,6 +58,22 @@ export function emptyDeck() {
   };
 }
 
+// A presentation the user starts from now on: the same blank one, with a roomier default line spacing for its text
+// (deck.lineHeight, 1.4: text no longer looks packed). Presentations without that value — every older one, a template,
+// an import — keep drawing exactly as before: only a number in deck.lineHeight changes anything (lineHeightDefault).
+export const NEW_DECK_LINE_HEIGHT = 1.4;
+export const newDeck = () => ({ ...emptyDeck(), lineHeight: NEW_DECK_LINE_HEIGHT });
+// The line spacing a text object gets from its presentation when it has none of its own (b.lineHeight, or one from the
+// master's style): deck.lineHeight, for running text only — not titles or subtitles, Text Art, curved text or big
+// numbers (over 48 px). 0 = none: draw as always. Applied in master.js styled(), so the editor, the thumbnails, the
+// HTML, PDF and PNG exports and the PPTX export all get the same value.
+export function lineHeightDefault(b, deck) {
+  const v = +deck?.lineHeight;
+  if (!(v > 0) || !b || b.type !== 'text' || +b.lineHeight > 0 || b.wordart || b.curve) return 0;
+  if (/^(title|ctrTitle|subtitle|subTitle)$/.test(b.ph || '') || (+b.fontSize || 40) > 48) return 0;
+  return v;
+}
+
 export function blankSlide(background = '#101317', sectionId = null) {
   return { id: uid(), sectionId, background, transition: null, blocks: [] };
 }

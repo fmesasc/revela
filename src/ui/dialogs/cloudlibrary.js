@@ -8,7 +8,7 @@
 import { whileOpening } from '../shell/opening.js';
 import { esc } from '../../core/text.js';
 import { state, replaceDeck } from '../../core/store.js';
-import { isBlankDeck, emptyDeck, UNTITLED, isUntitled } from '../../core/model.js';
+import { isBlankDeck, newDeck as freshDeck, UNTITLED, isUntitled } from '../../core/model.js';
 import * as cd from '../../io/cloud/clouddocs.js';
 import { account, api } from '../../io/cloud/account.js';
 import { nowInCloud } from '../shell/where.js';
@@ -416,7 +416,7 @@ async function newDeck() {
   if (!cd.cloudDoc() && !isBlankDeck(state.deck) && !(await confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.'), { ok: t('Descartar la actual'), danger: true }))) return;
   try {
     await cd.flushCloud(); cd.closeDoc();
-    const deck = emptyDeck(); deck.name = UNTITLED;
+    const deck = freshDeck(); deck.name = UNTITLED;
     replaceDeck(deck); const r = await cd.saveToCloud({ folder });
     history.replaceState(null, '', '?doc=' + r.id); closePage();
   } catch (e) { alertDialog(errorText(e)); }

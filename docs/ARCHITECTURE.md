@@ -123,6 +123,10 @@ src/
   api/index.js                 window.Revela, the public API for plugins and macros
   core/
     model.js                   deck/slide/block factories, defaults, load/save
+                               deck.lineHeight (1.4, only in presentations created with newDeck()): the default line
+                               spacing of running text without its own; lineHeightDefault() decides which texts,
+                               master.js styled() applies it, so canvas, thumbnails, HTML/PDF/PNG and PPTX agree.
+                               Without it (older decks, templates, imports) nothing changes. Text Art ignores it.
     store.js                   state, commit/mutate, undo/redo, subscribers, document version,
                                the filter every outside deck goes through (sanitizer)
     text.js                    esc, plainText, jsData (data inside <script>), shortSig

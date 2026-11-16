@@ -2,7 +2,7 @@
 
 import { whileOpening } from '../shell/opening.js';
 import { galleryNotice } from '../shell/notices.js';
-import { isBlankDeck, emptyDeck } from '../../core/model.js';
+import { isBlankDeck, newDeck } from '../../core/model.js';
 import { state, replaceDeck, currentSlide, commit } from '../../core/store.js';
 import { designIdeas, previewBlocks, applyIdea } from '../../features/design/designer.js';
 import { GALLERY, buildFromGallery } from '../../features/design/gallery.js';
@@ -54,14 +54,14 @@ export function galleryInto(host, { close = () => {}, scroller = null, paths = t
     .then(ok => { if (ok) { replaceDeck(deck); close(); } });
   if (paths) {
     // The three ways to start, first: blank, made by the AI, or a file one already has.
-    host.querySelector('[data-path="blank"]').addEventListener('click', () => replaceWith(emptyDeck(), t('¿Nueva presentación? Se perderá la actual si no la has guardado.')));
+    host.querySelector('[data-path="blank"]').addEventListener('click', () => replaceWith(newDeck(), t('¿Nueva presentación? Se perderá la actual si no la has guardado.')));
     host.querySelector('[data-path="ai"]').addEventListener('click', () => { close(); openCreateDeck(); });
     host.querySelector('[data-path="open"]').addEventListener('click', () => { close(); openAnyPresentation(); });
   }
   // The themes, starting with a blank presentation.
   const blank = document.createElement('button'); blank.type = 'button'; blank.className = 'gal-item gal-blank'; blank.dataset.gallery = 'blank';
   blank.innerHTML = `<div class="thumb-canvas"><i class="ms">add</i></div><span>${t('En blanco')}</span>`;
-  blank.addEventListener('click', () => replaceWith(emptyDeck(), t('¿Nueva presentación? Se perderá la actual si no la has guardado.')));
+  blank.addEventListener('click', () => replaceWith(newDeck(), t('¿Nueva presentación? Se perderá la actual si no la has guardado.')));
   grid.appendChild(blank);
   for (const [key, g] of Object.entries(GALLERY)) {
     const deck = buildFromGallery(key), cover = deck.slides[0], p = PALETTES[g.palette];

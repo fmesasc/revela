@@ -740,4 +740,43 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       assert(await until(() => { R.slides.goToSlide(1); return !marked(c.id).length; }), 'y tampoco se marca en la diapositiva');
     } finally { spellOff(); }
   });
+
+  await test('interlineado de las presentaciones nuevas (1,4 en el cuerpo); las antiguas y las plantillas, igual que siempre; lienzo, HTML y PPTX de acuerdo', async () => {
+    const W = frame.contentWindow, lhPx = b => W.getComputedStyle(richOf(b)).lineHeight;
+    // An older presentation (no deck.lineHeight): nothing is added, in the editor or in the exports.
+    reset(); R.blocks.addText(); const old = last(); old.html = 'Texto antiguo'; select(old); await sleep(30);
+    eq(R.model.emptyDeck().lineHeight, undefined, 'la presentación vacía de las plantillas no lleva el valor');
+    eq(R.master.styled(old, slide()), old, 'sin valor en la presentación: el objeto sale tal cual');
+    assert(!/line-height/.test(old.html) && !old.lineHeight, 'el texto nuevo no lleva interlineado propio');
+    eq(lhPx(old), 'normal', 'el lienzo, como siempre');
+    const own = h => (h.match(/Texto (?:antiguo|nuevo)/) ? [...h.matchAll(/style="[^"]*line-height:1\.4;[^"]*">Texto /g)].length : -1);
+    eq(own(R.io.buildHTML()) + 1, 1, 'el HTML, sin 1,4 en ese texto');
+    eq(D.querySelector('[data-linespacing]').value, '1', 'la cinta, como siempre');
+    const oldBlob = await R.pptx.buildPptxBlob(), oldXml = await (await W.JSZip.loadAsync(oldBlob)).file('ppt/slides/slide1.xml').async('string');
+    assert(!/spcPct val="140000"/.test(oldXml), 'el PPTX, sin 140 %');
+    // A new presentation: 1.4 in running text; not in titles, Text Art or big numbers; an own value wins.
+    const nd = R.model.newDeck(); eq(nd.lineHeight, 1.4, 'la nueva lleva 1,4');
+    R.store.replaceDeck(nd); R.render(); R.blocks.addText(); const b = last(); b.html = 'Texto nuevo'; b.fontSize = 28; select(b); await sleep(40);
+    eq(b.lineHeight, undefined, 'el objeto no se toca: el valor es de la presentación');
+    eq(R.master.styled(b, slide()).lineHeight, 1.4, 'valor efectivo 1,4');
+    assert(Math.abs(parseFloat(lhPx(b)) - 28 * 1.4) < 0.6, 'el lienzo pinta 1,4: ' + lhPx(b));
+    eq(D.querySelector('[data-linespacing]').value, '1.4', 'la cinta muestra el valor efectivo');
+    const ph = slide().blocks.find(x => x.ph === 'title');
+    eq(R.master.styled(ph, slide()).lineHeight, undefined, 'el título del marcador, sin él');
+    R.blocks.addText(); const big = last(); big.fontSize = 90; eq(R.master.styled(big, slide()).lineHeight, undefined, 'una cifra enorme, sin él');
+    R.blocks.addText(); const art = last(); art.wordart = 'gold'; eq(R.master.styled(art, slide()).lineHeight, undefined, 'Text Art, sin él');
+    big.html = art.html = ''; slide().blocks.splice(slide().blocks.indexOf(big), 1); slide().blocks.splice(slide().blocks.indexOf(art), 1);
+    eq(own(R.io.buildHTML()), 1, 'el HTML exportado lleva line-height:1.4 en ese texto');
+    const newBlob = await R.pptx.buildPptxBlob(), xml = await (await W.JSZip.loadAsync(newBlob)).file('ppt/slides/slide1.xml').async('string');
+    assert(/spcPct val="140000"/.test(xml), 'el PPTX lleva el 140 %');
+    const pv = (await W.eval("import('/src/ui/shell/preview.js')")).blockPreview(R.master.styled(b, slide()));
+    assert(/line-height:1\.4/.test(pv.innerHTML), 'la vista previa/miniatura, igual');
+    // Changing it: the box's own value wins, and the ribbon shows it.
+    select(b); R.format.lineSpacing(1.8); await sleep(20);
+    eq(b.lineHeight, 1.8, 'un cambio queda en el objeto'); eq(R.master.styled(b, slide()).lineHeight, 1.8, 'y manda');
+    R.format.lineSpacing(1); await sleep(20);
+    eq(R.master.styled(b, slide()).lineHeight, 1, '1 también se respeta (no se confunde con «sin valor»)');
+    // Saved and reloaded with the presentation.
+    eq(JSON.parse(JSON.stringify(R.state.deck)).lineHeight, 1.4, 'se guarda con la presentación');
+  });
 }

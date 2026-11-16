@@ -6,7 +6,7 @@
 
 import { whileOpening } from './opening.js';
 import { replaceDeck } from '../../core/store.js';
-import { emptyDeck } from '../../core/model.js';
+import { newDeck } from '../../core/model.js';
 import * as gdrive from '../../io/cloud/gdrive.js';
 import * as oc from '../../io/cloud/othercloud.js';
 import { present } from './present.js';
@@ -47,7 +47,7 @@ export async function handleOpenWith(req = openRequest()) {
   history.replaceState(null, '', location.pathname);                  // (not again on reload)
   try {
     if (req.service === 'drive' && req.action === 'create') {
-      replaceDeck(emptyDeck()); gdrive.setNewFileFolder(req.folder);
+      replaceDeck(newDeck()); gdrive.setNewFileFolder(req.folder);
       await gdrive.savePresentation({ asNew: true });                   // (so it is in that folder from now on)
       return true;
     }

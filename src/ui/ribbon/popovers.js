@@ -4,7 +4,7 @@
 import { DIAGRAM_LAYOUTS, DIAGRAM_SAMPLES, DEFAULT_DIAGRAM_TEXT, diagramHTML } from '../../render/diagrams.js';
 import { esc } from '../../core/text.js';
 import { state, selectedBlock, currentSlide, commit } from '../../core/store.js';
-import { ensureLayouts, applyLayout, resetSlide, editLayout, allMasters, masterOf } from '../../features/document/master.js';
+import { ensureLayouts, applyLayout, resetSlide, editLayout, allMasters, masterOf, styled } from '../../features/document/master.js';
 import * as slides from '../../features/document/slides.js';
 import * as templates from '../../features/document/templates.js';
 import { startFreeform } from '../canvas/freeform.js';
@@ -93,7 +93,7 @@ export const POPS = {
     const b = selectedBlock(); const tb = b && b.type === 'text' ? b : {};
     return `<h4>${t('Párrafo')}</h4>
       <label>${t('Interlineado')}
-        <input type="number" step="0.05" min="0.5" data-pop="linespacing" value="${tb.lineHeight || 1}"></label>
+        <input type="number" step="0.05" min="0.5" data-pop="linespacing" value="${(b && b.type === 'text' ? styled(b, currentSlide()).lineHeight : 0) || 1}"></label>
       <label>${t('Espaciado entre letras (px)')}
         <input type="number" step="0.5" data-pop="letterspacing" value="${tb.letterSpacing || 0}"></label>
       <label>${t('Sangría izquierda (px)')}

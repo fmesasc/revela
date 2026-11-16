@@ -16,7 +16,7 @@
 // id), the canvas edits that instead of the current slide (store.currentSlide).
 
 import { state, commit, amend, subscribe, currentSlide, selectedSlideIndices } from '../../core/store.js';
-import { uid, shareCopy } from '../../core/model.js';
+import { uid, shareCopy, lineHeightDefault } from '../../core/model.js';
 import { canvasBackdrop } from '../design/canvasmode.js';
 import { styleColour, styleFont, linkStyleRefs } from '../design/palettes.js';
 
@@ -139,10 +139,12 @@ export function layoutPlaceholder(b, slide, deck = state.deck) {
 // are returned as they are). levels: the body's per-level sizes, bullets and
 // colours (a box with a colour of its own keeps it on every level).
 export function styled(b, slide, deck = state.deck) {
-  const kind = styleKind(b); if (!kind) return b;
+  const kind = styleKind(b);
+  if (!kind) { const lh = lineHeightDefault(b, deck); return lh ? { ...b, lineHeight: lh } : b; }   // (deck.lineHeight: only new presentations)
   const st = masterStyles(deck, masterOf(slide, deck))[kind];
   const lp = !isLayout(slide, deck) && !isMaster(slide, deck) ? layoutPlaceholder(b, slide, deck) : null;
   const out = { ...b, ...asProps(st, deck), ...(lp ? ownOf(lp) : {}), ...ownOf(b) };
+  const lh = lineHeightDefault(out, deck); if (lh) out.lineHeight = lh;
   // "Shrink text on overflow" (imported from PowerPoint): a factor on the
   // inherited size, so the text still follows the master.
   if (b.fit && b.fontSize == null) out.fontSize = Math.round(out.fontSize * b.fit);

@@ -13,7 +13,7 @@ import { toggleSelectionPane } from '../panels/selection.js';
 import { openGdriveSetup, driveSaveUI, driveSaveAsUI } from '../dialogs/gdrive.js';
 import { openCloud } from '../dialogs/othercloud.js';
 import { state, commit, undo, redo, replaceDeck, currentSlide, selectedBlock, selectedBlocks, targetSlides } from '../../core/store.js';
-import { isBlankDeck, emptyDeck, savedHere } from '../../core/model.js';
+import { isBlankDeck, newDeck, savedHere } from '../../core/model.js';
 import * as slides from '../../features/document/slides.js';
 import * as blocks from '../../features/document/blocks.js';
 import * as format from '../../features/document/format.js';
@@ -105,7 +105,7 @@ export let animPaint = null;       // animation being copied with the painter
 export function endAnimPaint() { animPaint = null; document.body.classList.remove('anim-painting'); $('[data-action="anim-paint"]')?.classList.remove('on'); }
 export const ACTIONS = {
   'new': () => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(t('¿Nueva presentación? Se perderá la actual si no la has guardado.'), { ok: t('Descartar la actual'), danger: true }))
-    .then(ok => { if (ok) replaceDeck(emptyDeck()); }),
+    .then(ok => { if (ok) replaceDeck(newDeck()); }),
   'open': () => openAnyPresentation(),
   'save-protected': async () => {
     const pw = await promptDialog(t('Contraseña para cifrar el proyecto (no se puede recuperar si la olvidas):'), ''); if (!pw) return;
