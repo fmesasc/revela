@@ -1,6 +1,7 @@
 // Right‑click context menu. Actions adapt to what was clicked: a block, an
 // image (extra processing options) or the empty canvas.
 
+import { borderOf, setBorder, clearBorder } from '../../features/document/imageborder.js';
 import { startMagnifyDraw } from '../canvas/magnifyview.js';
 import * as mag from '../../features/document/magnify.js';
 import { state, commit, currentSlide, selectedBlock, selectedBlocks, isSelected, setSelection, setMulti, isSlideSelected, selectedSlideIndices } from '../../core/store.js';
@@ -290,6 +291,8 @@ function forBlock(b, cell = null) {
       ['Ajustar: contener', () => setFit(b, 'contain')],
       ['Ajustar: rellenar', () => setFit(b, 'cover')],
       ['Ajustes de imagen…', () => openImageAdjust(b)],
+      [borderOf(b).on ? 'Quitar el borde' : 'Añadir borde', () => commit(() => { if (borderOf(b).on) clearBorder(b, true); else setBorder(b, { color: borderOf(b).color, width: 4 }); })],
+      [b.radius ? 'Esquinas rectas' : 'Esquinas redondeadas', () => commit(() => setBorder(b, { radius: b.radius ? 0 : Math.round(Math.min(b.w, b.h) * 0.08) }))],
       ['Recortar', () => import('../canvas/imagecrop.js').then(m => m.startImageCrop(b))],
       ['Recortar a una proporción…', () => openImageCrop(b)],
       ['Texto alternativo…', () => openAlt(b)],

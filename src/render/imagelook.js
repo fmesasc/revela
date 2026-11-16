@@ -15,6 +15,9 @@
 //   shadowCSS) and b.reflect = { size (5…100 % of the height), opacity (0…100), gap (px) }: drawn by the same filter,
 //   past the box (its region made larger: lookPad), so that they follow what shows — the figure, the shape, the crop.
 //   A picture with them has its crop in the filter too (render/svg.js imgClip): a clip-path would cut them off.
+// - b.borderColor, b.borderWidth (px, 1…40; 3 by default), b.borderDash ('' solid, 'dash', 'dot') and b.radius (px, rounded
+//   corners): a border drawn just outside the picture, so that it never covers it, the same way as the shadow's styles
+//   and the reflection (past the box, in the filter; the crop's edge when it is cropped) — features/document/imageborder.js.
 // The colour is one matrix and a tone curve (a table per channel), so it draws the same everywhere: an SVG filter
 // (url(#id) after the four CSS ones, render/svg.js imgFilter) in the editor, the thumbnails and the presentation, and the
 // same sums on the pixels (applyLook) where there is no CSS filter: html2canvas (PDF, PNG) and «Guardar como imagen».
@@ -467,7 +470,15 @@ function focusSVG(s, p, last) {
 // on the floor behind it, squashed and slanted — the figure's own outline (a cut-out's), its foot at the bottom.
 export const SHADOW_STYLES = [['', 'Normal'], ['curl', 'Curvada'], ['lift', 'Levantada'], ['angle', 'En ángulo']];
 const STYLED = ['curl', 'lift', 'angle'];
-export const hasDecor = b => !!(b?.reflect || STYLED.includes(b?.shadow?.style));
+// A picture's border: colour (and its opacity), width, dash and the corners' radius; none without a colour or a width.
+export const BORDER_DEFAULT = 3;
+export function frameOf(b) {
+  if (!b?.borderColor) return null;
+  const w = cl(b.borderWidth ?? BORDER_DEFAULT, 0, 40); if (!w) return null;
+  const [c, o] = colourOf(b.borderColor), d = b.borderDash === 'dot' ? [0.01, 2 * w] : b.borderDash ? [3 * w, 2 * w] : null;
+  return { c, o, w, r: cl(b.radius, 0, 400), d, round: b.borderDash === 'dot' };
+}
+export const hasDecor = b => !!(b?.reflect || STYLED.includes(b?.shadow?.style) || frameOf(b));
 // A colour as #rrggbb and its opacity (#rrggbbaa, rgba(…)).
 const colourOf = c => {
   const m = /^#([0-9a-f]{6})([0-9a-f]{2})?$/i.exec(c || ''); if (m) return ['#' + m[1].toLowerCase(), m[2] ? parseInt(m[2], 16) / 255 : 1];
@@ -482,6 +493,12 @@ function decorSpec(b, w, h) {
   const mn = Math.min(w, h), S = b.shadow, o = {}; let pad = [0, 0, 0, 0];
   const grow = (...p) => { pad = pad.map((v, i) => Math.max(v, p[i])); };
   if (b.crop) { const c = b.crop, l = (c.left || 0) / 100, t = (c.top || 0) / 100; o.crop = [r2(w * l), r2(h * t), r2(w * (1 - l - (c.right || 0) / 100)), r2(h * (1 - t - (c.bottom || 0) / 100))]; }
+  const F = frameOf(b);
+  if (F) {                                               // (its border: outside the picture's box, or the crop's)
+    const [x, y, rw, rh] = o.crop || [0, 0, w, h];
+    o.frm = { c: F.c, o: r2(F.o), w: F.w, r: r2(Math.min(F.r, rw / 2, rh / 2)), d: F.d, round: F.round, x, y, rw, rh };
+    grow(F.w - x, F.w - y, F.w - (w - x - rw), F.w - (h - y - rh));
+  }
   const fl = o.fl = o.crop ? r2(o.crop[1] + o.crop[3]) : h;      // (the floor: the picture's bottom edge, its crop's)
   if (S) {
     const [c, op] = colourOf(S.color || '#00000066'), st = STYLED.includes(S.style) ? S.style : 'normal', f = cl(S.dist ?? 50, 0, 100) / 50, sh = { st, c, o: r2(op) };
@@ -512,7 +529,10 @@ export const lookPad = b => lookSpec(b)?.dec?.pad || [0, 0, 0, 0];
 function decorSVG(s, p, last) {
   const D = s.dec, { w, h } = s, [L, T, R, B] = D.pad, X0 = -L, RW = w + L + R, fl = D.fl, nodes = [];
   // (What is drawn past the box comes from the picture as it is in it: its glow or outline go no further than before.)
-  p += `<feFlood x="0" y="0" width="${w}" height="${h}" flood-color="#fff" result="dbx"/><feComposite in="${last}" in2="dbx" operator="in" result="pic"/>`;
+  const FR = D.frm;
+  // (Rounded corners: the picture itself is cut to them.)
+  p += (FR?.r ? feImg(`<rect x="${FR.x}" y="${FR.y}" width="${FR.rw}" height="${FR.rh}" rx="${FR.r}" fill="#fff"/>`, 0, 0, w, h, 'dbx')
+    : `<feFlood x="0" y="0" width="${w}" height="${h}" flood-color="#fff" result="dbx"/>`) + `<feComposite in="${last}" in2="dbx" operator="in" result="pic"/>`;
   const S = D.shd;
   if (S) {
     let a = 'pic';
@@ -545,6 +565,12 @@ function decorSVG(s, p, last) {
       + feImg(grad(`<stop offset="0" stop-color="#fff" stop-opacity="${o}"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>`), 0, y0, w, rh, 'rpf')
       + `<feComposite in="rpd" in2="rpf" operator="in" result="rfl"/>`;
     nodes.push('rfl');
+  }
+  if (FR) {
+    const h2 = FR.w / 2;
+    p += feImg(`<rect x="${r2(FR.x - h2)}" y="${r2(FR.y - h2)}" width="${r2(FR.rw + FR.w)}" height="${r2(FR.rh + FR.w)}" rx="${FR.r ? r2(FR.r + h2) : 0}" fill="none" stroke="${FR.c}" stroke-opacity="${FR.o}" stroke-width="${FR.w}"`
+      + `${FR.d ? ` stroke-dasharray="${FR.d.join(' ')}"` : ''}${FR.round ? ' stroke-linecap="round"' : ''}/>`, X0, -T, RW, h + T + B, 'frm');
+    nodes.push('frm');
   }
   p += `<feMerge result="dec">${[...nodes, 'pic'].map(n => `<feMergeNode in="${n}"/>`).join('')}</feMerge>`;
   return [p, 'dec'];
@@ -692,6 +718,13 @@ export function decorate(c, s, k = 1) {
     }
     paste(im);
   }
+  const FR = D.frm, path = (x, y, w2, h2, r) => { g.beginPath(); if (r && g.roundRect) g.roundRect(x, y, w2, h2, r); else g.rect(x, y, w2, h2); };
+  if (FR?.r) { g.save(); path(ox + FR.x * k, oy + FR.y * k, FR.rw * k, FR.rh * k, FR.r * k); g.clip(); }
   g.drawImage(c, ox, oy);
+  if (FR?.r) g.restore();
+  if (FR) {                                                // (its border, just outside the picture)
+    const h2 = FR.w / 2; path(ox + (FR.x - h2) * k, oy + (FR.y - h2) * k, (FR.rw + FR.w) * k, (FR.rh + FR.w) * k, FR.r ? (FR.r + h2) * k : 0);
+    g.globalAlpha = FR.o; g.strokeStyle = FR.c; g.lineWidth = FR.w * k; g.setLineDash(FR.d ? FR.d.map(v => v * k) : []); g.lineCap = FR.round ? 'round' : 'butt'; g.stroke(); g.globalAlpha = 1; g.setLineDash([]);
+  }
   return { canvas: out, pad: D.pad };
 }

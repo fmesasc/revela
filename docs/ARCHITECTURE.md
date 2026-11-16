@@ -165,6 +165,7 @@ src/
                                demand kept in Cache Storage, the personal dictionary
       a11y.js                  accessibility checker (pure analysis)
       magnify.js               the magnifier: lines, placement, picture crop
+      imageborder.js           a picture's «Borde»: its colour, thickness and rounded corners (sticker + mask of the look)
       imgshrink.js             big pictures made smaller (compress pictures)
       heic.js                  iPhone HEIC/HEIF photos → JPEG on the way in (the browser's decoder, or libheif on demand)
       swapimage.js             «Cambiar imagen»: another picture in the same object (place, crop, animations stay)

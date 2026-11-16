@@ -46,7 +46,7 @@ const LOOK = {
   text: [...STYLE_KEYS, 'color', 'bg', 'borderColor', 'borderDash', 'radius', 'shadow', 'vAlign'],
   shape: ['fill', 'fill2', 'gradType', 'gradAngle', 'stroke', 'strokeWidth', 'dash', 'sketch', 'shadow',
     'fontSize', 'fontFamily', 'fontWeight', 'fontStyle', 'textAlign', 'lineHeight', 'color', 'vAlign'],
-  image: ['adj', 'shadow', 'radius', 'borderColor', 'borderDash', 'device'],
+  image: ['adj', 'shadow', 'radius', 'borderColor', 'borderWidth', 'borderDash', 'device'],
   connector: ['color', 'width', 'dash', 'arrow', 'arrowStart', 'route'],
   chart: ['color', 'grid', 'dataLabels'],
   table: ['header', 'banded', 'band', 'bandAlpha', 'headBg', 'headFg', 'firstCol', 'stroke', 'fontSize'],

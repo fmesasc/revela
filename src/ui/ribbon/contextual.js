@@ -37,6 +37,7 @@ import { startMagnifyDraw } from '../canvas/magnifyview.js';
 import { readFile } from '../shell/openfile.js';
 import { shrinkImage } from '../../features/document/imgshrink.js';
 import * as mag from '../../features/document/magnify.js';
+import { borderOf, setBorder, clearBorder, BORDER_MAX, RADIUS_MAX, BORDER_STYLES } from '../../features/document/imageborder.js';
 import { currentPalette } from '../../features/design/palettes.js';
 import { openAddAnimation } from './animadd.js';
 import { toggleAnimPane } from '../panels/animation.js';
@@ -149,6 +150,7 @@ function groupsFor(b) {
       btn('open_in_full', 'Estirar', () => set(b, x => { x.fit = 'fill'; }), b.fit === 'fill'), btn('aspect_ratio', 'Proporción original', () => blocks.cropToRatio(b.id, 'original'))]],
     // A mockup: the picture inside a phone, a laptop… (filling its screen).
     ['Dispositivo', [['select', 'Dentro de un dispositivo', DEVICES, b.device || '', v => set(b, x => { if (v) { x.device = v; x.fit = 'cover'; } else delete x.device; })]]],
+    ['Borde', imageBorderControls(b)],
     ['Organizar texto', [wrapBtn(b)]],
     ['Al presentar', [btn('zoom_in', 'Ampliar al clic', () => set(b, x => { if (x.zoomable) delete x.zoomable; else x.zoomable = true; }), !!b.zoomable),
       btn('panorama_photosphere', 'Foto de 360°', () => set(b, x => { if (x.pano) delete x.pano; else x.pano = true; }), !!b.pano),
@@ -330,6 +332,15 @@ function groupsFor(b) {
   G.push(arrange(b));
   return G;
 }
+// A picture's border (features/document/imageborder.js): colour (shown as it is picked), thickness, style and rounded corners.
+function imageBorderControls(b) {
+  const bd = borderOf(b), live = patch => commit(() => { const x = currentSlide().blocks.find(y => y.id === b.id); if (x) setBorder(x, patch); }, { history: false });
+  return [['color', 'border_outer', 'Color del borde', bd.color, v => set(b, x => setBorder(x, { color: v })), false, v => live({ color: v })],
+    ['num', 'Grosor del borde', bd.width, v => set(b, x => setBorder(x, { width: v })), 0, BORDER_MAX, 1],
+    ['select', 'Estilo de línea', BORDER_STYLES, bd.dash, v => set(b, x => setBorder(x, { dash: v }))],
+    ['num', 'Esquinas redondeadas', bd.radius, v => set(b, x => setBorder(x, { radius: v })), 0, RADIUS_MAX, 2],
+    btn('border_clear', 'Quitar el borde', () => set(b, x => clearBorder(x)), null)];
+}
 // A magnifier: its frame (quick colours, width, dashed, rounded), the lines and
 // the area's frame, how much it enlarges and where its box goes.
 function magnifyGroups(b) {
@@ -485,9 +496,11 @@ function control(c) {
     return el;
   }
   if (c[0] === 'color') {
-    const [, icon, label, value, fn, mixed] = c, el = document.createElement('label'); el.className = 'color' + (mixed ? ' mixed' : ''); el.title = t(label);
+    const [, icon, label, value, fn, mixed, liveFn] = c, el = document.createElement('label'); el.className = 'color' + (mixed ? ' mixed' : ''); el.title = t(label);
     el.innerHTML = `<i class="ms">${icon}</i><input type="color">`; const inp = el.querySelector('input'); inp.value = /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(value) ? value : '#000000';
     if (ALPHA_ICONS.has(icon)) inp.dataset.alpha = '';           // (fills and borders may be see-through: ui/shell/colorpicker.js)
+    inp.setAttribute('aria-label', t(label));
+    if (liveFn) inp.addEventListener('input', () => liveFn(inp.value));
     inp.addEventListener('change', () => fn(inp.value)); return el;
   }
   const el = document.createElement('label'); el.className = 'ctx-field';

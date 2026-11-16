@@ -4998,6 +4998,58 @@ export default async function ({ R, D, frame, test, sleep, waitFor, assert, eq, 
     m.querySelector('.modal-close').click();
   });
 
+  await test('imagen: grupo «Borde» (poner, cambiar, quitar, estilo, esquinas, menú, deshacer) y su dibujo fuera de la foto en el lienzo, HTML, PNG y PowerPoint', async () => {
+    reset(); const W = frame.contentWindow;
+    const b = putPicture(testPicture((g, w, h) => { g.fillStyle = '#0000ff'; g.fillRect(0, 0, w, h); }, 120, 120)); await sleep(30);
+    R.store.commit(() => { const x = slide().blocks.find(y => y.id === b.id); x.w = 200; x.h = 200; });
+    const cur = () => slide().blocks.find(x => x.id === b.id), look = () => D.querySelector(`#stage .block[data-id="${b.id}"] img`);
+    D.querySelector('#ribbon [data-tab="ctx"]').click(); await sleep(40);
+    const page = () => D.querySelector('#ribbon [data-page="ctx"]');
+    const field = re => [...page().querySelectorAll('.ctx-field')].find(f => re.test(f.querySelector('span').textContent));
+    const color = () => page().querySelector('input[type="color"][aria-label="Color del borde"]');
+    assert(color() && field(/^Grosor del borde/) && field(/^Estilo de línea/) && field(/^Esquinas redondeadas/), 'el grupo Borde: color (con etiqueta), grosor, estilo y esquinas');
+    assert(/Borde/.test(page().textContent), 'se llama Borde'); eq(cur().borderColor, undefined, 'sin borde');
+    const num = (re, v) => { const i = field(re).querySelector('input,select'); i.value = v; i.dispatchEvent(new Event('change', { bubbles: true })); };
+    // Poner (el grosor), y el color en vivo al elegirlo y fijo al soltar.
+    num(/^Grosor del borde/, 12); await sleep(40);
+    eq(cur().borderWidth, 12, 'grosor 12'); assert(/^#[0-9a-f]{6}$/i.test(cur().borderColor), 'con color');
+    const steps = R.store.state?.history?.length;
+    color().value = '#ff0000'; color().dispatchEvent(new Event('input', { bubbles: true })); await sleep(40);
+    eq(cur().borderColor, '#ff0000', 'vista previa en vivo'); assert(D.getElementById(look().style.filter.match(/url\("?#([\w-]+)/)[1])?.querySelector('feImage'), 'el lienzo la dibuja en el filtro de la imagen');
+    color().dispatchEvent(new Event('change', { bubbles: true })); await sleep(30);
+    // Fuera de la foto: la imagen con borde es mayor que la caja, el centro sigue azul y el borde rojo cae fuera.
+    const c = await R.objects.bakeImage(cur(), 1, { decor: true }), g = c.getContext('2d'), px = (x, y) => [...g.getImageData(x, y, 1, 1).data];
+    eq(c.pad.join(), '12,12,12,12', 'el borde, 12 px a cada lado'); eq(c.width, 224, 'imagen de 200 + 24');
+    const mid = px(112, 112), edge = px(6, 112), inner = px(14, 112);
+    assert(mid[2] > 240 && mid[0] < 20, 'el centro sigue azul: ' + mid); assert(edge[3] > 240 && edge[0] > 240 && edge[2] < 20, 'el borde, rojo y fuera de la foto: ' + edge);
+    assert(inner[2] > 240 && inner[0] < 20, 'el borde no tapa la foto: ' + inner);
+    // HTML, PNG de la diapositiva y PowerPoint.
+    assert(/<img[^>]+filter:[^;"]*url\(#rvl-/.test(R.io.buildHTML()), 'HTML: el borde va en el filtro de la imagen');
+    const I = await W.eval("import('/src/io/export/images.js')"), url = URL.createObjectURL(await I.slideImageBlob(slide(), 'png'));
+    const k = (await pixelOf(url, 0, 0)).w / R.state.deck.size.w, X = cur().x, Y = cur().y + 100, at = x => pixelOf(url, Math.round(k * x), Math.round(k * Y));
+    const ring = await at(X - 6), inn = await at(X + 6), cen = await at(X + 100); URL.revokeObjectURL(url);
+    assert(ring.px[0] > 200 && ring.px[2] < 90, 'PNG: el borde rojo fuera de la foto: ' + ring.px.slice(0, 3)); assert(inn.px[2] > 200 && inn.px[0] < 60 && cen.px[2] > 200, 'PNG: la foto no se tapa: ' + inn.px.slice(0, 3));
+    const pb = await R.pptx.buildPptxBlob(), zip = await W.JSZip.loadAsync(pb); assert(Object.keys(zip.files).some(f => /^ppt\/media\//.test(f)), 'PowerPoint: la imagen con su borde va dentro');
+    // Estilo y esquinas redondeadas (la foto se recorta a ellas).
+    num(/^Estilo de línea/, 'dash'); await sleep(30); eq(cur().borderDash, 'dash', 'guiones');
+    num(/^Esquinas redondeadas/, 40); await sleep(40); eq(cur().radius, 40, 'esquinas de 40 px');
+    const r = await R.objects.bakeImage(cur(), 1, { decor: true }), rg = r.getContext('2d');
+    assert(rg.getImageData(12 + 2, 12 + 2, 1, 1).data[3] < 30, 'la esquina de la foto, redonda (transparente)'); assert(rg.getImageData(12 + 100, 12 + 100, 1, 1).data[2] > 240, 'y el centro, azul');
+    // El menú del botón derecho.
+    const menu = () => { D.querySelector(`.block[data-id="${b.id}"]`).dispatchEvent(new W.MouseEvent('contextmenu', { bubbles: true, clientX: 300, clientY: 300 })); return [...D.querySelectorAll('#context-menu .ctx-item')]; };
+    let items = menu(); assert(items.some(x => /Quitar el borde/.test(x.textContent)) && items.some(x => /Esquinas rectas/.test(x.textContent)), 'menú: quitar el borde y esquinas rectas');
+    items.find(x => /Esquinas rectas/.test(x.textContent)).click(); await sleep(30); eq(cur().radius, undefined, 'esquinas rectas');
+    R.store.undo(); await sleep(30); eq(cur().radius, 40, 'Ctrl+Z devuelve las esquinas'); R.store.redo(); await sleep(30); eq(cur().radius, undefined, 'rehacer');
+    items = menu(); items.find(x => /Quitar el borde/.test(x.textContent)).click(); await sleep(30); eq(cur().borderColor, undefined, 'quitado desde el menú'); eq(cur().borderWidth, undefined, 'y su grosor');
+    assert(!look().style.filter.includes('url(#') || !D.getElementById(look().style.filter.match(/url\("?#([\w-]+)/)?.[1] || 'x')?.querySelector('feImage'), 'el lienzo, sin borde');
+    items = menu(); items.find(x => /Añadir borde/.test(x.textContent)).click(); await sleep(30); eq(cur().borderWidth, 4, 'añadido desde el menú');
+    R.store.undo(); await sleep(30); eq(cur().borderColor, undefined, 'y se deshace');
+    // Grosor 0 desde la cinta quita el borde.
+    num(/^Grosor del borde/, 8); await sleep(30); num(/^Grosor del borde/, 0); await sleep(30); eq(cur().borderColor, undefined, 'grosor 0: sin borde');
+    // El borde sin esquinas ni estilo: otra vez continuo.
+    assert(R.a11y.blockLabel(cur()) !== undefined, 'accesibilidad: la imagen sigue con su etiqueta');
+  });
+
   await test('editar imagen: forma en una foto alargada — la caja cuadrada y su encuadre, ahí mismo', async () => {
     reset(); const b = putPicture(testPicture((g, w, h) => { g.fillStyle = '#ff0000'; g.fillRect(0, 0, w / 2, h); g.fillStyle = '#0000ff'; g.fillRect(w / 2, 0, w / 2, h); }, 240, 80)); await sleep(30);
     const m = await openEditor(), cur = () => slide().blocks.find(x => x.id === b.id); await tabTo(m, 'shape');
