@@ -131,7 +131,7 @@ const pad = n => String(n).padStart(10, '0');
 export const STATUSES = ['open', 'waiting', 'closed'];   // (see Tickets)
 export const statusOf = s => (s === 'pending' ? 'waiting' : STATUSES.includes(s) ? s : null);
 // (The first ones come from the app's «Informar de un problema»; press … partner, from the website's «Contacto».)
-export const CATEGORIES = ['bug', 'ai', 'billing', 'account', 'cloud', 'other', 'press', 'privacy', 'legal', 'partner'];
+export const CATEGORIES = ['bug', 'ai', 'billing', 'account', 'cloud', 'other', 'press', 'privacy', 'legal', 'partner', 'idea'];
 export const CHARGES = ['ai', 'image', 'speech', 'model3d'];           // (ledger kinds that are AI charges: refundable)
 const clip = (s, n) => String(s ?? '').replace(/\r/g, '').slice(0, n);
 const stub = (ns, name) => ns.get(ns.idFromName(name));

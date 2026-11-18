@@ -1321,6 +1321,63 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { D.getElementById('newsask-modal')?.remove(); W.localStorage.removeItem(KEY); }
   });
 
+  await test('opinión: tras ~25 min de uso activo se pregunta una vez; «Ahora no» dice dónde; aceptar abre el formulario; enviar agradece; nunca en pruebas ni presentación', async () => {
+    reset(); const W = frame.contentWindow, F = await W.eval("import('/src/ui/shell/feedbackask.js')"), N = await W.eval("import('/src/ui/shell/newsask.js')"),
+      S = await W.eval("import('/src/core/session.js')"), RP = await W.eval("import('/src/ui/dialogs/report.js')");
+    const K = 'revela.feedback.state', TM = 'revela.feedback.ms', clear = () => { W.localStorage.removeItem(K); W.localStorage.removeItem(TM); N.nudge.shown = false; };
+    const key = () => (/Mac|iPhone|iPad/.test(W.navigator.platform) ? '⌘K' : 'Ctrl+K');
+    let clock = 0, asked = 0, vis = true;
+    const run = (o = {}) => F.watchFeedbackAsk({ edition: 'cloud', testing: false, every: 10, minMs: 300, idleMs: 1e9, now: () => (clock += 10), visible: () => vis, ask: async () => { asked++; }, ...o });
+    clear();
+    try {
+      // Time: only the active time adds up (and it stays in this browser).
+      let stop = run(); await sleep(120); stop(); assert(F.usedMs() > 0 && F.usedMs() < 300 && !asked, 'suma tiempo de uso: ' + F.usedMs()); const some = F.usedMs();
+      vis = false; stop = run(); await sleep(100); stop(); eq(F.usedMs(), some, 'con la pestaña oculta no suma'); vis = true;
+      stop = run({ idleMs: 0 }); await sleep(100); stop(); eq(F.usedMs(), some, 'sin interacción reciente no suma');
+      S.session.present = { frame: 1 }; stop = run(); await sleep(100); stop(); S.session.present = null; eq(F.usedMs(), some, 'presentando no suma');
+      // Not in tests, nor in the open edition (no server of ours), nor over a dialog, nor with the news question this session.
+      clear(); W.localStorage.setItem(TM, '100000'); stop = run({ testing: true }); await sleep(60); stop(); assert(!asked, 'en pruebas, nunca');
+      stop = run({ edition: 'open' }); await sleep(60); stop(); assert(!asked, 'edición abierta: no pregunta sola');
+      const other = D.createElement('div'); other.className = 'modal-backdrop'; D.body.appendChild(other);
+      stop = run(); await sleep(60); assert(!asked && !W.localStorage.getItem(K), 'con un diálogo abierto espera'); other.remove(); await sleep(60); stop(); eq(asked, 1, 'y al cerrarse, pregunta'); eq(JSON.parse(W.localStorage.getItem(K)).state, 'ahora-no', 'guarda fecha y resultado');
+      assert(JSON.parse(W.localStorage.getItem(K)).at, 'con fecha');
+      stop = run(); await sleep(60); stop(); eq(asked, 1, 'una sola vez');
+      clear(); W.localStorage.setItem(TM, '100000'); S.session.present = { frame: 1 }; stop = run(); await sleep(60); eq(asked, 1, 'presentando no pregunta'); S.session.present = null; await sleep(60); stop(); eq(asked, 2, 'al terminar sí');
+      clear(); W.localStorage.setItem(TM, '100000'); stop = run(); N.nudge.shown = true; await sleep(60); stop(); eq(asked, 2, 'con el aviso de novedades de esta sesión, no');
+      // «dado» switches it off for good, even from the Help entry.
+      clear(); F.markFeedback('dado'); W.localStorage.setItem(TM, '100000'); stop = run(); await sleep(60); stop(); eq(asked, 2, '«dado» lo apaga');
+      F.markFeedback('ahora-no'); eq(F.feedbackState(), 'dado', 'y «Ahora no» no lo deshace');
+      // The question and what follows.
+      clear(); const said = [], forms = [];
+      const go = async (click, o = {}) => { const p = F.askFeedback({ say: async m => said.push(m), openForm: async f => forms.push(f), ...o }); await sleep(20); click(); await p; };
+      await sleep(5); await (async () => { const p = F.askFeedback({ say: async m => said.push(m), openForm: async f => forms.push(f) }); await sleep(20);
+        const box = D.getElementById('feedbackask-modal'); assert(box && box.querySelector('[role=dialog]') && box.contains(D.activeElement), 'diálogo accesible con el foco dentro');
+        eq(box.querySelector('h3').textContent, '¿Qué tal te va con Revela?'); eq(box.querySelector('.fb-yes').textContent, 'Dar mi opinión'); eq(box.querySelector('.fb-no').textContent, 'Ahora no');
+        D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await p; })();
+      assert(!D.getElementById('feedbackask-modal') && said.length === 1 && !forms.length, 'Escape es «Ahora no»');
+      assert(said[0].includes('Enviar una opinión o una idea') && said[0].includes(key()) && /bienvenidos/.test(said[0]) && said[0].includes('Ver ▸ Ayuda'), 'dice dónde: ' + said[0]);
+      await go(() => D.querySelector('#feedbackask-modal .fb-no').click()); eq(said.length, 2, '«Ahora no» también');
+      await go(() => D.querySelector('#feedbackask-modal .fb-yes').click()); eq(forms.length, 1, 'aceptar abre el formulario'); assert(forms[0].opinion === true, 'en modo opinión');
+      forms[0].onCancel(); await sleep(5); eq(said.length, 3, 'cancelar el formulario dice dónde volver');
+      // The form: «Tu opinión», category idea, the answer address if no session; sending thanks and marks it given.
+      clear(); const calls = [], cancelled = [];
+      RP.openReport({ opinion: true, accounts: true, onCancel: () => cancelled.push(1), call: async (p, b) => { calls.push([p, b]); return { id: 7 }; } });
+      const m = D.getElementById('report-modal'); eq(m.querySelector('h3').textContent, 'Tu opinión'); assert(!m.querySelector('.rp-cat') && !m.querySelector('.rp-attach'), 'sin tipo ni adjunto');
+      assert(m.textContent.includes('¿Qué te gusta, qué echas de menos, qué cambiarías?'), 'con el texto guía');
+      m.querySelector('.rp-msg').value = 'Me gusta mucho'; m.querySelector('.rp-email').value = 'no es correo'; m.querySelector('.rp-send').click(); await sleep(20); eq(calls.length, 0, 'sin correo válido no envía'); D.querySelector('.dlg-ok')?.click();
+      m.querySelector('.rp-email').value = 'a@b.co'; m.querySelector('.rp-send').click(); await sleep(40);
+      eq(calls.length, 1); eq(calls[0][0], 'support'); eq(calls[0][1].category, 'idea'); eq(calls[0][1].email, 'a@b.co'); eq(F.feedbackState(), 'dado', 'enviar la marca como dado'); eq(cancelled.length, 0);
+      const ty = D.querySelector('.dlg-msg'); assert(ty && /Lo tendremos en cuenta/.test(ty.textContent) && /siempre serán bienvenidos/.test(ty.textContent) && ty.textContent.includes('Enviar una opinión o una idea'), 'agradece y dice dónde'); D.querySelector('.dlg-ok').click();
+      clear(); RP.openReport({ opinion: true, accounts: true, onCancel: () => cancelled.push(1) }); D.querySelector('#report-modal .rp-cancel').click(); eq(cancelled.length, 1, 'cancelar avisa'); eq(F.feedbackState(), '', 'y por sí solo no marca nada');
+      // The permanent entry: Help group of the ribbon (and the palette), in the open edition pointing to GitHub.
+      const btn = D.querySelector('#ribbon [data-action="send-opinion"]'); assert(btn && /opini/i.test(btn.textContent), 'el botón en Ayuda de la cinta');
+      btn.click(); await sleep(20); const g = D.getElementById('report-modal'); assert(g && g.querySelector('a[href="https://github.com/fmesasc/revela/issues"]') && g.querySelector('h3').textContent === 'Tu opinión', 'en la edición abierta, a GitHub');
+      g.querySelector('a').addEventListener('click', e => e.preventDefault()); g.querySelector('a').click(); eq(F.feedbackState(), 'dado', 'ir a GitHub cuenta como opinión'); g.querySelector('.modal-close').click();
+      // English.
+      await R.i18n.setLang('en'); assert(F.laterText().includes('Send feedback or an idea') && F.laterText().includes('View ▸ Help'), 'traducido: ' + F.laterText()); await R.i18n.setLang('es');
+    } finally { D.getElementById('feedbackask-modal')?.remove(); D.getElementById('report-modal')?.remove(); S.session.present = null; clear(); await R.i18n.setLang('es'); }
+  });
+
   await test('si el navegador no puede guardar, la barra lo dice y un clic descarga una copia', async () => {
     reset(); const S = W.Storage.prototype, P = W.IDBObjectStore.prototype, set = S.setItem, put = P.put;
     const ss = D.getElementById('save-state');

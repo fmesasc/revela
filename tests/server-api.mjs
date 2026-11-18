@@ -1647,6 +1647,11 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
     const tc = (await r.json()).id; t = await get(tc);
     ok(r.status === 200 && t.name === 'Marta Ruiz' && t.category === 'press' && t.email === 'marta@periodico.example' && !t.sub && sent.some(y => y.to === 'marta@periodico.example' && new RegExp('#' + tc).test(y.subject)), 'contacto: un ticket con nombre y tema, y el acuse');
     for (const cat of ['privacy', 'legal', 'partner']) ok((await get((await (await sup({ email: `x-${cat}@example.com`, category: cat, message: 'Hola, una consulta.' }, { ip: '10.3.0.' + cat.length })).json()).id)).category === cat, 'contacto: tema ' + cat);
+    // «Enviar una opinión o una idea» (the app's feedback form): category 'idea', with an email address or signed in.
+    { const ti = (await (await sup({ email: 'opina@example.com', category: 'idea', message: 'Me encanta; echo de menos más plantillas de ciencias.', lang: 'es' }, { ip: '10.3.0.77' })).json()).id;
+      t = await get(ti); ok(t.category === 'idea' && t.email === 'opina@example.com', 'opinión: un ticket de categoría «idea»');
+      r = await sup({ category: 'idea', message: 'Una idea sin correo', email: 'no-vale' }, { ip: '10.3.0.76' }); ok(r.status === 400, 'opinión: sin sesión hace falta un correo válido');
+      ok((await A('GET', '/tickets?category=idea')).status === 200, 'opinión: el panel puede listar la categoría'); }
     ok((await get((await (await sup({ email: 'y@example.com', category: 'inventado', message: 'Hola, otra.' }, { ip: '10.3.0.99' })).json()).id)).category === 'other', 'contacto: un tema inventado queda en «other»');
     ok((await get((await (await sup({ email: 'z@example.com', name: 'n'.repeat(500), message: 'Nombre largo.' }, { ip: '10.3.0.98' })).json()).id)).name.length === 120, 'contacto: el nombre, recortado');
 

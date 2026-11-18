@@ -314,6 +314,7 @@ export const ACTIONS = {
   'connect-mobile': () => openHostPanel(),
   'shortcuts': () => openShortcuts(),
   'report-problem': () => openReport(),
+  'send-opinion': () => openReport({ opinion: true }),
   'ai-anim': () => openAiAnimation(),
   'tour': () => { const all = [...document.querySelectorAll('[data-action="tour"]')]; openTourMenu(all.find(b => b.getBoundingClientRect().width > 0) || all[0]); },
   'insert-hf': () => openHeaderFooter(),

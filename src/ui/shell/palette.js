@@ -92,6 +92,7 @@ const SYN = {
   'a:deck-settings': 'ajustes|configuración|opciones|preferencias|settings|options|preferences|config',
   'a:ai-assistant': 'asistente|ia|inteligencia artificial|chat|chatgpt|claude|copilot|assistant|ai|gpt',
   'a:report-problem': 'error|fallo|bug|problema|soporte|contactar|report|support|feedback|contact|issue',
+  'a:send-opinion': 'opinión|opinion|idea|sugerencia|sugerir|comentarios|valoración|valorar|feedback|suggestion|comments|review|rate|ideas|avis|idée|meinung|idee',
   'a:shortcuts': 'atajos|teclado|combinaciones de teclas|teclas|shortcuts|keyboard|hotkeys|keys|raccourcis|tastenkürzel',
   'a:cloud-docs': 'mi nube|nube|mis presentaciones|mis archivos|cloud|my cloud|my files|my presentations',
   'a:find-replace': 'buscar|reemplazar|sustituir|find|replace|search|rechercher|suchen|cerca',

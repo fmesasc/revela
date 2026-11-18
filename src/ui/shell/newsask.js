@@ -12,7 +12,9 @@ import { toast } from './toast.js';
 const KEY = 'revela.news.asked';
 export const newsAsked = () => { try { return !!localStorage.getItem(KEY); } catch { return true; } };      // (no storage: never, rather than every time)
 const markAsked = v => { try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch {} };
-const busy = () => !!document.querySelector('.modal-backdrop:not([hidden]), #backstage:not([hidden]), #present-overlay:not([hidden]), #tour');
+// One of these notices per session at most: this one and the feedback question (feedbackask.js) share it.
+export const nudge = { shown: false };
+export const busy = () => !!document.querySelector('.modal-backdrop:not([hidden]), #backstage:not([hidden]), #present-overlay:not([hidden]), #tour');
 
 // The question: resolves 'yes', 'no' or null (closed without choosing).
 export function askNewsDialog() {
@@ -47,13 +49,14 @@ export function askNewsDialog() {
 // (Options are for the tests: edition, the account, the call to the server.)
 export function watchNewsAsk({ edition = EDITION, me = account, onMe = onAccount, call = api, every = 5000, minChanges = 12, minMs = 120000 } = {}) {
   if (edition !== 'cloud') return () => {};
+  nudge.shown = false;
   const t0 = performance.now(); let changes = 0, asking = false;
   const off = subscribe(() => { changes++; });
   const check = async () => {
     const m = me();
-    if (asking || !m || m.news || newsAsked() || changes < minChanges || performance.now() - t0 < minMs) return;
+    if (asking || nudge.shown || !m || m.news || newsAsked() || changes < minChanges || performance.now() - t0 < minMs) return;
     if (session.present || busy() || document.visibilityState === 'hidden') return;
-    asking = true; markAsked('shown');                                    // (marked before: a crash or a closed tab won't repeat it)
+    asking = nudge.shown = true; markAsked('shown');                                    // (marked before: a crash or a closed tab won't repeat it)
     try {
       const a = await askNewsDialog();
       if (a === 'yes') {

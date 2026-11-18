@@ -4,6 +4,7 @@ import { hasAccounts, cloudAi, refreshAccount, onAccount, account } from '../../
 import { mountCloudStatus, mountViewAsBanner, openFromLink } from '../../ui/dialogs/cloud.js';
 import { mountNotices } from '../../ui/shell/notices.js';
 import { watchNewsAsk } from '../../ui/shell/newsask.js';
+import { watchFeedbackAsk } from '../../ui/shell/feedbackask.js';
 import { docIdFrom } from '../../io/cloud/clouddocs.js';
 import * as clouddocs from '../../io/cloud/clouddocs.js';
 import { setCloudAi } from '../../features/ai/openrouter.js';
@@ -320,7 +321,7 @@ if (!testing && !['collab', 'doc'].some(k => new URLSearchParams(location.search
 }
 initCollabUI();
 initHome();
-if (!testing) initTour();                                // (the guided tour, after a new account's first sign-in: ui/shell/tour.js)
+if (!testing) { initTour(); watchFeedbackAsk(); }                                // (the guided tour, after a new account's first sign-in: ui/shell/tour.js)
 initAudience();                                             // (teaching, a company or both: core/audience.js)
 initFileDrop();
 initEditAids();                                         // (format painter, «/» in text, live previews, save state: ui/shell/editaids.js)

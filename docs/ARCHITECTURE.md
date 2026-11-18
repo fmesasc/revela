@@ -307,7 +307,7 @@ src/
                                masterview (slide master view), backstage (the File page), coach,
                                collab (co-editing in the interface), morphhint, menu (popup menus),
                                files (saving an object's file), sorter (slide sorter), openfile
-                               (opening and dropping files), newsask (the one-time, unticked «news by email» question), openwith (Drive/Dropbox «Open with»),
+                               (opening and dropping files), newsask (the one-time, unticked «news by email» question), feedbackask (the one-time «¿Qué tal te va con Revela?» question after ~25 min of ACTIVE use: the time is counted only in this browser's localStorage, `revela.feedback.ms`, and is never sent nor logged by the server; the answer is `revela.feedback.state` = `dado` | `ahora-no`; «Dar mi opinión» opens `dialogs/report.js` in opinion mode, category `idea`; never while testing, presenting, over a dialog, in the open edition, or in the same session as newsask — they share `nudge`; the permanent entry is Help ▸ «Enviar una opinión o una idea» — action `send-opinion`, ribbon, palette, desktop menu — and any opinion sent marks it `dado`), openwith (Drive/Dropbox «Open with»),
                                palette (command search, Ctrl+K), dictate, attachments (files for
                                the AI), notices, toast (short notes), where (where the presentation
                                is kept), changeimage («Cambiar imagen»: a file or Recursos), editaids
