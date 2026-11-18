@@ -97,6 +97,11 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     const heard = {};
     try {
       assert(await DK.initDesktop({ tauri, updates: false }), 'arranca con Tauri');
+      // A link of the app's own pages (the legal notices) that opens in a new tab: not to the opener (it would refuse it: «Not allowed to open url»), but to the same page of the website.
+      { const a = W.document.createElement('a'); a.href = 'privacy.html'; a.target = '_blank'; W.document.body.appendChild(a);
+        const ev = new W.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }); a.dispatchEvent(ev); a.remove();
+        assert(ev.defaultPrevented, 'el clic se atiende antes que el plugin (no llega a su open_url)');
+        assert(calls.some(c => c.open === 'https://revelaslides.com/privacy.html'), 'y abre la misma página en la web: ' + JSON.stringify(calls.filter(c => c.open))); }
       assert(calls.some(c => c.cmd === 'opened_links') && heard['revela://link'] && heard['revela://opened'], 'pregunta por los enlaces revela:// y escucha lo que llegue con la aplicación abierta');
       // The file it was opened with: open, as if dropped.
       for (let i = 0; i < 40 && R.state.deck.name !== 'Desde el escritorio'; i++) await sleep(25);

@@ -295,11 +295,31 @@ async function openLinks() {
   for (const id of Array.isArray(ids) ? ids : []) { try { await (await import('../dialogs/cloud.js')).openFromLink(id); } catch (e) { toast(t('No se pudo abrir la presentación:') + ' ' + (e?.message || e), { error: true }); } }
 }
 
+// Links of the app's own pages that open in a new tab (the legal notices in the footer…): the opener plugin (init script) sends
+// every <a target=_blank> — or Ctrl/Shift click — with an http(s) address to the system browser, and an address of the app itself
+// (http://tauri.localhost/privacy.html) is not one it may open: «Not allowed to open url», a rejected promise. These go to the
+// same page of the website instead (the legal ones at its root, the rest under /app). Ahead of the plugin's own listener
+// (the window, on the way down), which then sees the click already handled.
+function appLinks() {
+  const onClick = e => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.altKey) return;
+    const a = e.composedPath().find(n => n instanceof Node && n.nodeName.toUpperCase() === 'A');
+    const target = a?.getAttribute('target') ?? a?.ownerDocument.querySelector('base[target]')?.getAttribute('target');
+    if (!a || !a.href || (target !== '_blank' && !e.ctrlKey && !e.shiftKey)) return;
+    let u; try { u = new URL(a.href); } catch { return; }
+    if (!/^https?:$/.test(u.protocol) || u.origin !== location.origin) return;
+    e.preventDefault();
+    const legal = /^\/(privacy|terms|legal)\.html$/.test(u.pathname);
+    api?.opener?.openUrl?.(OFFICIAL_SITE + (legal ? '' : '/app') + u.pathname + u.search + u.hash)?.catch?.(() => {});
+  };
+  window.addEventListener('click', onClick, true); undoers.push(() => window.removeEventListener('click', onClick, true));
+}
+
 // tauri: window.__TAURI__ (withGlobalTauri; tests give their own).
 export async function initDesktop({ tauri = globalThis.__TAURI__, updates = true } = {}) {
   if (!tauri?.core) return false;
   api = tauri; setDeskApi(tauri);
-  saveDownloads(); chooseFiles(); diskMedia();
+  saveDownloads(); chooseFiles(); diskMedia(); appLinks();
   try { await build(); } catch (e) { console.warn('Menú no creado:', e); }
   bar(pinned()); altShowsBar();
   const rebuild = () => build().catch(() => {});
