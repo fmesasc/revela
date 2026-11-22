@@ -180,6 +180,13 @@ export async function storeFile(blob, type = blob?.type || '') {
   await storeMedia(id, b).catch(() => {});                 // (no store — a private window —: the page still has it)
   return registerMedia(id, b).url;
 }
+// The desktop app (ui/shell/desktop.js): a video or a sound taken in (inserted, recorded) goes into this store and the
+// presentation holds its address, not its whole text: a data URL is a third bigger and a browser's text can't be past ~512
+// million characters, so a video of 420 MB couldn't be inserted at all (measured), and one of 100 MB made 140 million
+// characters the page then copied, saved and walked. On the web it stays a data URL (`asText(blob)`).
+let byAddress = false;
+export const setMediaByAddress = on => { byAddress = !!on; };
+export const mediaSrc = (blob, asText) => (byAddress && /^(video|audio)\//.test(blob.type) ? storeFile(blob) : asText(blob));
 // The same from bytes already in hand (a file read out of a PowerPoint): not copied again.
 export async function storeBytes(bytes, type = '') {
   const id = await mediaId(bytes), b = new Blob([bytes], { type });

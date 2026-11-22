@@ -3,6 +3,7 @@
 
 import { startRecording, blobToDataURL, canRecord } from '../../features/live/media.js';
 import { addVideo } from '../../features/document/blocks.js';
+import { mediaSrc } from '../../core/mediastore.js';
 import { present } from './present.js';
 import { state } from '../../core/store.js';
 import { alertDialog } from '../dialogs/dialog.js';
@@ -39,7 +40,7 @@ export async function recordToSlide(kind) {
   active = rec;
   const finish = async () => {
     const blob = await rec.stop(); active = null;
-    if (blob.size) addVideo(await blobToDataURL(blob));
+    if (blob.size) addVideo(await mediaSrc(blob, blobToDataURL));
   };
   const hide = bar(kind === 'camera' ? t('Grabando cámara') : t('Grabando pantalla'), finish, () => { rec.cancel(); active = null; });
   rec.ended.then(() => { if (active === rec) { hide(); finish(); } });

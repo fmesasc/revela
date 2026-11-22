@@ -355,6 +355,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       menu: { Menu: { new: async o => ({ ...o, setAsAppMenu: async () => {} }) }, Submenu: { new: async o => o }, MenuItem: { new: async o => o }, PredefinedMenuItem: { new: async o => o }, CheckMenuItem: { new: async o => o } },
       app: { getVersion: async () => '9.9.9', defaultWindowIcon: async () => null }, event: { listen: async () => () => {} }, opener: { openUrl: async () => {} } };
     const lastOf = () => slide().blocks.at(-1);
+    const rec = new W.Blob([clip.slice(1000, 90000)], { type: 'video/webm;codecs=vp8,opus' }), asText = b => new Promise(ok => { const r = new W.FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(b); });
+    assert((await MS.mediaSrc(rec, asText)).startsWith('data:video/webm'), 'una grabación en el navegador: data:');
     // On the web: as before, a data: URL.
     await OF.insertFiles([new W.File([clip], 'clip.mp4', { type: 'video/mp4' })]);
     assert(lastOf().type === 'video' && lastOf().src.startsWith('data:video/mp4'), 'en el navegador, un data: como siempre');
@@ -364,6 +366,8 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       const [v, a] = slide().blocks.slice(-2);
       assert(v.type === 'video' && MS.isLive(v.src) && v.src.length < 300, 'el vídeo, por su dirección: ' + v.src.slice(0, 40));
       assert(a.type === 'audio' && MS.isLive(a.src), 'el sonido, también');
+      const rs = await MS.mediaSrc(rec, asText); assert(MS.isLive(rs) && MS.mediaType(rs).startsWith('video/webm'), 'una grabación de la cámara o la pantalla, también: ' + rs.slice(0, 30));
+      assert((await MS.mediaSrc(new W.Blob(['x'], { type: 'image/png' }), asText)).startsWith('data:image/png'), 'y lo que no es vídeo ni sonido sigue como data:');
       eq(MS.mediaType(v.src), 'video/mp4', 'con su tipo'); eq(MS.liveBytes(v.src), clip.length, 'y sus bytes');
       const whole = await MS.portable(v.src); assert(whole.startsWith('data:video/mp4;base64,') && whole.length > clip.length * 1.3, 'al exportar o compartir, el data: entero');
       // The ribbon's Insert ▸ Video, through the system's «Open» dialog.

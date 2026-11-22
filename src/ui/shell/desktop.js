@@ -17,7 +17,7 @@
 // - Updates: looked for when it opens and from Ayuda ▸ «Buscar actualizaciones», asked in the interface's language.
 
 import { ACTIONS } from '../ribbon/actions.js';
-import { dropFiles, openPdfDeck, setMediaByAddress } from './openfile.js';
+import { dropFiles, openPdfDeck } from './openfile.js';
 import { openPalette } from './palette.js';
 import { toast } from './toast.js';
 import { startAppStats, toggleStats, statsState } from './appstats.js';
@@ -27,7 +27,7 @@ import { t } from '../../i18n/index.js';
 import { OFFICIAL_SITE } from '../../core/config.js';
 import { setDeskApi, holdDesktopFile, openDeskZip, registerDiskMedia } from '../../io/deskzip.js';
 import { setPackageSaver, extOf } from '../../io/formats/package.js';
-import { setDiskMedia, dehydrate, usedRefs, mediaEntry, mediaBlobOf, MEDIA_REF } from '../../core/mediastore.js';
+import { setDiskMedia, setMediaByAddress, dehydrate, usedRefs, mediaEntry, mediaBlobOf, MEDIA_REF } from '../../core/mediastore.js';
 
 const mac = () => /Mac/i.test(globalThis.navigator?.platform || globalThis.navigator?.userAgent || '');
 const SEP = '-';
@@ -321,7 +321,7 @@ function appLinks() {
 
 // What the browser's tab can't hold and a computer's window can (docs/ESCRITORIO-NATIVO.md): undo keeps 200 steps, not 60
 // (measured: ~0.2 MB each with 300 slides of 10 objects); a video or sound inserted goes by its address, not as a text of
-// hundreds of millions of characters (openfile.js). Taken back by stopDesktop.
+// hundreds of millions of characters (core/mediastore.js mediaSrc). Taken back by stopDesktop.
 export const DESKTOP_HISTORY = 200;
 function nativeLimits() {
   setHistoryLimit(DESKTOP_HISTORY); undoers.push(() => setHistoryLimit(60));

@@ -11,7 +11,7 @@ import { choosePdfMode } from '../dialogs/pdfmode.js';
 import { smallPicture } from '../dialogs/diagram.js';
 import { diagramLayout } from '../../render/diagrams.js';
 import { state, replaceDeck, currentSlide, amend } from '../../core/store.js';
-import { storeFile } from '../../core/mediastore.js';
+import { mediaSrc } from '../../core/mediastore.js';
 import { replaceImage } from '../../features/document/swapimage.js';
 import { fillPlaceholder } from '../../features/document/master.js';
 import { isBlankDeck, emptyDeck } from '../../core/model.js';
@@ -41,18 +41,12 @@ export const readFile = (accept, cb, as = 'DataURL') => {
   inp.onchange = async () => { let f = inp.files[0]; if (!f) return;
     if (isHeicFile(f)) { try { f = await webImage(f); } catch { alertDialog(t('No se pudo leer esta foto HEIC. Expórtala a JPG desde el móvil o el visor de fotos e inténtalo de nuevo.')); return; } }
     if (as === 'file') { cb(f); return; }
-    if (as === 'media' && byAddress && /^(video|audio)\//.test(f.type)) { mediaSrc(f).then(cb, e => alertDialog(t('No se pudo añadir: ') + (e.message || e))); return; }
+    if (as === 'media' && /^(video|audio)\//.test(f.type)) { mediaSrc(f, dataURL).then(cb, e => alertDialog(t('No se pudo añadir: ') + (e.message || e))); return; }
     const r = new FileReader(); r.onload = () => cb(r.result);
     if (as === 'text') r.readAsText(f); else r.readAsDataURL(f); };
   inp.click();
 };
 const dataURL = f => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(f); });
-// The desktop app (ui/shell/desktop.js): a video or a sound goes into Revela's store and the presentation holds its address (core/mediastore.js),
-// not its whole text: a data URL is a third bigger and a browser's text can't be past ~512 million characters, so a video of 420 MB
-// couldn't be inserted at all (measured), and one of 100 MB made 140 million characters the page then copied, saved and walked.
-let byAddress = false;
-export const setMediaByAddress = on => { byAddress = !!on; };
-const mediaSrc = f => (byAddress && /^(video|audio)\//.test(f.type) ? storeFile(f) : dataURL(f));
 // Replacing the open presentation asks first, unless there is nothing to lose.
 const mayReplace = () => (isBlankDeck(state.deck) ? Promise.resolve(true) : confirmDialog(t('¿Abrir otra presentación? Se perderá la actual si no la has guardado.'), { ok: t('Descartar la actual'), danger: true }));
 
@@ -203,8 +197,8 @@ export async function insertFiles(files, at = null) {
     try {
       if (k === 'image' && files.length === 1 && await onPicture(f, at)) { n++; continue; }
       if (k === 'image') blocks.addImage(await dataURL(f));
-      else if (k === 'video') blocks.addVideo(await mediaSrc(f));
-      else if (k === 'audio') blocks.addAudio(await mediaSrc(f));
+      else if (k === 'video') blocks.addVideo(await mediaSrc(f, dataURL));
+      else if (k === 'audio') blocks.addAudio(await mediaSrc(f, dataURL));
       else if (k === 'model') blocks.addModel((await dataURL(f)).replace(/^data:[^;,]*/, /\.gltf$/i.test(f.name) ? 'data:model/gltf+json' : 'data:model/gltf-binary'));
       else if (k === 'stl') blocks.addModel(stlToGLB(await f.arrayBuffer()));
       else if (k === 'lottie') { const r = await insertLottieFile(f); if (r.error) { alertDialog(lottieErrorText(r.error)); continue; } }
