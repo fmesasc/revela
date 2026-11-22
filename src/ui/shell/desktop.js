@@ -22,7 +22,7 @@ import { openPalette } from './palette.js';
 import { toast } from './toast.js';
 import { startAppStats, toggleStats, statsState } from './appstats.js';
 import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
-import { undo, redo, canRedo } from '../../core/store.js';
+import { undo, redo, canRedo, setHistoryLimit } from '../../core/store.js';
 import { t } from '../../i18n/index.js';
 import { OFFICIAL_SITE } from '../../core/config.js';
 import { setDeskApi, holdDesktopFile, openDeskZip, registerDiskMedia } from '../../io/deskzip.js';
@@ -319,11 +319,18 @@ function appLinks() {
   window.addEventListener('click', onClick, true); undoers.push(() => window.removeEventListener('click', onClick, true));
 }
 
+// What the browser's tab can't hold and a computer's window can (docs/ESCRITORIO-NATIVO.md): undo keeps 200 steps, not 60
+// (measured: ~0.2 MB each with 300 slides of 10 objects). Taken back by stopDesktop.
+export const DESKTOP_HISTORY = 200;
+function nativeLimits() {
+  setHistoryLimit(DESKTOP_HISTORY); undoers.push(() => setHistoryLimit(60));
+}
+
 // tauri: window.__TAURI__ (withGlobalTauri; tests give their own).
 export async function initDesktop({ tauri = globalThis.__TAURI__, updates = true } = {}) {
   if (!tauri?.core) return false;
   api = tauri; setDeskApi(tauri);
-  saveDownloads(); chooseFiles(); diskMedia(); appLinks();
+  saveDownloads(); chooseFiles(); diskMedia(); appLinks(); nativeLimits();
   try { await build(); } catch (e) { console.warn('Menú no creado:', e); }
   bar(pinned()); altShowsBar();
   const rebuild = () => build().catch(() => {});

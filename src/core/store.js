@@ -7,7 +7,9 @@ import { newDeck, loadDeck, saveDeck, flushSave } from './model.js';
 const listeners = new Set();
 const past = [];
 const future = [];
-const HISTORY_LIMIT = 60;
+let HISTORY_LIMIT = 60;
+// How many steps undo keeps. The desktop app keeps more (ui/shell/desktop.js): its memory isn't a browser tab's.
+export const setHistoryLimit = n => { HISTORY_LIMIT = Math.max(1, Math.floor(+n) || 60); while (past.length > HISTORY_LIMIT) past.shift(); };
 // Undo snapshots copy objects and arrays but share the strings (immutable in
 // JS), so the megabytes of embedded images/video are never duplicated — a
 // JSON copy per step would exhaust memory on big decks.

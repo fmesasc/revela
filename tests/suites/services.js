@@ -329,6 +329,22 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { DK.stopDesktop(); }
   });
 
+  await test('escritorio: sin los topes del navegador (Tauri simulado): deshacer más pasos', async () => {
+    reset(); const W = frame.contentWindow, DK = await W.eval("import('/src/ui/shell/desktop.js')"), ST = await W.eval("import('/src/core/store.js')");
+    const tauri = { core: { invoke: async cmd => (cmd === 'opened_files' || cmd === 'opened_links' ? [] : null) },
+      menu: { Menu: { new: async o => ({ ...o, setAsAppMenu: async () => {} }) }, Submenu: { new: async o => o }, MenuItem: { new: async o => o }, PredefinedMenuItem: { new: async o => o }, CheckMenuItem: { new: async o => o } },
+      app: { getVersion: async () => '9.9.9', defaultWindowIcon: async () => null }, event: { listen: async () => () => {} }, opener: { openUrl: async () => {} } };
+    const steps = async n => { reset(); const b = slide().blocks[0]; for (let i = 0; i < n; i++) R.store.commit(() => { b.x += 1; }); let u = 0; while (R.store.canUndo() && u < 400) { R.store.undo(); u++; } return u; };
+    eq(await steps(150), 60, 'en el navegador, deshacer guarda 60 pasos');
+    try {
+      assert(await DK.initDesktop({ tauri, updates: false }), 'arranca');
+      const a = await steps(150), b = await steps(300);      // (±1: the step of what was changed in place before)
+      assert(a >= 150 && a <= 151, 'en escritorio guarda más: 150 de 150 (' + a + ')');
+      assert(b >= DK.DESKTOP_HISTORY && b <= DK.DESKTOP_HISTORY + 1, 'con tope de ' + DK.DESKTOP_HISTORY + ' (' + b + ')');
+    } finally { DK.stopDesktop(); }
+    eq(await steps(150), 60, 'y al salir, vuelve a 60 (las pruebas)');
+  });
+
   await test('IA con OpenRouter: inicio de sesión PKCE y funciones (respuestas simuladas)', async () => {
     reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, calls = [];
     eq(await AI.pkceChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'), 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', 'reto PKCE (vector del RFC 7636)');
