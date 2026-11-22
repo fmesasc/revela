@@ -3,7 +3,8 @@
 //
 // What the window adds to the web app (ui/shell/desktop.js asks for it):
 // - Saving: the web app's downloads go through save_file, which asks where with the system's own «Save as»
-//   dialog and writes there — the page never chooses a path by itself.
+//   dialog and writes there — the page never chooses a path by itself. Every write goes to a temporary file beside the
+//   destination, synced, and is renamed over it at the end (atomic.rs): a failure never loses the file that was there.
 // - Opening: a presentation opened with Revela («Open with», a double click on a .pptx or .odp, or dropped on
 //   its icon) is given to the page by opened_files / read_opened. On macOS it arrives as an event
 //   (RunEvent::Opened); elsewhere as the program's arguments.
@@ -38,6 +39,7 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 
+mod atomic;
 mod media;
 
 const RELEASES: &str = "https://github.com/fmesasc/revela/releases/latest";
@@ -192,7 +194,8 @@ async fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<O
     let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else { return Err("expected bytes".into()) };
     let name = request.headers().get("x-name").and_then(|v| v.to_str().ok()).map(unescape).unwrap_or_default();
     let Some(path) = ask_where(&app, &name)? else { return Ok(None) };
-    std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+    // (Atomic: the file that was there is never lost half way — atomic.rs.)
+    atomic::write(&path, bytes).map_err(|e| e.to_string())?;
     Ok(Some(path.to_string_lossy().into_owned()))
 }
 
@@ -201,14 +204,14 @@ async fn save_file(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<O
 // half way — the half-written file removed).
 #[derive(Default)]
 struct Saves {
-    open: Mutex<HashMap<u64, (std::fs::File, PathBuf)>>,
+    open: Mutex<HashMap<u64, (atomic::Atomic, PathBuf)>>,
     next: Mutex<u64>,
 }
 
 #[tauri::command]
 async fn save_begin(app: AppHandle, name: String, saves: State<'_, Saves>) -> Result<Option<u64>, String> {
     let Some(path) = ask_where(&app, &unescape(&name))? else { return Ok(None) };
-    let file = std::fs::File::create(&path).map_err(|e| e.to_string())?;
+    let file = atomic::Atomic::create(&path).map_err(|e| e.to_string())?;
     let id = {
         let mut n = saves.next.lock().unwrap();
         *n += 1;
@@ -224,19 +227,17 @@ fn save_chunk(request: tauri::ipc::Request<'_>, saves: State<'_, Saves>) -> Resu
     let id: u64 = request.headers().get("x-token").and_then(|v| v.to_str().ok()).and_then(|v| v.parse().ok()).ok_or("no token")?;
     let mut open = saves.open.lock().unwrap();
     let (file, _) = open.get_mut(&id).ok_or("not saving")?;
-    file.write_all(bytes).map_err(|e| e.to_string())
+    file.file().write_all(bytes).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn save_end(token: u64, keep: bool, saves: State<'_, Saves>) -> Result<Option<String>, String> {
-    let Some((mut file, path)) = saves.open.lock().unwrap().remove(&token) else { return Err("not saving".into()) };
+    let Some((file, path)) = saves.open.lock().unwrap().remove(&token) else { return Err("not saving".into()) };
     if !keep {
-        drop(file);
-        let _ = std::fs::remove_file(&path);
+        drop(file);                                           // (only the temporary file goes: the destination was never touched)
         return Ok(None);
     }
-    file.flush().map_err(|e| e.to_string())?;
-    let _ = file.sync_all();
+    file.commit().map_err(|e| e.to_string())?;                // (synced, then renamed over the destination)
     Ok(Some(path.to_string_lossy().into_owned()))
 }
 

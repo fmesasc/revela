@@ -169,15 +169,17 @@ pub async fn media_gc(app: AppHandle, keep: Vec<String>) -> Result<u32, String> 
 
 // A package (.revela) put together here: «mimetype», presentation.json (the page's text) and each file [id, its path in
 // the zip] from the folder, as they are (stored: pictures and videos are compressed already). Where the person chooses
-// (the system's «Save as»). → the path, or None if cancelled. Half-written (an error): removed.
+// (the system's «Save as»). → the path, or None if cancelled. Written to a temporary file beside it and renamed over it at the end
+// (atomic.rs): an error half way leaves the file that was there untouched — before, it was emptied first and removed on error.
 #[tauri::command]
 pub async fn save_package(app: AppHandle, name: String, json: String, files: Vec<(String, String)>) -> Result<Option<String>, String> {
     let dir = media_dir(&app)?;
     let Some(path) = ask_where(&app, &unescape(&name))? else { return Ok(None) };
+    let mut out = crate::atomic::Atomic::create(&path).map_err(|e| e.to_string())?;
     let written = (|| -> Result<(), String> {
         let e = |x: zip::result::ZipError| x.to_string();
         let io = |x: std::io::Error| x.to_string();
-        let mut w = zip::ZipWriter::new(std::fs::File::create(&path).map_err(io)?);
+        let mut w = zip::ZipWriter::new(out.file());
         let stored = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
         w.start_file("mimetype", stored).map_err(e)?;
         w.write_all(b"application/vnd.revela+zip").map_err(io)?;
@@ -190,11 +192,10 @@ pub async fn save_package(app: AppHandle, name: String, json: String, files: Vec
             w.start_file(at.as_str(), stored.large_file(len >= 0xFFFF_FFFF)).map_err(e)?;
             std::io::copy(&mut std::fs::File::open(&src).map_err(io)?, &mut w).map_err(io)?;
         }
-        let mut f = w.finish().map_err(e)?;
-        f.flush().map_err(io)?;
-        let _ = f.sync_all();
+        w.finish().map_err(e)?;
         Ok(())
     })();
-    if let Err(x) = written { let _ = std::fs::remove_file(&path); return Err(x); }
+    written?;                                                  // (an error: `out` is dropped, its temporary file removed, the destination untouched)
+    out.commit().map_err(|e| e.to_string())?;                  // (synced, then renamed over the destination)
     Ok(Some(path.to_string_lossy().into_owned()))
 }
