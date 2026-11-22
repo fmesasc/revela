@@ -20,7 +20,7 @@ use std::sync::Mutex;
 use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Manager, State};
 
-use crate::{ask_where, readable_path, unescape, Files};
+use crate::{readable_path, unescape, Files};
 
 #[derive(Default)]
 pub struct Zips {
@@ -169,12 +169,13 @@ pub async fn media_gc(app: AppHandle, keep: Vec<String>) -> Result<u32, String> 
 
 // A package (.revela) put together here: «mimetype», presentation.json (the page's text) and each file [id, its path in
 // the zip] from the folder, as they are (stored: pictures and videos are compressed already). Where the person chooses
-// (the system's «Save as»). → the path, or None if cancelled. Written to a temporary file beside it and renamed over it at the end
+// (the system's «Save as»), or, with `path`, over the file a «Save» has already (crate::target: only a path the person gave,
+// only a .revela). → the path, or None if cancelled. Written to a temporary file beside it and renamed over it at the end
 // (atomic.rs): an error half way leaves the file that was there untouched — before, it was emptied first and removed on error.
 #[tauri::command]
-pub async fn save_package(app: AppHandle, name: String, json: String, files: Vec<(String, String)>) -> Result<Option<String>, String> {
+pub async fn save_package(app: AppHandle, name: String, json: String, files: Vec<(String, String)>, path: Option<String>) -> Result<Option<String>, String> {
     let dir = media_dir(&app)?;
-    let Some(path) = ask_where(&app, &unescape(&name))? else { return Ok(None) };
+    let Some(path) = crate::target(&app, &unescape(&name), path)? else { return Ok(None) };
     let mut out = crate::atomic::Atomic::create(&path).map_err(|e| e.to_string())?;
     let written = (|| -> Result<(), String> {
         let e = |x: zip::result::ZipError| x.to_string();

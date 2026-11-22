@@ -5307,4 +5307,5 @@ export default {
   "De acuerdo: no se enviará nada. Si cambias de idea, puedes activarlo en {where}.": "De acordo: non se enviará nada. Se cambias de idea, podes activalo en {where}.",
   "Desactivado: se ha borrado el número de esta instalación y no se enviará nada más.": "Desactivado: borrouse o número desta instalación e non se enviará nada máis.",
   "Estadísticas de uso anónimas": "Estatísticas de uso anónimas",
+  "Guardar como…": "Gardar como…",
 };

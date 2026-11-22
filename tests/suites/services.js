@@ -268,7 +268,7 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
           const of = id => media.get([...media.keys()].find(k => k.startsWith(`/media/${id}.`)));
           const blob = await Z.zipBlobs([{ name: 'mimetype', blob: new W.Blob(['application/vnd.revela+zip']) }, { name: 'presentation.json', blob: new W.Blob([args.json]) },
             ...args.files.map(([id, at]) => ({ name: at, blob: of(id) }))]);
-          const path = '/home/ana/' + decodeURIComponent(args.name); disk.set(path, blob); return path;
+          const path = args.path || '/home/ana/' + decodeURIComponent(args.name); disk.set(path, blob); return path;
         } },
         convertFileSrc: path => { if (!urls.has(path) && media.has(path)) urls.set(path, W.URL.createObjectURL(media.get(path))); return urls.get(path) || ''; } },
       menu: { Menu: { new: async o => ({ ...o, setAsAppMenu: async () => {} }) }, Submenu: { new: async o => o }, MenuItem: { new: async o => o }, PredefinedMenuItem: { new: async o => o }, CheckMenuItem: { new: async o => o } },
@@ -294,6 +294,10 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
       opened.push('/home/ana/Clase.revela'); await DK.openGivenForTests();
       for (let i = 0; i < 80 && R.state.deck.name !== 'Del paquete'; i++) await sleep(25);
       eq(R.state.deck.name, 'Del paquete', 'abierto');
+      // Ctrl+S on a presentation opened from disk: over that same file, with no dialog.
+      { const ACT0 = await W.eval("import('/src/ui/ribbon/actions.js')"), n0 = calls.length; ACT0.ACTIONS.save();
+        for (let i = 0; i < 80 && !calls.slice(n0).some(c => c.cmd === 'save_package'); i++) await sleep(25);
+        eq(calls.slice(n0).find(c => c.cmd === 'save_package')?.args.path, '/home/ana/Clase.revela', 'Guardar: sobre el mismo archivo que se abrió'); await sleep(50); calls.splice(n0); }
       const mz = () => R.state.deck.slides[0].blocks.find(b => b.id === 'mz')?.src;
       assert(MS.isLive(mz()) && MS.mediaEntry(MS.refId((await MS.dehydrate({ s: mz() })).s))?.path, 'su modelo, desde la carpeta de Revela: ' + String(mz()).slice(0, 30));
       eq(await MS.portable(mz()), big1, 'el modelo entero');
@@ -381,6 +385,46 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     } finally { DK.stopDesktop(); }
     await OF.insertFiles([new W.File([clip], 'otra.mp4', { type: 'video/mp4' })]);
     assert(lastOf().src.startsWith('data:video/mp4'), 'al salir, de nuevo data: (las pruebas)');
+  });
+
+  await test('escritorio: Guardar (Ctrl+S) escribe sobre el archivo de la presentación sin diálogo, y Guardar como siempre pregunta (Tauri simulado)', async () => {
+    reset(); const W = frame.contentWindow, DK = await W.eval("import('/src/ui/shell/desktop.js')"), ACT = await W.eval("import('/src/ui/ribbon/actions.js')");
+    const calls = [], made = []; let next = '/home/ana/Clase.revela', fail = false;
+    const mk = kind => ({ new: async o => { const x = { kind, ...o }; made.push(x); return x; } });
+    const tauri = { core: { invoke: async (cmd, args) => { calls.push({ cmd, args });
+        if (cmd === 'opened_files' || cmd === 'opened_links') return [];
+        if (cmd === 'save_package') { if (args.path && fail) throw new Error('not allowed'); return args.path || next; } return null; } },
+      menu: { Menu: { new: async o => ({ ...o, setAsAppMenu: async () => {} }) }, Submenu: mk('sub'), MenuItem: mk('item'), PredefinedMenuItem: mk('pre'), CheckMenuItem: mk('check') },
+      app: { getVersion: async () => '9.9.9', defaultWindowIcon: async () => null }, event: { listen: async () => () => {} }, opener: { openUrl: async () => {} } };
+    const saves = () => calls.filter(c => c.cmd === 'save_package'), done = async n => { for (let i = 0; i < 80 && saves().length < n; i++) await sleep(25); await sleep(40); };
+    try {
+      assert(await DK.initDesktop({ tauri, updates: false }), 'arranca');
+      R.store.commit(() => { R.state.deck.name = 'Clase'; });
+      ACT.ACTIONS.save(); await done(1);
+      assert(saves()[0] && !('path' in saves()[0].args), 'la primera vez, sin archivo: pregunta dónde (sin ruta)');
+      ACT.ACTIONS.save(); await done(2);
+      eq(saves()[1].args.path, '/home/ana/Clase.revela', 'la segunda, sobre ese archivo, sin diálogo');
+      assert(/Guardado/.test(D.body.textContent) && !/Guardado en \/home\/ana\/Clase\.revela[\s\S]*Guardado en \/home\/ana\/Clase\.revela/.test(D.body.textContent), 'con el aviso breve «Guardado»');
+      const item = t => made.find(x => x.kind === 'item' && x.text === t);
+      assert(item('Guardar como…') && item('Guardar'), 'el menú tiene Guardar y Guardar como…');
+      next = '/home/ana/Otro.revela'; item('Guardar como…').action(); await done(3);
+      assert(!('path' in saves()[2].args), 'Guardar como… pregunta siempre');
+      ACT.ACTIONS.save(); await done(4);
+      eq(saves()[3].args.path, '/home/ana/Otro.revela', 'y el archivo nuevo es el de los siguientes Guardar');
+      // «Descargar una copia» goes through the dialog and does not change which file is the presentation's.
+      next = '/home/ana/Copia.revela'; ACT.ACTIONS['download-project'](); await done(5);
+      assert(!('path' in saves()[4].args), 'una copia: pregunta');
+      ACT.ACTIONS.save(); await done(6); eq(saves()[5].args.path, '/home/ana/Otro.revela', 'y no cambia el archivo');
+      // It can't be written (moved, no permission): says so and asks where; the original is not touched by the page.
+      fail = true; next = '/home/ana/Nuevo.revela'; ACT.ACTIONS.save(); await done(8);
+      assert(saves()[6].args.path && !('path' in saves()[7].args), 'si falla, avisa y pregunta dónde');
+      assert(/No se pudo guardar el archivo/.test(D.body.textContent), 'con el motivo');
+      fail = false; ACT.ACTIONS.save(); await done(9); eq(saves()[8].args.path, '/home/ana/Nuevo.revela', 'y sigue con el nuevo');
+      // Another presentation (new, opened): no file yet, so the first Save asks.
+      reset(); ACT.ACTIONS.save(); await done(10); assert(!('path' in saves()[9].args), 'otra presentación: sin archivo, pregunta');
+    } finally { DK.stopDesktop(); }
+    calls.length = 0; ACT.ACTIONS.save(); await sleep(100);
+    assert(!calls.some(c => c.cmd === 'save_package'), 'al salir (la web), Guardar vuelve a lo de siempre');
   });
 
   await test('IA con OpenRouter: inicio de sesión PKCE y funciones (respuestas simuladas)', async () => {

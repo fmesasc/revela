@@ -99,6 +99,8 @@ import { pasteAnything } from '../../features/document/syspaste.js';
 const $ = s => document.querySelector(s);
 
 export { readFile };                                        // (it lives in ui/shell/openfile.js)
+let deskSave = null;                                         // (the desktop app's Save: ui/shell/desktop.js)
+export const setDesktopSave = fn => { deskSave = fn; };
 // The slides panel (or the sorter) was the last place clicked, with no object selected.
 export const slidesFocused = () => (state.ui.navFocus || document.body.classList.contains('sorter')) && !selectedBlocks().length;
 export let animPaint = null;       // animation being copied with the painter
@@ -123,6 +125,7 @@ export const ACTIONS = {
     if (gdrive.linkedFile()) return driveSaveUI();
     if (onedrive.linkedOneDrive()) return onedrive.saveOneDriveNow().then(r => toast(r === true ? t('Guardado en OneDrive.') : r === 'conflict' ? t('Ha cambiado en OneDrive desde otro dispositivo: pulsa su estado, junto al nombre, para elegir.') : t('No se pudo guardar en OneDrive: pulsa su estado, junto al nombre.')));
     if (clouddocs.cloudDoc()) return clouddocs.flushCloud().then(() => toast(t('Guardado en la nube de Revela.')));
+    if (deskSave) return deskSave();                       // (the desktop app: the .revela's own file — ui/shell/desktop.js)
     const at = [document.getElementById('save-state'), document.querySelector('.qat [data-action="save"]')].find(x => x && x.offsetParent);
     if (savedHere() && at) return openSaveWhere(at);
     ACTIONS['download-project']();

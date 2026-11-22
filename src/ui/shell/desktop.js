@@ -9,20 +9,22 @@
 //   Ver ▸ «Mostrar siempre la barra de menús» is on (kept in this computer).
 // - «Acerca de Revela»: the system's own about box, with the version.
 // - Saving: a download (any of the app's: projects, PowerPoint, PDF, CSV…) goes to the system's «Save as»
-//   dialog (main.rs save_file) — a web view doesn't always keep downloads, and never asks where.
+//   dialog (main.rs save_file) — a web view doesn't always keep downloads, and never asks where. «Guardar» (Ctrl+S) writes a .revela
+//   over its own file with no dialog once it has one (opened from disk, or saved before), atomically; «Guardar como…» always asks.
 // - Opening: a presentation opened with Revela (a double click on a .pptx or .odp, «Open with») opens as if
 //   dropped on the editor (openfile.js dropFiles); a PDF, as a new presentation.
 // - Choosing files: the system's own «Open» dialog, with each input's types (WebKitGTK's hid .pptx files).
 // - Anonymous statistics (appstats.js): asked once, at the first launch; Ayuda ▸ «Estadísticas de uso anónimas» switches them.
 // - Updates: looked for when it opens and from Ayuda ▸ «Buscar actualizaciones», asked in the interface's language.
 
-import { ACTIONS } from '../ribbon/actions.js';
+import { ACTIONS, setDesktopSave } from '../ribbon/actions.js';
 import { dropFiles, openPdfDeck } from './openfile.js';
 import { openPalette } from './palette.js';
 import { toast } from './toast.js';
 import { startAppStats, toggleStats, statsState } from './appstats.js';
 import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
-import { undo, redo, canRedo, setHistoryLimit } from '../../core/store.js';
+import { undo, redo, canRedo, setHistoryLimit, state, docEpoch } from '../../core/store.js';
+import { slug } from '../../io/files.js';
 import { t } from '../../i18n/index.js';
 import { OFFICIAL_SITE } from '../../core/config.js';
 import { setDeskApi, holdDesktopFile, openDeskZip, registerDiskMedia } from '../../io/deskzip.js';
@@ -36,7 +38,7 @@ const SEP = '-';
 // these (DESK) —, a submenu [label, [items]], or SEP. Labels in Spanish: translated with t() when built.
 export const MENU = [
   ['Archivo', [['Nuevo', 'new'], ['Abrir…', 'open'], ['Mi nube de Revela', 'cloud-docs'], SEP,
-    ['Guardar', 'save'], ['Descargar una copia', 'download-project'], ['Versiones', 'versions'], ['Espacio ocupado', 'storage'], SEP,
+    ['Guardar', 'save'], ['Guardar como…', 'desk:saveas'], ['Descargar una copia', 'download-project'], ['Versiones', 'versions'], ['Espacio ocupado', 'storage'], SEP,
     ['Importar', [['PowerPoint u OpenDocument…', 'import-pptx'], ['Reutilizar diapositivas…', 'reuse-slides'], ['Markdown…', 'import-md'], ['Importar preguntas', 'import-questions']]],
     ['Exportar', [['PDF', 'export-pdf'], ['PowerPoint', 'export-pptx'], ['ODP', 'export-odp'], ['HTML', 'export'], ['Insertar en Moodle o en una web', 'export-embed'], ['Imágenes', 'export-png'], ['Vídeo', 'export-video'],
       ['SCORM', 'export-scorm'], SEP, ['Exportar preguntas', 'export-questions'], ['Fichas y práctica', 'export-study']]],
@@ -80,6 +82,7 @@ const DESK = {
   'desk:palette': () => openPalette(),
   'desk:guides': () => api.opener.openUrl(OFFICIAL_SITE + '/guides'),
   'desk:update': () => checkUpdates({ asked: true }),
+  'desk:saveas': () => saveAs(),
   'desk:quit': () => api.window.getCurrentWindow().close(),
   'desk:fullscreen': async () => { const w = api.window.getCurrentWindow(); await w.setFullscreen(!(await w.isFullscreen())); },
 };
@@ -218,7 +221,7 @@ async function pickInto(inp) {
   if (!paths.length) { inp.dispatchEvent(new Event('cancel')); return; }
   // (A package: opened from here, read a piece at a time — an input can only hold whole files.)
   const pkg = paths.find(p => /\.revela$/i.test(p));
-  if (pkg) { const o = await opened(pkg); try { await dropFiles([o.file]); } finally { o.done(); } return; }
+  if (pkg) { const o = await opened(pkg); try { if (await dropFiles([o.file])) remember(pkg); } finally { o.done(); } return; }
   const dt = new DataTransfer();
   // (A PowerPoint goes in as a stand-in for the file on disk, which the importer reads through the window: io/deskzip.js.)
   for (const path of paths) dt.items.add(ZIPPED.test(path) ? holdDesktopFile(new DesktopFile(path, await invoke('opened_size', { path })))
@@ -244,7 +247,9 @@ function chooseFiles() {
 // Read back after a restart: found there by their id. Saved as a .revela: put together by the window from that folder
 // (those only this page has — a picture just inserted — written there first). Nothing referred to: deleted after a day.
 const typeOfPath = p => TYPES[p.split('.').pop().toLowerCase()] || '';
-async function savePackage(deck, name) {
+// path: the file a «Save» writes over without asking (Rust allows only one the person gave, and a .revela: main.rs target);
+// remember: this file is now the presentation's (Save as, Save), a copy's is not (Descargar una copia).
+async function savePackage(deck, name, { path: over = null, remember: keep = false } = {}) {
   const light = await dehydrate(deck), files = {}, list = [];
   for (const id of usedRefs(light, new Set())) {
     let e = mediaEntry(id);
@@ -258,17 +263,37 @@ async function savePackage(deck, name) {
     files[id] = { path: at, type: e.type || '', size: e.size || 0 }; list.push([id, at]);
   }
   const json = JSON.stringify({ format: 'revela-package', version: 1, files, deck: light });
-  const path = await invoke('save_package', { name: encodeURIComponent(name), json, files: list });
-  if (path) toast(t('Guardado en {path}').replace('{path}', path));
+  const path = await invoke('save_package', { name: encodeURIComponent(name), json, files: list, ...(over && { path: over }) });
+  if (path && keep) remember(path);
+  if (path) toast(over ? t('Guardado') : t('Guardado en {path}').replace('{path}', path));
   return path;
+}
+// ---- Save over the same file (Ctrl+S, as any desktop application) --------------------------------------------------
+// The .revela this presentation lives in — opened from disk, or saved before with «Guardar como» or the first «Guardar» —,
+// for the document that is open now (store.docEpoch: another one replacing it forgets it). Kept in memory only.
+let deskFile = null;
+const remember = path => { deskFile = path ? { path, epoch: docEpoch() } : null; };
+const fileOfDoc = () => (deskFile && deskFile.epoch === docEpoch() ? deskFile.path : null);
+const packageName = () => slug(state.deck.name) + '.revela';
+const saveAs = () => savePackage(state.deck, packageName(), { remember: true }).catch(e => toast(t('No se pudo guardar el archivo:') + ' ' + (e?.message || e), { error: true }));
+// Without a file yet: the dialog, and the path is remembered. With one: written over it, with no dialog (atomic: main.rs); if
+// that fails (the folder is gone, no permission), it says so and asks where, and the original is untouched.
+async function saveNow() {
+  const at = fileOfDoc();
+  if (at) {
+    try { if (await savePackage(state.deck, packageName(), { path: at })) return; }
+    catch (e) { remember(null); toast(t('No se pudo guardar el archivo:') + ' ' + (e?.message || e), { error: true }); }
+  }
+  await saveAs();
 }
 function diskMedia() {
   setDiskMedia({
     find: async id => { const r = await invoke('media_find', { id }); if (r) registerDiskMedia(id, r[0], typeOfPath(r[0]), r[1]); },
     gc: keep => invoke('media_gc', { keep }),
   });
-  setPackageSaver(savePackage);
-  undoers.push(() => { setDiskMedia({}); setPackageSaver(null); });
+  setPackageSaver((deck, name) => savePackage(deck, name));
+  setDesktopSave(saveNow);
+  undoers.push(() => { setDiskMedia({}); setPackageSaver(null); setDesktopSave(null); deskFile = null; });
   // (Drawn on a canvas — a crop, a smaller copy, an export —, a picture of that folder must be asked for with CORS, or
   // the canvas can't be read: every <img> given such an address asks so.)
   const prefix = api.core.convertFileSrc?.('') || '';
@@ -286,7 +311,7 @@ async function openGiven() {
   for (const path of paths) {
     try {
       const o = await opened(path), f = o.file;
-      try { await (/\.pdf$/i.test(f.name) ? openPdfDeck(f) : dropFiles([f])); } finally { o.done(); }
+      try { if (/\.pdf$/i.test(f.name)) await openPdfDeck(f); else if ((await dropFiles([f])) && /\.revela$/i.test(path)) remember(path); } finally { o.done(); }
     } catch (e) { toast(t('No se pudo abrir el archivo:') + ' ' + (e?.message || e), { error: true }); }
   }
 }

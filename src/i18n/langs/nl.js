@@ -5307,4 +5307,5 @@ export default {
   "De acuerdo: no se enviará nada. Si cambias de idea, puedes activarlo en {where}.": "Prima: er wordt niets verstuurd. Als je van gedachten verandert, kun je het inschakelen via {where}.",
   "Desactivado: se ha borrado el número de esta instalación y no se enviará nada más.": "Uitgeschakeld: het nummer van deze installatie is gewist en er wordt niets meer verstuurd.",
   "Estadísticas de uso anónimas": "Anonieme gebruiksstatistieken",
+  "Guardar como…": "Opslaan als…",
 };

@@ -5307,4 +5307,5 @@ export default {
   "De acuerdo: no se enviará nada. Si cambias de idea, puedes activarlo en {where}.": "حسنًا: لن يُرسل أي شيء. إذا غيّرت رأيك فيمكنك تفعيله من {where}.",
   "Desactivado: se ha borrado el número de esta instalación y no se enviará nada más.": "تم الإيقاف: حُذف رقم هذا التثبيت ولن يُرسل شيء بعد الآن.",
   "Estadísticas de uso anónimas": "إحصاءات الاستخدام المجهولة",
+  "Guardar como…": "حفظ باسم…",
 };

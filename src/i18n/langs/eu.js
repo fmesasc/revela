@@ -5307,4 +5307,5 @@ export default {
   "De acuerdo: no se enviará nada. Si cambias de idea, puedes activarlo en {where}.": "Ados: ez da ezer bidaliko. Iritziz aldatzen baduzu, hemen aktibatu dezakezu: {where}.",
   "Desactivado: se ha borrado el número de esta instalación y no se enviará nada más.": "Desaktibatuta: instalazio honen zenbakia ezabatu da eta ez da gehiago ezer bidaliko.",
   "Estadísticas de uso anónimas": "Erabilera-estatistika anonimoak",
+  "Guardar como…": "Gorde honela…",
 };

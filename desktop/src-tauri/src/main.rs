@@ -54,6 +54,9 @@ const OPENS: [&str; 10] = ["pptx", "pptm", "potx", "ppsx", "odp", "otp", "key", 
 struct Files {
     pending: Mutex<Vec<PathBuf>>,
     readable: Mutex<Vec<PathBuf>>,
+    // Where a «Save» may write without asking again: only paths the person gave — the «Save as» dialog, the «Open» dialog, the
+    // file Revela was opened with — (never one the page made up), and only a .revela (see target). Not emptied by reads.
+    writable: Mutex<Vec<PathBuf>>,
 }
 // Presentations of Revela's cloud asked for by a link (their ids), waiting for the page.
 #[derive(Default)]
@@ -185,7 +188,30 @@ fn ask_where(app: &AppHandle, name: &str) -> Result<Option<PathBuf>, String> {
         dialog = dialog.add_filter(ext.to_uppercase(), &[ext.as_str()]);
     }
     let Some(path) = dialog.blocking_save_file() else { return Ok(None) };
-    path.into_path().map(Some).map_err(|e| e.to_string())
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    allow_save(app, &path);
+    Ok(Some(path))
+}
+
+// A path the person gave: a later «Save» may write there without the dialog.
+fn allow_save(app: &AppHandle, path: &PathBuf) {
+    if let Some(files) = app.try_state::<Files>() {
+        let mut w = files.writable.lock().unwrap();
+        if !w.contains(path) { w.push(path.clone()); }
+    }
+}
+
+// The destination of a save: the path the page asks for if it is one the person gave and a .revela (Ctrl+S on a presentation
+// that already has its file); otherwise the system's «Save as» (None if cancelled).
+pub fn target(app: &AppHandle, name: &str, path: Option<String>) -> Result<Option<PathBuf>, String> {
+    let Some(path) = path else { return ask_where(app, name) };
+    let p = PathBuf::from(&path);
+    let is_revela = p.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("revela"));
+    let given = match app.try_state::<Files>() {
+        Some(files) => { let w = files.writable.lock().unwrap(); w.contains(&p) }
+        None => false,
+    };
+    if is_revela && given { Ok(Some(p)) } else { Err("not allowed".into()) }
 }
 
 // The bytes of a download, saved where the person chooses. → the path, or None if cancelled.
@@ -246,6 +272,7 @@ fn save_end(token: u64, keep: bool, saves: State<'_, Saves>) -> Result<Option<St
 fn opened_files(files: State<'_, Files>) -> Vec<String> {
     let given: Vec<PathBuf> = files.pending.lock().unwrap().drain(..).collect();
     let out = given.iter().map(|p| p.to_string_lossy().into_owned()).collect();
+    files.writable.lock().unwrap().extend(given.iter().cloned());
     files.readable.lock().unwrap().extend(given);
     out
 }
@@ -265,6 +292,7 @@ async fn pick_files(app: AppHandle, filters: Vec<(String, Vec<String>)>, multipl
         dialog.blocking_pick_file().and_then(|p| p.into_path().ok()).into_iter().collect()
     };
     let out = chosen.iter().map(|p| p.to_string_lossy().into_owned()).collect();
+    files.writable.lock().unwrap().extend(chosen.iter().cloned());
     files.readable.lock().unwrap().extend(chosen);
     Ok(out)
 }
