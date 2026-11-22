@@ -273,8 +273,8 @@ export const ACTIONS = {
   'resources-3d': () => openElements('anim3d'),
   'model-ai': () => openModelAi(),
   // A GIF is inserted as an image (it can have segments and a colour key too).
-  'insert-video': () => readFile('video/*,image/gif', src => (/^data:image\/gif/.test(src) ? blocks.addImage(src) : blocks.addVideo(src))),
-  'insert-audio': () => readFile('audio/*', blocks.addAudio),
+  'insert-video': () => readFile('video/*,image/gif', src => (/^data:image\/gif/.test(src) ? blocks.addImage(src) : blocks.addVideo(src)), 'media'),
+  'insert-audio': () => readFile('audio/*', blocks.addAudio, 'media'),
   'insert-embed': () => promptDialog(t('Dirección de la página web (URL):'), 'https://').then(url => {
     if (!url) return;
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;

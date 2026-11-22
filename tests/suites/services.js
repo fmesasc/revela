@@ -345,6 +345,40 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(await steps(150), 60, 'y al salir, vuelve a 60 (las pruebas)');
   });
 
+  await test('escritorio: un vídeo o un sonido se inserta por su dirección, no como un texto enorme (Tauri simulado)', async () => {
+    reset(); const W = frame.contentWindow, DK = await W.eval("import('/src/ui/shell/desktop.js')"), OF = await W.eval("import('/src/ui/shell/openfile.js')"), MS = await W.eval("import('/src/core/mediastore.js')");
+    const ACT = await W.eval("import('/src/ui/ribbon/actions.js')");
+    const clip = new Uint8Array(300000); for (let i = 0; i < clip.length; i += 65536) crypto.getRandomValues(clip.subarray(i, i + 65536));
+    let picked = [];
+    const tauri = { core: { invoke: async (cmd, args) => { if (cmd === 'opened_files' || cmd === 'opened_links') return []; if (cmd === 'pick_files') return picked.splice(0);
+        if (cmd === 'read_opened') return clip.buffer.slice(0); return null; } },
+      menu: { Menu: { new: async o => ({ ...o, setAsAppMenu: async () => {} }) }, Submenu: { new: async o => o }, MenuItem: { new: async o => o }, PredefinedMenuItem: { new: async o => o }, CheckMenuItem: { new: async o => o } },
+      app: { getVersion: async () => '9.9.9', defaultWindowIcon: async () => null }, event: { listen: async () => () => {} }, opener: { openUrl: async () => {} } };
+    const lastOf = () => slide().blocks.at(-1);
+    // On the web: as before, a data: URL.
+    await OF.insertFiles([new W.File([clip], 'clip.mp4', { type: 'video/mp4' })]);
+    assert(lastOf().type === 'video' && lastOf().src.startsWith('data:video/mp4'), 'en el navegador, un data: como siempre');
+    try {
+      assert(await DK.initDesktop({ tauri, updates: false }), 'arranca');
+      await OF.insertFiles([new W.File([clip], 'clip.mp4', { type: 'video/mp4' }), new W.File([clip.slice(0, 80000)], 'a.mp3', { type: 'audio/mpeg' })]);
+      const [v, a] = slide().blocks.slice(-2);
+      assert(v.type === 'video' && MS.isLive(v.src) && v.src.length < 300, 'el vídeo, por su dirección: ' + v.src.slice(0, 40));
+      assert(a.type === 'audio' && MS.isLive(a.src), 'el sonido, también');
+      eq(MS.mediaType(v.src), 'video/mp4', 'con su tipo'); eq(MS.liveBytes(v.src), clip.length, 'y sus bytes');
+      const whole = await MS.portable(v.src); assert(whole.startsWith('data:video/mp4;base64,') && whole.length > clip.length * 1.3, 'al exportar o compartir, el data: entero');
+      // The ribbon's Insert ▸ Video, through the system's «Open» dialog.
+      const n = slide().blocks.length; picked.push('/home/ana/clase.mp4'); ACT.ACTIONS['insert-video']();
+      for (let i = 0; i < 80 && slide().blocks.length === n; i++) await sleep(25);
+      assert(slide().blocks.length === n + 1 && lastOf().type === 'video' && MS.isLive(lastOf().src), 'Insertar ▸ Vídeo: por su dirección');
+      picked.push('/home/ana/sonido.mp3'); ACT.ACTIONS['insert-audio'](); for (let i = 0; i < 80 && slide().blocks.length === n + 1; i++) await sleep(25);
+      assert(lastOf().type === 'audio' && MS.isLive(lastOf().src), 'Insertar ▸ Audio: también');
+      // It is kept, and read back: what is stored is a reference, not the bytes in the deck's text.
+      await R.store.flushSave?.(); const kept = await MS.dehydrate({ s: lastOf().src }); assert(MS.isRef(kept.s), 'al guardar, una referencia');
+    } finally { DK.stopDesktop(); }
+    await OF.insertFiles([new W.File([clip], 'otra.mp4', { type: 'video/mp4' })]);
+    assert(lastOf().src.startsWith('data:video/mp4'), 'al salir, de nuevo data: (las pruebas)');
+  });
+
   await test('IA con OpenRouter: inicio de sesión PKCE y funciones (respuestas simuladas)', async () => {
     reset(); const W = frame.contentWindow, AI = R.ai, realFetch = W.fetch, calls = [];
     eq(await AI.pkceChallenge('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'), 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', 'reto PKCE (vector del RFC 7636)');

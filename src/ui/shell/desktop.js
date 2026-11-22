@@ -17,7 +17,7 @@
 // - Updates: looked for when it opens and from Ayuda ▸ «Buscar actualizaciones», asked in the interface's language.
 
 import { ACTIONS } from '../ribbon/actions.js';
-import { dropFiles, openPdfDeck } from './openfile.js';
+import { dropFiles, openPdfDeck, setMediaByAddress } from './openfile.js';
 import { openPalette } from './palette.js';
 import { toast } from './toast.js';
 import { startAppStats, toggleStats, statsState } from './appstats.js';
@@ -320,10 +320,12 @@ function appLinks() {
 }
 
 // What the browser's tab can't hold and a computer's window can (docs/ESCRITORIO-NATIVO.md): undo keeps 200 steps, not 60
-// (measured: ~0.2 MB each with 300 slides of 10 objects). Taken back by stopDesktop.
+// (measured: ~0.2 MB each with 300 slides of 10 objects); a video or sound inserted goes by its address, not as a text of
+// hundreds of millions of characters (openfile.js). Taken back by stopDesktop.
 export const DESKTOP_HISTORY = 200;
 function nativeLimits() {
   setHistoryLimit(DESKTOP_HISTORY); undoers.push(() => setHistoryLimit(60));
+  setMediaByAddress(true); undoers.push(() => setMediaByAddress(false));
 }
 
 // tauri: window.__TAURI__ (withGlobalTauri; tests give their own).
