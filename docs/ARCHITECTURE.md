@@ -405,6 +405,7 @@ tools/
   audit-templates.py           how the examples look: overflow, overlaps, contrast
   shot-template.py             pictures of an example's slides
   perf.mjs                     how Revela runs on a slow computer
+  bench-escritorio/bench.py    deck, video and undo measurements with headless Chrome (docs/ESCRITORIO-NATIVO.md)
   lti-key.mjs                  makes the LTI signing key (a server secret)
   move.py  extract.py          move files / declarations and rewrite imports
   shot.py  embeddable.py       screenshots; which web pages can be embedded
