@@ -5301,4 +5301,10 @@ export default {
   "Enviar una opinión<br>o una idea": "إرسال رأي<br>أو فكرة",
   "Cuéntanos qué te gusta, qué echas de menos o qué mejorarías": "أخبرنا بما يعجبك وما تفتقده وما تقترح تحسينه",
   "Cuéntanos qué te gusta, qué echas de menos o qué cambiarías en GitHub.": "أخبرنا على GitHub بما يعجبك وما تفتقده وما كنت ستغيّره.",
+  "¿Nos ayudas contando que abres la aplicación?": "هل تساعدنا بإخبارنا أنك تفتح التطبيق؟",
+  "Si aceptas, esta aplicación enviará de forma anónima, cada vez que la abras (como mucho una vez cada 6 horas) y cuando inicies sesión: un número aleatorio generado en tu equipo (no es tu cuenta ni tu correo), la versión de Revela, tu sistema y tu idioma, y si el inicio de sesión salió bien o falló. Nunca se envían tus presentaciones, su contenido ni tu cuenta. Puedes cambiarlo cuando quieras en {where}; al desactivarlo se borra ese número, aquí y en nuestro servidor. Si no aceptas, no se envía nada.": "إذا وافقت، فسيرسل هذا التطبيق بشكل مجهول الهوية، في كل مرة تفتحه (مرة واحدة كل 6 ساعات على الأكثر) وعند تسجيل الدخول: رقمًا عشوائيًا تم إنشاؤه على جهازك (ليس حسابك ولا بريدك الإلكتروني)، وإصدار Revela، ونظامك ولغتك، وهل نجح تسجيل الدخول أم فشل. لا يتم إرسال عروضك التقديمية ولا محتواها ولا حسابك أبدًا. يمكنك تغيير ذلك متى شئت من {where}؛ وعند إيقافه يُحذف هذا الرقم هنا وعلى خادمنا. وإذا لم توافق فلن يُرسل أي شيء.",
+  "Gracias por ayudarnos. Puedes cambiarlo cuando quieras en {where}.": "شكرًا لمساعدتنا. يمكنك تغيير ذلك متى شئت من {where}.",
+  "De acuerdo: no se enviará nada. Si cambias de idea, puedes activarlo en {where}.": "حسنًا: لن يُرسل أي شيء. إذا غيّرت رأيك فيمكنك تفعيله من {where}.",
+  "Desactivado: se ha borrado el número de esta instalación y no se enviará nada más.": "تم الإيقاف: حُذف رقم هذا التثبيت ولن يُرسل شيء بعد الآن.",
+  "Estadísticas de uso anónimas": "إحصاءات الاستخدام المجهولة",
 };

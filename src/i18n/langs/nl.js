@@ -5301,4 +5301,10 @@ export default {
   "Enviar una opinión<br>o una idea": "Een mening of<br>idee insturen",
   "Cuéntanos qué te gusta, qué echas de menos o qué mejorarías": "Vertel ons wat je goed vindt, wat je mist of wat je zou verbeteren",
   "Cuéntanos qué te gusta, qué echas de menos o qué cambiarías en GitHub.": "Vertel ons op GitHub wat je goed vindt, wat je mist of wat je zou veranderen.",
+  "¿Nos ayudas contando que abres la aplicación?": "Help je ons door te laten weten dat je de app opent?",
+  "Si aceptas, esta aplicación enviará de forma anónima, cada vez que la abras (como mucho una vez cada 6 horas) y cuando inicies sesión: un número aleatorio generado en tu equipo (no es tu cuenta ni tu correo), la versión de Revela, tu sistema y tu idioma, y si el inicio de sesión salió bien o falló. Nunca se envían tus presentaciones, su contenido ni tu cuenta. Puedes cambiarlo cuando quieras en {where}; al desactivarlo se borra ese número, aquí y en nuestro servidor. Si no aceptas, no se envía nada.": "Als je akkoord gaat, stuurt deze app anoniem, telkens als je hem opent (hooguit eens per 6 uur) en wanneer je inlogt: een willekeurig nummer dat op je computer is gemaakt (het is niet je account of e-mailadres), de Revela-versie, je systeem en je taal, en of het inloggen gelukt of mislukt is. Je presentaties, hun inhoud of je account worden nooit verstuurd. Je kunt dit altijd wijzigen via {where}; bij uitschakelen wordt dat nummer gewist, hier en op onze server. Als je niet akkoord gaat, wordt er niets verstuurd.",
+  "Gracias por ayudarnos. Puedes cambiarlo cuando quieras en {where}.": "Bedankt voor je hulp. Je kunt dit altijd wijzigen via {where}.",
+  "De acuerdo: no se enviará nada. Si cambias de idea, puedes activarlo en {where}.": "Prima: er wordt niets verstuurd. Als je van gedachten verandert, kun je het inschakelen via {where}.",
+  "Desactivado: se ha borrado el número de esta instalación y no se enviará nada más.": "Uitgeschakeld: het nummer van deze installatie is gewist en er wordt niets meer verstuurd.",
+  "Estadísticas de uso anónimas": "Anonieme gebruiksstatistieken",
 };

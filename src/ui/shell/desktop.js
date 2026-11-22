@@ -13,12 +13,14 @@
 // - Opening: a presentation opened with Revela (a double click on a .pptx or .odp, «Open with») opens as if
 //   dropped on the editor (openfile.js dropFiles); a PDF, as a new presentation.
 // - Choosing files: the system's own «Open» dialog, with each input's types (WebKitGTK's hid .pptx files).
+// - Anonymous statistics (appstats.js): asked once, at the first launch; Ayuda ▸ «Estadísticas de uso anónimas» switches them.
 // - Updates: looked for when it opens and from Ayuda ▸ «Buscar actualizaciones», asked in the interface's language.
 
 import { ACTIONS } from '../ribbon/actions.js';
 import { dropFiles, openPdfDeck } from './openfile.js';
 import { openPalette } from './palette.js';
 import { toast } from './toast.js';
+import { startAppStats, toggleStats, statsState } from './appstats.js';
 import { confirmDialog, alertDialog } from '../dialogs/dialog.js';
 import { undo, redo, canRedo } from '../../core/store.js';
 import { t } from '../../i18n/index.js';
@@ -49,7 +51,7 @@ export const MENU = [
     ['Ecuación', 'insert-math'], ['Código', 'insert-code'], ['Vídeo', 'insert-video'], ['Audio', 'insert-audio'], ['Modelo 3D', 'insert-model'], ['Mapa', 'insert-map'], SEP,
     ['Votación en directo', 'insert-poll'], ['Candado', 'insert-lock'], ['Cuenta atrás', 'insert-timer']]],
   ['Ayuda', [['Guías en vídeo', 'desk:guides'], ['Atajos de teclado', 'shortcuts'], ['Buscar comandos…', 'desk:palette'], ['Informar de un problema', 'report-problem'], ['Enviar una opinión o una idea', 'send-opinion'], SEP,
-    ['Buscar actualizaciones', 'desk:update'], ['Acerca de Revela', 'desk:about']]],
+    ['Buscar actualizaciones', 'desk:update'], ['Estadísticas de uso anónimas', 'desk:stats'], ['Acerca de Revela', 'desk:about']]],
 ];
 
 let api = null;
@@ -88,6 +90,7 @@ const PIN = 'revela.menubar';
 const pinned = () => { try { return localStorage.getItem(PIN) === '1'; } catch { return false; } };
 let shown = null;
 const bar = on => { if (mac() || shown === on) return; shown = on; invoke('menu_bar', { show: on }).catch(() => {}); };
+DESK['desk:stats'] = async () => { try { await toggleStats(); } finally { build().catch(() => {}); } };   // (appstats.js: the anonymous count, only if said yes)
 DESK['desk:menubar'] = () => { const on = !pinned(); try { localStorage.setItem(PIN, on ? '1' : '0'); } catch {} bar(on); build().catch(() => {}); };
 // Alt pressed and let go alone (not Alt+Q, not AltGr typing a character), or F10: the bar shows, or hides again;
 // a click on the editor or Esc hides it — unless it's always shown.
@@ -116,6 +119,7 @@ async function build() {
   const sep = () => PredefinedMenuItem.new({ item: 'Separator' }), about = await aboutItem();
   const items = list => Promise.all(list.map(x => x === SEP ? sep()
     : x[1] === 'desk:about' ? about
+    : x[1] === 'desk:stats' ? api.menu.CheckMenuItem.new({ text: t(x[0]), checked: statsState() === 'yes', action: () => run(x[1]) })
     : x[1] === 'desk:menubar' ? (mac() ? null : api.menu.CheckMenuItem.new({ text: t(x[0]), checked: pinned(), action: () => run(x[1]) }))
     : Array.isArray(x[1]) ? items(x[1]).then(sub => Submenu.new({ text: t(x[0]), items: sub }))
     : MenuItem.new({ text: t(x[0]), action: () => run(x[1]) })));
@@ -329,6 +333,7 @@ export async function initDesktop({ tauri = globalThis.__TAURI__, updates = true
   // desktop/src-tauri/src/main.rs sends them to this window.)
   tauri.event?.listen?.('revela://opened', () => openGiven());
   tauri.event?.listen?.('revela://link', () => openLinks());
+  undoers.push(startAppStats());                                    // (the anonymous count of openings: asks once, sends nothing without a yes — appstats.js)
   if (updates) setTimeout(() => checkUpdates(), 3000);              // (after the editor is ready; quiet without internet)
   return true;
 }

@@ -5301,4 +5301,10 @@ export default {
   "Enviar una opinión<br>o una idea": "Enviar unha opinión<br>ou unha idea",
   "Cuéntanos qué te gusta, qué echas de menos o qué mejorarías": "Cóntanos que che gusta, que botas en falta ou que mellorarías",
   "Cuéntanos qué te gusta, qué echas de menos o qué cambiarías en GitHub.": "Cóntanos en GitHub que che gusta, que botas en falta ou que cambiarías.",
+  "¿Nos ayudas contando que abres la aplicación?": "Axúdasnos contándonos que abres a aplicación?",
+  "Si aceptas, esta aplicación enviará de forma anónima, cada vez que la abras (como mucho una vez cada 6 horas) y cuando inicies sesión: un número aleatorio generado en tu equipo (no es tu cuenta ni tu correo), la versión de Revela, tu sistema y tu idioma, y si el inicio de sesión salió bien o falló. Nunca se envían tus presentaciones, su contenido ni tu cuenta. Puedes cambiarlo cuando quieras en {where}; al desactivarlo se borra ese número, aquí y en nuestro servidor. Si no aceptas, no se envía nada.": "Se aceptas, esta aplicación enviará de forma anónima, cada vez que a abras (como máximo unha vez cada 6 horas) e cando inicies sesión: un número aleatorio xerado no teu equipo (non é a túa conta nin o teu correo), a versión de Revela, o teu sistema e o teu idioma, e se o inicio de sesión foi ben ou fallou. Nunca se envían as túas presentacións, o seu contido nin a túa conta. Podes cambialo cando queiras en {where}; ao desactivalo bórrase ese número, aquí e no noso servidor. Se non aceptas, non se envía nada.",
+  "Gracias por ayudarnos. Puedes cambiarlo cuando quieras en {where}.": "Grazas por axudarnos. Podes cambialo cando queiras en {where}.",
+  "De acuerdo: no se enviará nada. Si cambias de idea, puedes activarlo en {where}.": "De acordo: non se enviará nada. Se cambias de idea, podes activalo en {where}.",
+  "Desactivado: se ha borrado el número de esta instalación y no se enviará nada más.": "Desactivado: borrouse o número desta instalación e non se enviará nada máis.",
+  "Estadísticas de uso anónimas": "Estatísticas de uso anónimas",
 };

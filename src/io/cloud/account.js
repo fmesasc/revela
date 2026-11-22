@@ -14,6 +14,7 @@
 import { EDITION, OFFICIAL_SITE, GOOGLE } from '../../core/config.js';
 import { loadScript } from '../../core/vendor.js';
 import { currentLang, t } from '../../i18n/index.js';
+import { loginEvent, reasonOf } from './appstats.js';
 
 const GIS = 'https://accounts.google.com/gsi/client';
 
@@ -120,7 +121,12 @@ const sha256 = async s => b64url(new Uint8Array(await crypto.subtle.digest('SHA-
 export const shortCode = challenge => challenge.replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase();
 const openInBrowser = url => (window.__TAURI__?.opener?.openUrl ? window.__TAURI__.opener.openUrl(url) : window.open(url, '_blank', 'noopener'));
 // Starts it and resolves when the browser has confirmed (or rejects after 10 minutes). onCode(code) shows the code meanwhile.
-export async function desktopSignIn({ onCode = () => {}, signal } = {}) {
+export async function desktopSignIn(o = {}) {
+  loginEvent('start');                                  // (the anonymous count of sign-ins, only if the person said yes: ui/shell/appstats.js)
+  try { const r = await desktopSignInFlow(o); loginEvent('ok'); return r; }
+  catch (e) { loginEvent('fail', reasonOf(e)); throw e; }
+}
+async function desktopSignInFlow({ onCode = () => {}, signal } = {}) {
   const nonce = random(24), verifier = random(32), challenge = await sha256(verifier);
   const { code } = await api('desktop/start', { nonce, challenge });
   onCode(code);

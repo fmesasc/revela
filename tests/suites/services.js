@@ -168,6 +168,73 @@ export default async function ({ R, D, frame, test, sleep, assert, eq, reset, sl
     eq(W.HTMLAnchorElement.prototype.click, click, 'y se puede deshacer (las pruebas)');
   });
 
+  await test('escritorio: estadísticas anónimas (appstats): se pregunta una vez, sin un sí no se envía ni se crea nada, 6 h, inicio de sesión, desactivar borra y avisa al servidor, la red que falla no molesta', async () => {
+    reset(); const W = frame.contentWindow, IO = await W.eval("import('/src/io/cloud/appstats.js')"), UI = await W.eval("import('/src/ui/shell/appstats.js')"),
+      N = await W.eval("import('/src/ui/shell/newsask.js')"), DK = await W.eval("import('/src/ui/shell/desktop.js')");
+    const ls = W.localStorage, wipe = () => { for (const k of ['state', 'id', 'last', 'forget']) ls.removeItem('revela.appstats.' + k); N.nudge.shown = false; };
+    const calls = []; let down = false;
+    const doFetch = async (url, init) => { calls.push({ url, init, body: JSON.parse(init.body) }); if (down) throw new TypeError('Failed to fetch'); return { ok: true }; };
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+    wipe();
+    try {
+      // Not outside the desktop app, nor testing: never asked, nothing made.
+      let asked = 0; const spy = async () => { asked++; };
+      for (const o of [{ edition: 'cloud', testing: false }, { edition: 'open', testing: false }, { edition: 'desktop', testing: true }]) { const stop = UI.startAppStats({ ...o, delay: 5, every: 10, ask: spy, doFetch }); await sleep(60); stop(); }
+      eq(asked, 0, 'fuera del escritorio y en pruebas no pregunta'); eq(calls.length, 0, 'ni envía'); assert(!ls.getItem('revela.appstats.state') && !ls.getItem('revela.appstats.id'), 'ni guarda nada');
+      // Over a dialog it waits; then it asks (once for this session).
+      const other = D.createElement('div'); other.className = 'modal-backdrop'; D.body.appendChild(other);
+      let stop = UI.startAppStats({ edition: 'desktop', testing: false, delay: 5, every: 10, ask: spy, doFetch }); await sleep(60); eq(asked, 0, 'con un diálogo abierto espera');
+      other.remove(); await sleep(60); stop(); eq(asked, 1, 'y al cerrarse, pregunta'); N.nudge.shown = false;
+      // The dialog: accessible, in the interface's words, Escape and the backdrop are «No».
+      const dlg = UI.askStatsDialog(), box = D.getElementById('appstats-modal');
+      assert(box?.querySelector('[role=dialog]') && box.contains(D.activeElement), 'diálogo accesible con el foco dentro');
+      assert(/aplicación/.test(box.querySelector('h3').textContent) && /número aleatorio/.test(box.querySelector('p').textContent) && /no se envía nada/.test(box.querySelector('p').textContent), 'dice con claridad qué se envía');
+      assert(/Ayuda ▸ «Estadísticas de uso anónimas»/.test(box.querySelector('p').textContent), 'y dónde cambiarlo');
+      D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); eq(await dlg, 'no', 'Escape es «No»'); assert(!D.getElementById('appstats-modal'), 'se cierra');
+      const d2 = UI.askStatsDialog(); D.querySelector('#appstats-modal .ap-yes').click(); eq(await d2, 'yes', 'Aceptar');
+      const d3 = UI.askStatsDialog(); D.querySelector('#appstats-modal .ap-no').click(); eq(await d3, 'no', 'No, gracias');
+      // «No»: nothing is sent and no number is made — then or later; never asked again.
+      const said = []; const say = async m => said.push(m);
+      stop = UI.startAppStats({ edition: 'desktop', testing: false, delay: 5, every: 10, doFetch, ask: o => UI.askStats({ ...o, ask: async () => 'no', say }) }); await sleep(80); stop();
+      eq(IO.statsState(), 'no', 'queda en «no»'); eq(calls.length, 0, 'rechazar no envía nada'); assert(!ls.getItem('revela.appstats.id') && !IO.statsId(), 'ni crea número'); eq(said.length, 1, 'y se le dice que no se enviará nada');
+      assert(IO.statsId() === '' && !(await IO.sendOpen({ doFetch })) && !(await IO.loginEvent('start', '', { doFetch })), 'con «no», ni la apertura ni el inicio de sesión envían'); eq(calls.length, 0, 'nada');
+      asked = 0; stop = UI.startAppStats({ edition: 'desktop', testing: false, delay: 5, every: 10, ask: spy, doFetch }); await sleep(60); stop(); eq(asked, 0, 'no se vuelve a preguntar'); eq(calls.length, 0, 'ni se envía');
+      // «Aceptar»: the number is made and the opening is sent, as little as possible, without the session.
+      wipe(); N.nudge.shown = false; said.length = 0;
+      stop = UI.startAppStats({ edition: 'desktop', testing: false, delay: 5, every: 10, doFetch, ask: o => UI.askStats({ ...o, ask: async () => 'yes', say }) }); await sleep(120); stop();
+      const id = IO.statsId(); assert(UUID.test(id), 'crea un número aleatorio (UUID v4): ' + id); eq(IO.statsState(), 'yes', 'guardado el sí'); eq(said.length, 1, 'agradece');
+      eq(calls.length, 1, 'envía la apertura'); const c0 = calls[0];
+      assert(c0.url === 'https://revelaslides.com/api/app/open' && c0.init.method === 'POST' && c0.init.credentials === 'omit' && !c0.init.headers.Authorization, 'a /api/app/open, sin cookies ni sesión');
+      eq(Object.keys(c0.body).sort().join(), 'id,lang,os,v', 'solo número, idioma, sistema y versión'); assert(c0.body.id === id && /^\d+\.\d+\.\d+/.test(c0.body.v) && ['windows', 'mac', 'linux', 'otro'].includes(c0.body.os) && c0.body.lang, 'con valores válidos');
+      // At most one opening every 6 hours.
+      const t0 = +ls.getItem('revela.appstats.last'); assert(t0 > 0, 'anota la hora del último envío');
+      assert(!(await IO.sendOpen({ now: t0 + 3600e3, doFetch })) && !(await IO.sendOpen({ now: t0 + 5.9 * 3600e3, doFetch })), 'antes de 6 h no vuelve a enviar'); eq(calls.length, 1, 'sin llamadas nuevas');
+      assert(await IO.sendOpen({ now: t0 + 6.1 * 3600e3, doFetch }), 'pasadas 6 h, sí'); eq(calls.length, 2, 'una más');
+      // A session started here (just a yes/no, never who).
+      ls.setItem('revela.session', 'secreto-del-token'); await IO.sendOpen({ now: t0 + 20 * 3600e3, doFetch }); const c2 = calls.at(-1); eq(c2.body.li, true, 'dice si hay sesión (solo un sí)'); assert(!JSON.stringify(c2).includes('secreto-del-token'), 'sin el token'); ls.removeItem('revela.session');
+      // The sign-in's steps, with a fixed reason.
+      calls.length = 0; await IO.loginEvent('start', '', { doFetch }); await IO.loginEvent('ok', '', { doFetch }); await IO.loginEvent('fail', 'network', { doFetch }); await IO.loginEvent('fail', 'Error: token abc@x.org', { doFetch }); await IO.loginEvent('otra', '', { doFetch });
+      eq(calls.map(c => c.url.split('/').pop() + ':' + c.body.e + ':' + (c.body.reason || '')).join(' '), 'event:login-start: event:login-ok: event:login-fail:network event:login-fail:other', 'inicio, bien y fallo con motivo fijo (un texto raro es «other»); un paso inventado no sale');
+      assert(calls.every(c => c.body.id === id && !JSON.stringify(c.body).includes('@')), 'solo con el número: ni correo ni cuenta');
+      const R_ = IO.reasonOf; eq([R_(new Error('CANCELLED')), R_(new Error('EXPIRED')), R_(new TypeError('x')), R_(Object.assign(new Error('x'), { status: 403 })), R_(Object.assign(new Error('x'), { status: 500 })), R_(new Error('raro'))].join(), 'closed,expired,network,denied,other,other', 'los motivos');
+      // Network failures are silent and not retried: nothing thrown, nothing noted as sent.
+      down = true; calls.length = 0; const last = ls.getItem('revela.appstats.last');
+      assert((await IO.sendOpen({ now: t0 + 99 * 3600e3, doFetch })) === false && (await IO.loginEvent('start', '', { doFetch })) === false, 'sin red: false, sin excepción'); eq(calls.length, 2, 'una vez cada uno, sin insistir'); eq(ls.getItem('revela.appstats.last'), last, 'y no cuenta como enviado');
+      // Off: the number is deleted here, the server is asked to delete it; if it can't be reached, it is asked again at the next launch.
+      calls.length = 0; await IO.setStats(false, { doFetch });
+      eq(IO.statsState(), 'no', 'desactivado'); assert(!ls.getItem('revela.appstats.id') && !ls.getItem('revela.appstats.last') && !IO.statsId(), 'se borra el número local');
+      eq(calls.length, 1, 'avisa al servidor'); assert(calls[0].url.endsWith('/api/app/forget') && calls[0].body.id === id && Object.keys(calls[0].body).length === 1, 'forget con el número');
+      assert(ls.getItem('revela.appstats.forget') === id, 'sin red, la petición de borrado queda pendiente');
+      down = false; calls.length = 0; stop = UI.startAppStats({ edition: 'desktop', testing: false, delay: 5, every: 10, ask: spy, doFetch }); await sleep(60); stop();
+      assert(calls.length === 1 && calls[0].url.endsWith('/api/app/forget') && !ls.getItem('revela.appstats.forget'), 'al arrancar la repite y la da por hecha'); eq(asked, 0, 'y no vuelve a preguntar');
+      // The menu: Ayuda has the switch; turning on asks (the whole explanation), turning off deletes.
+      assert(DK.MENU.find(m => m[0] === 'Ayuda')[1].some(x => x[1] === 'desk:stats' && x[0] === 'Estadísticas de uso anónimas'), 'el interruptor en Ayuda');
+      said.length = 0; calls.length = 0; eq(await UI.toggleStats({ ask: async () => 'yes', say, doFetch }), true, 'activar desde el menú'); eq(IO.statsState(), 'yes', 'activado'); assert(UUID.test(IO.statsId()) && IO.statsId() !== id, 'con un número nuevo (no el anterior)');
+      await sleep(30); eq(calls.at(-1)?.url.split('/').pop(), 'open', 'y envía la apertura');
+      eq(await UI.toggleStats({ say, doFetch }), false, 'desactivar desde el menú'); eq(IO.statsState(), 'no', 'desactivado'); assert(!IO.statsId() && /borrado/.test(said.at(-1)), 'borra el número y lo dice');
+    } finally { D.getElementById('appstats-modal')?.remove(); wipe(); }
+  });
+
   await test('escritorio: un archivo grande se guarda por partes y un paquete .revela se abre leyendo trozos (Tauri simulado, con su disco)', async () => {
     reset(); const W = frame.contentWindow, DK = await W.eval("import('/src/ui/shell/desktop.js')"), PK = await W.eval("import('/src/io/formats/package.js')");
     const disk = new Map(), calls = [], writing = new Map(), zips = new Map(), media = new Map(), urls = new Map(); let opened = [], picked = [], zipN = 0;

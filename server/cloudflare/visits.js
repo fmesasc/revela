@@ -14,6 +14,7 @@
 //   'd:<day>' { views, uniques, pages, refs, langs, nf, dl (clicks on the download buttons, by system) } (400 days) · 'nf:<path>' (404s) · 'extra' · 'redirects'.
 import { sha256, random, DAY } from './util.js';
 import { errorsOp } from './errors.js';
+import { appOp } from './appstats.js';
 
 const KEEP_DAYS = 400, MAX_KEYS = 300, MAX_PAGES = 600, MAX_PER_VISITOR = 200;
 export const dayOf = (ts = Date.now()) => new Date(ts).toISOString().slice(0, 10);
@@ -36,6 +37,7 @@ export class Visits {
   fetch(req) { const run = () => this.handle(req); const p = (this.queue || Promise.resolve()).then(run, run); this.queue = p.catch(() => {}); return p; }
   async handle(req) {
     const op = new URL(req.url).pathname.split('/').pop(), a = await req.json().catch(() => ({})), st = this.ctx.storage, now = +a.now || Date.now(), day = dayOf(now);
+    if (op.startsWith('app-')) return Response.json(await appOp(st, op, a, now));      // (the desktop app's anonymous openings, only if accepted: appstats.js)
     if (op.startsWith('err')) return Response.json(await errorsOp(st, op, a, now));      // (the app's errors: errors.js)
     if (op === 'hit') {                                   // { who (a hash of address and browser), path, ref, lang, kind: view | 404 }
       let salt = await st.get('salt');

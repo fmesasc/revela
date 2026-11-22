@@ -27,6 +27,12 @@
 //   POST /api/admin/refund                 { sub, reason? , notify? }   (gives back the last AI charge not refunded yet)
 //   POST /api/admin/plan                   { sub, until (ms, 0 = remove), reason }   (Pro given by hand; Stripe's untouched)
 //   POST /api/admin/block                  { sub, blocked, reason }   (blocked: 403 on AI, cloud documents, calls…)
+//   GET  /api/admin/installs?days=        → the desktop application's anonymous count (appstats.js; only installations that said yes; days 1..730, default 30):
+//                                          { days: [{ day, active, fresh, opens }]   (every day of the period, zeros included: installations opened, new ones, openings),
+//                                            totals: { installs (kept now), active (opened in the period), newInPeriod, returning (opened on 2+ different days), loggedIn (a session was started) },
+//                                            retention: { d1|d7|d30: { cohort, back, pct } }   (of the installations first seen in the period and old enough: back on day 1 exactly / within 7 / within 30 days; pct 0-100 with one decimal, null without cohort),
+//                                            versions|systems|langs: [{ k, n }]   (of the installations active in the period, most first),
+//                                            funnel: { start, ok, fail, reasons: { closed, expired, network, denied, other } } }   (sign-in steps of the period)
 //   GET  /api/admin/audience?days=         → «¿Para qué vas a usar Revela?»: anonymous counts (visits.js)
 //   GET  /api/admin/web?days=              → visits per day, pages, referrers, languages; 404s; the sitemap's extra
 //                                          addresses; visited pages the sitemap leaves out (visits.js)
@@ -794,6 +800,7 @@ export async function handleAdmin(req, env, url) {
   }
   if (path === '/web' || path.startsWith('/web/')) return webApi(env, path, q, body, { GET, POST, by, json });
   // «¿Para qué vas a usar Revela?»: the anonymous counts (visits.js), per day, in total and by language.
+  if (GET && path === '/installs') return json(env.VISITS ? await visitsCall(env, 'app-stats', { days: +q.get('days') || 30 }) : { days: [], totals: {}, retention: {}, versions: [], systems: [], langs: [], funnel: {} });
   if (GET && path === '/audience') return json(env.VISITS ? await visitsCall(env, 'aud-stats', { days: +q.get('days') || 90 }) : { days: [], total: {}, langs: {} });
   // A person's cloud presentations (their account's list), and one of them back to how it was at a moment of the last
   // 30 days (docs.js 'pitr': Cloudflare's point-in-time recovery). With the bookmark from before, undone. Audited.

@@ -2904,6 +2904,45 @@ ok((await req('GET', '/api/s/' + 'x'.repeat(22))).status === 404, 'compartir tam
       ok(au.j.langs.ca?.edu === 2 && au.j.days.at(-1).change.both === 1, 'público: por idioma, y los cambios aparte');
       const raw2 = JSON.stringify([...env.VISITS.inst.get('visits').ctx.storage.m.entries()].filter(([k]) => k.startsWith('a:')));
       ok(!raw2.includes('10.7.0') && !raw2.includes('Safari'), 'público: anónimo (ni dirección ni navegador)'); }
+    // La aplicación de escritorio: recuento anónimo, solo de quien aceptó (appstats.js). Sin IP, sin navegador, sin cuenta.
+    { const D = 'tauri://localhost', U = n => `aaaaaaaa-bbbb-4ccc-8ddd-${String(n).padStart(12, '0')}`, ip = { 'CF-Connecting-IP': '10.8.0.9', 'User-Agent': 'Firefox/200 Secreto', Authorization: 'Bearer sesion-secreta-777' };
+      const P = (p, b, origin = D) => req('POST', '/api/app/' + p, { origin, body: b, headers: ip }), T0 = realNow(), mem = () => env.VISITS.inst.get('visits').ctx.storage.m;
+      const open = (n, v = {}) => P('open', { id: U(n), v: '0.4.115', os: 'linux', lang: 'es', ...v });
+      ok((await P('open', { id: U(1), v: '0.4.115', os: 'linux', lang: 'es' }, SITE)).status === 403 && (await P('open', { id: U(1), v: '0.4.115' }, 'https://malo.example')).status === 403, 'escritorio: solo desde la aplicación');
+      ok((await req('GET', '/api/app/open', { origin: D })).status === 405, 'escritorio: solo POST');
+      ok((await P('open', { id: 'no-es-uuid', v: '0.4.115' })).status === 400 && (await P('open', { id: U(1).replace('-4ccc-', '-1ccc-'), v: '0.4.115' })).status === 400 && (await P('open', { id: U(1), v: '<script>' })).status === 400
+        && (await P('event', { id: U(1), e: 'otra-cosa' })).status === 400 && (await P('forget', {})).status === 400, 'escritorio: id v4, versión y evento válidos o 400');
+      ok(![...mem().keys()].some(k => k.startsWith('i:')), 'escritorio: lo no válido no deja nada');
+      // Día -8: tres instalaciones nuevas; el embudo.
+      at(T0 - 8 * DAYms); await open(1); await open(1); await open(2, { os: 'windows', lang: 'ca', v: '0.4.114' }); ok((await open(3, { os: 'mac', v: 'raro' })).status === 400, 'escritorio: versión rara, 400');
+      await open(3, { os: 'solaris', lang: 'english' });
+      await P('event', { id: U(1), e: 'login-start' }); await P('event', { id: U(1), e: 'login-ok' }); await P('event', { id: U(2), e: 'login-start' }); await P('event', { id: U(2), e: 'login-fail', reason: 'closed' });
+      await P('event', { id: U(3), e: 'login-fail', reason: 'texto <b>libre</b> del error' }); await P('event', { id: U(99), e: 'login-ok' });
+      ok(!mem().has('i:' + U(99)) && mem().get('i:' + U(3)).os === 'otro' && mem().get('i:' + U(3)).lang === '', 'escritorio: un evento de quien no existe no lo crea; sistema o idioma raros se normalizan');
+      at(T0 - 7 * DAYms); await open(1);                    // (vuelve al día 1)
+      at(T0 - 5 * DAYms); await open(2);                    // (al día 3)
+      at(T0); await open(1, { v: '0.4.116', li: true });    // (al día 8)
+      Date.now = realNow;
+      { const s = (await A('GET', '/installs?days=10')).j, byDay = Object.fromEntries(s.days.map(d => [d.day, d]));
+        const d8 = new Date(T0 - 8 * DAYms).toISOString().slice(0, 10), d7 = new Date(T0 - 7 * DAYms).toISOString().slice(0, 10);
+        ok(s.days.length === 10 && byDay[d8].fresh === 3 && byDay[d8].active === 3 && byDay[d8].opens === 4 && byDay[d7].active === 1 && byDay[d7].fresh === 0, 'instalaciones: por día, activas, nuevas y aperturas: ' + JSON.stringify(s.days.slice(0, 4)));
+        ok(s.totals.installs === 3 && s.totals.active === 3 && s.totals.newInPeriod === 3 && s.totals.returning === 2 && s.totals.loggedIn === 1, 'instalaciones: totales, las que vuelven (2+ días) y con sesión: ' + JSON.stringify(s.totals));
+        ok(s.retention.d1.cohort === 3 && s.retention.d1.back === 1 && s.retention.d7.back === 2 && s.retention.d7.pct === 66.7 && s.retention.d30.cohort === 0 && s.retention.d30.pct === null, 'instalaciones: retención a 1, 7 y 30 días: ' + JSON.stringify(s.retention));
+        ok(s.versions.find(v => v.k === '0.4.116')?.n === 1 && s.versions.find(v => v.k === '0.4.115')?.n === 2 && s.systems.find(v => v.k === 'otro')?.n === 1 && s.systems.find(v => v.k === 'linux')?.n === 2, 'instalaciones: versiones (la última de cada una) y sistemas: ' + JSON.stringify([s.versions, s.systems]));
+        ok(s.funnel.start === 2 && s.funnel.ok === 1 && s.funnel.fail === 2 && s.funnel.reasons.closed === 1 && s.funnel.reasons.other === 1 && s.funnel.reasons.network === 0, 'instalaciones: embudo de inicio de sesión con motivos fijos: ' + JSON.stringify(s.funnel));
+        ok((await req('GET', '/api/admin/installs', { origin: SITE })).status !== 200, 'instalaciones: el panel es solo de administración'); }
+      const raw3 = JSON.stringify([...mem().entries()].filter(([k]) => k.startsWith('i:') || k.startsWith('ia:')));
+      ok(!/10\.8\.0|Firefox|Secreto|sesion-secreta|texto|libre|@/.test(raw3), 'escritorio: ni IP, ni navegador, ni sesión, ni texto libre, ni correo: ' + raw3.slice(0, 200));
+      // Límite por instalación al día.
+      { let last = 0; for (let i = 0; i < 31; i++) last = (await open(4)).status; ok(last === 429 && mem().get('i:' + U(4)).q.n === 30, 'escritorio: como mucho 30 llamadas al día por instalación'); }
+      // Borrar: forget quita la instalación y un evento posterior no la trae de vuelta.
+      ok((await P('forget', { id: U(3) })).status === 200 && !mem().has('i:' + U(3)), 'escritorio: forget la borra');
+      await P('event', { id: U(3), e: 'login-ok' }); ok(!mem().has('i:' + U(3)), 'escritorio: y no vuelve con un evento');
+      ok((await P('forget', { id: U(77) })).status === 200, 'escritorio: borrar una que no existe no falla');
+      // Sin verse en 24 meses: se borra sola (una abierta hace 800 días, y otra de hoy que dispara la limpieza).
+      at(T0 - 800 * DAYms); await open(5); Date.now = realNow; ok(mem().has('i:' + U(5)), 'escritorio: (antigua guardada)');
+      await open(6); ok(!mem().has('i:' + U(5)) && mem().has('i:' + U(6)) && mem().has('i:' + U(1)), 'escritorio: la que lleva más de 24 meses sin verse se borra sola');
+      ok((await A('GET', '/installs?days=5000')).j.days.length === 730, 'instalaciones: como mucho 730 días'); }
     // A new day: a new salt; yesterday's visitors can't be told apart from new ones.
     const salt0 = env.VISITS.inst.get('visits').ctx.storage.m.get('salt').value;
     at(realNow() + 864e5); await hit({ path: '/pricing' }); Date.now = realNow;

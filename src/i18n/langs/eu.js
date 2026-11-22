@@ -5301,4 +5301,10 @@ export default {
   "Enviar una opinión<br>o una idea": "Bidali iritzi<br>edo ideia bat",
   "Cuéntanos qué te gusta, qué echas de menos o qué mejorarías": "Kontatu iezaguzu zer gustatzen zaizun, zer falta duzun edo zer hobetuko zenukeen",
   "Cuéntanos qué te gusta, qué echas de menos o qué cambiarías en GitHub.": "Kontatu iezaguzu GitHuben zer gustatzen zaizun, zer falta duzun edo zer aldatuko zenuke.",
+  "¿Nos ayudas contando que abres la aplicación?": "Lagunduko diguzu aplikazioa irekitzen duzula esanez?",
+  "Si aceptas, esta aplicación enviará de forma anónima, cada vez que la abras (como mucho una vez cada 6 horas) y cuando inicies sesión: un número aleatorio generado en tu equipo (no es tu cuenta ni tu correo), la versión de Revela, tu sistema y tu idioma, y si el inicio de sesión salió bien o falló. Nunca se envían tus presentaciones, su contenido ni tu cuenta. Puedes cambiarlo cuando quieras en {where}; al desactivarlo se borra ese número, aquí y en nuestro servidor. Si no aceptas, no se envía nada.": "Onartzen baduzu, aplikazio honek modu anonimoan bidaliko du, irekitzen duzun bakoitzean (6 orduko behin gehienez) eta saioa hasten duzunean: zure ekipoan sortutako zenbaki ausazko bat (ez da zure kontua ez zure posta), Revelaren bertsioa, zure sistema eta hizkuntza, eta saioa hastea ondo atera den ala huts egin duen. Inoiz ez dira bidaltzen zure aurkezpenak, haien edukia ez zure kontua. Nahi duzunean alda dezakezu hemen: {where}; desaktibatzean zenbaki hori ezabatzen da, hemen eta gure zerbitzarian. Onartzen ez baduzu, ez da ezer bidaltzen.",
+  "Gracias por ayudarnos. Puedes cambiarlo cuando quieras en {where}.": "Eskerrik asko laguntzeagatik. Nahi duzunean alda dezakezu hemen: {where}.",
+  "De acuerdo: no se enviará nada. Si cambias de idea, puedes activarlo en {where}.": "Ados: ez da ezer bidaliko. Iritziz aldatzen baduzu, hemen aktibatu dezakezu: {where}.",
+  "Desactivado: se ha borrado el número de esta instalación y no se enviará nada más.": "Desaktibatuta: instalazio honen zenbakia ezabatu da eta ez da gehiago ezer bidaliko.",
+  "Estadísticas de uso anónimas": "Erabilera-estatistika anonimoak",
 };

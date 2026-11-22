@@ -15,6 +15,7 @@
 //                              (a new account needs terms: the version of the terms accepted; else 400 { error: 'terms' })
 //   POST /api/logout
 //   POST /api/visit            { path, ref, lang, kind: view | 404 }   (the website's pages: visits.js; no cookies)
+//   POST /api/app/open | /api/app/event | /api/app/forget   (the desktop application's anonymous count, only if accepted at its first launch: appstats.js; no IP, no account)
 //   POST /api/errors           { msg, stack, where, version, browser, lang, actions, kind }   (the app's errors: errors.js;
 //                              with the session, if there is one: the account's id goes with it)
 //   GET  /api/redirect?path=   → { to }   (where an address that doesn't exist goes: the 404 page asks)
@@ -82,6 +83,7 @@ import { enc, b64url, random, sha256, DAY, HOUR } from './util.js';
 import { stockSearch, stockUsed, photoProviders } from './stock.js';
 import { storageConfig, MB } from './storage.js';
 import { handleVisit, visitsCall, cleanPath } from './visits.js';
+import { handleApp } from './appstats.js';
 import { startLive, joinLive, startVote, joinVote, voteCode } from './broadcast.js';
 import { ssoStart, ssoCallback, ssoJoin } from './sso.js';
 import { hookOp, handleHooks } from './hooks.js';
@@ -1226,6 +1228,12 @@ export async function handleApi(req, env, url) {
     if (!env.VISITS || !body || !['edu', 'biz', 'both'].includes(body.v)) return json({ ok: true });
     await visitsCall(env, 'aud', { v: body.v, kind: ['first', 'change', 'skip'].includes(body.kind) ? body.kind : 'first', lang: /^[a-z]{2}$/.test(body.lang || '') ? body.lang : '' });
     return json({ ok: true });
+  }
+  // The desktop application's anonymous openings and sign-in steps (appstats.js): only from the app itself, only for who
+  // said yes at its first launch; no address, account or email is read or kept.
+  if (path === '/app/open' || path === '/app/event' || path === '/app/forget') {
+    if (!desktopOrigin) return json({ error: 'origin' }, 403);
+    return handleApp(path.slice(5), req, env, body, json, visitsCall);
   }
   // The app's own errors (errors.js): from the app (the website's origin or the desktop app), small, capped per person.
   if (path === '/errors') {

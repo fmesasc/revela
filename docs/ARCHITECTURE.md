@@ -292,6 +292,7 @@ src/
       onedrive.js              OneDrive as Drive is: linked file, autosave, copies as PDF/PowerPoint
       account.js               the Revela account (official and desktop editions): sign-in, plan,
                                credits, AI through the account, payments
+      appstats.js              the desktop app's anonymous count of openings and sign-ins (ONLY after an explicit yes at the first launch; a random UUID in localStorage `revela.appstats.*`; off deletes it and calls /api/app/forget; no account, email or IP): the interface is ui/shell/appstats.js
       clouddocs.js             presentations in Revela's cloud: list, open, sync, share, statistics
       call.js                  video calls through Cloudflare Realtime's SFU
       shareserver.js           client of the share server (/s)
@@ -366,6 +367,7 @@ server/
     stock.js                   stock photo search (Unsplash, Pexels)
     storage.js                 the cloud's space: quotas per plan, what each account takes, the daily alert
     releases.js                Versiones: pruebas vs production, «Publicar en producción» (docs/PUBLICAR.md)
+    appstats.js                the desktop app's anonymous installations (opt-in; per random id: first/last seen, openings, days, version, system, signed-in yes/no; daily sign-in funnel; deleted after 24 months unseen or on /api/app/forget; no IP) in the Visits object; GET /api/admin/installs
     visits.js                  the website's visits without cookies, its 404s and redirects, the sitemap's extras (Visits)
     docs.js                    cloud documents with roles and permission settings (CloudDoc)
     collab.js                  co-editing rooms (CollabRoom)
@@ -480,6 +482,7 @@ server/cloudflare/
   crm-reply.js             Captación's emails written by hand
   deckedit.js              the public API's changes to a presentation, run by the document's own object
   errors.js                the app's errors, kept per account for 90 days
+  appstats.js              the desktop app's anonymous openings (opt-in, see privacy.html), in the Visits object
   hooks.js                 integrations: Slack, Zapier, Microsoft
   meshy3d.js  trellis3d.js   «Realista»: textured 3D models (Meshy through fal.ai; TRELLIS on Runware or fal)
   imageup.js               private pictures into a deck made from outside: a signed upload link (PUT), checked by content
